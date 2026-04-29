@@ -59,12 +59,12 @@ class VoucherEngine
      * }
      */
     public function createVoucher(
-        float  $amount,
+        float $amount,
         string $visitorName,
         string $visitorContact = '',
-        int    $issuedBy       = 0,
-        int    $expiryHours    = self::DEFAULT_EXPIRY_HOURS,
-        bool   $isRefundable   = false
+        int $issuedBy = 0,
+        int $expiryHours = self::DEFAULT_EXPIRY_HOURS,
+        bool $isRefundable = false
     ): array {
         if ($amount <= 0) {
             throw new InvalidArgumentException('Voucher value must be greater than zero.');
@@ -83,17 +83,17 @@ class VoucherEngine
                 "SELECT * FROM system_settings WHERE id = 1 FOR UPDATE"
             )->fetch();
 
-            if ((float)$settings['cashier_vault_points'] < $amount) {
+            if ((float) $settings['cashier_vault_points'] < $amount) {
                 throw new RuntimeException(sprintf(
                     'VAULT_INSUFFICIENT: Vault only has ₱%s but voucher requires ₱%s.',
-                    number_format((float)$settings['cashier_vault_points'], 2),
+                    number_format((float) $settings['cashier_vault_points'], 2),
                     number_format($amount, 2)
                 ));
             }
 
             // ── Generate unique code & hash ──────────────────────────────
             $voucherCode = $this->generateCode();
-            $expiresAt   = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
+            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
             // ── Insert voucher row ───────────────────────────────────────
             $this->db->prepare(
@@ -103,11 +103,16 @@ class VoucherEngine
                      expires_at, is_refundable, issued_by)
                  VALUES ('__PENDING__', ?, ?, ?, ?, ?, 'active', ?, ?, ?)"
             )->execute([
-                $voucherCode, $visitorName, $visitorContact,
-                $amount, $amount, $expiresAt,
-                $isRefundable ? 1 : 0, $issuedBy,
-            ]);
-            $voucherId = (int)$this->db->lastInsertId();
+                        $voucherCode,
+                        $visitorName,
+                        $visitorContact,
+                        $amount,
+                        $amount,
+                        $expiresAt,
+                        $isRefundable ? 1 : 0,
+                        $issuedBy,
+                    ]);
+            $voucherId = (int) $this->db->lastInsertId();
 
             // ── Build QR hash using the real ID ──────────────────────────
             $qrHash = $this->buildQrHash($voucherId, $voucherCode);
@@ -124,11 +129,14 @@ class VoucherEngine
             )->execute([$amount]);
 
             // ── Integrity check ──────────────────────────────────────────
-            $this->validateCirculation((float)$settings['total_circulation_cap']);
+            $this->validateCirculation((float) $settings['total_circulation_cap']);
 
             // ── Audit log ────────────────────────────────────────────────
             $ref = 'VOU-' . strtoupper(date('Ymd')) . '-' . str_pad(
-                (string)$voucherId, 5, '0', STR_PAD_LEFT
+                (string) $voucherId,
+                5,
+                '0',
+                STR_PAD_LEFT
             );
             $this->db->prepare(
                 "INSERT INTO transactions
@@ -143,33 +151,36 @@ class VoucherEngine
                      FROM system_settings WHERE id=1),
                     'completed', ?)"
             )->execute([
-                $ref, $issuedBy, $voucherId, $amount,
-                (float)$settings['cashier_vault_points'],
-                (float)$settings['cashier_vault_points'] - $amount,
-                "Voucher {$voucherCode} issued to {$visitorName} · exp {$expiresAt}",
-            ]);
+                        $ref,
+                        $issuedBy,
+                        $voucherId,
+                        $amount,
+                        (float) $settings['cashier_vault_points'],
+                        (float) $settings['cashier_vault_points'] - $amount,
+                        "Voucher {$voucherCode} issued to {$visitorName} · exp {$expiresAt}",
+                    ]);
 
             $this->db->commit();
 
             // QR payload — this is what gets encoded into the QR image
             $qrPayload = json_encode([
-                'type'    => 'VISITOR_VOUCHER',
-                'hash'    => $qrHash,
-                'code'    => $voucherCode,
-                'exp'     => $expiresAt,
-                'issuer'  => 'GJC-EDUPAY',
+                'type' => 'VISITOR_VOUCHER',
+                'hash' => $qrHash,
+                'code' => $voucherCode,
+                'exp' => $expiresAt,
+                'issuer' => 'GJC-EDUPAY',
             ]);
 
             return [
-                'success'      => true,
-                'voucher_id'   => $voucherId,
+                'success' => true,
+                'voucher_id' => $voucherId,
                 'voucher_code' => $voucherCode,
                 'qr_code_hash' => $qrHash,
-                'qr_payload'   => $qrPayload,
-                'initial_value'=> $amount,
-                'expires_at'   => $expiresAt,
-                'is_refundable'=> $isRefundable,
-                'reference'    => $ref,
+                'qr_payload' => $qrPayload,
+                'initial_value' => $amount,
+                'expires_at' => $expiresAt,
+                'is_refundable' => $isRefundable,
+                'reference' => $ref,
             ];
 
         } catch (\Throwable $e) {
@@ -210,31 +221,31 @@ class VoucherEngine
 
         if (!$voucher) {
             return [
-                'valid'   => false,
+                'valid' => false,
                 'voucher' => null,
                 'expired' => false,
-                'error'   => 'INVALID_QR: This QR code was not found in the system. It may be forged or corrupted.',
+                'error' => 'INVALID_QR: This QR code was not found in the system. It may be forged or corrupted.',
             ];
         }
 
         // ── Hash integrity double-check ───────────────────────────────────
-        $expectedHash = $this->buildQrHash((int)$voucher['id'], $voucher['voucher_code']);
+        $expectedHash = $this->buildQrHash((int) $voucher['id'], $voucher['voucher_code']);
         if (!hash_equals($expectedHash, $qrHash)) {
             return [
-                'valid'   => false,
+                'valid' => false,
                 'voucher' => null,
                 'expired' => false,
-                'error'   => 'TAMPERED_QR: Hash mismatch. This QR code has been altered and is invalid.',
+                'error' => 'TAMPERED_QR: Hash mismatch. This QR code has been altered and is invalid.',
             ];
         }
 
         // ── Already in a terminal state? ─────────────────────────────────
         if (in_array($voucher['status'], ['redeemed', 'cancelled'])) {
             return [
-                'valid'   => false,
+                'valid' => false,
                 'voucher' => $voucher,
                 'expired' => false,
-                'error'   => "VOUCHER_{$voucher['status']}: This voucher has already been {$voucher['status']}.",
+                'error' => "VOUCHER_{$voucher['status']}: This voucher has already been {$voucher['status']}.",
             ];
         }
 
@@ -242,22 +253,22 @@ class VoucherEngine
         if ($voucher['status'] === 'active' && strtotime($voucher['expires_at']) < time()) {
             // Trigger expiry right now — no cron needed
             try {
-                $recycled = $this->triggerLazyExpiry((int)$voucher['id'], $scannedBy);
+                $recycled = $this->triggerLazyExpiry((int) $voucher['id'], $scannedBy);
             } catch (\Throwable $e) {
                 $recycled = 0;
                 error_log('[VoucherEngine] Lazy expiry failed for #' . $voucher['id'] . ': ' . $e->getMessage());
             }
 
             return [
-                'valid'    => false,
-                'voucher'  => $voucher,
-                'expired'  => true,
+                'valid' => false,
+                'voucher' => $voucher,
+                'expired' => true,
                 'recycled' => $recycled,
-                'error'    => sprintf(
+                'error' => sprintf(
                     'VOUCHER_EXPIRED: This voucher expired at %s. ' .
                     'The remaining balance of ₱%s has been returned to the vault%s.',
                     date('M d, Y h:i A', strtotime($voucher['expires_at'])),
-                    number_format((float)$voucher['remaining_balance'], 2),
+                    number_format((float) $voucher['remaining_balance'], 2),
                     $voucher['is_refundable'] ? ' (refundable)' : ' (non-refundable — no cash back)'
                 ),
             ];
@@ -266,37 +277,37 @@ class VoucherEngine
         // ── Already DB-flagged expired ────────────────────────────────────
         if ($voucher['status'] === 'expired') {
             return [
-                'valid'   => false,
+                'valid' => false,
                 'voucher' => $voucher,
                 'expired' => true,
-                'error'   => 'VOUCHER_EXPIRED: This voucher has already expired.',
+                'error' => 'VOUCHER_EXPIRED: This voucher has already expired.',
             ];
         }
 
         // ── Balance exhausted? ────────────────────────────────────────────
-        if ((float)$voucher['remaining_balance'] <= 0) {
+        if ((float) $voucher['remaining_balance'] <= 0) {
             // Mark as redeemed
             $this->db->prepare(
                 "UPDATE vouchers SET status = 'redeemed', redeemed_at = NOW() WHERE id = ?"
-            )->execute([(int)$voucher['id']]);
+            )->execute([(int) $voucher['id']]);
             return [
-                'valid'   => false,
+                'valid' => false,
                 'voucher' => $voucher,
                 'expired' => false,
-                'error'   => 'VOUCHER_EXHAUSTED: This voucher has no remaining balance.',
+                'error' => 'VOUCHER_EXHAUSTED: This voucher has no remaining balance.',
             ];
         }
 
         // ── ALL CLEAR ─────────────────────────────────────────────────────
-        $minutesLeft = (int)floor((strtotime($voucher['expires_at']) - time()) / 60);
+        $minutesLeft = (int) floor((strtotime($voucher['expires_at']) - time()) / 60);
         return [
-            'valid'         => true,
-            'voucher'       => $voucher,
-            'expired'       => false,
-            'remaining'     => (float)$voucher['remaining_balance'],
-            'minutes_left'  => $minutesLeft,
-            'error'         => null,
-            'warning'       => $minutesLeft < 30
+            'valid' => true,
+            'voucher' => $voucher,
+            'expired' => false,
+            'remaining' => (float) $voucher['remaining_balance'],
+            'minutes_left' => $minutesLeft,
+            'error' => null,
+            'warning' => $minutesLeft < 30
                 ? "⚠ This voucher expires in {$minutesLeft} minutes."
                 : null,
         ];
@@ -321,9 +332,9 @@ class VoucherEngine
      */
     public function voucherPay(
         string $qrHash,
-        int    $merchantWalletId,
-        float  $amount,
-        int    $scannedBy
+        int $merchantWalletId,
+        float $amount,
+        int $scannedBy
     ): array {
         if ($amount <= 0) {
             throw new InvalidArgumentException('Payment amount must be greater than zero.');
@@ -337,13 +348,13 @@ class VoucherEngine
 
         $voucher = $validation['voucher'];
 
-        if ((float)$voucher['remaining_balance'] < $amount) {
+        if ((float) $voucher['remaining_balance'] < $amount) {
             return [
                 'success' => false,
-                'valid'   => false,
-                'error'   => sprintf(
+                'valid' => false,
+                'error' => sprintf(
                     'INSUFFICIENT_VOUCHER_BALANCE: Voucher only has ₱%s but payment requires ₱%s.',
-                    number_format((float)$voucher['remaining_balance'], 2),
+                    number_format((float) $voucher['remaining_balance'], 2),
                     number_format($amount, 2)
                 ),
             ];
@@ -361,12 +372,12 @@ class VoucherEngine
             );
             $vStmt->execute([$voucher['id']]);
             $freshVoucher = $vStmt->fetch();
-            if (!$freshVoucher || (float)$freshVoucher['remaining_balance'] < $amount) {
+            if (!$freshVoucher || (float) $freshVoucher['remaining_balance'] < $amount) {
                 throw new RuntimeException('RACE_CONDITION: Voucher state changed. Please retry.');
             }
 
-            $balBefore = (float)$freshVoucher['remaining_balance'];
-            $balAfter  = $balBefore - $amount;
+            $balBefore = (float) $freshVoucher['remaining_balance'];
+            $balAfter = $balBefore - $amount;
 
             // ── Deduct from voucher ──────────────────────────────────────
             $this->db->prepare(
@@ -395,7 +406,10 @@ class VoucherEngine
 
             // ── Voucher payment log ──────────────────────────────────────
             $ref = 'VPY-' . strtoupper(date('Ymd')) . '-' . str_pad(
-                (string)random_int(1, 99999), 5, '0', STR_PAD_LEFT
+                (string) random_int(1, 99999),
+                5,
+                '0',
+                STR_PAD_LEFT
             );
 
             $this->db->prepare(
@@ -404,25 +418,30 @@ class VoucherEngine
                      balance_before, balance_after, scanned_by, transaction_ref)
                  VALUES (?, ?, ?, ?, ?, ?, ?)"
             )->execute([
-                $voucher['id'], $merchantWalletId, $amount,
-                $balBefore, $balAfter, $scannedBy, $ref,
-            ]);
+                        $voucher['id'],
+                        $merchantWalletId,
+                        $amount,
+                        $balBefore,
+                        $balAfter,
+                        $scannedBy,
+                        $ref,
+                    ]);
 
             // ── Integrity check ──────────────────────────────────────────
             // Note: vault does NOT change during voucher payment.
             // Points move from voucher pool → merchant pool. Vault stays same.
-            $this->validateCirculation((float)$settings['total_circulation_cap']);
+            $this->validateCirculation((float) $settings['total_circulation_cap']);
 
             $this->db->commit();
 
             return [
-                'success'           => true,
-                'reference'         => $ref,
-                'amount_paid'       => $amount,
-                'voucher_code'      => $freshVoucher['voucher_code'],
-                'visitor_name'      => $freshVoucher['visitor_name'],
-                'balance_before'    => $balBefore,
-                'balance_after'     => $balAfter,
+                'success' => true,
+                'reference' => $ref,
+                'amount_paid' => $amount,
+                'voucher_code' => $freshVoucher['voucher_code'],
+                'visitor_name' => $freshVoucher['visitor_name'],
+                'balance_before' => $balBefore,
+                'balance_after' => $balAfter,
                 'voucher_exhausted' => $balAfter <= 0,
                 'minutes_remaining' => $validation['minutes_left'],
             ];
@@ -456,7 +475,7 @@ class VoucherEngine
                 return 0.0;
             }
 
-            $recycled = (float)$voucher['remaining_balance'];
+            $recycled = (float) $voucher['remaining_balance'];
 
             // Mark expired (DB trigger will also add to vault as safety net)
             $this->db->prepare(
@@ -477,7 +496,10 @@ class VoucherEngine
 
             // Audit log
             $ref = 'EXP-' . strtoupper(date('Ymd')) . '-' . str_pad(
-                (string)$voucherId, 5, '0', STR_PAD_LEFT
+                (string) $voucherId,
+                5,
+                '0',
+                STR_PAD_LEFT
             );
             $settings = $this->db->query(
                 "SELECT * FROM system_settings WHERE id = 1"
@@ -495,13 +517,16 @@ class VoucherEngine
                      FROM system_settings WHERE id=1),
                     'completed', ?)"
             )->execute([
-                $ref, $triggeredBy, $voucherId, $recycled,
-                (float)$settings['cashier_vault_points'] - $recycled,
-                (float)$settings['cashier_vault_points'],
-                "LAZY EXPIRY: Voucher #{$voucherId} ({$voucher['voucher_code']}) expired. " .
-                "Recycled ₱{$recycled} to vault. Non-refundable: " .
-                ($voucher['is_refundable'] ? 'No' : 'Yes'),
-            ]);
+                        $ref,
+                        $triggeredBy,
+                        $voucherId,
+                        $recycled,
+                        (float) $settings['cashier_vault_points'] - $recycled,
+                        (float) $settings['cashier_vault_points'],
+                        "LAZY EXPIRY: Voucher #{$voucherId} ({$voucher['voucher_code']}) expired. " .
+                        "Recycled ₱{$recycled} to vault. Non-refundable: " .
+                        ($voucher['is_refundable'] ? 'No' : 'Yes'),
+                    ]);
 
             $this->db->commit();
             return $recycled;
@@ -520,9 +545,9 @@ class VoucherEngine
     {
         $recycled = $this->triggerLazyExpiry($voucherId, $adminId);
         return [
-            'success'  => true,
+            'success' => true,
             'recycled' => $recycled,
-            'message'  => "Voucher #{$voucherId} expired. ₱" . number_format($recycled, 2) . " returned to vault.",
+            'message' => "Voucher #{$voucherId} expired. ₱" . number_format($recycled, 2) . " returned to vault.",
         ];
     }
 
@@ -533,12 +558,14 @@ class VoucherEngine
     /** Paginated list for admin dashboard */
     public function listVouchers(string $status = 'all', int $limit = 25, int $offset = 0): array
     {
-        $where = $status === 'all' ? '' : "WHERE v.status = " . $this->db->quote($status);
-        $stmt  = $this->db->prepare(
+        $where = $status === 'all' ? '' : "WHERE status = " . $this->db->quote($status);
+
+        $stmt = $this->db->prepare(
             "SELECT * FROM v_vouchers_active {$where}
-              ORDER BY created_at DESC
-              LIMIT ? OFFSET ?"
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?"
         );
+
         $stmt->execute([$limit, $offset]);
         return $stmt->fetchAll();
     }
@@ -603,7 +630,7 @@ class VoucherEngine
 
     private function validateCirculation(float $expectedCap): void
     {
-        $total = (float)$this->db->query(
+        $total = (float) $this->db->query(
             "SELECT
                 (SELECT cashier_vault_points FROM system_settings WHERE id = 1)
                 + COALESCE((SELECT SUM(balance) FROM student_wallets), 0)

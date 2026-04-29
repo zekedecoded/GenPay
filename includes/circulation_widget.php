@@ -260,7 +260,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         </div>
 
         <!-- Mint Form (Super-Admin only) -->
-        <?php if (isset($_SESSION['roleID']) && (int)$_SESSION['roleID'] === 1): ?>
+        <?php if (isset($_SESSION['roleID']) && (int)$_SESSION['roleID'] === 3): ?>
         <div class="ce-mint-form-panel">
             <div class="ce-mint-form-header">
                 <span class="ce-mint-badge">Super-Admin</span>

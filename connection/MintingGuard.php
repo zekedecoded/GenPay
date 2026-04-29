@@ -26,7 +26,7 @@ class MintingGuard
     public const HARD_LIMIT = 500_000.00;
 
     /** Super-Admin role ID */
-    private const ROLE_SUPER_ADMIN = 1;
+    private const ROLE_SUPER_ADMIN = 3;
 
     private CirculationEngine $engine;
 

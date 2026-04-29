@@ -28,7 +28,7 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/MintingGuard.php';
 
 // ── Auth guard ───────────────────────────────────────────────────────────────
-if (!isset($_SESSION['userID'], $_SESSION['roleID']) || (int)$_SESSION['roleID'] !== 1) {
+if (!isset($_SESSION['userID'], $_SESSION['roleID']) || (int)$_SESSION['roleID'] !== 3) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'ACCESS_DENIED: Super-Admin only.']);
     exit;
