@@ -23,9 +23,9 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 
 session_start();
-require_once __DIR__ . '/../connection/config.php';
-require_once __DIR__ . '/../connection/pdo.php';
-require_once __DIR__ . '/../connection/MintingGuard.php';
+require_once __DIR__ . '/../../connection/config.php';
+require_once __DIR__ . '/../../connection/pdo.php';
+require_once __DIR__ . '/../../connection/MintingGuard.php';
 
 // ── Auth guard ───────────────────────────────────────────────────────────────
 if (!isset($_SESSION['userID'], $_SESSION['roleID']) || (int)$_SESSION['roleID'] !== 3) {

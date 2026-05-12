@@ -37,11 +37,11 @@ $profileUpdated = true;
 
             <div class="student-brand">
                 <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>

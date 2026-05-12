@@ -17,6 +17,7 @@ $serverTime = "Apr 25, 2026 12:34:46 AM";
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=1">
 </head>
 
 <body>

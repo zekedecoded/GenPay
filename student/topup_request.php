@@ -1,10 +1,48 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$studentName = "Test Student";
-$studentID = "2024-00001";
-$currentBalance = 0;
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 
-$recentTopups = [];
+gjc_require_role(['student']);
+gjc_ensure_operational_tables($db);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_student_wallet($db, $currentUser['id']);
+$studentName = $currentUser['name'];
+$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
+$currentBalance = $wallet['balance'];
+$notice = '';
+$error = '';
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
+    $method = trim((string) ($_POST['payment_method'] ?? 'Cash at Cashier'));
+
+    if (!$amount || $amount <= 0) {
+        $error = 'Enter a valid top-up amount.';
+    } elseif ($wallet['id'] <= 0) {
+        $error = 'Your student wallet is not ready. Contact the finance office.';
+    } else {
+        $reference = gjc_reference('TOP');
+        $stmt = $db->prepare(
+            "INSERT INTO topup_requests
+                (user_id, student_wallet_id, amount, payment_method, status, reference_no)
+             VALUES (?, ?, ?, ?, 'pending', ?)"
+        );
+        $stmt->execute([$currentUser['id'], $wallet['id'], $amount, $method, $reference]);
+        $notice = "Top-up request {$reference} was submitted for cashier approval.";
+    }
+}
+
+$stmt = $db->prepare(
+    "SELECT reference_no, amount, payment_method, status, created_at
+       FROM topup_requests
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 8"
+);
+$stmt->execute([$currentUser['id']]);
+$recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -30,11 +68,11 @@ $recentTopups = [];
 
             <div class="student-brand">
                 <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>
@@ -89,8 +127,8 @@ $recentTopups = [];
             <section class="topup-hero-card mb-4">
                 <div>
                     <span>Current Balance</span>
-                    <h2>₱<?php echo number_format($currentBalance, 2); ?></h2>
-                    <p><?php echo $studentName; ?> · <?php echo $studentID; ?></p>
+                    <h2><?php echo gjc_money($currentBalance); ?></h2>
+                    <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
                 </div>
 
                 <div class="topup-hero-badge">
@@ -108,24 +146,32 @@ $recentTopups = [];
                         </div>
                     </div>
 
-                    <form action="#" method="POST" class="topup-form">
+                    <?php if ($notice): ?>
+                    <div class="alert alert-success"><?php echo gjc_e($notice); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($error): ?>
+                    <div class="alert alert-danger"><?php echo gjc_e($error); ?></div>
+                    <?php endif; ?>
+
+                    <form method="POST" class="topup-form">
 
                         <div class="topup-field">
-                            <label>Amount (₱)</label>
+                            <label>Amount (&#8369;)</label>
 
                             <div class="topup-money-input">
-                                <span>₱</span>
+                                <span>&#8369;</span>
                                 <input type="number" name="amount" id="topupAmount" placeholder="0.00" min="1"
                                     step="0.01" required>
                             </div>
                         </div>
 
                         <div class="topup-quick-amounts">
-                            <button type="button" onclick="setTopupAmount(100)">₱100</button>
-                            <button type="button" onclick="setTopupAmount(200)">₱200</button>
-                            <button type="button" onclick="setTopupAmount(500)">₱500</button>
-                            <button type="button" onclick="setTopupAmount(1000)">₱1,000</button>
-                            <button type="button" onclick="setTopupAmount(2000)">₱2,000</button>
+                            <button type="button" onclick="setTopupAmount(100)">&#8369;100</button>
+                            <button type="button" onclick="setTopupAmount(200)">&#8369;200</button>
+                            <button type="button" onclick="setTopupAmount(500)">&#8369;500</button>
+                            <button type="button" onclick="setTopupAmount(1000)">&#8369;1,000</button>
+                            <button type="button" onclick="setTopupAmount(2000)">&#8369;2,000</button>
                         </div>
 
                         <div class="topup-field">
@@ -208,7 +254,7 @@ $recentTopups = [];
 
                     <div class="topup-limit-card">
                         <span>Daily Top-Up Limit</span>
-                        <strong>₱5,000</strong>
+                        <strong>&#8369;5,000</strong>
                         <p>Requests above the limit may require manual approval.</p>
                     </div>
                 </div>
@@ -250,11 +296,11 @@ $recentTopups = [];
                         <tbody>
                             <?php foreach ($recentTopups as $topup): ?>
                             <tr>
-                                <td><?php echo $topup["reference"]; ?></td>
-                                <td>₱<?php echo number_format($topup["amount"], 2); ?></td>
-                                <td><span class="student-type-pill"><?php echo $topup["method"]; ?></span></td>
-                                <td><span class="topup-status-pill"><?php echo $topup["status"]; ?></span></td>
-                                <td><?php echo $topup["date"]; ?></td>
+                                <td><?php echo gjc_e($topup["reference_no"]); ?></td>
+                                <td><?php echo gjc_money($topup["amount"]); ?></td>
+                                <td><span class="student-type-pill"><?php echo gjc_e($topup["payment_method"]); ?></span></td>
+                                <td><span class="topup-status-pill"><?php echo gjc_e(ucfirst($topup["status"])); ?></span></td>
+                                <td><?php echo gjc_e(date('M d, Y h:i A', strtotime($topup["created_at"]))); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

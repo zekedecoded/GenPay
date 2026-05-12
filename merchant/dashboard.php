@@ -1,16 +1,44 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
-$currentBalance = 165;
+
+gjc_require_role(['merchant']);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$currentBalance = $wallet['balance'];
 $todaysSales = 0;
-$totalEarned = 165;
+$totalEarned = $currentBalance;
 $encashmentStatus = "Available";
 
-$recentSales = [
-    ["ref" => "TXN-20260408-2E23E", "description" => "Socks", "amount" => 100, "type" => "Payment", "time" => "Apr 08 01:27 AM"],
-    ["ref" => "TXN-20260408-A92BD", "description" => "Notebook", "amount" => 65, "type" => "Payment", "time" => "Apr 08 01:05 AM"]
-];
+$recentSales = [];
+if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
+    $stmt = $db->prepare(
+        "SELECT reference_no, transaction_type, amount, created_at
+           FROM transactions
+          WHERE merchant_wallet_id = ?
+          ORDER BY created_at DESC
+          LIMIT 8"
+    );
+    $stmt->execute([$wallet['id']]);
+    $recentSales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $todayStmt = $db->prepare(
+        "SELECT COALESCE(SUM(amount), 0) FROM transactions
+          WHERE merchant_wallet_id = ? AND DATE(created_at) = CURDATE()"
+    );
+    $todayStmt->execute([$wallet['id']]);
+    $todaysSales = (float) $todayStmt->fetchColumn();
+
+    $totalStmt = $db->prepare(
+        "SELECT COALESCE(SUM(amount), 0) FROM transactions
+          WHERE merchant_wallet_id = ?"
+    );
+    $totalStmt->execute([$wallet['id']]);
+    $totalEarned = (float) $totalStmt->fetchColumn();
+}
 ?>
 
 <!DOCTYPE html>
@@ -38,11 +66,11 @@ $recentSales = [
 
             <div class="merchant-brand">
                 <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="merchant-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Merchant Portal</span>
                 </div>
             </div>
@@ -56,6 +84,11 @@ $recentSales = [
                 <a href="<?= MERCHANT_URL ?>/qrcode.php">
                     <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
                     <span class="merchant-nav-text">Generate QR</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Scan Voucher</span>
                 </a>
 
                 <a href="<?= MERCHANT_URL ?>/encash.php">
@@ -87,7 +120,7 @@ $recentSales = [
                 </div>
 
                 <div class="merchant-user">
-                    <span>Greg</span>
+                    <span><?php echo gjc_e($currentUser['name']); ?></span>
                     <div class="merchant-avatar">
                         <img src="<?= ICONS_URL ?>/store.png" alt="Merchant">
                     </div>
@@ -102,7 +135,7 @@ $recentSales = [
                             <img src="<?= ICONS_URL ?>/wallet.png" alt="">
                         </div>
                         <span>Current Balance</span>
-                        <h2>₱<?php echo number_format($currentBalance, 0); ?></h2>
+                        <h2><?php echo gjc_money($currentBalance); ?></h2>
                         <p>Available for encashment</p>
                     </div>
                 </div>
@@ -113,8 +146,8 @@ $recentSales = [
                             <img src="<?= ICONS_URL ?>/volume.png" alt="">
                         </div>
                         <span>Today's Sales</span>
-                        <h2>₱<?php echo number_format($todaysSales, 0); ?></h2>
-                        <p>0 transactions</p>
+                        <h2><?php echo gjc_money($todaysSales); ?></h2>
+                        <p>Today's received payments</p>
                     </div>
                 </div>
 
@@ -124,7 +157,7 @@ $recentSales = [
                             <img src="<?= ICONS_URL ?>/payment.png" alt="">
                         </div>
                         <span>Total Earned</span>
-                        <h2>₱<?php echo number_format($totalEarned, 0); ?></h2>
+                        <h2><?php echo gjc_money($totalEarned); ?></h2>
                         <p>Lifetime merchant earnings</p>
                     </div>
                 </div>
@@ -356,11 +389,11 @@ $recentSales = [
                         <tbody>
                             <?php foreach ($recentSales as $sale): ?>
                             <tr>
-                                <td><?php echo $sale["ref"]; ?></td>
-                                <td><?php echo $sale["description"]; ?></td>
-                                <td class="merchant-amount">+₱<?php echo number_format($sale["amount"], 2); ?></td>
-                                <td><span class="merchant-type-pill"><?php echo $sale["type"]; ?></span></td>
-                                <td><?php echo $sale["time"]; ?></td>
+                                <td><?php echo gjc_e($sale["reference_no"]); ?></td>
+                                <td><?php echo gjc_e(ucwords(str_replace('_', ' ', $sale["transaction_type"]))); ?></td>
+                                <td class="merchant-amount">+<?php echo gjc_money($sale["amount"]); ?></td>
+                                <td><span class="merchant-type-pill">Payment</span></td>
+                                <td><?php echo gjc_e(date('M d, h:i A', strtotime($sale["created_at"]))); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

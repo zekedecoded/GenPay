@@ -45,11 +45,11 @@ $transactions = [
 
             <div class="merchant-brand">
                 <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="merchant-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Merchant Portal</span>
                 </div>
             </div>
@@ -63,6 +63,11 @@ $transactions = [
                 <a href="<?= MERCHANT_URL ?>/qrcode.php">
                     <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
                     <span class="merchant-nav-text">Generate QR</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Scan Voucher</span>
                 </a>
 
                 <a href="<?= MERCHANT_URL ?>/encash.php">

@@ -1,8 +1,15 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$studentName = "Test Student";
-$studentID = "2024-00001";
-$balance = 0;
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['student']);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_student_wallet($db, $currentUser['id']);
+$studentName = $currentUser['name'];
+$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
+$balance = $wallet['balance'];
 
 $recentPayments = [];
 ?>
@@ -32,11 +39,11 @@ $recentPayments = [];
 
             <div class="student-brand">
                 <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>
@@ -81,7 +88,7 @@ $recentPayments = [];
                 </div>
 
                 <div class="student-user">
-                    <span><?php echo $studentName; ?></span>
+                    <span><?php echo gjc_e($studentName); ?></span>
                     <div class="student-avatar">
                         <?php echo strtoupper(substr($studentName, 0, 1)); ?>
                     </div>
@@ -91,8 +98,8 @@ $recentPayments = [];
             <section class="scan-balance-card mb-4">
                 <div>
                     <span>Current Balance</span>
-                    <h2>₱<?php echo number_format($balance, 2); ?></h2>
-                    <p><?php echo $studentName; ?> · <?php echo $studentID; ?></p>
+                    <h2><?php echo gjc_money($balance); ?></h2>
+                    <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
                 </div>
 
                 <div class="scan-balance-badge">
@@ -200,7 +207,7 @@ $recentPayments = [];
                             <tr>
                                 <td><?php echo $payment["description"]; ?></td>
                                 <td><?php echo $payment["merchant"]; ?></td>
-                                <td>₱<?php echo number_format($payment["amount"], 2); ?></td>
+                                <td><?php echo gjc_money($payment["amount"]); ?></td>
                                 <td><?php echo $payment["date"]; ?></td>
                             </tr>
                             <?php endforeach; ?>
@@ -270,9 +277,9 @@ $recentPayments = [];
                             <div style="color: #0b5c2c; font-size: 15px; margin-top: 10px;">
                                 <strong>Merchant:</strong> ${data.merchant}<br>
                                 <strong>Item:</strong> ${data.desc}<br>
-                                <strong>Price:</strong> ₱${parseFloat(data.price).toFixed(2)}
+                                <strong>Price:</strong> &#8369;${parseFloat(data.price).toFixed(2)}
                             </div>
-                            <button class="btn w-100 mt-3" style="background: linear-gradient(135deg, #f7d76d, #d9a928); color: #032014; font-weight: 800; border-radius: 12px; padding: 10px;" onclick="payNow('${data.merchant}', ${data.price}, '${data.desc}')">Pay Now</button>
+                            <button class="btn w-100 mt-3" style="background: linear-gradient(135deg, #f7d76d, #d9a928); color: #032014; font-weight: 800; border-radius: 12px; padding: 10px;" onclick="payNow('${data.merchant}', ${data.price}, '${data.desc}', ${parseInt(data.merchant_wallet_id || 0, 10)})">Pay Now</button>
                         `;
                     } else {
                          scanResultText.textContent = code.data;
@@ -290,9 +297,33 @@ $recentPayments = [];
         requestAnimationFrame(scanQRCode);
     }
 
-    function payNow(merchant, price, desc) {
-        alert("Payment logic will go here. You are paying ₱" + parseFloat(price).toFixed(2) + " to " + merchant + " for " + desc + ".");
-        // We can redirect to a payment processing script here.
+    async function payNow(merchant, price, desc, merchantWalletId) {
+        if (!merchantWalletId) {
+            alert("This QR code is missing merchant wallet details. Ask the merchant to generate a new QR.");
+            return;
+        }
+
+        if (!confirm("Pay PHP " + parseFloat(price).toFixed(2) + " to " + merchant + " for " + desc + "?")) {
+            return;
+        }
+
+        const response = await fetch("pay_qr.php", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                merchant_wallet_id: merchantWalletId,
+                amount: price,
+                description: desc
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("Payment completed. Reference: " + result.reference);
+            window.location.reload();
+            return;
+        }
+
+        alert(result.message || "Payment failed.");
     }
 
     startScanner();

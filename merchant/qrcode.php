@@ -1,7 +1,14 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$collectedBalance = 165;
-$merchantName = "Greg Bautista";
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['merchant']);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$collectedBalance = $wallet['balance'];
+$merchantName = $currentUser['name'];
 ?>
 
 <!DOCTYPE html>
@@ -27,11 +34,11 @@ $merchantName = "Greg Bautista";
 
             <div class="merchant-brand">
                 <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="merchant-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Merchant Portal</span>
                 </div>
             </div>
@@ -45,6 +52,11 @@ $merchantName = "Greg Bautista";
                 <a href="<?= MERCHANT_URL ?>/qrcode.php" class="active">
                     <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
                     <span class="merchant-nav-text">Generate QR</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Scan Voucher</span>
                 </a>
 
                 <a href="<?= MERCHANT_URL ?>/encash.php">
@@ -76,7 +88,7 @@ $merchantName = "Greg Bautista";
                 </div>
 
                 <div class="merchant-user">
-                    <span>Greg</span>
+                    <span><?php echo gjc_e($merchantName); ?></span>
                     <div class="merchant-avatar">
                         <img src="<?= ICONS_URL ?>/store.png" alt="Merchant">
                     </div>
@@ -86,8 +98,8 @@ $merchantName = "Greg Bautista";
             <section class="qr-balance-card mb-4">
                 <div>
                     <span>Collected Balance</span>
-                    <h2>₱<?php echo number_format($collectedBalance, 2); ?></h2>
-                    <p><?php echo $merchantName; ?></p>
+                    <h2><?php echo gjc_money($collectedBalance); ?></h2>
+                    <p><?php echo gjc_e($merchantName); ?></p>
                 </div>
 
                 <div class="qr-balance-badge">
@@ -108,10 +120,10 @@ $merchantName = "Greg Bautista";
                     <form id="qrGenerateForm" class="qr-form" onsubmit="event.preventDefault(); generateQR();">
 
                         <div class="qr-field">
-                            <label>Price (₱)</label>
+                            <label>Price (&#8369;)</label>
 
                             <div class="qr-money-input">
-                                <span>₱</span>
+                                <span>&#8369;</span>
                                 <input type="number" name="price" id="qrPrice" placeholder="0.00" min="1" step="0.01" required>
                             </div>
                         </div>
@@ -209,16 +221,18 @@ $merchantName = "Greg Bautista";
         const price = document.getElementById('qrPrice').value;
         const desc = document.getElementById('qrDesc').value;
         const merchant = "<?php echo addslashes($merchantName); ?>";
+        const merchantWalletId = <?php echo (int) $wallet['id']; ?>;
         
         const payload = JSON.stringify({
             merchant: merchant,
+            merchant_wallet_id: merchantWalletId,
             price: price,
             desc: desc,
             type: "payment"
         });
         
         document.getElementById('qrTitle').textContent = "QR Code Generated";
-        document.getElementById('qrSubtitle').innerHTML = "Scan this code to pay <strong>₱" + parseFloat(price).toFixed(2) + "</strong> for " + desc;
+        document.getElementById('qrSubtitle').innerHTML = "Scan this code to pay <strong>&#8369;" + parseFloat(price).toFixed(2) + "</strong> for " + desc;
         document.getElementById('qrIconArea').style.display = 'none';
         
         const container = document.getElementById('qrCodeContainer');

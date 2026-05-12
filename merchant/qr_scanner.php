@@ -48,21 +48,50 @@ $merchantWalletId = $wallet ? $wallet['id'] : 1;
         <aside class="merchant-sidebar" id="merchantSidebar">
             <div class="merchant-brand">
                 <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/edupay.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
                 <div class="merchant-brand-text">
                     <h4>GJC EduPay</h4>
                     <span>Merchant Portal</span>
                 </div>
             </div>
-            <nav class="merchant-nav" style="display:flex; flex-direction:column; gap:8px; margin-top:20px;">
-                <a href="<?= MERCHANT_URL ?>/dashboard.php" style="padding:12px; text-decoration:none; color:#333; border-radius:8px;">Dashboard</a>
-                <a href="<?= MERCHANT_URL ?>/qr_scanner.php" style="padding:12px; text-decoration:none; color:#fff; background:var(--emerald-800); border-radius:8px;">Scan Visitor QR</a>
+
+            <nav class="merchant-menu">
+                <a href="<?= MERCHANT_URL ?>/dashboard.php">
+                    <img src="<?= ICONS_URL ?>/dashboard.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Dashboard</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qrcode.php">
+                    <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Generate QR</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qr_scanner.php" class="active">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Scan Voucher</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/encash.php">
+                    <img src="<?= ICONS_URL ?>/encashments.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Encash</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/history.php">
+                    <img src="<?= ICONS_URL ?>/transactions.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">History</span>
+                </a>
             </nav>
+
+            <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">
+                <img src="<?= ICONS_URL ?>/logout.png" class="merchant-logout-icon" alt="">
+                <span>Logout</span>
+            </a>
         </aside>
 
         <main class="merchant-main">
             <header class="merchant-topbar">
+                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">☰</button>
                 <div>
                     <h1>Visitor QR Scanner</h1>
                     <p>Scan visitor vouchers to receive payments.</p>

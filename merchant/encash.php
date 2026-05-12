@@ -1,9 +1,48 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$availableBalance = 165;
-$merchantName = "Greg Bautista";
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 
-$encashHistory = [];
+gjc_require_role(['merchant']);
+gjc_ensure_operational_tables($db);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$availableBalance = $wallet['balance'];
+$merchantName = $currentUser['name'];
+$notice = '';
+$error = '';
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
+
+    if (!$amount || $amount <= 0) {
+        $error = 'Enter a valid encashment amount.';
+    } elseif ($wallet['id'] <= 0) {
+        $error = 'Your merchant wallet is not ready. Contact the finance office.';
+    } elseif ($amount > $availableBalance) {
+        $error = 'Requested amount is higher than your available balance.';
+    } else {
+        $reference = gjc_reference('ENC');
+        $stmt = $db->prepare(
+            "INSERT INTO encashment_requests
+                (user_id, merchant_wallet_id, amount, method, status, reference_no)
+             VALUES (?, ?, ?, 'Cashier Release', 'pending', ?)"
+        );
+        $stmt->execute([$currentUser['id'], $wallet['id'], $amount, $reference]);
+        $notice = "Encashment request {$reference} was submitted for finance review.";
+    }
+}
+
+$stmt = $db->prepare(
+    "SELECT reference_no, amount, status, released_by, created_at
+       FROM encashment_requests
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 8"
+);
+$stmt->execute([$currentUser['id']]);
+$encashHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -29,11 +68,11 @@ $encashHistory = [];
 
             <div class="merchant-brand">
                 <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="merchant-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Merchant Portal</span>
                 </div>
             </div>
@@ -47,6 +86,11 @@ $encashHistory = [];
                 <a href="<?= MERCHANT_URL ?>/qrcode.php">
                     <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
                     <span class="merchant-nav-text">Generate QR</span>
+                </a>
+
+                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
+                    <span class="merchant-nav-text">Scan Voucher</span>
                 </a>
 
                 <a href="<?= MERCHANT_URL ?>/encash.php" class="active">
@@ -78,7 +122,7 @@ $encashHistory = [];
                 </div>
 
                 <div class="merchant-user">
-                    <span>Greg</span>
+                    <span><?php echo gjc_e($merchantName); ?></span>
                     <div class="merchant-avatar">
                         <img src="<?= ICONS_URL ?>/store.png" alt="Merchant">
                     </div>
@@ -88,8 +132,8 @@ $encashHistory = [];
             <section class="encash-hero-card mb-4">
                 <div>
                     <span>Available to Encash</span>
-                    <h2>₱<?php echo number_format($availableBalance, 2); ?></h2>
-                    <p><?php echo $merchantName; ?> · Digital earnings wallet</p>
+                    <h2><?php echo gjc_money($availableBalance); ?></h2>
+                    <p><?php echo gjc_e($merchantName); ?> &middot; Digital earnings wallet</p>
                 </div>
 
                 <div class="encash-hero-badge">
@@ -107,23 +151,31 @@ $encashHistory = [];
                         </div>
                     </div>
 
-                    <form action="#" method="POST" class="encash-form">
+                    <?php if ($notice): ?>
+                    <div class="alert alert-success"><?php echo gjc_e($notice); ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($error): ?>
+                    <div class="alert alert-danger"><?php echo gjc_e($error); ?></div>
+                    <?php endif; ?>
+
+                    <form method="POST" class="encash-form">
 
                         <div class="encash-field">
-                            <label>Encashment Amount (₱)</label>
+                            <label>Encashment Amount (&#8369;)</label>
 
                             <div class="encash-money-input">
-                                <span>₱</span>
+                                <span>&#8369;</span>
                                 <input type="number" name="amount" placeholder="0.00" min="1"
                                     max="<?php echo $availableBalance; ?>" step="0.01" required>
                             </div>
 
-                            <small>Maximum available amount: ₱<?php echo number_format($availableBalance, 2); ?></small>
+                            <small>Maximum available amount: <?php echo gjc_money($availableBalance); ?></small>
                         </div>
 
                         <button type="button" class="encash-withdraw-all-btn"
                             onclick="document.querySelector('input[name=amount]').value='<?php echo $availableBalance; ?>'">
-                            Withdraw All (₱<?php echo number_format($availableBalance, 2); ?>)
+                            Withdraw All (<?php echo gjc_money($availableBalance); ?>)
                         </button>
 
                         <button type="submit" class="encash-submit-btn">
@@ -196,10 +248,10 @@ $encashHistory = [];
                             <?php else: ?>
                             <?php foreach ($encashHistory as $row): ?>
                             <tr>
-                                <td>₱<?php echo number_format($row["amount"], 2); ?></td>
-                                <td><span class="merchant-type-pill"><?php echo $row["status"]; ?></span></td>
-                                <td><?php echo $row["processed_by"]; ?></td>
-                                <td><?php echo $row["date"]; ?></td>
+                                <td><?php echo gjc_money($row["amount"]); ?></td>
+                                <td><span class="merchant-type-pill"><?php echo gjc_e(ucfirst($row["status"])); ?></span></td>
+                                <td><?php echo $row["released_by"] ? 'Finance Office' : 'Pending'; ?></td>
+                                <td><?php echo gjc_e(date('M d, Y h:i A', strtotime($row["created_at"]))); ?></td>
                             </tr>
                             <?php endforeach; ?>
                             <?php endif; ?>

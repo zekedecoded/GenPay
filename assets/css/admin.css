@@ -1,3 +1,5 @@
+@import url("gjc-clear.css?v=1");
+
 :root {
   --emerald-950: #032014;
   --emerald-900: #04351f;
@@ -1526,4 +1528,4 @@ body {
 .mb-2  { margin-bottom: 10px !important; }
 .mt-3  { margin-top: 16px !important; }
 .mt-2  { margin-top: 10px !important; }
-.mt-1  { margin-top: 6px !important; }
+.mt-1  { margin-top: 6px !important; }

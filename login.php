@@ -41,12 +41,14 @@ student456 / 123456
 // }
 
 require_once __DIR__ . '/connection/pdo.php';
+require_once __DIR__ . '/connection/app.php';
 require_once __DIR__ . '/record.php';
 
 use Classes\Record;
 
 $Record = new Record($db);
 $message = $Record->loginUser();
+$error = $message ?: $error;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,11 +72,16 @@ $message = $Record->loginUser();
 
             <div class="badge-top">Secure Campus Wallet Access</div>
 
+            <div class="text-center mb-3">
+                <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Seal"
+                    style="width: 150px; height: 150px; object-fit: contain;">
+            </div>
+
             <h1 class="brand-title">GJC EduPay</h1>
             <p class="sub-text">Cashless Payment System</p>
 
             <?php if ($error): ?>
-            <div class="error-box"><?php echo $error; ?></div>
+                <div class="error-box"><?php echo $error; ?></div>
             <?php endif; ?>
 
             <form method="POST">
@@ -237,10 +244,10 @@ $message = $Record->loginUser();
     </div>
 
     <script>
-    function togglePass() {
-        let p = document.getElementById("pass");
-        p.type = p.type === "password" ? "text" : "password";
-    }
+        function togglePass() {
+            let p = document.getElementById("pass");
+            p.type = p.type === "password" ? "text" : "password";
+        }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>

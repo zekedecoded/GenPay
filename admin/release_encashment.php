@@ -12,14 +12,16 @@
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 
 // ── Auth guard ──────────────────────────────────────────────
+$sessionUserId = gjc_user_id();
+$sessionRole = gjc_current_role();
 $allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
-if (!isset($_SESSION['user_id'], $_SESSION['role'])
-    || !in_array($_SESSION['role'], $allowedRoles, true)) {
+if (!$sessionUserId || !in_array($sessionRole, $allowedRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
@@ -39,7 +41,7 @@ if (!$encashmentId || !$merchantWalletId || !$amount || $amount <= 0) {
 // ── Execute ─────────────────────────────────────────────────
 try {
     $engine = new CirculationEngine($db);
-    $result = $engine->merchantSettle($merchantWalletId, $amount, $_SESSION['user_id']);
+    $result = $engine->merchantSettle($merchantWalletId, $amount, $sessionUserId);
 
     // Update encashment request status
     $db->prepare(
@@ -49,7 +51,7 @@ try {
                 released_at  = NOW(),
                 reference_no = ?
           WHERE id = ?"
-    )->execute([$_SESSION['user_id'], $result['reference'], $encashmentId]);
+    )->execute([$sessionUserId, $result['reference'], $encashmentId]);
 
     echo json_encode([
         'success'   => true,

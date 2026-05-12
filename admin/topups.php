@@ -1,20 +1,27 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$pendingRequests = 12;
-$loadedToday = 18500;
-$requestQueue = 7;
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 
-$pendingTopups = [
-    ["reference"=>"TOP-001","name"=>"Juan Dela Cruz","school_id"=>"GJC-001","amount"=>500,"method"=>"Cashier","time"=>"10:23 AM"],
-    ["reference"=>"TOP-002","name"=>"Maria Santos","school_id"=>"GJC-002","amount"=>1000,"method"=>"Manual","time"=>"09:48 AM"],
-    ["reference"=>"TOP-003","name"=>"Carlo Reyes","school_id"=>"GJC-003","amount"=>300,"method"=>"Cashier","time"=>"09:10 AM"]
-];
+gjc_require_role(['admin']);
+gjc_ensure_operational_tables($db);
 
-$topupHistory = [
-    ["reference"=>"TOP-090","name"=>"Angela Cruz","amount"=>700,"method"=>"Cashier","status"=>"Completed","time"=>"Yesterday"],
-    ["reference"=>"TOP-089","name"=>"Campus Store","amount"=>2500,"method"=>"Manual","status"=>"Processing","time"=>"Yesterday"],
-    ["reference"=>"TOP-088","name"=>"Miguel Ramos","amount"=>400,"method"=>"Cashier","status"=>"Rejected","time"=>"Apr 23"]
-];
+$pendingRequests = (int) $db->query("SELECT COUNT(*) FROM topup_requests WHERE status = 'pending'")->fetchColumn();
+$loadedToday = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM topup_requests WHERE status = 'approved' AND DATE(approved_at) = CURDATE()")->fetchColumn();
+$requestQueue = $pendingRequests;
+
+$pendingTopups = $db->query(
+    "SELECT * FROM topup_requests
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+      LIMIT 20"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$topupHistory = $db->query(
+    "SELECT * FROM topup_requests
+      ORDER BY created_at DESC
+      LIMIT 20"
+)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -31,6 +38,7 @@ $topupHistory = [
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=1">
 </head>
 
 <body>
@@ -128,7 +136,7 @@ $topupHistory = [
                         <img src="<?= ICONS_URL ?>/wallet.png" alt="">
                     </div>
                     <span>Loaded Today</span>
-                    <h2>₱<?php echo number_format($loadedToday, 2); ?></h2>
+                    <h2><?php echo gjc_money($loadedToday); ?></h2>
                     <p>Total wallet load volume</p>
                 </div>
 
@@ -143,7 +151,7 @@ $topupHistory = [
 
             </section>
 
-            <section class="topup-panel mb-4">
+            <section class="topup-panel mb-4" id="pending-topups">
 
                 <div class="topup-panel-header">
                     <div>
@@ -151,7 +159,7 @@ $topupHistory = [
                         <p>Approve, reject, or view details of incoming top-up requests.</p>
                     </div>
 
-                    <a href="<?= ADMIN_URL ?>/create_topup.php" class="create-topup-btn">
+                    <a href="#pending-topups" class="create-topup-btn">
                         <span>+</span> Create Top-up
                     </a>
                 </div>
@@ -173,27 +181,24 @@ $topupHistory = [
                         <tbody>
                             <?php foreach ($pendingTopups as $topup): ?>
                             <tr>
-                                <td><?php echo $topup["reference"]; ?></td>
+                                <?php $topupName = gjc_user_label($db, (int) $topup['user_id']); ?>
+                                <td><?php echo gjc_e($topup["reference_no"]); ?></td>
                                 <td>
                                     <div class="topup-user-cell">
                                         <div class="topup-avatar">
-                                            <?php echo strtoupper(substr($topup["name"], 0, 1)); ?>
+                                            <?php echo gjc_e(strtoupper(substr($topupName, 0, 1))); ?>
                                         </div>
-                                        <strong><?php echo $topup["name"]; ?></strong>
+                                        <strong><?php echo gjc_e($topupName); ?></strong>
                                     </div>
                                 </td>
-                                <td><?php echo $topup["school_id"]; ?></td>
-                                <td class="amount-text">₱<?php echo number_format($topup["amount"], 2); ?></td>
-                                <td><span class="method-pill"><?php echo $topup["method"]; ?></span></td>
-                                <td><?php echo $topup["time"]; ?></td>
+                                <td><?php echo 'GJC-' . str_pad((string) $topup['user_id'], 5, '0', STR_PAD_LEFT); ?></td>
+                                <td class="amount-text"><?php echo gjc_money($topup["amount"]); ?></td>
+                                <td><span class="method-pill"><?php echo gjc_e($topup["payment_method"]); ?></span></td>
+                                <td><?php echo gjc_e(date('M d, h:i A', strtotime($topup["created_at"]))); ?></td>
                                 <td>
                                     <div class="topup-actions">
-                                        <a href="view_topup.php?ref=<?php echo $topup["reference"]; ?>"
-                                            class="details-btn">View</a>
-                                        <a href="approve_topup.php?ref=<?php echo $topup["reference"]; ?>"
-                                            class="approve-btn">Approve</a>
-                                        <a href="reject_topup.php?ref=<?php echo $topup["reference"]; ?>"
-                                            class="reject-btn">Reject</a>
+                                        <button type="button" class="approve-btn"
+                                            onclick="approveTopup(<?php echo (int) $topup['id']; ?>, <?php echo (int) $topup['student_wallet_id']; ?>, <?php echo (float) $topup['amount']; ?>)">Approve</button>
                                     </div>
                                 </td>
                             </tr>
@@ -232,16 +237,16 @@ $topupHistory = [
                         <tbody>
                             <?php foreach ($topupHistory as $history): ?>
                             <tr>
-                                <td><?php echo $history["reference"]; ?></td>
-                                <td><?php echo $history["name"]; ?></td>
-                                <td class="amount-text">₱<?php echo number_format($history["amount"], 2); ?></td>
-                                <td><span class="method-pill"><?php echo $history["method"]; ?></span></td>
+                                <td><?php echo gjc_e($history["reference_no"]); ?></td>
+                                <td><?php echo gjc_e(gjc_user_label($db, (int) $history['user_id'])); ?></td>
+                                <td class="amount-text"><?php echo gjc_money($history["amount"]); ?></td>
+                                <td><span class="method-pill"><?php echo gjc_e($history["payment_method"]); ?></span></td>
                                 <td>
                                     <span class="topup-status <?php echo strtolower($history["status"]); ?>">
-                                        <?php echo $history["status"]; ?>
+                                        <?php echo gjc_e(ucfirst($history["status"])); ?>
                                     </span>
                                 </td>
-                                <td><?php echo $history["time"]; ?></td>
+                                <td><?php echo gjc_e(date('M d, h:i A', strtotime($history["created_at"]))); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -260,6 +265,27 @@ $topupHistory = [
     <script>
     function toggleSidebar() {
         document.getElementById("sidebar").classList.toggle("collapsed");
+    }
+
+    async function approveTopup(topupId, studentWalletId, amount) {
+        if (!confirm("Approve this top-up request?")) {
+            return;
+        }
+
+        const form = new FormData();
+        form.append("topup_id", topupId);
+        form.append("student_wallet_id", studentWalletId);
+        form.append("amount", amount);
+
+        const response = await fetch("approve_topup.php", {
+            method: "POST",
+            body: form
+        });
+        const result = await response.json();
+        alert(result.message || (result.success ? "Top-up approved." : "Top-up failed."));
+        if (result.success) {
+            window.location.reload();
+        }
     }
     </script>
 

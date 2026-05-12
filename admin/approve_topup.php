@@ -15,14 +15,16 @@
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 
 // ── Auth guard ──────────────────────────────────────────────
+$sessionUserId = gjc_user_id();
+$sessionRole = gjc_current_role();
 $allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
-if (!isset($_SESSION['user_id'], $_SESSION['role'])
-    || !in_array($_SESSION['role'], $allowedRoles, true)) {
+if (!$sessionUserId || !in_array($sessionRole, $allowedRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
@@ -42,7 +44,7 @@ if (!$topupId || !$studentWalletId || !$amount || $amount <= 0) {
 // ── Execute ─────────────────────────────────────────────────
 try {
     $engine = new CirculationEngine($db);
-    $result = $engine->cashIn($studentWalletId, $amount, $_SESSION['user_id']);
+    $result = $engine->cashIn($studentWalletId, $amount, $sessionUserId);
 
     // Mark top-up request as approved in your existing topup_requests table
     $db->prepare(
@@ -52,7 +54,7 @@ try {
                 approved_at  = NOW(),
                 reference_no = ?
           WHERE id = ?"
-    )->execute([$_SESSION['user_id'], $result['reference'], $topupId]);
+    )->execute([$sessionUserId, $result['reference'], $topupId]);
 
     echo json_encode([
         'success'   => true,

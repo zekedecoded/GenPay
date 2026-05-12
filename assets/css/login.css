@@ -1,7 +1,9 @@
+@import url("gjc-clear.css?v=1");
+
 /* ===== GLOBAL ===== */
 body {
   font-family: "Plus Jakarta Sans", sans-serif;
-  background: radial-gradient(circle at top, #1b5e20, #0f3d2e);
+  background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat;
   margin: 0;
 }
 

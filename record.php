@@ -35,10 +35,17 @@ class Record
             if ($stmt->rowCount()) {
                 $user = $stmt->fetch();
 
-                // if (password_verify($password, $user['password'])) {
-                if ($password === $user['password']) {
-                    $_SESSION['userID'] = $user['id'];
-                    $_SESSION['roleID'] = $user['roleID'];
+                $storedPassword = (string) ($user['password'] ?? '');
+                $validPassword = password_verify($password, $storedPassword) || hash_equals($storedPassword, $password);
+
+                if ($validPassword) {
+                    $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
+                    $roleId = (int) ($user['roleID'] ?? 0);
+
+                    $_SESSION['userID'] = $userId;
+                    $_SESSION['user_id'] = $userId;
+                    $_SESSION['roleID'] = $roleId;
+                    $_SESSION['role'] = [1 => 'student', 2 => 'merchant', 3 => 'admin'][$roleId] ?? 'user';
 
                     header("Location: index.php");
                     exit;

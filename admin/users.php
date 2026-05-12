@@ -1,12 +1,40 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$users = [
-    ["name"=>"Juan Dela Cruz","role"=>"Student","school_id"=>"GJC-001","email"=>"juan@gjc.edu","balance"=>1200,"status"=>"Active"],
-    ["name"=>"Maria Santos","role"=>"User","school_id"=>"GJC-002","email"=>"maria@gjc.edu","balance"=>500,"status"=>"Pending"],
-    ["name"=>"Campus Store","role"=>"Merchant","school_id"=>"MER-001","email"=>"store@gjc.edu","balance"=>8500,"status"=>"Active"],
-    ["name"=>"Parent User","role"=>"Parent","school_id"=>"PAR-001","email"=>"parent@gjc.edu","balance"=>0,"status"=>"Blocked"],
-    ["name"=>"Visitor Guest","role"=>"Visitor","school_id"=>"VIS-001","email"=>"visitor@gjc.edu","balance"=>0,"status"=>"Suspended"]
-];
+require_once __DIR__ . '/../connection/pdo.php';
+
+$query = "
+    SELECT 
+        u.userID,
+        u.first_name,
+        u.last_name,
+        u.email,
+        r.role_name as role,
+        COALESCE(w.balance, 0) as balance
+    FROM users u
+    LEFT JOIN role r ON u.roleID = r.roleID
+    LEFT JOIN wallet w ON u.userID = w.userID
+    ORDER BY u.userID DESC
+";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$dbUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$users = [];
+foreach ($dbUsers as $u) {
+    $roleName = ucfirst($u['role'] ?? 'User');
+    $schoolIdPrefix = 'GJC';
+    if ($u['role'] === 'merchant') $schoolIdPrefix = 'MER';
+    if ($u['role'] === 'admin') $schoolIdPrefix = 'ADM';
+    
+    $users[] = [
+        "name" => trim($u['first_name'] . ' ' . $u['last_name']),
+        "role" => $roleName,
+        "school_id" => $schoolIdPrefix . '-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT),
+        "email" => $u['email'],
+        "balance" => $u['balance'],
+        "status" => "Active"
+    ];
+}
 ?>
 
 <!DOCTYPE html>

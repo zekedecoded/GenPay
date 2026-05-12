@@ -1,0 +1,806 @@
+/* GJC EduPay Clear UI Theme
+   Shared override for admin, student, merchant, login, and public pages. */
+
+:root {
+  --gjc-green-950: #052515;
+  --gjc-green-900: #07351f;
+  --gjc-green-800: #0b4f2a;
+  --gjc-green-700: #116a38;
+  --gjc-gold-600: #c89b1f;
+  --gjc-gold-500: #e0b83a;
+  --gjc-gold-100: #fff5cc;
+  --gjc-ink: #17211a;
+  --gjc-muted: #607066;
+  --gjc-line: #dfe8e2;
+  --gjc-page: #f4f7f1;
+  --gjc-panel: #ffffff;
+  --gjc-danger: #b42318;
+  --gjc-success: #126b39;
+  --gjc-radius: 8px;
+  --gjc-shadow-sm: 0 1px 2px rgba(5, 37, 21, 0.08);
+  --gjc-shadow-md: 0 10px 24px rgba(5, 37, 21, 0.10);
+}
+
+* {
+  letter-spacing: 0 !important;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--gjc-page) !important;
+  color: var(--gjc-ink) !important;
+  font-family: "Inter", "Plus Jakarta Sans", Arial, sans-serif !important;
+}
+
+a {
+  color: var(--gjc-green-800);
+}
+
+a:hover {
+  color: var(--gjc-green-950);
+}
+
+img {
+  object-fit: contain;
+}
+
+/* Layout */
+.admin-layout,
+.student-layout,
+.merchant-layout {
+  background: var(--gjc-page) !important;
+}
+
+.admin-main,
+.student-main,
+.merchant-main {
+  padding: 24px !important;
+}
+
+.admin-sidebar,
+.student-sidebar,
+.merchant-sidebar {
+  background: var(--gjc-green-900) !important;
+  box-shadow: 4px 0 18px rgba(5, 37, 21, 0.18) !important;
+  border-right: 4px solid var(--gjc-gold-500);
+}
+
+.brand-box,
+.student-brand,
+.merchant-brand {
+  padding: 0 4px 18px;
+  margin-bottom: 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.brand-logo,
+.student-brand-logo,
+.merchant-brand-logo {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 48px !important;
+  border-radius: var(--gjc-radius) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  border: 2px solid var(--gjc-gold-500);
+}
+
+.brand-logo img,
+.student-brand-logo img,
+.merchant-brand-logo img {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.brand-box h4,
+.student-brand h4,
+.merchant-brand h4 {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+}
+
+.brand-box span,
+.student-brand span,
+.merchant-brand span {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.sidebar-menu,
+.student-menu,
+.merchant-menu {
+  gap: 6px !important;
+}
+
+.sidebar-menu a,
+.student-menu a,
+.merchant-menu a {
+  height: 46px !important;
+  border-radius: var(--gjc-radius) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-weight: 700 !important;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active,
+.student-menu a:hover,
+.student-menu a.active,
+.merchant-menu a:hover,
+.merchant-menu a.active {
+  background: var(--gjc-gold-500) !important;
+  color: var(--gjc-green-950) !important;
+  box-shadow: none !important;
+}
+
+.logout-btn,
+.student-logout,
+.merchant-logout {
+  height: 46px !important;
+  border-radius: var(--gjc-radius) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(224, 184, 58, 0.45) !important;
+  box-shadow: none !important;
+}
+
+.logout-btn:hover,
+.student-logout:hover,
+.merchant-logout:hover {
+  background: var(--gjc-gold-500) !important;
+  color: var(--gjc-green-950) !important;
+}
+
+/* Top bars */
+.topbar,
+.student-topbar,
+.merchant-topbar {
+  min-height: 76px !important;
+  padding: 16px 18px !important;
+  background: var(--gjc-panel) !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-left: 6px solid var(--gjc-gold-500) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+  backdrop-filter: none !important;
+}
+
+.topbar h1,
+.student-topbar h1,
+.merchant-topbar h1 {
+  color: var(--gjc-green-950) !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+}
+
+.topbar p,
+.student-topbar p,
+.merchant-topbar p {
+  color: var(--gjc-muted) !important;
+  font-size: 14px !important;
+}
+
+.menu-btn,
+.student-menu-btn,
+.merchant-menu-btn {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: var(--gjc-radius) !important;
+  background: var(--gjc-green-800) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.avatar,
+.student-avatar,
+.merchant-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: var(--gjc-radius) !important;
+  background: var(--gjc-green-800) !important;
+  box-shadow: none !important;
+}
+
+/* Panels, cards, and dashboards */
+.premium-panel,
+.student-premium-panel,
+.merchant-premium-panel,
+.users-command-panel,
+.users-table-panel,
+.transactions-command-panel,
+.transactions-table-panel,
+.topup-panel,
+.encash-panel,
+.topup-form-panel,
+.topup-guide-panel,
+.encash-form-panel,
+.encash-info-panel,
+.qr-form-panel,
+.qr-preview-panel,
+.scan-camera-panel,
+.scan-guide-panel,
+.profile-form-panel,
+.profile-status-panel,
+.student-quick-panel,
+.merchant-premium-panel,
+.ce-flow-panel,
+.ce-mint-info-panel,
+.ce-flow-guide,
+.history-mini-card,
+.merchant-note,
+.profile-alert {
+  background: var(--gjc-panel) !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+  backdrop-filter: none !important;
+}
+
+.panel-header h3,
+.student-panel-header h3,
+.merchant-panel-header h3,
+.users-panel-header h3,
+.users-table-header h3,
+.transactions-panel-header h3,
+.transactions-table-header h3,
+.topup-panel-header h3,
+.encash-panel-header h3 {
+  color: var(--gjc-green-950) !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+}
+
+.panel-header p,
+.student-panel-header p,
+.merchant-panel-header p,
+.users-panel-header p,
+.users-table-header p,
+.transactions-panel-header p,
+.transactions-table-header p,
+.topup-panel-header p,
+.encash-panel-header p {
+  color: var(--gjc-muted) !important;
+}
+
+.metric-card,
+.student-metric-card,
+.merchant-metric-card,
+.topup-stat-card,
+.encash-stat-card,
+.transaction-stat-card,
+.student-wallet-card,
+.qr-balance-card,
+.encash-hero-card,
+.scan-balance-card,
+.topup-hero-card,
+.profile-hero-card,
+.history-balance-card,
+.history-stat-card {
+  background: var(--gjc-green-800) !important;
+  border: 1px solid var(--gjc-green-700) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+  overflow: hidden;
+}
+
+.metric-card::after,
+.student-metric-card::after,
+.merchant-metric-card::after,
+.student-wallet-card::after,
+.qr-balance-card::after,
+.encash-hero-card::after,
+.scan-balance-card::after,
+.topup-hero-card::after,
+.profile-hero-card::after,
+.history-balance-card::after {
+  display: none !important;
+}
+
+.metric-card h2,
+.student-metric-card h2,
+.merchant-metric-card h2,
+.topup-stat-card h2,
+.encash-stat-card h2,
+.transaction-stat-card h2,
+.student-wallet-card h2,
+.qr-balance-card h2,
+.encash-hero-card h2,
+.scan-balance-card h2,
+.topup-hero-card h2 {
+  color: #fff !important;
+  font-weight: 800 !important;
+}
+
+.metric-card span,
+.student-metric-card span,
+.merchant-metric-card span,
+.topup-stat-card span,
+.encash-stat-card span,
+.transaction-stat-card span,
+.student-wallet-card span,
+.qr-balance-card span,
+.encash-hero-card span,
+.scan-balance-card span,
+.topup-hero-card span {
+  color: var(--gjc-gold-100) !important;
+  font-weight: 800 !important;
+}
+
+.metric-card p,
+.student-metric-card p,
+.merchant-metric-card p,
+.topup-stat-card p,
+.encash-stat-card p,
+.transaction-stat-card p,
+.student-wallet-card p,
+.qr-balance-card p,
+.encash-hero-card p,
+.scan-balance-card p,
+.topup-hero-card p {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.metric-icon,
+.student-metric-icon,
+.merchant-metric-icon,
+.stat-icon-wrap,
+.history-balance-icon,
+.student-empty-icon,
+.qr-preview-icon {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: none !important;
+}
+
+.mini-metric-card,
+.history-mini-card {
+  border-radius: var(--gjc-radius) !important;
+  background: #fff !important;
+}
+
+/* Forms */
+.premium-field,
+.profile-field input,
+.qr-field > input,
+.qr-money-input,
+.encash-money-input,
+.topup-money-input,
+.add-user-input,
+.form-control,
+.ce-input,
+.input-modern input,
+.input-group-box input,
+.topup-method-card {
+  background: #fff !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+  color: var(--gjc-ink) !important;
+  box-shadow: none !important;
+}
+
+.premium-field:focus-within,
+.profile-field input:focus,
+.qr-field > input:focus,
+.add-user-input:focus,
+.form-control:focus,
+.ce-input:focus,
+.input-modern input:focus,
+.input-group-box input:focus {
+  border-color: var(--gjc-green-700) !important;
+  box-shadow: 0 0 0 3px rgba(17, 106, 56, 0.14) !important;
+}
+
+.premium-field label,
+.profile-field label,
+.qr-field label,
+.encash-field label,
+.topup-field label,
+.add-user-label,
+.ce-label {
+  color: var(--gjc-green-950) !important;
+  font-weight: 800 !important;
+}
+
+.qr-money-input span,
+.encash-money-input span,
+.topup-money-input span {
+  background: var(--gjc-green-800) !important;
+  color: #fff !important;
+}
+
+/* Buttons and actions */
+.btn-primary-custom,
+.login-btn,
+.filter-btn,
+.add-user-btn,
+.modal-create-btn,
+.topup-submit-btn,
+.encash-submit-btn,
+.qr-generate-btn,
+.profile-save-btn,
+.ce-mint-btn,
+.btn-primary-custom,
+.create-topup-btn,
+.create-encash-btn,
+.export-btn {
+  background: var(--gjc-green-800) !important;
+  color: #fff !important;
+  border: 1px solid var(--gjc-green-800) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: none !important;
+  font-weight: 800 !important;
+  transform: none !important;
+}
+
+.btn-primary-custom:hover,
+.login-btn:hover,
+.filter-btn:hover,
+.add-user-btn:hover,
+.modal-create-btn:hover,
+.topup-submit-btn:hover,
+.encash-submit-btn:hover,
+.qr-generate-btn:hover,
+.profile-save-btn:hover,
+.ce-mint-btn:hover,
+.create-topup-btn:hover,
+.create-encash-btn:hover,
+.export-btn:hover {
+  background: var(--gjc-green-950) !important;
+  border-color: var(--gjc-green-950) !important;
+  color: #fff !important;
+}
+
+.view-btn,
+.student-view-btn,
+.merchant-view-btn,
+.details-btn,
+.premium-action-btn,
+.btn-outline,
+.profile-password-btn,
+.encash-withdraw-all-btn {
+  background: #fff !important;
+  color: var(--gjc-green-800) !important;
+  border: 1px solid var(--gjc-green-700) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: none !important;
+}
+
+.view-btn:hover,
+.student-view-btn:hover,
+.merchant-view-btn:hover,
+.details-btn:hover,
+.premium-action-btn:hover,
+.btn-outline:hover,
+.profile-password-btn:hover,
+.encash-withdraw-all-btn:hover {
+  background: var(--gjc-green-800) !important;
+  color: #fff !important;
+}
+
+.approve-btn,
+.release-btn {
+  background: var(--gjc-success) !important;
+  color: #fff !important;
+  border: 1px solid var(--gjc-success) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.reject-btn,
+.modal-cancel-btn {
+  background: #fff !important;
+  color: var(--gjc-danger) !important;
+  border: 1px solid #f0b8b2 !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.freeze-btn {
+  background: var(--gjc-gold-100) !important;
+  color: var(--gjc-green-950) !important;
+  border: 1px solid var(--gjc-gold-500) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+/* Tables */
+.table-responsive {
+  border-radius: var(--gjc-radius);
+}
+
+.premium-table,
+.student-premium-table,
+.merchant-premium-table,
+.users-table,
+.transactions-table,
+.topup-table,
+.encash-table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  background: #fff !important;
+}
+
+.premium-table thead th,
+.student-premium-table thead th,
+.merchant-premium-table thead th,
+.users-table thead th,
+.transactions-table thead th,
+.topup-table thead th,
+.encash-table thead th {
+  background: var(--gjc-green-900) !important;
+  color: #fff !important;
+  border: 0 !important;
+  padding: 12px 14px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+}
+
+.premium-table tbody tr,
+.student-premium-table tbody tr,
+.merchant-premium-table tbody tr,
+.users-table tbody tr,
+.transactions-table tbody tr,
+.topup-table tbody tr,
+.encash-table tbody tr {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.premium-table tbody td,
+.student-premium-table tbody td,
+.merchant-premium-table tbody td,
+.users-table tbody td,
+.transactions-table tbody td,
+.topup-table tbody td,
+.encash-table tbody td {
+  border-bottom: 1px solid var(--gjc-line) !important;
+  padding: 13px 14px !important;
+  color: var(--gjc-ink) !important;
+}
+
+.users-table tbody td:first-child,
+.users-table tbody td:last-child {
+  border-radius: 0 !important;
+}
+
+.role-pill,
+.status-pill,
+.student-type-pill,
+.merchant-type-pill,
+.method-pill,
+.type-pill,
+.transaction-status,
+.topup-status,
+.encash-status,
+.topup-status-pill,
+.history-status-pill,
+.profile-pill,
+.badge-success,
+.badge-warning,
+.scan-status-badge {
+  border-radius: var(--gjc-radius) !important;
+  min-height: 28px;
+  font-weight: 800 !important;
+}
+
+.badge-success,
+.status-pill.active,
+.transaction-status.completed,
+.topup-status.approved,
+.encash-status.released,
+.student-type-pill,
+.merchant-type-pill {
+  background: #e4f6ea !important;
+  color: var(--gjc-success) !important;
+}
+
+.badge-warning,
+.topup-status.pending,
+.encash-status.pending,
+.transaction-status.pending,
+.scan-status-badge {
+  background: var(--gjc-gold-100) !important;
+  color: #76580b !important;
+}
+
+.transaction-status.rejected,
+.topup-status.rejected,
+.encash-status.rejected,
+.scan-status-badge.blocked {
+  background: #fde8e5 !important;
+  color: var(--gjc-danger) !important;
+}
+
+/* Login and public pages */
+.login-wrapper {
+  min-height: 100vh !important;
+  height: auto !important;
+  padding: 32px 18px !important;
+  background:
+    linear-gradient(rgba(5, 37, 21, 0.76), rgba(5, 37, 21, 0.76)),
+    url("../images/GenSimeon-Bldg.jpg") center/cover no-repeat !important;
+}
+
+.login-card {
+  max-width: 430px !important;
+  background: #fff !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-top: 6px solid var(--gjc-gold-500) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+  color: var(--gjc-ink) !important;
+  backdrop-filter: none !important;
+}
+
+.badge-top {
+  background: var(--gjc-gold-100) !important;
+  color: var(--gjc-green-950) !important;
+  border: 1px solid var(--gjc-gold-500);
+  border-radius: var(--gjc-radius) !important;
+}
+
+.brand-title {
+  color: var(--gjc-green-950) !important;
+}
+
+.sub-text,
+.signup-text,
+.options {
+  color: var(--gjc-muted) !important;
+}
+
+.signup-text a,
+.options a {
+  color: var(--gjc-green-800) !important;
+  font-weight: 800;
+}
+
+.input-group-box label,
+.input-modern label {
+  color: var(--gjc-muted) !important;
+  background: #fff;
+  padding: 0 4px;
+}
+
+.error-box,
+.alert-danger {
+  background: #fde8e5 !important;
+  border: 1px solid #f0b8b2 !important;
+  color: var(--gjc-danger) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.alert-success {
+  background: #e4f6ea !important;
+  border: 1px solid #a8dcbc !important;
+  color: var(--gjc-success) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.custom-modal,
+.add-user-modal {
+  background: #fff !important;
+  color: var(--gjc-ink) !important;
+  border-radius: var(--gjc-radius) !important;
+  border: 1px solid var(--gjc-line) !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+  backdrop-filter: none !important;
+}
+
+.modal-title,
+.modal-desc,
+.modal-steps,
+.card-title {
+  color: var(--gjc-ink) !important;
+}
+
+.visitor-card,
+.step,
+.form-card {
+  background: #f8faf7 !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+/* Public landing page overrides */
+.navbar {
+  background: #fff !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+  border-bottom: 4px solid var(--gjc-gold-500);
+}
+
+.navbar-brand {
+  color: var(--gjc-green-950) !important;
+}
+
+.hero {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  background:
+    linear-gradient(rgba(5, 37, 21, 0.78), rgba(5, 37, 21, 0.78)),
+    url("../images/GenSimeon-Bldg.jpg") center/cover no-repeat !important;
+}
+
+.hero-content {
+  margin-left: max(24px, 8vw);
+  max-width: 760px !important;
+}
+
+.hero h1 {
+  color: #fff !important;
+}
+
+.hero h1 span {
+  color: var(--gjc-gold-500) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.features {
+  background: var(--gjc-page) !important;
+}
+
+.feature-card {
+  background: #fff !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm);
+  text-align: left !important;
+}
+
+.feature-icon {
+  margin: 0 0 18px !important;
+  border-radius: var(--gjc-radius) !important;
+  background: var(--gjc-gold-100) !important;
+}
+
+footer {
+  background: var(--gjc-green-950) !important;
+}
+
+@media (max-width: 992px) {
+  .admin-main,
+  .student-main,
+  .merchant-main {
+    padding: 16px !important;
+  }
+
+  .topbar,
+  .student-topbar,
+  .merchant-topbar {
+    align-items: flex-start !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .admin-main,
+  .student-main,
+  .merchant-main {
+    padding: 12px !important;
+  }
+
+  .topbar h1,
+  .student-topbar h1,
+  .merchant-topbar h1 {
+    font-size: 20px !important;
+  }
+
+  .metric-card h2,
+  .student-metric-card h2,
+  .merchant-metric-card h2,
+  .student-wallet-card h2,
+  .qr-balance-card h2,
+  .encash-hero-card h2,
+  .scan-balance-card h2,
+  .topup-hero-card h2 {
+    font-size: 28px !important;
+  }
+
+  .hero {
+    min-height: 82vh;
+    align-items: center !important;
+  }
+
+  .hero-content {
+    margin: 0 20px;
+  }
+}

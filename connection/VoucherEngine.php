@@ -452,9 +452,7 @@ class VoucherEngine
         }
     }
 
-    // ═══════════════════════════════════════════════════════
     //  4. LAZY EXPIRY TRIGGER (called inside scanValidate)
-    // ═══════════════════════════════════════════════════════
 
     /**
      * Called immediately when an expired voucher is scanned.
@@ -537,9 +535,7 @@ class VoucherEngine
         }
     }
 
-    // ═══════════════════════════════════════════════════════
     //  5. ADMIN: Force-expire a voucher
-    // ═══════════════════════════════════════════════════════
 
     public function adminExpireVoucher(int $voucherId, int $adminId): array
     {
@@ -551,9 +547,8 @@ class VoucherEngine
         ];
     }
 
-    // ═══════════════════════════════════════════════════════
     //  6. LIST / DASHBOARD DATA
-    // ═══════════════════════════════════════════════════════
+
 
     /** Paginated list for admin dashboard */
     public function listVouchers(string $status = 'all', int $limit = 25, int $offset = 0): array

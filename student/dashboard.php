@@ -1,15 +1,39 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
-$studentName = "Test Student";
-$studentID = "2024-00001";
-$balance = 0;
+
+gjc_require_role(['student']);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_student_wallet($db, $currentUser['id']);
+$studentName = $currentUser['name'];
+$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
+$balance = $wallet['balance'];
 $totalSpent = 0;
 $totalTxns = 0;
 $status = "Active";
 
 $transactions = [];
+if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
+    $stmt = $db->prepare(
+        "SELECT reference_no, transaction_type, amount, created_at
+           FROM transactions
+          WHERE student_wallet_id = ?
+          ORDER BY created_at DESC
+          LIMIT 8"
+    );
+    $stmt->execute([$wallet['id']]);
+    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $totalTxns = count($transactions);
+    $sumStmt = $db->prepare(
+        "SELECT COALESCE(SUM(amount), 0) FROM transactions
+          WHERE student_wallet_id = ? AND transaction_type = 'payment'"
+    );
+    $sumStmt->execute([$wallet['id']]);
+    $totalSpent = (float) $sumStmt->fetchColumn();
+}
 ?>
 
 <?php
@@ -44,11 +68,11 @@ if (isset($_SESSION['force_change'])) {
 
             <div class="student-brand">
                 <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>EduPay</h4>
+                    <h4>GJC EduPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>
@@ -93,7 +117,7 @@ if (isset($_SESSION['force_change'])) {
                 </div>
 
                 <div class="student-user">
-                    <span><?php echo $studentName; ?></span>
+                    <span><?php echo gjc_e($studentName); ?></span>
                     <div class="student-avatar">
                         <?php echo strtoupper(substr($studentName, 0, 1)); ?>
                     </div>
@@ -105,8 +129,8 @@ if (isset($_SESSION['force_change'])) {
                 <div class="student-wallet-card">
                     <div>
                         <span>Available Balance</span>
-                        <h2>₱<?php echo number_format($balance, 2); ?></h2>
-                        <p><?php echo $studentName; ?> · <?php echo $studentID; ?></p>
+                        <h2><?php echo gjc_money($balance); ?></h2>
+                        <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
 
                         <div class="student-wallet-actions">
                             <a href="<?= STUDENT_URL ?>/scan.php">Scan &amp; Pay</a>
@@ -149,7 +173,7 @@ if (isset($_SESSION['force_change'])) {
                             <img src="<?= ICONS_URL ?>/payment.png" alt="">
                         </div>
                         <span>Total Spent</span>
-                        <h2>₱<?php echo number_format($totalSpent, 2); ?></h2>
+                        <h2><?php echo gjc_money($totalSpent); ?></h2>
                         <p>All successful payments</p>
                     </div>
                 </div>
@@ -304,10 +328,10 @@ if (isset($_SESSION['force_change'])) {
                         <tbody>
                             <?php foreach ($transactions as $transaction): ?>
                             <tr>
-                                <td><?php echo $transaction["description"]; ?></td>
-                                <td><span class="student-type-pill"><?php echo $transaction["type"]; ?></span></td>
-                                <td>₱<?php echo number_format($transaction["amount"], 2); ?></td>
-                                <td><?php echo $transaction["date"]; ?></td>
+                                <td><?php echo gjc_e($transaction["reference_no"]); ?></td>
+                                <td><span class="student-type-pill"><?php echo gjc_e(ucwords(str_replace('_', ' ', $transaction["transaction_type"]))); ?></span></td>
+                                <td><?php echo gjc_money($transaction["amount"]); ?></td>
+                                <td><?php echo gjc_e(date('M d, h:i A', strtotime($transaction["created_at"]))); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
