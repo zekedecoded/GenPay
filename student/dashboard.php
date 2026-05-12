@@ -40,7 +40,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 // session_start();
 
 if (isset($_SESSION['force_change'])) {
-    header("Location: ../change_password.php");
+    header('Location: ' . BASE_URL . '/change_password.php');
     exit();
 }
 ?>

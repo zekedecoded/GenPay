@@ -1,3 +1,4 @@
+<?php require_once dirname(__DIR__) . '/connection/config.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -14,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
 
 </head>
 

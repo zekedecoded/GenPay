@@ -3,8 +3,12 @@
 // ============================================================
 //  BASE
 // ============================================================
-define('BASE_URL',  'http://localhost/general_de_jesus_edupay/gjcedupay');
 define('BASE_PATH', dirname(__DIR__)); // points to project root (one level up from connection/)
+
+$projectFolder = basename(BASE_PATH);
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+define('BASE_URL', $scheme . '://' . $host . '/' . $projectFolder);
 
 // ============================================================
 //  URL CONSTANTS  (for HTML links, redirects, asset references)

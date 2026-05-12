@@ -6,13 +6,13 @@
 
     // If already logged in, redirect to respective dashboard immediately
     if ($role === 3) {
-        header("Location: admin/dashboard.php");
+        header('Location: ' . ADMIN_URL . '/dashboard.php');
         exit;
     } elseif ($role === 2) {
-        header("Location: merchant/dashboard.php");
+        header('Location: ' . MERCHANT_URL . '/dashboard.php');
         exit;
     } elseif ($role === 1) {
-        header("Location: student/dashboard.php");
+        header('Location: ' . STUDENT_URL . '/dashboard.php');
         exit;
     }
 ?>
@@ -67,7 +67,7 @@
             justify-content: center;
             text-align: center;
             padding: 140px 20px 80px 20px;
-            background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('<?= ICONS_URL ?>/../images/GenSimeon-Bldg.jpg') center/cover no-repeat;
+            background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('<?= IMAGES_URL ?>/GenSimeon-Bldg.jpg') center/cover no-repeat;
             color: #ffffff;
             margin-top: 0;
         }
@@ -171,7 +171,7 @@
             GJC EduPay
         </a>
         <div>
-            <a href="login.php" class="btn btn-primary-custom" style="padding: 10px 25px; font-size: 16px;">Login to Portal</a>
+            <a href="<?= BASE_URL ?>/login.php" class="btn btn-primary-custom" style="padding: 10px 25px; font-size: 16px;">Login to Portal</a>
         </div>
     </nav>
 
@@ -179,7 +179,7 @@
         <div class="hero-content">
             <h1>The Future of Campus <br><span>Cashless Payments</span></h1>
             <p>Experience seamless, secure, and instant transactions within General de Jesus College. Pay for meals, services, and manage your school finances with just a scan.</p>
-            <a href="login.php" class="btn-primary-custom">Get Started Now</a>
+            <a href="<?= BASE_URL ?>/login.php" class="btn-primary-custom">Get Started Now</a>
         </div>
     </div>
 

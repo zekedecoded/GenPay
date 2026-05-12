@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../connection/config.php';
 session_start();
 
 $error = "";
@@ -13,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($username === "student123" && $password === "123456") {
 
         if ($role === "student") {
-            header("Location: student/dashboard.php");
+            header('Location: ' . STUDENT_URL . '/dashboard.php');
         } else {
             header("Location: parent/dashboard.php");
         }
@@ -37,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="assets/css/login.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/login.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 </head>
 
 <body>
@@ -77,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="password" name="password" id="pass" required placeholder=" ">
                     <label>Password</label>
                     <span class="eye" onclick="togglePass()">
-                        <img src="assets/icons/eye.png" id="eyeIcon">
+                        <img src="<?= ICONS_URL ?>/eye.png" id="eyeIcon">
                     </span>
                 </div>
 
@@ -125,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
 
             <div class="signup-text">
-                Doesn’t have an account yet? <a href="register.php">Sign Up</a>
+                Doesn’t have an account yet? <a href="<?= BASE_URL ?>/register.php">Sign Up</a>
             </div>
 
         </div>

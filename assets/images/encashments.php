@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../connection/config.php';
+
 $pendingEncashments = 5;
 $releasedToday = 12600;
 $encashmentQueue = 4;
@@ -23,9 +25,9 @@ $encashmentHistory = [
     <meta charset="UTF-8">
     <title>Encashments | GJC EduPay</title>
 
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../assets/css/admin.css">
-    <link rel="stylesheet" href="../assets/css/encashments.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/encashments.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -39,7 +41,7 @@ $encashmentHistory = [
 
             <div class="brand-box">
                 <div class="brand-logo">
-                    <img src="../assets/icons/logo.png" alt="Logo">
+                    <img src="<?= ICONS_URL ?>/edupay.png" alt="Logo">
                 </div>
 
                 <div class="brand-text">
@@ -49,44 +51,44 @@ $encashmentHistory = [
             </div>
 
             <nav class="sidebar-menu">
-                <a href="dashboard.php">
-                    <img src="../assets/icons/dashboard.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/dashboard.php">
+                    <img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt="">
                     <span class="nav-text">Dashboard</span>
                 </a>
 
-                <a href="users.php">
-                    <img src="../assets/icons/users.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/users.php">
+                    <img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt="">
                     <span class="nav-text">Users</span>
                 </a>
 
-                <a href="topups.php">
-                    <img src="../assets/icons/topups.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/topups.php">
+                    <img src="<?= ICONS_URL ?>/topups.png" class="nav-icon" alt="">
                     <span class="nav-text">Top-ups</span>
                 </a>
 
-                <a href="encashments.php" class="active">
-                    <img src="../assets/icons/encashments.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/encashments.php" class="active">
+                    <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
                     <span class="nav-text">Encashments</span>
                 </a>
 
-                <a href="transactions.php">
-                    <img src="../assets/icons/transactions.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/transactions.php">
+                    <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
                     <span class="nav-text">Transactions</span>
                 </a>
 
-                <a href="visitors.php">
-                    <img src="../assets/icons/visitors.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/visitors.php">
+                    <img src="<?= ICONS_URL ?>/visitors.png" class="nav-icon" alt="">
                     <span class="nav-text">Visitors</span>
                 </a>
 
-                <a href="settings.php">
-                    <img src="../assets/icons/settings.png" class="nav-icon" alt="">
+                <a href="<?= ADMIN_URL ?>/settings.php">
+                    <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
                     <span class="nav-text">Settings</span>
                 </a>
             </nav>
 
-            <a href="../auth/logout.php" class="logout-btn">
-                <img src="../assets/icons/logout.png" class="logout-icon" alt="">
+            <a href="<?= BASE_URL ?>/logout.php" class="logout-btn">
+                <img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt="">
                 <span>Logout</span>
             </a>
 
@@ -105,7 +107,7 @@ $encashmentHistory = [
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="../assets/icons/admin.png" alt="Admin">
+                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
                     </div>
                 </div>
             </header>
@@ -114,7 +116,7 @@ $encashmentHistory = [
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="../assets/icons/pending-encashments.png" alt="">
+                        <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="">
                     </div>
                     <span>Pending Encashments</span>
                     <h2><?php echo $pendingEncashments; ?></h2>
@@ -123,7 +125,7 @@ $encashmentHistory = [
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="../assets/icons/wallet.png" alt="">
+                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
                     </div>
                     <span>Released Today</span>
                     <h2>₱<?php echo number_format($releasedToday, 2); ?></h2>
@@ -132,7 +134,7 @@ $encashmentHistory = [
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="../assets/icons/encash-action.png" alt="">
+                        <img src="<?= ICONS_URL ?>/encashments.png" alt="">
                     </div>
                     <span>Encashment Queue</span>
                     <h2><?php echo $encashmentQueue; ?></h2>
@@ -253,7 +255,7 @@ $encashmentHistory = [
 
     </div>
 
-    <script src="../assets/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 
     <script>
     function toggleSidebar() {

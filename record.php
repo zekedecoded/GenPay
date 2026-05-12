@@ -4,7 +4,8 @@ namespace Classes;
 
 
 // PDO DB
-require_once "connection/pdo.php";
+require_once __DIR__ . '/connection/config.php';
+require_once __DIR__ . '/connection/pdo.php';
 
 class Record
 {
@@ -187,7 +188,7 @@ class Record
 
         $this->responseSQL($stmt);
         // header(`Location: edit-info.php?id=$id`);
-        header('Location: ../index.php');
+        header('Location: ' . BASE_URL . '/index.php');
         }
     }
 
@@ -205,7 +206,7 @@ class Record
 
         $this->responseSQL($stmt);
         // header(`Location: edit-info-education.php?id=$id`);
-        header('Location: ../index.php');
+        header('Location: ' . BASE_URL . '/index.php');
         }
     }
 
@@ -223,7 +224,7 @@ class Record
 
         $this->responseSQL($stmt);
         // header(`Location: edit-info-history.php?id=$id`);
-        header('Location: ../index.php');
+        header('Location: ' . BASE_URL . '/index.php');
         }
     }
 
@@ -256,7 +257,7 @@ class Record
         ]);
 
         $this->responseSQL($stmt);
-        header('Location: ../index.php');
+        header('Location: ' . BASE_URL . '/index.php');
     }
 
     public function dataEdit($id) {

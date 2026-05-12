@@ -1,11 +1,12 @@
 <?php
+require_once __DIR__ . '/connection/config.php';
 session_start();
 
 /*
     Only allow access if user is required to change password
 */
 if (!isset($_SESSION['force_change'])) {
-    header("Location: login.php");
+    header('Location: ' . BASE_URL . '/login.php');
     exit();
 }
 
@@ -36,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $success = "Password updated successfully. Redirecting...";
 
-        header("refresh:2;url=login.php");
+        header('refresh:2;url=' . BASE_URL . '/login.php');
     }
 }
 ?>
@@ -53,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         rel="stylesheet">
 
     <!-- HIWALAY NA CSS -->
-    <link rel="stylesheet" href="assets/css/change_password.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/change_password.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
 </head>
 

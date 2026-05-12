@@ -207,7 +207,7 @@ $serverTime = "Apr 25, 2026 12:34:46 AM";
 
                     <div class="system-info-row">
                         <span>Base URL</span>
-                        <strong>https://gjcedupay.local</strong>
+                        <strong><?= BASE_URL ?></strong>
                     </div>
 
                     <div class="system-info-row">
