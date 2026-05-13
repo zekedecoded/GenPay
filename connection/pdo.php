@@ -3,10 +3,10 @@
 class Database
 {
     private $host = 'localhost';
-    private $db = 'e_wallet';
+    private $db = 'ewallet';
     private $user = 'root';
-    private $pass = 'gacTjM7LapHT';
-    // private $pass = 'gitzeke126';
+    // private $pass = 'gacTjM7LapHT';
+    private $pass = 'gitzeke126';
     private $charset = 'utf8mb4';
     private $port = '3306';
 

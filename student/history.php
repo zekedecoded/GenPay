@@ -78,6 +78,7 @@ usort($transactions, fn (array $a, array $b): int => strcmp($b['created_at'], $a
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transaction History | EduPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">

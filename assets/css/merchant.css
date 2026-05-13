@@ -1865,3 +1865,290 @@ body {
   .me-pool-grid { grid-template-columns: 1fr; }
   .me-header-left { flex-direction: column; align-items: flex-start; }
 }
+
+/* ============================== */
+/* MERCHANT NATIVE-LIKE MOBILE APP */
+/* ============================== */
+
+@media (max-width: 768px) {
+  html {
+    min-height: 100%;
+    background: #f8fbf7;
+  }
+
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .merchant-layout {
+    display: block;
+    min-height: 100vh;
+  }
+
+  .merchant-main,
+  .merchant-sidebar.collapsed ~ .merchant-main {
+    width: 100%;
+    margin-left: 0;
+    padding: 12px 12px calc(106px + env(safe-area-inset-bottom));
+  }
+
+  .merchant-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    min-height: 64px;
+    margin: -12px -12px 14px;
+    padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+    border-radius: 0 0 22px 22px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 28px rgba(3, 32, 20, 0.09);
+    border: 0;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .merchant-topbar > div:not(.merchant-user) {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .merchant-menu-btn {
+    display: none;
+  }
+
+  .merchant-topbar h1 {
+    font-size: 21px;
+    line-height: 1.15;
+  }
+
+  .merchant-topbar p {
+    display: none;
+  }
+
+  .merchant-user {
+    width: auto;
+    margin-left: auto;
+    gap: 8px;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+  }
+
+  .merchant-user span {
+    max-width: 124px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .merchant-avatar {
+    width: 36px;
+    height: 36px;
+    box-shadow: none;
+  }
+
+  .merchant-avatar img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .merchant-sidebar,
+  .merchant-sidebar.collapsed {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    top: auto;
+    width: min(calc(100vw - 20px), 430px);
+    min-height: 0;
+    height: 78px;
+    padding: 8px;
+    transform: translateX(-50%);
+    z-index: 1100;
+    border-radius: 24px;
+    background: rgba(3, 32, 20, 0.96);
+    box-shadow: 0 18px 38px rgba(3, 32, 20, 0.28);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .merchant-brand,
+  .merchant-logout {
+    display: none !important;
+  }
+
+  .merchant-menu {
+    width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(70px, 1fr);
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    align-items: center;
+  }
+
+  .merchant-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .merchant-menu a,
+  .merchant-sidebar.collapsed .merchant-menu a {
+    height: 62px;
+    min-width: 70px;
+    padding: 6px 5px;
+    border-radius: 18px;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 800;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .merchant-menu a.active,
+  .merchant-menu a:hover {
+    background: linear-gradient(135deg, var(--gold-light), var(--gold));
+    color: var(--emerald-950);
+    box-shadow: none;
+  }
+
+  .merchant-menu a .merchant-nav-text,
+  .merchant-sidebar.collapsed .merchant-menu a .merchant-nav-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .merchant-menu a .merchant-nav-icon,
+  .merchant-sidebar.collapsed .merchant-menu a .merchant-nav-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+  }
+
+  .merchant-scanner-grid,
+  .encash-layout-grid,
+  .qr-layout-grid,
+  .qr-bottom-grid,
+  .history-summary-grid,
+  .me-pool-grid {
+    gap: 12px;
+  }
+
+  .row.g-4 {
+    --bs-gutter-x: 12px;
+    --bs-gutter-y: 12px;
+  }
+
+  .merchant-metric-card,
+  .merchant-premium-panel,
+  .qr-balance-card,
+  .encash-hero-card,
+  .history-balance-card,
+  .history-mini-card,
+  .qr-form-panel,
+  .qr-preview-panel,
+  .encash-form-panel,
+  .encash-info-panel,
+  .merchant-voucher-card,
+  .merchant-manual-panel {
+    border-radius: 22px;
+    box-shadow: 0 10px 26px rgba(3, 32, 20, 0.07);
+  }
+
+  .qr-balance-card,
+  .encash-hero-card,
+  .history-balance-card {
+    min-height: 0;
+    padding: 22px 20px;
+    border-radius: 24px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .qr-balance-card h2,
+  .encash-hero-card h2,
+  .history-balance-card h2 {
+    font-size: 34px;
+    line-height: 1.05;
+  }
+
+  .merchant-quick-actions a,
+  .merchant-view-btn,
+  .qr-generate-btn,
+  .encash-submit-btn,
+  .encash-withdraw-all-btn,
+  .merchant-scan-btn {
+    min-height: 52px;
+    border-radius: 16px;
+    touch-action: manipulation;
+  }
+
+  .merchant-premium-table {
+    min-width: 680px;
+  }
+
+  .merchant-reader {
+    border-radius: 20px;
+  }
+
+  .merchant-pay-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .merchant-main,
+  .merchant-sidebar.collapsed ~ .merchant-main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .merchant-topbar {
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+
+  .merchant-sidebar,
+  .merchant-sidebar.collapsed {
+    left: 50%;
+    right: auto;
+    width: min(calc(100vw - 16px), 420px);
+    height: 74px;
+    border-radius: 22px;
+  }
+
+  .merchant-menu {
+    grid-auto-columns: minmax(66px, 1fr);
+    gap: 4px;
+  }
+
+  .merchant-menu a,
+  .merchant-sidebar.collapsed .merchant-menu a {
+    min-width: 66px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 9px;
+  }
+
+  .merchant-metric-card h2,
+  .qr-balance-card h2,
+  .encash-hero-card h2,
+  .history-balance-card h2 {
+    font-size: 29px;
+  }
+}
