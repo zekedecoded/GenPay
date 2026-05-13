@@ -5,6 +5,7 @@ body {
   font-family: "Plus Jakarta Sans", sans-serif;
   background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat;
   margin: 0;
+  min-height: 100vh;
 }
 
 /* ===== CENTER WRAPPER ===== */
@@ -12,7 +13,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh;
+  padding: 24px 16px;
 }
 
 /* ===== CARD ===== */
@@ -27,6 +29,7 @@ body {
 
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 /* ===== TOP BADGE ===== */
@@ -132,19 +135,20 @@ body {
 /* ===== PASSWORD EYE ===== */
 .eye {
   position: absolute;
-  right: 15px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.92);
   cursor: pointer;
   font-size: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
 }
 
 /* ===== ERROR BOX ===== */
@@ -205,7 +209,8 @@ body {
 .eye img {
   width: 18px;
   height: 18px;
-  opacity: 0.8;
+  opacity: 0.95;
+  filter: brightness(0) saturate(100%) invert(18%) sepia(36%) saturate(802%) hue-rotate(91deg) brightness(88%) contrast(92%);
 }
 
 .eye img:hover {
@@ -213,7 +218,89 @@ body {
 }
 
 .eye.is-visible {
-  background: rgba(255, 255, 255, 0.12);
+  background: #dff3e6;
+}
+
+@media (max-width: 576px) {
+  body {
+    background:
+      linear-gradient(rgba(15, 61, 46, 0.78), rgba(15, 61, 46, 0.78)),
+      url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat fixed;
+  }
+
+  .login-wrapper {
+    min-height: 100svh;
+    align-items: flex-start;
+    padding: 18px 14px;
+    overflow-y: auto;
+  }
+
+  .login-card {
+    max-width: 100%;
+    padding: 22px 18px;
+    border-radius: 20px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(18px);
+  }
+
+  .login-card .text-center img {
+    width: 104px !important;
+    height: 104px !important;
+  }
+
+  .badge-top {
+    margin-bottom: 14px;
+    max-width: 100%;
+    line-height: 1.25;
+  }
+
+  .brand-title {
+    font-size: 28px;
+    line-height: 1.1;
+  }
+
+  .sub-text {
+    margin-bottom: 20px;
+  }
+
+  .input-group-box {
+    margin-bottom: 16px;
+  }
+
+  .input-group-box input {
+    min-height: 52px;
+    padding-right: 54px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  .options {
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    line-height: 1.3;
+  }
+
+  .options a {
+    margin-left: auto;
+  }
+
+  .login-btn {
+    min-height: 52px;
+    border-radius: 12px;
+    margin-top: 18px;
+  }
+
+  .signup-text {
+    line-height: 1.5;
+  }
+
+  .custom-modal {
+    margin: 0 10px;
+    padding: 14px;
+    border-radius: 16px;
+  }
 }
 
 /* MODAL CUSTOM */

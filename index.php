@@ -138,6 +138,17 @@
             justify-content: center;
             margin: 0 auto 20px;
             font-size: 32px;
+            flex: 0 0 auto;
+            overflow: hidden;
+        }
+        .feature-icon img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            display: block;
+        }
+        .feature-icon-qr {
+            filter: brightness(0) saturate(100%) invert(18%) sepia(44%) saturate(1073%) hue-rotate(102deg) brightness(91%) contrast(95%);
         }
         .feature-card h3 {
             font-size: 22px;
@@ -160,6 +171,37 @@
         @media (max-width: 768px) {
             .hero h1 { font-size: 40px; }
             .hero p { font-size: 16px; }
+            .features {
+                width: 100%;
+                max-width: 100%;
+                padding: 48px 16px;
+                overflow: hidden;
+            }
+            .features .row {
+                margin-left: 0;
+                margin-right: 0;
+            }
+            .features .row > [class*="col-"] {
+                width: 100%;
+                max-width: 100%;
+                padding-left: 0;
+                padding-right: 0;
+            }
+            .feature-card {
+                width: 100%;
+                max-width: 100%;
+                padding: 28px 22px;
+                text-align: left;
+            }
+            .feature-icon {
+                width: 72px;
+                height: 72px;
+                margin: 0 0 18px;
+            }
+            .feature-icon img {
+                width: 36px;
+                height: 36px;
+            }
         }
     </style>
 </head>
@@ -188,7 +230,7 @@
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <img src="<?= ICONS_URL ?>/smartphone.png" alt="QR Code" style="width: 40px; height: 40px; object-fit: contain;">
+                        <img src="<?= ICONS_URL ?>/qr.png" alt="QR Code" class="feature-icon-qr">
                     </div>
                     <h3>QR Code Payments</h3>
                     <p>No need for cash. Just scan the merchant's QR code or present your visitor voucher to pay instantly.</p>
@@ -197,7 +239,7 @@
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <img src="<?= ICONS_URL ?>/cyber-security.png" alt="Security" style="width: 40px; height: 40px; object-fit: contain;">
+                        <img src="<?= ICONS_URL ?>/cyber-security.png" alt="Security">
                     </div>
                     <h3>Secure & Reliable</h3>
                     <p>Built with enterprise-grade token economy security to ensure your money and transactions are safe at all times.</p>
@@ -206,7 +248,7 @@
             <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <img src="<?= ICONS_URL ?>/analytics.png" alt="Tracking" style="width: 40px; height: 40px; object-fit: contain;">
+                        <img src="<?= ICONS_URL ?>/analytics.png" alt="Tracking">
                     </div>
                     <h3>Real-time Tracking</h3>
                     <p>Monitor your wallet balance, transaction history, encashments, and points flow effortlessly.</p>
