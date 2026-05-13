@@ -22,7 +22,7 @@ $recentPayments = [];
     <title>Scan & Pay | EduPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=11">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=12">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -81,11 +81,11 @@ $recentPayments = [];
         <main class="student-main">
 
             <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">☰</button>
+                <button class="student-menu-btn" onclick="toggleStudentSidebar()">&#9776;</button>
 
                 <div>
-                    <h1>Scan & Pay</h1>
-                    <p>Scan a merchant QR code to pay using your student wallet.</p>
+                    <h1>Scan &amp; Pay</h1>
+                    <p>Scan a merchant QR code, review the payment details, and confirm the charge from your wallet.</p>
                 </div>
 
                 <div class="student-user">
@@ -114,7 +114,7 @@ $recentPayments = [];
                     <div class="student-panel-header d-flex justify-content-between align-items-center">
                         <div>
                             <h3>Scan Merchant QR</h3>
-                            <p>Point your camera at the merchant’s QR code.</p>
+                            <p>Use the live camera below and keep the code inside the frame until the payment card appears.</p>
                         </div>
 
                         <span class="scan-status-badge" id="cameraStatus">Starting Camera</span>
@@ -124,14 +124,45 @@ $recentPayments = [];
                         <video id="qrVideo" autoplay playsinline></video>
                         <canvas id="qrCanvas" hidden></canvas>
 
+                        <div class="scan-camera-overlay" aria-hidden="true">
+                            <div class="scan-corner top-left"></div>
+                            <div class="scan-corner top-right"></div>
+                            <div class="scan-corner bottom-left"></div>
+                            <div class="scan-corner bottom-right"></div>
+                            <div class="scan-line"></div>
+                        </div>
+
                         <div class="scan-camera-message" id="cameraMessage">
                             Opening camera...
                         </div>
                     </div>
 
+                    <div class="scan-toolbar">
+                        <button type="button" class="scan-action-btn secondary" id="resumeScannerBtn">Resume Scan</button>
+                        <button type="button" class="scan-action-btn secondary" id="switchCameraBtn">Switch Camera</button>
+                    </div>
+
                     <div class="scan-result-box" id="scanResultBox">
                         <span>Scan Result</span>
-                        <strong id="scanResultText">No QR detected yet.</strong>
+                        <div class="scan-result-empty" id="scanResultEmpty">No QR detected yet.</div>
+                        <div class="scan-payment-card d-none" id="scanPaymentCard">
+                            <div class="scan-payment-grid">
+                                <div>
+                                    <label>Merchant</label>
+                                    <strong id="scanMerchantName">--</strong>
+                                </div>
+                                <div>
+                                    <label>Item</label>
+                                    <strong id="scanItemDesc">--</strong>
+                                </div>
+                                <div>
+                                    <label>Amount</label>
+                                    <strong id="scanAmount">--</strong>
+                                </div>
+                            </div>
+                            <button type="button" class="scan-action-btn" id="scanPayNowBtn">Pay Now</button>
+                        </div>
+                        <div id="scanResultText" class="scan-result-note d-none"></div>
                     </div>
                 </div>
 
@@ -146,27 +177,27 @@ $recentPayments = [];
                     <div class="scan-guide-list">
                         <div>
                             <strong>1</strong>
-                            <span>Ask the merchant to generate an item QR.</span>
+                            <span>Ask the merchant to generate a fresh payment QR for the item you are buying.</span>
                         </div>
 
                         <div>
                             <strong>2</strong>
-                            <span>Allow camera access on your browser.</span>
+                            <span>Allow camera access so the scanner can read the QR code.</span>
                         </div>
 
                         <div>
                             <strong>3</strong>
-                            <span>Scan the QR and review payment details.</span>
+                            <span>Review the merchant name, item, and amount before you continue.</span>
                         </div>
 
                         <div>
                             <strong>4</strong>
-                            <span>Confirm the payment using your wallet balance.</span>
+                            <span>Tap Pay Now only when the payment details match the purchase.</span>
                         </div>
                     </div>
 
                     <div class="scan-note">
-                        Camera scanning works on <strong>localhost</strong> or secure HTTPS pages.
+                        Camera scanning works on <strong>localhost</strong> or secure HTTPS pages. If the rear camera is unavailable, try <strong>Switch Camera</strong>.
                     </div>
                 </div>
 
@@ -239,30 +270,98 @@ $recentPayments = [];
     const canvasContext = canvas.getContext("2d");
     const cameraMessage = document.getElementById("cameraMessage");
     const cameraStatus = document.getElementById("cameraStatus");
+    const scanResultEmpty = document.getElementById("scanResultEmpty");
     const scanResultText = document.getElementById("scanResultText");
+    const scanPaymentCard = document.getElementById("scanPaymentCard");
+    const scanMerchantName = document.getElementById("scanMerchantName");
+    const scanItemDesc = document.getElementById("scanItemDesc");
+    const scanAmount = document.getElementById("scanAmount");
+    const scanPayNowBtn = document.getElementById("scanPayNowBtn");
+    const resumeScannerBtn = document.getElementById("resumeScannerBtn");
+    const switchCameraBtn = document.getElementById("switchCameraBtn");
 
-    async function startScanner() {
+    let activeStream = null;
+    let currentFacingMode = "environment";
+    let scanningPaused = false;
+    let pendingPayment = null;
+    let lastDetectedPayload = "";
+
+    function setCameraStatus(text, tone = "") {
+        cameraStatus.className = "scan-status-badge";
+        if (tone) {
+            cameraStatus.classList.add(tone);
+        }
+        cameraStatus.textContent = text;
+    }
+
+    function stopScannerStream() {
+        if (activeStream) {
+            activeStream.getTracks().forEach((track) => track.stop());
+            activeStream = null;
+        }
+    }
+
+    function resetScanCard() {
+        pendingPayment = null;
+        scanPaymentCard.classList.add("d-none");
+        scanResultText.classList.add("d-none");
+        scanResultText.textContent = "";
+        scanResultText.className = "scan-result-note d-none";
+        scanResultEmpty.classList.remove("d-none");
+        scanResultEmpty.textContent = "No QR detected yet.";
+    }
+
+    function showScanMessage(message, tone = "note") {
+        scanPaymentCard.classList.add("d-none");
+        scanResultEmpty.classList.add("d-none");
+        scanResultText.classList.remove("d-none");
+        scanResultText.className = tone === "error" ? "scan-result-error" : "scan-result-note";
+        scanResultText.textContent = message;
+    }
+
+    function showPaymentCard(data) {
+        pendingPayment = data;
+        scanResultEmpty.classList.add("d-none");
+        scanResultText.classList.add("d-none");
+        scanMerchantName.textContent = data.merchant || "--";
+        scanItemDesc.textContent = data.desc || "--";
+        scanAmount.textContent = "₱" + parseFloat(data.price).toFixed(2);
+        scanPaymentCard.classList.remove("d-none");
+    }
+
+    async function startScanner(facingMode = currentFacingMode) {
+        stopScannerStream();
+        scanningPaused = false;
+        currentFacingMode = facingMode;
+        cameraMessage.style.display = "grid";
+        cameraMessage.innerHTML = "Opening camera...";
+        setCameraStatus("Starting Camera");
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    facingMode: "environment"
+                    facingMode: currentFacingMode
                 }
             });
 
+            activeStream = stream;
             video.srcObject = stream;
             cameraMessage.style.display = "none";
-            cameraStatus.textContent = "Camera Active";
-            cameraStatus.classList.add("active");
+            setCameraStatus("Camera Active", "active");
 
             requestAnimationFrame(scanQRCode);
         } catch (error) {
-            cameraStatus.textContent = "Camera Blocked";
-            cameraStatus.classList.add("blocked");
+            setCameraStatus("Camera Blocked", "blocked");
             cameraMessage.innerHTML = "Camera access denied.<br>Please allow camera permissions.";
         }
     }
 
     function scanQRCode() {
+        if (scanningPaused) {
+            requestAnimationFrame(scanQRCode);
+            return;
+        }
+
         if (video.readyState === video.HAVE_ENOUGH_DATA) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -275,27 +374,25 @@ $recentPayments = [];
             });
 
             if (code) {
+                if (code.data === lastDetectedPayload) {
+                    requestAnimationFrame(scanQRCode);
+                    return;
+                }
+
                 try {
                     const data = JSON.parse(code.data);
                     if (data.type === 'payment') {
-                        scanResultText.innerHTML = `
-                            <div style="color: #0b5c2c; font-size: 15px; margin-top: 10px;">
-                                <strong>Merchant:</strong> ${data.merchant}<br>
-                                <strong>Item:</strong> ${data.desc}<br>
-                                <strong>Price:</strong> &#8369;${parseFloat(data.price).toFixed(2)}
-                            </div>
-                            <button class="btn w-100 mt-3" style="background: linear-gradient(135deg, #f7d76d, #d9a928); color: #032014; font-weight: 800; border-radius: 12px; padding: 10px;" onclick="payNow('${data.merchant}', ${data.price}, '${data.desc}', ${parseInt(data.merchant_wallet_id || 0, 10)})">Pay Now</button>
-                        `;
-                    } else {
-                         scanResultText.textContent = code.data;
+                        lastDetectedPayload = code.data;
+                        scanningPaused = true;
+                        showPaymentCard(data);
+                        setCameraStatus("QR Detected", "active");
+                        return;
                     }
-                } catch(e) {
-                    scanResultText.textContent = code.data;
-                }
 
-                cameraStatus.textContent = "QR Detected";
-                cameraStatus.classList.remove("blocked");
-                cameraStatus.classList.add("active");
+                    showScanMessage("Unsupported QR format.", "error");
+                } catch (error) {
+                    showScanMessage(code.data, "note");
+                }
             }
         }
 
@@ -314,24 +411,64 @@ $recentPayments = [];
 
         const response = await fetch("pay_qr.php", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 merchant_wallet_id: merchantWalletId,
                 amount: price,
                 description: desc
             })
         });
+
         const result = await response.json();
         if (result.success) {
             alert("Payment completed. Reference: " + result.reference);
+            stopScannerStream();
             window.location.reload();
             return;
         }
 
         alert(result.message || "Payment failed.");
+        scanningPaused = false;
+        setCameraStatus("Camera Active", "active");
     }
 
-    startScanner();
+    scanPayNowBtn.addEventListener("click", function() {
+        if (!pendingPayment) {
+            return;
+        }
+
+        payNow(
+            pendingPayment.merchant,
+            pendingPayment.price,
+            pendingPayment.desc,
+            parseInt(pendingPayment.merchant_wallet_id || 0, 10)
+        );
+    });
+
+    resumeScannerBtn.addEventListener("click", function() {
+        lastDetectedPayload = "";
+        scanningPaused = false;
+        resetScanCard();
+        setCameraStatus("Camera Active", "active");
+    });
+
+    switchCameraBtn.addEventListener("click", function() {
+        const nextFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+        lastDetectedPayload = "";
+        resetScanCard();
+        startScanner(nextFacingMode);
+    });
+
+    window.addEventListener("beforeunload", stopScannerStream);
+
+    resetScanCard();
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraStatus("Camera Unsupported", "blocked");
+        cameraMessage.innerHTML = "This browser does not support camera scanning.";
+    } else {
+        startScanner();
+    }
     </script>
 
 </body>

@@ -1,48 +1,27 @@
 <?php
-session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
 
-// Quick check for merchant
-// if (!isset($_SESSION['userID'])) { header("Location: ../login.php"); exit; }
+gjc_require_role(['merchant']);
 
-// For demo purposes, we fetch the first merchant wallet ID
-$stmt = $db->query("SELECT id FROM merchant_wallets LIMIT 1");
-$wallet = $stmt->fetch();
-$merchantWalletId = $wallet ? $wallet['id'] : 1;
+$currentUser = gjc_current_user($db);
+$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$merchantWalletId = (int) $wallet['id'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Visitor QR Scanner | Merchant Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=10">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        .scanner-container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #ddd; }
-        .voucher-card {
-            background: linear-gradient(135deg, var(--emerald-900), var(--emerald-700));
-            color: white;
-            padding: 20px;
-            border-radius: 16px;
-            margin-top: 20px;
-            display: none;
-        }
-        .voucher-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; }
-        .voucher-val { font-size: 28px; font-weight: 800; color: var(--gold-light); }
-        .pay-form { display: none; margin-top: 15px; }
-    </style>
 </head>
+
 <body>
     <div class="merchant-layout">
         <aside class="merchant-sidebar" id="merchantSidebar">
@@ -91,162 +70,368 @@ $merchantWalletId = $wallet ? $wallet['id'] : 1;
 
         <main class="merchant-main">
             <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">☰</button>
+                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">&#9776;</button>
                 <div>
                     <h1>Visitor QR Scanner</h1>
-                    <p>Scan visitor vouchers to receive payments.</p>
+                    <p>Validate visitor vouchers, review remaining balance, and confirm merchant payments.</p>
+                </div>
+
+                <div class="merchant-user">
+                    <span><?php echo gjc_e($currentUser['name']); ?></span>
+                    <div class="merchant-avatar">
+                        <img src="<?= ICONS_URL ?>/store.png" alt="Merchant">
+                    </div>
                 </div>
             </header>
 
-            <div class="scanner-container">
-                <div id="reader"></div>
-
-                <div class="mt-4 text-center">
-                    <p class="text-muted small">Or test with manual hash paste:</p>
-                    <input type="text" id="manualHash" class="form-control mb-2" placeholder="Paste voucher hash here...">
-                    <button class="btn btn-outline-secondary w-100" onclick="validateQR(document.getElementById('manualHash').value)">Validate Hash</button>
-                </div>
-
-                <!-- Result Card -->
-                <div id="voucherResult" class="voucher-card">
-                    <div class="voucher-header">
+            <section class="merchant-scanner-grid">
+                <div class="merchant-premium-panel merchant-scanner-panel">
+                    <div class="merchant-panel-header merchant-scanner-header">
                         <div>
-                            <h5 class="mb-0" id="vName">Visitor Name</h5>
-                            <small id="vCode" style="color:#d1d5db">VCH-XXXXX</small>
+                            <h3>Live Voucher Camera</h3>
+                            <p>Point the camera at a visitor voucher QR. We will pause scanning once a valid voucher is detected.</p>
                         </div>
-                        <div class="text-end">
-                            <small class="d-block" style="color:#d1d5db">Available Balance</small>
-                            <span class="voucher-val">₱<span id="vBal">0.00</span></span>
+                        <span class="merchant-scan-status" id="merchantScanStatus">Starting camera</span>
+                    </div>
+
+                    <div class="merchant-reader-shell">
+                        <div id="reader" class="merchant-reader"></div>
+                        <div class="merchant-reader-hint" id="merchantReaderHint">
+                            Align the QR inside the frame to validate the voucher.
                         </div>
                     </div>
-                    
-                    <div id="vWarning" class="alert alert-warning py-2 px-3 mb-3 d-none" style="font-size:13px; font-weight:600"></div>
 
-                    <div class="pay-form" id="payForm">
-                        <label class="form-label" style="font-size: 13px; color: #cbd5e1;">Payment Amount</label>
-                        <div class="input-group mb-3">
-                            <span class="input-group-text bg-white border-0">₱</span>
-                            <input type="number" id="payAmount" class="form-control border-0" placeholder="0.00" step="0.01">
-                            <button class="btn btn-warning fw-bold" onclick="processPayment()">Confirm Payment</button>
-                        </div>
+                    <div class="merchant-scan-toolbar">
+                        <button type="button" class="merchant-scan-btn secondary" id="resumeScanBtn">Resume Scan</button>
+                        <button type="button" class="merchant-scan-btn secondary" id="clearScanBtn">Clear Result</button>
+                    </div>
+
+                    <div class="merchant-manual-panel">
+                        <label for="manualHash">Manual Voucher Payload or Hash</label>
+                        <textarea id="manualHash" class="form-control" rows="3" placeholder="Paste the voucher JSON payload or QR hash here..."></textarea>
+                        <button type="button" class="merchant-scan-btn" id="manualValidateBtn">Validate Voucher</button>
                     </div>
                 </div>
 
-                <div id="errorMsg" class="alert alert-danger mt-3 d-none"></div>
-                <div id="successMsg" class="alert alert-success mt-3 d-none"></div>
-            </div>
+                <div class="merchant-premium-panel merchant-voucher-panel">
+                    <div class="merchant-panel-header">
+                        <div>
+                            <h3>Voucher Details</h3>
+                            <p>Review the visitor balance before collecting payment.</p>
+                        </div>
+                    </div>
+
+                    <div id="voucherResult" class="merchant-voucher-card is-empty">
+                        <div class="merchant-voucher-empty">
+                            <div class="merchant-voucher-empty-icon">
+                                <img src="<?= ICONS_URL ?>/visitors.png" alt="">
+                            </div>
+                            <h4>No voucher selected</h4>
+                            <p>Scan a voucher or paste its payload to load the visitor details.</p>
+                        </div>
+
+                        <div class="merchant-voucher-content">
+                            <div class="merchant-voucher-top">
+                                <div>
+                                    <span class="merchant-voucher-label">Visitor</span>
+                                    <h4 id="vName">Visitor Name</h4>
+                                    <small id="vCode">VCH-XXXXX</small>
+                                </div>
+                                <div class="merchant-voucher-balance">
+                                    <span>Available Balance</span>
+                                    <strong>₱<span id="vBal">0.00</span></strong>
+                                </div>
+                            </div>
+
+                            <div class="merchant-voucher-meta">
+                                <div>
+                                    <span>Expires</span>
+                                    <strong id="vExpiry">--</strong>
+                                </div>
+                                <div>
+                                    <span>Refund Rule</span>
+                                    <strong id="vRefundable">Non-refundable</strong>
+                                </div>
+                                <div>
+                                    <span>Validity</span>
+                                    <strong id="vMinutesLeft">--</strong>
+                                </div>
+                            </div>
+
+                            <div id="vWarning" class="merchant-inline-note warning d-none"></div>
+                            <div id="voucherError" class="merchant-inline-note danger d-none"></div>
+
+                            <form class="merchant-pay-form" id="payForm">
+                                <label for="payAmount">Payment Amount</label>
+                                <div class="merchant-pay-row">
+                                    <div class="merchant-pay-input">
+                                        <span>₱</span>
+                                        <input type="number" id="payAmount" class="form-control" placeholder="0.00" min="0.01" step="0.01">
+                                    </div>
+                                    <button type="button" class="merchant-scan-btn" id="confirmVoucherPaymentBtn">Confirm Payment</button>
+                                </div>
+                                <small>Use the exact amount to collect from this visitor voucher.</small>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="successMsg" class="merchant-inline-note success d-none"></div>
+                </div>
+            </section>
         </main>
     </div>
 
     <script>
-        const API_URL = '<?= MERCHANT_URL ?>/api/scan_voucher.php';
-        let currentHash = null;
-        const walletId = <?= $merchantWalletId ?>;
+    const API_URL = '<?= MERCHANT_URL ?>/api/scan_voucher.php';
+    const walletId = <?= $merchantWalletId ?>;
+    const scanStatus = document.getElementById('merchantScanStatus');
+    const readerHint = document.getElementById('merchantReaderHint');
+    const voucherResult = document.getElementById('voucherResult');
+    const voucherError = document.getElementById('voucherError');
+    const voucherWarning = document.getElementById('vWarning');
+    const successMsg = document.getElementById('successMsg');
+    const payAmountInput = document.getElementById('payAmount');
+    const manualHashInput = document.getElementById('manualHash');
+    const resumeScanBtn = document.getElementById('resumeScanBtn');
+    const clearScanBtn = document.getElementById('clearScanBtn');
+    const manualValidateBtn = document.getElementById('manualValidateBtn');
+    const confirmVoucherPaymentBtn = document.getElementById('confirmVoucherPaymentBtn');
 
-        function onScanSuccess(decodedText, decodedResult) {
-            try {
-                const payload = JSON.parse(decodedText);
-                if(payload.type !== 'VISITOR_VOUCHER' || !payload.hash) {
-                    showError("Invalid QR format. Not a visitor voucher.");
-                    return;
-                }
-                validateQR(payload.hash);
-            } catch(e) {
-                validateQR(decodedText);
-            }
+    let currentHash = null;
+    let scannerPaused = false;
+    let lastScannedHash = '';
+
+    function toggleMerchantSidebar() {
+        document.getElementById("merchantSidebar").classList.toggle("collapsed");
+    }
+
+    function setScanStatus(text, tone = '') {
+        scanStatus.className = 'merchant-scan-status';
+        if (tone) {
+            scanStatus.classList.add(tone);
+        }
+        scanStatus.textContent = text;
+    }
+
+    function parseVoucherInput(rawValue) {
+        const value = String(rawValue || '').trim();
+        if (!value) {
+            return '';
         }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-        html5QrcodeScanner.render(onScanSuccess);
-
-        async function validateQR(hash) {
-            hideMessages();
-            if(!hash) return;
-            
-            try {
-                const fd = new FormData();
-                fd.append('action', 'validate');
-                fd.append('qr_hash', hash);
-
-                const res = await fetch(API_URL, { method: 'POST', body: fd });
-                const data = await res.json();
-
-                if(!data.success || !data.valid) {
-                    showError(data.error || "Invalid voucher.");
-                    return;
-                }
-
-                currentHash = hash;
-                document.getElementById('vName').textContent = data.voucher.visitor_name;
-                document.getElementById('vCode').textContent = data.voucher.voucher_code;
-                document.getElementById('vBal').textContent = parseFloat(data.remaining).toFixed(2);
-                
-                const warnBox = document.getElementById('vWarning');
-                if(data.warning) {
-                    warnBox.textContent = data.warning;
-                    warnBox.classList.remove('d-none');
-                } else {
-                    warnBox.classList.add('d-none');
-                }
-
-                document.getElementById('voucherResult').style.display = 'block';
-                document.getElementById('payForm').style.display = 'block';
-
-            } catch(err) {
-                showError("Connection error while validating QR.");
+        try {
+            const payload = JSON.parse(value);
+            if (payload && payload.type === 'VISITOR_VOUCHER' && payload.hash) {
+                return String(payload.hash).trim();
             }
+        } catch (error) {
+            // Treat the raw input as a plain hash.
         }
 
-        async function processPayment() {
-            const amt = parseFloat(document.getElementById('payAmount').value);
-            if(isNaN(amt) || amt <= 0) {
-                showError("Enter a valid amount.");
+        return value;
+    }
+
+    function resetMessages() {
+        voucherError.classList.add('d-none');
+        voucherWarning.classList.add('d-none');
+        successMsg.classList.add('d-none');
+        voucherError.textContent = '';
+        voucherWarning.textContent = '';
+        successMsg.textContent = '';
+    }
+
+    function resetVoucherCard() {
+        voucherResult.classList.add('is-empty');
+        currentHash = null;
+        lastScannedHash = '';
+        payAmountInput.value = '';
+        document.getElementById('vName').textContent = 'Visitor Name';
+        document.getElementById('vCode').textContent = 'VCH-XXXXX';
+        document.getElementById('vBal').textContent = '0.00';
+        document.getElementById('vExpiry').textContent = '--';
+        document.getElementById('vRefundable').textContent = 'Non-refundable';
+        document.getElementById('vMinutesLeft').textContent = '--';
+        resetMessages();
+    }
+
+    function fillVoucherCard(data) {
+        const voucher = data.voucher || {};
+        voucherResult.classList.remove('is-empty');
+        document.getElementById('vName').textContent = voucher.visitor_name || 'Visitor';
+        document.getElementById('vCode').textContent = voucher.voucher_code || 'VCH-XXXXX';
+        document.getElementById('vBal').textContent = Number(data.remaining ?? voucher.remaining_balance ?? 0).toFixed(2);
+        document.getElementById('vExpiry').textContent = voucher.expires_at || '--';
+        document.getElementById('vRefundable').textContent = Number(voucher.is_refundable || 0) === 1 ? 'Refundable' : 'Non-refundable';
+        document.getElementById('vMinutesLeft').textContent = typeof data.minutes_left === 'number'
+            ? data.minutes_left + ' min left'
+            : 'Ready to use';
+        payAmountInput.value = Number(data.remaining ?? voucher.remaining_balance ?? 0).toFixed(2);
+
+        if (data.warning) {
+            voucherWarning.textContent = data.warning;
+            voucherWarning.classList.remove('d-none');
+        } else {
+            voucherWarning.classList.add('d-none');
+        }
+    }
+
+    function showVoucherError(message) {
+        resetMessages();
+        voucherError.textContent = message;
+        voucherError.classList.remove('d-none');
+        voucherResult.classList.remove('is-empty');
+        setScanStatus('Voucher not usable', 'blocked');
+    }
+
+    function showSuccess(message) {
+        successMsg.innerHTML = message;
+        successMsg.classList.remove('d-none');
+    }
+
+    function pauseScanner() {
+        scannerPaused = true;
+        setScanStatus('Voucher loaded', 'active');
+        readerHint.textContent = 'Voucher loaded. Review the details, then confirm the payment or resume scanning.';
+    }
+
+    function resumeScanner() {
+        scannerPaused = false;
+        lastScannedHash = '';
+        setScanStatus('Camera active', 'active');
+        readerHint.textContent = 'Align the QR inside the frame to validate the voucher.';
+    }
+
+    async function validateQR(rawInput) {
+        resetMessages();
+        const hash = parseVoucherInput(rawInput);
+        if (!hash) {
+            showVoucherError('Enter or scan a valid voucher payload.');
+            return;
+        }
+
+        try {
+            setScanStatus('Validating voucher', 'pending');
+            const fd = new FormData();
+            fd.append('action', 'validate');
+            fd.append('qr_hash', hash);
+
+            const res = await fetch(API_URL, { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (!data.success || !data.valid) {
+                resetVoucherCard();
+                showVoucherError(data.error || 'Invalid voucher.');
                 return;
             }
 
-            try {
-                const fd = new FormData();
-                fd.append('action', 'pay');
-                fd.append('qr_hash', currentHash);
-                fd.append('amount', amt);
-                fd.append('merchant_wallet_id', walletId);
+            currentHash = hash;
+            lastScannedHash = hash;
+            fillVoucherCard(data);
+            pauseScanner();
+        } catch (error) {
+            showVoucherError('Connection error while validating the voucher.');
+        }
+    }
 
-                const res = await fetch(API_URL, { method: 'POST', body: fd });
-                const data = await res.json();
+    async function processPayment() {
+        resetMessages();
+        if (!currentHash) {
+            showVoucherError('Scan a voucher before confirming payment.');
+            return;
+        }
 
-                if(!data.success) {
-                    showError(data.error || "Payment failed.");
-                    return;
-                }
+        const amount = parseFloat(payAmountInput.value);
+        if (Number.isNaN(amount) || amount <= 0) {
+            showVoucherError('Enter a valid payment amount.');
+            return;
+        }
 
-                document.getElementById('voucherResult').style.display = 'none';
-                document.getElementById('successMsg').innerHTML = `
-                    <strong>Payment Successful!</strong><br>
-                    Received ₱${amt.toFixed(2)} from ${data.visitor_name}.<br>
-                    <small class="text-muted">Ref: ${data.reference}</small>
-                `;
-                document.getElementById('successMsg').classList.remove('d-none');
-                document.getElementById('payAmount').value = '';
-                currentHash = null;
+        confirmVoucherPaymentBtn.disabled = true;
+        confirmVoucherPaymentBtn.textContent = 'Processing...';
 
-                setTimeout(() => { document.getElementById('successMsg').classList.add('d-none'); }, 5000);
+        try {
+            const fd = new FormData();
+            fd.append('action', 'pay');
+            fd.append('qr_hash', currentHash);
+            fd.append('amount', amount);
+            fd.append('merchant_wallet_id', walletId);
 
-            } catch(err) {
-                showError("Connection error while processing payment.");
+            const res = await fetch(API_URL, { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (!data.success) {
+                showVoucherError(data.error || 'Payment failed.');
+                return;
             }
+
+            resetVoucherCard();
+            showSuccess(
+                '<strong>Payment successful.</strong><br>' +
+                'Received ₱' + amount.toFixed(2) + ' from ' + data.visitor_name + '.<br>' +
+                '<small>Ref: ' + data.reference + '</small>'
+            );
+            setScanStatus('Payment posted', 'active');
+            readerHint.textContent = 'Ready for the next voucher.';
+            resumeScanner();
+        } catch (error) {
+            showVoucherError('Connection error while processing payment.');
+        } finally {
+            confirmVoucherPaymentBtn.disabled = false;
+            confirmVoucherPaymentBtn.textContent = 'Confirm Payment';
+        }
+    }
+
+    function onScanSuccess(decodedText) {
+        if (scannerPaused) {
+            return;
         }
 
-        function showError(msg) {
-            document.getElementById('voucherResult').style.display = 'none';
-            document.getElementById('errorMsg').textContent = msg;
-            document.getElementById('errorMsg').classList.remove('d-none');
-            setTimeout(() => { document.getElementById('errorMsg').classList.add('d-none'); }, 5000);
+        const hash = parseVoucherInput(decodedText);
+        if (!hash || hash === lastScannedHash) {
+            return;
         }
 
-        function hideMessages() {
-            document.getElementById('errorMsg').classList.add('d-none');
-            document.getElementById('successMsg').classList.add('d-none');
+        validateQR(decodedText);
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+        'reader',
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        false
+    );
+
+    html5QrcodeScanner.render(
+        onScanSuccess,
+        () => {}
+    );
+
+    setScanStatus('Starting camera', 'pending');
+
+    resumeScanBtn.addEventListener('click', () => {
+        resetMessages();
+        resumeScanner();
+    });
+
+    clearScanBtn.addEventListener('click', () => {
+        manualHashInput.value = '';
+        resetVoucherCard();
+        resumeScanner();
+    });
+
+    manualValidateBtn.addEventListener('click', () => {
+        validateQR(manualHashInput.value);
+    });
+
+    confirmVoucherPaymentBtn.addEventListener('click', processPayment);
+
+    setTimeout(() => {
+        if (!scannerPaused) {
+            setScanStatus('Camera active', 'active');
         }
+    }, 1400);
+
+    resetVoucherCard();
     </script>
 </body>
+
 </html>
