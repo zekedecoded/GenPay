@@ -95,9 +95,9 @@ $error = $message ?: $error;
                     <input type="password" name="password" id="pass" required placeholder=" ">
                     <label>Password</label>
 
-                    <span class="eye" onclick="togglePass()">
-                        <img src="<?= ICONS_URL ?>/eye.png">
-                    </span>
+                    <button type="button" class="eye" onclick="togglePass()" aria-label="Show password">
+                        <img src="<?= ICONS_URL ?>/eye.png" alt="">
+                    </button>
                 </div>
 
                 <div class="options">
@@ -245,8 +245,13 @@ $error = $message ?: $error;
 
     <script>
         function togglePass() {
-            let p = document.getElementById("pass");
-            p.type = p.type === "password" ? "text" : "password";
+            const password = document.getElementById("pass");
+            const button = document.querySelector(".eye");
+            const shouldShow = password.type === "password";
+
+            password.type = shouldShow ? "text" : "password";
+            button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+            button.classList.toggle("is-visible", shouldShow);
         }
     </script>
 

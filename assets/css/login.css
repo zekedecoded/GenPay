@@ -135,8 +135,16 @@ body {
   right: 15px;
   top: 50%;
   transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   cursor: pointer;
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ===== ERROR BOX ===== */
@@ -202,6 +210,10 @@ body {
 
 .eye img:hover {
   opacity: 1;
+}
+
+.eye.is-visible {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* MODAL CUSTOM */

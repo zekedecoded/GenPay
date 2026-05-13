@@ -1725,6 +1725,103 @@ body {
    Matches emerald-900 / gold theme
 ═══════════════════════════════════════════════════════════ */
 
+.st-simple-economy {
+  padding: 24px;
+}
+
+.st-simple-status {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.st-simple-status.is-ok {
+  background: #dff3e6;
+  color: #064420;
+}
+
+.st-simple-status.is-review {
+  background: #fff4cc;
+  color: #7a5a00;
+}
+
+.st-simple-economy-main {
+  padding: 18px;
+  border-radius: 16px;
+  background: #f8faf9;
+  border: 1px solid rgba(6, 68, 32, 0.08);
+}
+
+.st-simple-economy-main span,
+.st-simple-economy-grid span {
+  display: block;
+  color: #66756c;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.st-simple-economy-main strong {
+  display: block;
+  margin-top: 6px;
+  color: #064420;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.st-simple-economy-main small,
+.st-simple-economy-grid small {
+  display: block;
+  margin-top: 5px;
+  color: #8b9bb3;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.st-simple-bar {
+  height: 9px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: #e1e9e4;
+  overflow: hidden;
+}
+
+.st-simple-bar div {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #064420, #d9a928);
+}
+
+.st-simple-economy-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.st-simple-economy-grid > div {
+  min-height: 104px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e3ece6;
+}
+
+.st-simple-economy-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+}
+
 .st-economy-panel {
   display: flex;
   flex-direction: column;
@@ -1912,9 +2009,11 @@ body {
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .st-economy-grid { grid-template-columns: repeat(2, 1fr); }
+  .st-simple-economy-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 576px) {
   .st-economy-grid { grid-template-columns: 1fr; }
+  .st-simple-economy { padding: 18px; }
   .st-economy-title-row { flex-direction: column; align-items: flex-start; }
 }
 

@@ -204,18 +204,62 @@ if (isset($_SESSION['force_change'])) {
             </section>
 
             <?php
-            // ── Economy Status (student view) ────────────────
-            $ce       = new CirculationEngine($db);
-            $ceSnap   = $ce->getCirculationSnapshot();
-            $ceCap    = max((float)($ceSnap['cap']   ?? 1), 0.01);
-            $ceVault  = (float)($ceSnap['vault']      ?? 0);
-            $ceBalanced = abs((float)($ceSnap['circulation_drift'] ?? 0)) < 0.01;
-            // Student wallet share of cap
-            $studShare = $ceCap > 0 ? round(((float)($ceSnap['student_wallets_total'] ?? 0) / $ceCap) * 100, 1) : 0;
-            $vaultShare= $ceCap > 0 ? round(($ceVault / $ceCap) * 100, 1) : 0;
+            $ce = new CirculationEngine($db);
+            $ceSnap = $ce->getCirculationSnapshot();
+            $ceCap = max((float) ($ceSnap['cap'] ?? 1), 0.01);
+            $ceVault = (float) ($ceSnap['vault'] ?? 0);
+            $ceCirculation = (float) ($ceSnap['total_in_circulation'] ?? 0);
+            $ceStudentTotal = (float) ($ceSnap['student_wallets_total'] ?? 0);
+            $ceMerchantTotal = (float) ($ceSnap['merchant_wallets_total'] ?? 0);
+            $ceVoucherTotal = (float) ($ceSnap['active_vouchers_total'] ?? 0);
+            $ceBalanced = abs((float) ($ceSnap['circulation_drift'] ?? 0)) < 0.01;
+            $cePct = fn (float $value): float => min(100, max(0, round(($value / $ceCap) * 100, 1)));
+            $studShare = $cePct($ceStudentTotal);
+            $vaultShare = $cePct($ceVault);
             ?>
 
-            <section class="st-economy-panel mb-4">
+            <section class="student-premium-panel st-simple-economy mb-4">
+                <div class="student-panel-header">
+                    <div>
+                        <h3>System Economy</h3>
+                        <p>Quick status of the campus wallet circulation.</p>
+                    </div>
+                    <span class="st-simple-status <?= $ceBalanced ? 'is-ok' : 'is-review' ?>">
+                        <?= $ceBalanced ? 'Balanced' : 'Review' ?>
+                    </span>
+                </div>
+
+                <div class="st-simple-economy-main">
+                    <div>
+                        <span>Current Circulation</span>
+                        <strong><?= gjc_money($ceCirculation) ?></strong>
+                        <small>of <?= gjc_money($ceCap) ?> authorized cap</small>
+                    </div>
+                    <div class="st-simple-bar">
+                        <div style="width: <?= $cePct($ceCirculation) ?>%"></div>
+                    </div>
+                </div>
+
+                <div class="st-simple-economy-grid">
+                    <div>
+                        <span>Student Wallets</span>
+                        <strong><?= gjc_money($ceStudentTotal) ?></strong>
+                        <small><?= $studShare ?>% of cap</small>
+                    </div>
+                    <div>
+                        <span>Cashier Vault</span>
+                        <strong><?= gjc_money($ceVault) ?></strong>
+                        <small><?= $vaultShare ?>% available</small>
+                    </div>
+                    <div>
+                        <span>Merchants + Vouchers</span>
+                        <strong><?= gjc_money($ceMerchantTotal + $ceVoucherTotal) ?></strong>
+                        <small>Payment pool</small>
+                    </div>
+                </div>
+            </section>
+
+            <section class="st-economy-panel mb-4" hidden>
 
                 <div class="st-economy-header">
                     <div class="st-economy-title-row">
