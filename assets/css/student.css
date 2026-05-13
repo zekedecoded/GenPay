@@ -1755,3 +1755,319 @@ body {
   .st-economy-grid { grid-template-columns: 1fr; }
   .st-economy-title-row { flex-direction: column; align-items: flex-start; }
 }
+
+@media (max-width: 768px) {
+  .student-layout {
+    display: block;
+  }
+
+  .student-sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+    padding: 22px 18px 90px;
+  }
+
+  .student-sidebar.collapsed {
+    width: 280px;
+    transform: translateX(0);
+  }
+
+  .student-sidebar .student-brand-text,
+  .student-sidebar .student-nav-text,
+  .student-sidebar .student-logout span,
+  .student-sidebar.collapsed .student-brand-text,
+  .student-sidebar.collapsed .student-nav-text,
+  .student-sidebar.collapsed .student-logout span {
+    display: block;
+  }
+
+  .student-sidebar .student-menu a,
+  .student-sidebar.collapsed .student-menu a {
+    justify-content: flex-start;
+    padding: 0 15px;
+    gap: 13px;
+  }
+
+  .student-sidebar .student-nav-icon,
+  .student-sidebar.collapsed .student-nav-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+  }
+
+  .student-sidebar .student-logout,
+  .student-sidebar.collapsed .student-logout {
+    left: 18px;
+    right: 18px;
+    padding: 0 16px;
+    justify-content: center;
+  }
+
+  .student-main,
+  .student-sidebar.collapsed ~ .student-main {
+    margin-left: 0;
+    width: 100%;
+    padding: 16px;
+  }
+
+  .student-topbar {
+    min-height: auto;
+    padding: 18px;
+    border-radius: 22px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .student-topbar h1 {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .student-topbar p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .student-user {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .student-wallet-card,
+  .scan-balance-card,
+  .topup-hero-card,
+  .profile-hero-card {
+    min-height: 0;
+    padding: 22px 20px;
+    border-radius: 24px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 18px;
+  }
+
+  .student-wallet-card h2,
+  .scan-balance-card h2,
+  .topup-hero-card h2 {
+    font-size: 36px;
+    line-height: 1.05;
+  }
+
+  .student-wallet-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .student-wallet-actions a {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .student-wallet-badge,
+  .scan-balance-badge,
+  .topup-hero-badge {
+    align-self: stretch;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .student-quick-panel,
+  .student-premium-panel {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .student-quick-actions a {
+    min-height: 52px;
+  }
+
+  .student-panel-header.d-flex,
+  .student-panel-header {
+    gap: 12px;
+  }
+
+  .student-panel-header.d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .student-view-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .student-metric-card {
+    min-height: 0;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .student-metric-card h2 {
+    font-size: 28px;
+    line-height: 1.1;
+  }
+
+  .scan-layout-grid,
+  .topup-layout-grid,
+  .profile-layout-grid,
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-camera-panel,
+  .scan-guide-panel,
+  .topup-form-panel,
+  .topup-guide-panel,
+  .profile-form-panel,
+  .profile-status-panel {
+    min-height: 0;
+  }
+
+  .scan-camera-box {
+    height: min(78vw, 360px);
+    border-radius: 20px;
+  }
+
+  .scan-guide-list div,
+  .topup-guide-list div,
+  .profile-status-list div {
+    min-height: 0;
+    align-items: flex-start;
+  }
+
+  .topup-money-input,
+  .profile-field input {
+    height: 52px;
+  }
+
+  .topup-quick-amounts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topup-quick-amounts button {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .topup-submit-btn,
+  .profile-save-btn,
+  .profile-password-btn {
+    width: 100%;
+  }
+
+  .profile-hero-left {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .profile-hero-left h2 {
+    font-size: 28px;
+    line-height: 1.1;
+  }
+
+  .profile-wallet-box {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .student-history-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .gjc-datatable-top,
+  .gjc-datatable-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate {
+    width: 100%;
+    text-align: left !important;
+  }
+
+  .dataTables_wrapper .dataTables_filter input {
+    min-width: 0;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .dataTables_wrapper .dataTables_paginate {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-main,
+  .student-sidebar.collapsed ~ .student-main {
+    padding: 14px;
+  }
+
+  .student-topbar {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .student-menu-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 20px;
+  }
+
+  .student-wallet-card,
+  .scan-balance-card,
+  .topup-hero-card,
+  .profile-hero-card,
+  .student-quick-panel,
+  .student-premium-panel,
+  .student-metric-card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .student-wallet-card h2,
+  .scan-balance-card h2,
+  .topup-hero-card h2,
+  .profile-wallet-box h3 {
+    font-size: 31px;
+  }
+
+  .student-wallet-card p,
+  .scan-balance-card p,
+  .topup-hero-card p,
+  .profile-hero-left p,
+  .profile-wallet-box p {
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .profile-hero-left {
+    flex-direction: column;
+  }
+
+  .topup-quick-amounts {
+    grid-template-columns: 1fr;
+  }
+
+  .scan-camera-box {
+    height: min(82vw, 300px);
+  }
+
+  .student-empty-state {
+    min-height: 200px;
+  }
+}
