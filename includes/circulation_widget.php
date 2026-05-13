@@ -55,7 +55,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="" style="width:20px;opacity:.7">
         <div>
             <strong>INTEGRITY FAILURE — Economy Drift ₱<?= number_format($drift, 2) ?></strong><br>
-            <small>All transactions should be halted until this is resolved by the Super-Admin.</small>
+            <small>All transactions should be halted until this is resolved by the Admin.</small>
         </div>
     </div>
     <?php endif; ?>
@@ -259,11 +259,11 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             </div>
         </div>
 
-        <!-- Mint Form (Super-Admin only) -->
+        <!-- Mint Form (Admin only) -->
         <?php if (isset($_SESSION['roleID']) && (int)$_SESSION['roleID'] === 3): ?>
         <div class="ce-mint-form-panel">
             <div class="ce-mint-form-header">
-                <span class="ce-mint-badge">Super-Admin</span>
+                <span class="ce-mint-badge">Admin</span>
                 <div class="ce-mint-form-title">Mint New Points</div>
                 <div class="ce-mint-form-sub">Increases the cap and injects points into the Cashier Vault</div>
             </div>
@@ -292,8 +292,10 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                     <input type="password" id="ce-pin" class="ce-input" placeholder="Enter Mint PIN">
                 </div>
                 <button type="submit" class="ce-mint-btn" id="ce-mint-btn">
-                    <img src="<?= ICONS_URL ?>/wallet.png" alt="" style="width:18px;filter:brightness(0)">
-                    Mint Points into Economy
+                    <span class="ce-mint-btn-content">
+                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                        <span>Mint Points into Economy</span>
+                    </span>
                 </button>
             </form>
         </div>
@@ -306,7 +308,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                     <div class="ce-flow-step-icon" style="background:linear-gradient(135deg,#064420,#137a3f)">⚗</div>
                     <div class="ce-flow-step-info">
                         <strong>Mint</strong>
-                        <span>Super-Admin → Vault</span>
+                        <span>Admin → Vault</span>
                     </div>
                     <div class="ce-flow-arrow">›</div>
                 </div>
@@ -428,7 +430,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             }
 
             btn.disabled  = false;
-            btn.innerHTML = `<img src="<?= ICONS_URL ?>/wallet.png" alt="" style="width:18px;filter:brightness(0)"> Mint Points into Economy`;
+            btn.innerHTML = `<span class="ce-mint-btn-content"><img src="<?= ICONS_URL ?>/wallet.png" alt=""><span>Mint Points into Economy</span></span>`;
         });
     }
 

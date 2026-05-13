@@ -451,6 +451,29 @@ img {
   color: #fff !important;
 }
 
+.ce-mint-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 62px !important;
+  text-align: center !important;
+}
+
+.ce-mint-btn-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+.ce-mint-btn-content img {
+  width: 18px !important;
+  height: 18px !important;
+  object-fit: contain !important;
+  filter: brightness(0) invert(1) !important;
+}
+
 .view-btn,
 .student-view-btn,
 .merchant-view-btn,
