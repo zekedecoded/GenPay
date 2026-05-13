@@ -95,7 +95,7 @@ $meta = $transaction['meta'] ?? [];
                 <hr class="my-4">
                 <h2 style="font-size: 18px;" class="mb-3">Raw Record</h2>
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle js-datatable" id="transactionRawRecordTable" data-page-length="25" data-paging="false">
+                    <table class="table table-bordered align-middle" id="transactionRawRecordTable">
                         <tbody>
                             <?php foreach ($meta as $key => $value): ?>
                             <tr>

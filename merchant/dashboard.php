@@ -10,8 +10,10 @@ $currentUser = gjc_current_user($db);
 $wallet = gjc_merchant_wallet($db, $currentUser['id']);
 $currentBalance = $wallet['balance'];
 $todaysSales = 0;
-$totalEarned = $currentBalance;
+$totalEarned = 0;
 $encashmentStatus = "Available";
+$earningTypes = [CirculationEngine::TXN_PAYMENT, CirculationEngine::TXN_VOUCHER_PAYMENT];
+$earningTypePlaceholders = implode(', ', array_fill(0, count($earningTypes), '?'));
 
 $recentSales = [];
 if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
@@ -19,24 +21,28 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
         "SELECT reference_no, transaction_type, amount, created_at
            FROM transactions
           WHERE merchant_wallet_id = ?
+            AND transaction_type IN ({$earningTypePlaceholders})
           ORDER BY created_at DESC
           LIMIT 8"
     );
-    $stmt->execute([$wallet['id']]);
+    $stmt->execute(array_merge([$wallet['id']], $earningTypes));
     $recentSales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $todayStmt = $db->prepare(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions
-          WHERE merchant_wallet_id = ? AND DATE(created_at) = CURDATE()"
+          WHERE merchant_wallet_id = ?
+            AND transaction_type IN ({$earningTypePlaceholders})
+            AND DATE(created_at) = CURDATE()"
     );
-    $todayStmt->execute([$wallet['id']]);
+    $todayStmt->execute(array_merge([$wallet['id']], $earningTypes));
     $todaysSales = (float) $todayStmt->fetchColumn();
 
     $totalStmt = $db->prepare(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions
-          WHERE merchant_wallet_id = ?"
+          WHERE merchant_wallet_id = ?
+            AND transaction_type IN ({$earningTypePlaceholders})"
     );
-    $totalStmt->execute([$wallet['id']]);
+    $totalStmt->execute(array_merge([$wallet['id']], $earningTypes));
     $totalEarned = (float) $totalStmt->fetchColumn();
 }
 ?>
