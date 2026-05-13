@@ -204,6 +204,8 @@ $topupHistory = $db->query(
                                     <div class="topup-actions">
                                         <button type="button" class="approve-btn"
                                             onclick="approveTopup(<?php echo (int) $topup['id']; ?>, <?php echo (int) $topup['student_wallet_id']; ?>, <?php echo (float) $topup['amount']; ?>)">Approve</button>
+                                        <button type="button" class="reject-btn"
+                                            onclick="rejectTopup(<?php echo (int) $topup['id']; ?>)">Reject</button>
                                     </div>
                                 </td>
                             </tr>
@@ -292,6 +294,25 @@ $topupHistory = $db->query(
         });
         const result = await response.json();
         alert(result.message || (result.success ? "Top-up approved." : "Top-up failed."));
+        if (result.success) {
+            window.location.reload();
+        }
+    }
+
+    async function rejectTopup(topupId) {
+        if (!confirm("Reject this top-up request?")) {
+            return;
+        }
+
+        const form = new FormData();
+        form.append("topup_id", topupId);
+
+        const response = await fetch("reject_topup.php", {
+            method: "POST",
+            body: form
+        });
+        const result = await response.json();
+        alert(result.message || (result.success ? "Top-up rejected." : "Reject failed."));
         if (result.success) {
             window.location.reload();
         }

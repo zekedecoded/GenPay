@@ -1132,6 +1132,12 @@ body {
   box-shadow: 0 10px 24px rgba(3, 32, 20, 0.06);
 }
 
+.profile-alert-error {
+  background: #fde2e2;
+  border-color: rgba(185, 28, 28, 0.16);
+  color: #b91c1c;
+}
+
 .profile-hero-card {
   min-height: 190px;
   padding: 30px 34px;

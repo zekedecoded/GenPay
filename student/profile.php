@@ -1,17 +1,100 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-$studentName = "Test Student";
-$firstName = "Test";
-$lastName = "Student";
-$studentID = "2024-00001";
-$email = "student@test.com";
-$phone = "09123456789";
-$walletBalance = 0;
-$memberSince = "April 2026";
-$accountStatus = "Active";
-$transactionsStatus = "Enabled";
-$spendingLimit = "No Limit";
-$profileUpdated = true;
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['student']);
+
+$currentUser = gjc_current_user($db);
+$wallet = gjc_student_wallet($db, $currentUser['id']);
+$notice = '';
+$error = '';
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $action = (string) ($_POST['profile_action'] ?? '');
+    $columns = gjc_table_columns($db, 'users');
+    $idColumn = gjc_column($db, 'users', ['id', 'userID']);
+
+    if (!$idColumn) {
+        $error = 'Profile cannot be updated because the users table ID column was not found.';
+    } elseif ($action === 'profile') {
+        $firstName = trim((string) ($_POST['first_name'] ?? ''));
+        $lastName = trim((string) ($_POST['last_name'] ?? ''));
+        $phone = trim((string) ($_POST['phone'] ?? ''));
+
+        if ($firstName === '' || $lastName === '') {
+            $error = 'First name and last name are required.';
+        } else {
+            $updates = [];
+            $values = [];
+
+            foreach ([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'name' => trim($firstName . ' ' . $lastName),
+                'phone' => $phone,
+            ] as $column => $value) {
+                if (in_array($column, $columns, true)) {
+                    $updates[] = "{$column} = ?";
+                    $values[] = $value;
+                }
+            }
+
+            if ($updates) {
+                $values[] = $currentUser['id'];
+                $stmt = $db->prepare('UPDATE users SET ' . implode(', ', $updates) . " WHERE {$idColumn} = ?");
+                $stmt->execute($values);
+                $notice = 'Profile updated successfully!';
+            }
+        }
+    } elseif ($action === 'password') {
+        $currentPassword = (string) ($_POST['current_password'] ?? '');
+        $newPassword = (string) ($_POST['new_password'] ?? '');
+        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+        $storedPassword = (string) ($currentUser['raw']['password'] ?? '');
+
+        $validCurrentPassword = $storedPassword !== ''
+            && (password_verify($currentPassword, $storedPassword) || hash_equals($storedPassword, $currentPassword));
+
+        if (!in_array('password', $columns, true)) {
+            $error = 'Password cannot be updated because the password column was not found.';
+        } elseif (!$validCurrentPassword) {
+            $error = 'Current password is incorrect.';
+        } elseif (strlen($newPassword) < 6) {
+            $error = 'New password must be at least 6 characters.';
+        } elseif ($newPassword !== $confirmPassword) {
+            $error = 'New passwords do not match.';
+        } else {
+            $stmt = $db->prepare("UPDATE users SET password = ? WHERE {$idColumn} = ?");
+            $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $currentUser['id']]);
+            $notice = 'Password updated successfully!';
+        }
+    }
+
+    $currentUser = gjc_current_user($db);
+}
+
+$rawUser = $currentUser['raw'] ?? [];
+$firstName = (string) ($rawUser['first_name'] ?? '');
+$lastName = (string) ($rawUser['last_name'] ?? '');
+
+if ($firstName === '' && $lastName === '') {
+    $nameParts = preg_split('/\s+/', trim($currentUser['name']), 2);
+    $firstName = $nameParts[0] ?? '';
+    $lastName = $nameParts[1] ?? '';
+}
+
+$studentName = $currentUser['name'];
+$studentInitial = strtoupper(substr($studentName, 0, 1));
+$studentID = (string) ($rawUser['school_id'] ?? ('GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT)));
+$email = (string) ($currentUser['email'] ?? '');
+$phone = (string) ($rawUser['phone'] ?? '');
+$walletBalance = (float) $wallet['balance'];
+$createdAt = (string) ($rawUser['created_at'] ?? '');
+$memberSince = $createdAt !== '' ? date('F Y', strtotime($createdAt)) : 'N/A';
+$accountStatus = ucfirst((string) ($rawUser['status'] ?? 'Active'));
+$transactionsStatus = $wallet['id'] > 0 ? 'Enabled' : 'Wallet Pending';
+$spendingLimit = 'No Limit';
 ?>
 
 <!DOCTYPE html>
@@ -22,7 +105,7 @@ $profileUpdated = true;
     <title>My Profile | EduPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=30">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=31">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -86,16 +169,22 @@ $profileUpdated = true;
                 </div>
 
                 <div class="student-user">
-                    <span><?php echo $studentName; ?></span>
+                    <span><?php echo gjc_e($studentName); ?></span>
                     <div class="student-avatar">
-                        <?php echo strtoupper(substr($studentName, 0, 1)); ?>
+                        <?php echo gjc_e($studentInitial); ?>
                     </div>
                 </div>
             </header>
 
-            <?php if ($profileUpdated): ?>
+            <?php if ($notice): ?>
             <div class="profile-alert mb-4">
-                Profile updated successfully!
+                <?php echo gjc_e($notice); ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($error): ?>
+            <div class="profile-alert profile-alert-error mb-4">
+                <?php echo gjc_e($error); ?>
             </div>
             <?php endif; ?>
 
@@ -103,20 +192,20 @@ $profileUpdated = true;
 
                 <div class="profile-hero-left">
                     <div class="profile-avatar-large">
-                        <?php echo strtoupper(substr($studentName, 0, 1)); ?>
+                        <?php echo gjc_e($studentInitial); ?>
                     </div>
 
                     <div>
                         <span>Student Account</span>
-                        <h2><?php echo $studentName; ?></h2>
-                        <p><?php echo $email; ?> · ID: <?php echo $studentID; ?></p>
+                        <h2><?php echo gjc_e($studentName); ?></h2>
+                        <p><?php echo gjc_e($email); ?> &middot; ID: <?php echo gjc_e($studentID); ?></p>
                     </div>
                 </div>
 
                 <div class="profile-wallet-box">
                     <span>Wallet Balance</span>
-                    <h3>₱<?php echo number_format($walletBalance, 2); ?></h3>
-                    <p>Member since <?php echo $memberSince; ?></p>
+                    <h3><?php echo gjc_money($walletBalance); ?></h3>
+                    <p>Member since <?php echo gjc_e($memberSince); ?></p>
                 </div>
 
             </section>
@@ -131,28 +220,29 @@ $profileUpdated = true;
                         </div>
                     </div>
 
-                    <form action="#" method="POST" class="profile-form">
+                    <form method="POST" class="profile-form">
+                        <input type="hidden" name="profile_action" value="profile">
 
                         <div class="profile-form-grid">
                             <div class="profile-field">
                                 <label>First Name</label>
-                                <input type="text" name="first_name" value="<?php echo $firstName; ?>">
+                                <input type="text" name="first_name" value="<?php echo gjc_e($firstName); ?>" required>
                             </div>
 
                             <div class="profile-field">
                                 <label>Last Name</label>
-                                <input type="text" name="last_name" value="<?php echo $lastName; ?>">
+                                <input type="text" name="last_name" value="<?php echo gjc_e($lastName); ?>" required>
                             </div>
                         </div>
 
                         <div class="profile-field">
                             <label>Phone Number</label>
-                            <input type="text" name="phone" value="<?php echo $phone; ?>">
+                            <input type="text" name="phone" value="<?php echo gjc_e($phone); ?>">
                         </div>
 
                         <div class="profile-field">
                             <label>Email Address</label>
-                            <input type="email" value="<?php echo $email; ?>" disabled>
+                            <input type="email" value="<?php echo gjc_e($email); ?>" disabled>
                             <small>Email cannot be changed. Contact Admin if needed.</small>
                         </div>
 
@@ -174,17 +264,17 @@ $profileUpdated = true;
                     <div class="profile-status-list">
                         <div>
                             <span>Account Status</span>
-                            <strong class="profile-pill green"><?php echo $accountStatus; ?></strong>
+                            <strong class="profile-pill green"><?php echo gjc_e($accountStatus); ?></strong>
                         </div>
 
                         <div>
                             <span>Transactions</span>
-                            <strong class="profile-pill green"><?php echo $transactionsStatus; ?></strong>
+                            <strong class="profile-pill green"><?php echo gjc_e($transactionsStatus); ?></strong>
                         </div>
 
                         <div>
                             <span>Spending Limit</span>
-                            <strong class="profile-pill gray"><?php echo $spendingLimit; ?></strong>
+                            <strong class="profile-pill gray"><?php echo gjc_e($spendingLimit); ?></strong>
                         </div>
                     </div>
 
@@ -204,22 +294,23 @@ $profileUpdated = true;
                     </div>
                 </div>
 
-                <form action="#" method="POST" class="profile-password-form">
+                <form method="POST" class="profile-password-form">
+                    <input type="hidden" name="profile_action" value="password">
 
                     <div class="profile-field">
                         <label>Current Password</label>
-                        <input type="password" name="current_password">
+                        <input type="password" name="current_password" required>
                     </div>
 
                     <div class="profile-form-grid">
                         <div class="profile-field">
                             <label>New Password</label>
-                            <input type="password" name="new_password">
+                            <input type="password" name="new_password" minlength="6" required>
                         </div>
 
                         <div class="profile-field">
                             <label>Confirm New Password</label>
-                            <input type="password" name="confirm_password">
+                            <input type="password" name="confirm_password" minlength="6" required>
                         </div>
                     </div>
 

@@ -9,14 +9,12 @@ gjc_require_role(['admin', 'cashier', 'sub-admin', 'super-admin']);
 
 $ve = new VoucherEngine($db);
 
-// Get real stats
 $stats = $ve->getSummaryStats();
 $activeVisitors     = $stats['active_count'] ?? 0;
 $totalVisitorFunds  = $stats['active_pool_value'] ?? 0;
 $expiredSessions    = $stats['expired_count'] ?? 0;
 
-// Fetch active vouchers
-$visitors = $ve->listVouchers('active', 50); // Get top 50 active
+$visitors = $ve->listVouchers('active', 50);
 ?>
 
 <!DOCTYPE html>
@@ -250,7 +248,6 @@ $visitors = $ve->listVouchers('active', 50); // Get top 50 active
 
                                 <td>
                                     <div class="visitor-actions">
-                                        <!-- Only view/refund buttons for now, no 'Load Cash' for existing vouchers since they are immutable -->
                                         <button type="button" class="load-cash-btn" onclick="alert('Voucher Code: <?= $v['voucher_code'] ?>\nRemaining: ₱<?= number_format($v['remaining_balance'], 2) ?>')">
                                             View
                                         </button>
@@ -291,7 +288,6 @@ $visitors = $ve->listVouchers('active', 50); // Get top 50 active
 
     </div>
 
-    <!-- MINT NEW VOUCHER MODAL -->
     <div class="modal fade" id="mintVoucherModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content visitor-load-modal">
@@ -329,7 +325,6 @@ $visitors = $ve->listVouchers('active', 50); // Get top 50 active
                         </div>
                     </div>
 
-                    <!-- SUCCESS QR VIEW (Hidden initially) -->
                     <div id="mintSuccessWrapper" class="text-center d-none">
                         <div class="alert alert-success" style="font-size:14px; font-weight:700;">Voucher Minted Successfully!</div>
                         <div id="qrPlaceholder" style="width: 200px; height: 200px; margin: 0 auto; background: #f3f4f6; border: 2px dashed #ccc; display: grid; place-items: center;">
@@ -401,7 +396,6 @@ $visitors = $ve->listVouchers('active', 50); // Get top 50 active
                 alertBox.className = "alert alert-danger";
                 alertBox.textContent = data.error || "Minting failed.";
             } else {
-                // Success
                 document.getElementById('mintFormWrapper').classList.add('d-none');
                 document.getElementById('mintFooter').classList.add('d-none');
                 
@@ -412,10 +406,8 @@ $visitors = $ve->listVouchers('active', 50); // Get top 50 active
                 document.getElementById('rawPayload').value = data.qr_payload;
                 document.getElementById('printVoucherLink').href = '<?= ADMIN_URL ?>/print_voucher.php?id=' + encodeURIComponent(data.voucher_id);
                 
-                // Realistically you'd use a JS QR library to draw data.qr_payload onto #qrPlaceholder
                 document.getElementById('qrPlaceholder').innerHTML = '<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(data.qr_payload) + '" alt="QR">';
                 
-                // Reload page when modal closes to see the new row
                 document.getElementById('mintVoucherModal').addEventListener('hidden.bs.modal', function () {
                     window.location.reload();
                 });
