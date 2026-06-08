@@ -1,14 +1,5 @@
 <?php
-/**
- * CirculationEngine — GJC EduPay Token Economic System
- *
- * Enforces the closed-loop economy invariant:
- *   vault + SUM(student_balances) + SUM(merchant_balances) + SUM(active_voucher_balances)
- *   === system_settings.total_circulation_cap
- *
- * All public methods run inside a serializable DB transaction
- * and call validateCirculation() before committing.
- */
+
 
 require_once __DIR__ . '/pdo.php';
 
@@ -16,7 +7,6 @@ class CirculationEngine
 {
     private PDO $db;
 
-    // ── Transaction type constants ──────────────────────────
     const TXN_CASH_IN         = 'cash_in';
     const TXN_PAYMENT         = 'payment';
     const TXN_VOUCHER_PAYMENT = 'voucher_payment';
@@ -29,46 +19,34 @@ class CirculationEngine
     {
         $this->db = $pdo;
     }
-
-    // ══════════════════════════════════════════════════════════
-    //  PUBLIC API
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * CASH-IN: Move points from the vault → student wallet.
-     * Only cashier/sub-admin may call this.
-     *
-     * @param int   $studentWalletId
-     * @param float $amount
-     * @param int   $initiatedBy  users.id of the cashier
-     * @throws RuntimeException on vault shortage or integrity failure
-     */
+    
+    
     public function cashIn(int $studentWalletId, float $amount, int $initiatedBy): array
     {
         $this->assertPositive($amount);
 
         $this->db->beginTransaction();
         try {
-            // Lock the singleton row
+            
             $settings = $this->lockSettings();
 
             if ($settings['cashier_vault_points'] < $amount) {
                 throw new RuntimeException(
-                    "VAULT_INSUFFICIENT: Vault only has ₱" .
+                    "VAULT_INSUFFICIENT: Vault only has Php " .
                     number_format($settings['cashier_vault_points'], 2) .
-                    " — cannot load ₱" . number_format($amount, 2) .
+                    " - cannot load Php " . number_format($amount, 2) .
                     ". Request a vault replenishment from the Super-Admin."
                 );
             }
 
-            // Debit vault
+            
             $this->db->prepare(
                 "UPDATE system_settings
                     SET cashier_vault_points = cashier_vault_points - ?
                   WHERE id = 1"
             )->execute([$amount]);
 
-            // Credit student wallet
+            
             $this->db->prepare(
                 "UPDATE student_wallets
                     SET balance = balance + ?
@@ -77,7 +55,7 @@ class CirculationEngine
 
             $vaultAfter = $settings['cashier_vault_points'] - $amount;
 
-            // Integrity gate
+            
             $this->validateCirculation($settings['total_circulation_cap']);
 
             $ref = $this->logTransaction(
@@ -95,14 +73,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * PAYMENT: Move points from student wallet → merchant wallet.
-     *
-     * @param int   $studentWalletId
-     * @param int   $merchantWalletId
-     * @param float $amount
-     * @param int   $initiatedBy  users.id of the student
-     */
+    
     public function studentPay(
         int $studentWalletId,
         int $merchantWalletId,
@@ -115,7 +86,7 @@ class CirculationEngine
         try {
             $settings = $this->lockSettings();
 
-            // Check student balance
+            
             $student = $this->db->prepare(
                 "SELECT balance FROM student_wallets WHERE id = ? FOR UPDATE"
             );
@@ -124,23 +95,23 @@ class CirculationEngine
 
             if (!$studentRow || $studentRow['balance'] < $amount) {
                 throw new RuntimeException(
-                    "STUDENT_INSUFFICIENT_BALANCE: Student balance ₱" .
+                    "STUDENT_INSUFFICIENT_BALANCE: Student balance Php " .
                     number_format($studentRow['balance'] ?? 0, 2) .
-                    " is below the required ₱" . number_format($amount, 2) . "."
+                    " is below the required Php " . number_format($amount, 2) . "."
                 );
             }
 
-            // Debit student
+            
             $this->db->prepare(
                 "UPDATE student_wallets SET balance = balance - ? WHERE id = ?"
             )->execute([$amount, $studentWalletId]);
 
-            // Credit merchant
+            
             $this->db->prepare(
                 "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?"
             )->execute([$amount, $merchantWalletId]);
 
-            // Vault does NOT change for a peer-to-peer payment
+            
             $this->validateCirculation($settings['total_circulation_cap']);
 
             $ref = $this->logTransaction(
@@ -159,15 +130,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * MERCHANT SETTLEMENT (Encashment):
-     * Move points from merchant wallet → vault (recycling loop).
-     * Cashier physically pays out cash to merchant.
-     *
-     * @param int   $merchantWalletId
-     * @param float $amount
-     * @param int   $initiatedBy  users.id (cashier or admin)
-     */
+    
     public function merchantSettle(int $merchantWalletId, float $amount, int $initiatedBy): array
     {
         $this->assertPositive($amount);
@@ -184,17 +147,17 @@ class CirculationEngine
 
             if (!$merchantRow || $merchantRow['balance'] < $amount) {
                 throw new RuntimeException(
-                    "MERCHANT_INSUFFICIENT_BALANCE: Cannot settle ₱" .
+                    "MERCHANT_INSUFFICIENT_BALANCE: Cannot settle Php " .
                     number_format($amount, 2) . "."
                 );
             }
 
-            // Debit merchant
+            
             $this->db->prepare(
                 "UPDATE merchant_wallets SET balance = balance - ? WHERE id = ?"
             )->execute([$amount, $merchantWalletId]);
 
-            // Credit vault (recycling)
+            
             $this->db->prepare(
                 "UPDATE system_settings
                     SET cashier_vault_points = cashier_vault_points + ?
@@ -220,16 +183,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * CREATE VOUCHER: Pull points from vault → voucher pool.
-     * Visitor pays cash at cashier window; cashier creates QR voucher.
-     *
-     * @param float  $amount
-     * @param string $visitorName
-     * @param string $visitorContact
-     * @param int    $expiryHours   How long (hours) until voucher expires
-     * @param int    $issuedBy      users.id of the cashier
-     */
+    
     public function createVoucher(
         float $amount,
         string $visitorName,
@@ -245,7 +199,7 @@ class CirculationEngine
 
             if ($settings['cashier_vault_points'] < $amount) {
                 throw new RuntimeException(
-                    "VAULT_INSUFFICIENT: Cannot issue voucher. Vault has ₱" .
+                    "VAULT_INSUFFICIENT: Cannot issue voucher. Vault has Php " .
                     number_format($settings['cashier_vault_points'], 2) . "."
                 );
             }
@@ -253,14 +207,14 @@ class CirculationEngine
             $code      = $this->generateVoucherCode();
             $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
-            // Debit vault
+            
             $this->db->prepare(
                 "UPDATE system_settings
                     SET cashier_vault_points = cashier_vault_points - ?
                   WHERE id = 1"
             )->execute([$amount]);
 
-            // Insert voucher
+            
             $this->db->prepare(
                 "INSERT INTO vouchers
                     (voucher_code, issued_by, visitor_name, visitor_contact,
@@ -297,15 +251,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * VOUCHER PAYMENT: Visitor uses QR voucher to pay a merchant.
-     * Remaining balance stays in the system (non-refundable).
-     *
-     * @param string $voucherCode
-     * @param int    $merchantWalletId
-     * @param float  $amount
-     * @param int    $initiatedBy  users.id (merchant or cashier scanning)
-     */
+    
     public function voucherPay(
         string $voucherCode,
         int $merchantWalletId,
@@ -318,7 +264,7 @@ class CirculationEngine
         try {
             $settings = $this->lockSettings();
 
-            // Lock and validate voucher
+            
             $vStmt = $this->db->prepare(
                 "SELECT * FROM vouchers WHERE voucher_code = ? AND status = 'active' FOR UPDATE"
             );
@@ -337,9 +283,9 @@ class CirculationEngine
             }
             if ($voucher['remaining_balance'] < $amount) {
                 throw new RuntimeException(
-                    "VOUCHER_INSUFFICIENT: Voucher has ₱" .
+                    "VOUCHER_INSUFFICIENT: Voucher has Php " .
                     number_format($voucher['remaining_balance'], 2) .
-                    " remaining — cannot pay ₱" . number_format($amount, 2) . "." .
+                    " remaining - cannot pay Php " . number_format($amount, 2) . "." .
                     " Note: change cannot be given as cash (non-refundable)."
                 );
             }
@@ -347,7 +293,7 @@ class CirculationEngine
             $newBalance = $voucher['remaining_balance'] - $amount;
             $newStatus  = ($newBalance == 0) ? 'used' : 'active';
 
-            // Debit voucher
+            
             $this->db->prepare(
                 "UPDATE vouchers
                     SET remaining_balance = ?,
@@ -355,7 +301,7 @@ class CirculationEngine
                   WHERE id = ?"
             )->execute([$newBalance, $newStatus, $voucher['id']]);
 
-            // Credit merchant
+            
             $this->db->prepare(
                 "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?"
             )->execute([$amount, $merchantWalletId]);
@@ -372,8 +318,8 @@ class CirculationEngine
             $this->db->commit();
 
             $notice = ($newBalance > 0)
-                ? "₱" . number_format($newBalance, 2) . " remains on voucher. " .
-                  "Change CANNOT be given as cash — it stays on the voucher (non-refundable)."
+                ? "Php " . number_format($newBalance, 2) . " remains on voucher. " .
+                  "Change CANNOT be given as cash - it stays on the voucher (non-refundable)."
                 : "Voucher fully consumed.";
 
             return [
@@ -389,15 +335,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * INCREASE MONEY SUPPLY (Super-Admin ONLY).
-     * Raises the total_circulation_cap and injects the difference
-     * directly into the cashier vault.
-     *
-     * @param float  $increaseBy   Amount to add to the cap
-     * @param int    $superAdminId users.id — MUST be verified as super-admin before calling
-     * @param string $reason       Mandatory justification
-     */
+    
     public function increaseCirculationCap(
         float $increaseBy,
         int $superAdminId,
@@ -417,7 +355,7 @@ class CirculationEngine
             $oldCap   = $settings['total_circulation_cap'];
             $newCap   = $oldCap + $increaseBy;
 
-            // Update cap and inject new points directly into vault
+            
             $this->db->prepare(
                 "UPDATE system_settings
                     SET total_circulation_cap   = ?,
@@ -427,7 +365,7 @@ class CirculationEngine
                   WHERE id = 1"
             )->execute([$newCap, $increaseBy, $superAdminId]);
 
-            // Append-only audit record
+            
             $this->db->prepare(
                 "INSERT INTO cap_increase_log
                     (super_admin_id, old_cap, new_cap, amount_added, reason)
@@ -441,7 +379,7 @@ class CirculationEngine
             $ref = $this->logTransaction(
                 self::TXN_CAP_INCREASE, $superAdminId, $increaseBy,
                 $settings['cashier_vault_points'], $vaultAfter,
-                notes: "Cap raised from ₱{$oldCap} to ₱{$newCap}. Reason: {$reason}"
+                notes: "Cap raised from Php {$oldCap} to Php {$newCap}. Reason: {$reason}"
             );
 
             $this->db->commit();
@@ -459,13 +397,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * EXPIRE VOUCHER: Return unused balance to the vault.
-     * Called by a scheduled job or admin action.
-     *
-     * @param int $voucherId
-     * @param int $initiatedBy
-     */
+    
     public function expireVoucher(int $voucherId, int $initiatedBy): array
     {
         $this->db->beginTransaction();
@@ -485,8 +417,8 @@ class CirculationEngine
 
             $recycled = $voucher['remaining_balance'];
 
-            // Mark expired. Some installs have a DB trigger that recycles the
-            // balance automatically; older installs need the PHP fallback below.
+            
+            
             $this->db->prepare(
                 "UPDATE vouchers SET status = 'expired' WHERE id = ?"
             )->execute([$voucherId]);
@@ -510,7 +442,7 @@ class CirculationEngine
                 self::TXN_VOUCHER_EXPIRE, $initiatedBy, max($recycled, 0.01),
                 $vaultBefore, $vaultAfter,
                 voucherId: $voucherId,
-                notes: "Recycled ₱{$recycled} from expired voucher #{$voucherId}"
+                notes: "Recycled Php {$recycled} from expired voucher #{$voucherId}"
             );
 
             $this->db->commit();
@@ -521,15 +453,8 @@ class CirculationEngine
             throw $e;
         }
     }
-
-    // ══════════════════════════════════════════════════════════
-    //  INTEGRITY CHECK (Public — usable in admin dashboards)
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * Returns the current circulation snapshot.
-     * drift === 0 means the economy is balanced.
-     */
+    
+    
     public function getCirculationSnapshot(): array
     {
         foreach (['v_circulation_health', 'v_circulation_snapshot'] as $view) {
@@ -545,19 +470,8 @@ class CirculationEngine
 
         return $this->buildCirculationSnapshot();
     }
-
-    // ══════════════════════════════════════════════════════════
-    //  PRIVATE HELPERS
-    // ══════════════════════════════════════════════════════════
-
-    /**
-     * THE CORE INVARIANT CHECK.
-     * Must be called inside an open transaction, after all balance
-     * mutations, before commit.
-     *
-     * @param float $expectedCap  The cap value from the locked settings row
-     * @throws RuntimeException if circulation is out of balance
-     */
+    
+    
     private function validateCirculation(float $expectedCap): void
     {
         $row = $this->db->query(
@@ -573,11 +487,11 @@ class CirculationEngine
         $total = (float) $row;
         $drift = abs($total - $expectedCap);
 
-        // Allow a tiny floating-point epsilon
+        
         if ($drift > 0.01) {
             throw new RuntimeException(sprintf(
-                "CIRCULATION_INTEGRITY_FAILURE: Expected cap ₱%s but total " .
-                "in circulation is ₱%s (drift ₱%s). Transaction aborted.",
+                "CIRCULATION_INTEGRITY_FAILURE: Expected cap Php %s but total " .
+                "in circulation is Php %s (drift Php %s). Transaction aborted.",
                 number_format($expectedCap, 2),
                 number_format($total, 2),
                 number_format($drift, 2)
@@ -585,9 +499,7 @@ class CirculationEngine
         }
     }
 
-    /**
-     * Lock the system_settings row for the duration of the transaction.
-     */
+    
     private function lockSettings(): array
     {
         $stmt = $this->db->query(
@@ -637,9 +549,7 @@ class CirculationEngine
         return $row ?: [];
     }
 
-    /**
-     * Write an immutable ledger record.
-     */
+    
     private function logTransaction(
         string $type,
         int    $initiatedBy,
@@ -651,7 +561,7 @@ class CirculationEngine
         int    $voucherId        = null,
         string $notes            = null
     ): string {
-        // Compute total in circulation for the snapshot column
+        
         $total = (float) $this->db->query(
             "SELECT
                 (SELECT cashier_vault_points FROM system_settings WHERE id = 1)
@@ -692,3 +602,4 @@ class CirculationEngine
         }
     }
 }
+

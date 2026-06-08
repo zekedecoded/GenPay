@@ -1,31 +1,18 @@
 <?php
 
-/**
- * MintingGuard.php
- * ─────────────────────────────────────────────────────────────────────────────
- * Middleware layer that sits between the admin UI and CirculationEngine.
- * Enforces the monthly minting soft-limit (₱50,000/month) and requires
- * a second-factor PIN when the limit would be exceeded.
- *
- * Usage:
- *   $guard = new MintingGuard($db);
- *   $result = $guard->attemptMint($superAdminId, 10000, 'Q2 budget allocation', $pin);
- * ─────────────────────────────────────────────────────────────────────────────
- */
 
-declare(strict_types=1);
 
 require_once __DIR__ . '/CirculationEngine.php';
 
 class MintingGuard
 {
-    /** Monthly soft limit (₱) — requires PIN above this */
+    
     public const SOFT_LIMIT = 50_000.00;
 
-    /** Hard absolute cap — no mint allowed beyond this per month, even with PIN */
+    
     public const HARD_LIMIT = 500_000.00;
 
-    /** Super-Admin role ID */
+    
     private const ROLE_SUPER_ADMIN = 3;
 
     private CirculationEngine $engine;
@@ -34,35 +21,15 @@ class MintingGuard
     {
         $this->engine = new CirculationEngine($db);
     }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PRIMARY ENTRYPOINT
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Attempt to mint new points into the economy.
-     *
-     * @param int         $superAdminId  Must be Super-Admin
-     * @param float       $amount        Points to mint (> 0)
-     * @param string      $reason        Audit justification (required)
-     * @param string|null $pin           Plaintext PIN — required if soft limit exceeded
-     *
-     * @throws RuntimeException on any validation or DB failure
-     * @return array {
-     *   success, new_cap, new_vault, minted_this_month,
-     *   remaining_soft_limit, soft_limit_exceeded, reference
-     * }
-     */
+    
     public function attemptMint(
         int $superAdminId,
         float $amount,
         string $reason,
         ?string $pin = null
     ): array {
-        // ── 1. Role check ────────────────────────────────────────────────────
         $this->assertSuperAdmin($superAdminId);
 
-        // ── 2. Amount sanity ─────────────────────────────────────────────────
         if ($amount <= 0) {
             throw new RuntimeException('Mint amount must be greater than zero.');
         }
@@ -70,15 +37,13 @@ class MintingGuard
             throw new RuntimeException('A justification reason is required for all minting operations.');
         }
 
-        // ── 3. Monthly limit calculation ─────────────────────────────────────
         $mintedSoFar     = $this->getMintedThisMonth();
         $projectedTotal  = $mintedSoFar + $amount;
 
-        // ── 4. Hard limit — no way through ───────────────────────────────────
         if ($projectedTotal > self::HARD_LIMIT) {
             throw new RuntimeException(sprintf(
-                'HARD_LIMIT_EXCEEDED: Monthly minting of ₱%s would exceed the absolute ceiling ' .
-                'of ₱%s/month (already minted ₱%s this month). ' .
+                'HARD_LIMIT_EXCEEDED: Monthly minting of Php %s would exceed the absolute ceiling ' .
+                'of Php %s/month (already minted Php %s this month). ' .
                 'Contact the Board of Administrators to authorize an exceptional increase.',
                 number_format($amount, 2),
                 number_format(self::HARD_LIMIT, 2),
@@ -86,13 +51,11 @@ class MintingGuard
             ));
         }
 
-        // ── 5. Soft limit — requires PIN ──────────────────────────────────────
         $softLimitExceeded = ($projectedTotal > self::SOFT_LIMIT);
         if ($softLimitExceeded) {
             $this->verifyMintPin($superAdminId, $pin, $mintedSoFar, $amount);
         }
 
-        // ── 6. Delegate to CirculationEngine ─────────────────────────────────
         $result = $this->engine->increaseCirculationCap($amount, $superAdminId, $reason);
 
         return array_merge($result, [
@@ -103,30 +66,18 @@ class MintingGuard
             'mint_events_this_month'=> $this->getMintEventCountThisMonth(),
         ]);
     }
-
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PIN MANAGEMENT
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Set (or update) the mint PIN for a super-admin.
-     * Stores a bcrypt hash in users.mint_pin.
-     *
-     * @param int    $superAdminId  Must be the current session's super-admin
-     * @param string $newPin        Plaintext new PIN (4-8 digits recommended)
-     * @param string $currentPassword Admin's current account password for confirmation
-     */
+    
+    
     public function setMintPin(int $superAdminId, string $newPin, string $currentPassword): bool
     {
         $this->assertSuperAdmin($superAdminId);
 
-        // Verify current account password first
+        
         $stmt = $this->db->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$superAdminId]);
         $hash = $stmt->fetchColumn();
 
-        // Support both plaintext (legacy) and bcrypt (modern)
+        
         $passwordValid = ($currentPassword === $hash) || password_verify($currentPassword, $hash);
         if (!$passwordValid) {
             throw new RuntimeException('INVALID_PASSWORD: Current account password is incorrect.');
@@ -141,15 +92,8 @@ class MintingGuard
 
         return true;
     }
-
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  DASHBOARD DATA
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Returns the full monthly minting summary for the admin dashboard widget.
-     */
+    
+    
     public function getMonthlyMintingReport(): array
     {
         $stmt = $this->db->prepare("
@@ -182,9 +126,7 @@ class MintingGuard
         ];
     }
 
-    /**
-     * Full cap increase audit log (paginated).
-     */
+    
     public function getCapIncreaseLog(int $limit = 20, int $offset = 0): array
     {
         $stmt = $this->db->prepare("
@@ -200,12 +142,7 @@ class MintingGuard
         $stmt->execute([$limit, $offset]);
         return $stmt->fetchAll();
     }
-
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  PRIVATE HELPERS
-    // ══════════════════════════════════════════════════════════════════════════
-
+    
     private function assertSuperAdmin(int $userId): void
     {
         $stmt = $this->db->prepare("SELECT roleID FROM users WHERE id = ?");
@@ -242,8 +179,8 @@ class MintingGuard
     {
         if ($pin === null || trim($pin) === '') {
             throw new RuntimeException(sprintf(
-                'PIN_REQUIRED: Monthly minting has reached ₱%s. ' .
-                'Your requested ₱%s would exceed the soft limit of ₱%s/month. ' .
+                'PIN_REQUIRED: Monthly minting has reached Php %s. ' .
+                'Your requested Php %s would exceed the soft limit of Php %s/month. ' .
                 'Provide your Mint PIN to authorize this exceptional increase.',
                 number_format($minted, 2),
                 number_format($requested, 2),
@@ -263,9 +200,10 @@ class MintingGuard
         }
 
         if (!password_verify($pin, $hash)) {
-            // Log the failed attempt
+            
             error_log("[MintingGuard] Failed PIN attempt by admin #{$adminId} at " . date('Y-m-d H:i:s'));
             throw new RuntimeException('MINT_PIN_INVALID: The Mint PIN you entered is incorrect.');
         }
     }
 }
+

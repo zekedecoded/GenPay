@@ -236,7 +236,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
             </section>
 
             <?php
-            // ── Economy Status (merchant view) ───────────────────────
+            
             $mce        = new CirculationEngine($db);
             $mceSnap    = $mce->getCirculationSnapshot();
             $mceCap     = max((float)($mceSnap['cap']                  ?? 1), 0.01);
@@ -249,10 +249,10 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
             $mceStudPct  = $mceCap > 0 ? round(($mceStudents/ $mceCap) * 100, 1) : 0;
             ?>
 
-            <!-- ══ MERCHANT ECONOMY STATUS ══════════════════════════ -->
+            
             <section class="me-section mb-4">
 
-                <!-- Header row -->
+                
                 <div class="me-header">
                     <div class="me-header-left">
                         <span class="me-pill">
@@ -266,7 +266,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                     <p class="me-header-sub">Live snapshot of the campus economy. Your wallet is part of this closed loop.</p>
                 </div>
 
-                <!-- Hero strip -->
+                
                 <div class="me-hero-strip">
                     <div class="me-hero-stat">
                         <span>Circulation Cap</span>
@@ -301,10 +301,10 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                     </div>
                 </div>
 
-                <!-- Pool cards -->
+                
                 <div class="me-pool-grid">
 
-                    <!-- Merchant wallet pool -->
+                    
                     <div class="me-pool-card me-pool-merchant">
                         <div class="me-pool-glow"></div>
                         <div class="me-pool-top">
@@ -319,7 +319,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         <div class="me-pool-meta"><?= $mceMerchPct ?>% of cap · Encashable at any time</div>
                     </div>
 
-                    <!-- Vault -->
+                    
                     <div class="me-pool-card me-pool-vault">
                         <div class="me-pool-glow"></div>
                         <div class="me-pool-top">
@@ -333,7 +333,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         <div class="me-pool-meta"><?= $mceVaultPct ?>% of cap · Available for reloads</div>
                     </div>
 
-                    <!-- Student pool -->
+                    
                     <div class="me-pool-card me-pool-students">
                         <div class="me-pool-glow"></div>
                         <div class="me-pool-top">
@@ -347,7 +347,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         <div class="me-pool-meta"><?= $mceStudPct ?>% of cap · Potential incoming payments</div>
                     </div>
 
-                    <!-- Encashment tip card -->
+                    
                     <div class="me-pool-card me-pool-tip">
                         <div class="me-pool-glow"></div>
                         <div class="me-pool-top">
@@ -364,7 +364,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 
                 </div>
 
-                <!-- Tip -->
+                
                 <div class="me-tip-row">
                     <span>💡</span>
                     <span>Points in your merchant wallet can only be encashed — they cannot be used to pay other merchants. The campus economy is a closed loop; every peso is always tracked.</span>

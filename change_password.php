@@ -2,9 +2,7 @@
 require_once __DIR__ . '/connection/config.php';
 session_start();
 
-/*
-    Only allow access if user is required to change password
-*/
+
 if (!isset($_SESSION['force_change'])) {
     header('Location: ' . BASE_URL . '/login.php');
     exit();
@@ -13,9 +11,7 @@ if (!isset($_SESSION['force_change'])) {
 $error = "";
 $success = "";
 
-/*
-    Handle form submission
-*/
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $new = $_POST['new_pass'] ?? '';
@@ -27,11 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Password must be at least 6 characters.";
     } else {
 
-        /*
-            TODO:
-            Update password in database
-            SET is_default_password = 0
-        */
+        
 
         unset($_SESSION['force_change']);
 
@@ -53,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- HIWALAY NA CSS -->
+    
     <link rel="stylesheet" href="<?= CSS_URL ?>/change_password.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 

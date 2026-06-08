@@ -4,7 +4,7 @@
 
     $role = (int) ($_SESSION['roleID'] ?? 0);
 
-    // If already logged in, redirect to respective dashboard immediately
+    
     if ($role === 3) {
         header('Location: ' . ADMIN_URL . '/dashboard.php');
         exit;

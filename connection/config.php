@@ -1,14 +1,14 @@
 <?php
 
-// ============================================================
-//  BASE
-// ============================================================
-define('BASE_PATH', dirname(__DIR__)); // project root
+
+
+
+define('BASE_PATH', dirname(__DIR__)); 
 
 $projectFolder = basename(BASE_PATH);
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 
-// Handle ngrok and other reverse proxies (X-Forwarded-Proto)
+
 if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
     $protocol = $_SERVER['HTTP_X_FORWARDED_PROTO'];
 }
@@ -16,9 +16,9 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 define('BASE_URL', $protocol . '://' . $host . '/' . $projectFolder);
 
-// ============================================================
-//  URL CONSTANTS
-// ============================================================
+
+
+
 define('ASSETS_URL',     BASE_URL . '/assets');
 define('CSS_URL',        BASE_URL . '/assets/css');
 define('JS_URL',         BASE_URL . '/assets/js');
@@ -31,9 +31,9 @@ define('STUDENT_URL',    BASE_URL . '/student');
 define('INCLUDES_URL',   BASE_URL . '/includes');
 define('CONNECTION_URL', BASE_URL . '/connection');
 
-// ============================================================
-//  FILE PATH CONSTANTS
-// ============================================================
+
+
+
 define('ASSETS_PATH',     BASE_PATH . '/assets');
 define('CSS_PATH',        BASE_PATH . '/assets/css');
 define('JS_PATH',         BASE_PATH . '/assets/js');

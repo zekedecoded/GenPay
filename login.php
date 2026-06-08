@@ -1,48 +1,12 @@
 <?php
 session_start();
-require_once __DIR__ . '/connection/config.php';
+require_once __DIR__ . "/connection/config.php";
 
 $error = "";
 
-/*
-SAMPLE ACCOUNTS
-
-FIRST LOGIN:
-student123 / 123456
-
-NORMAL:
-student456 / 123456
-*/
-
-// if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-//     $username = $_POST['username'] ?? '';
-//     $password = $_POST['password'] ?? '';
-
-//     if ($username === "student123" && $password === "123456") {
-
-//         $_SESSION['user'] = $username;
-//         $_SESSION['force_change'] = true;
-
-//         header("Location: change_password.php");
-//         exit();
-//     }
-
-//     elseif ($username === "student456" && $password === "123456") {
-
-//         $_SESSION['user'] = $username;
-//         header("Location: student/dashboard.php");
-//         exit();
-//     }
-
-//     else {
-//         $error = "Invalid username or password!";
-//     }
-// }
-
-require_once __DIR__ . '/connection/pdo.php';
-require_once __DIR__ . '/connection/app.php';
-require_once __DIR__ . '/record.php';
+require_once __DIR__ . "/connection/pdo.php";
+require_once __DIR__ . "/connection/app.php";
+require_once __DIR__ . "/record.php";
 
 use Classes\Record;
 
@@ -130,7 +94,7 @@ $error = $message ?: $error;
         </div>
     </div>
 
-    <!-- STUDENT MODAL -->
+
     <div class="modal fade" id="studentModal">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content custom-modal">
@@ -160,7 +124,7 @@ $error = $message ?: $error;
         </div>
     </div>
 
-    <!-- GUEST MODAL -->
+
     <div class="modal fade" id="guestModal">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content custom-modal">
@@ -216,7 +180,7 @@ $error = $message ?: $error;
         </div>
     </div>
 
-    <!-- FORGOT -->
+
     <div class="modal fade" id="forgotModal">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content custom-modal">

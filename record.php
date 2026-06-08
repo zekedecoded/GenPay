@@ -3,7 +3,7 @@
 namespace Classes;
 
 
-// PDO DB
+
 require_once __DIR__ . '/connection/config.php';
 require_once __DIR__ . '/connection/pdo.php';
 
@@ -22,10 +22,10 @@ class Record
         $this->con = $db;
     }
 
-    // login function 1st WORK!
+    
     public function loginUser() {
         if (isset($_POST['login'])) {
-            // session_start();
+            
 
             $email = $_POST['email'] ?? '';
             $password = $_POST['password'] ?? '';
@@ -58,7 +58,7 @@ class Record
             }
         }
     }
-    // login function 1st WORK!
+    
 
 
 
@@ -70,7 +70,7 @@ class Record
 
 
 
-    // getFrom Database
+    
     public function getAllInfo(){
         $stmt = $this->con->prepare('SELECT * FROM personal');
         $stmt->execute();
@@ -98,7 +98,7 @@ class Record
         return $stmt->fetchAll();
     }
 
-    // to get the GET/POST
+    
     public function getPostInfo(){
         $this->firstName = $_POST['firstName'];
         $this->middleName = $_POST['middleName'];
@@ -133,31 +133,31 @@ class Record
         $this->date_exit = $_POST['date_exit'];
     }
 
-    // database edit function
-    // public function dataEdit(){
-    //     if (isset($_POST['dataEdit'])) {
-    //         $id = $_POST['id'];
-    //         $this->getPost();
-    //         $stmt = $this->con->prepare("UPDATE biodata_test SET fullName=?, mobile=?, email=?, fullAdd=?, dob=?,
-    //         gender=?, fatherName=?, languages=?, maritalStatus=?, religion=?, hobbies=? WHERE id=?");
-    //         $stmt->execute([
-    //             $this->fullName,
-    //             $this->mobile,
-    //             $this->email,
-    //             $this->fullAdd,
-    //             $this->dob,
-    //             $this->gender,
-    //             $this->fatherName,
-    //             $this->languages,
-    //             $this->maritalStatus,
-    //             $this->religion,
-    //             $this->hobbies,
-    //             $id,
-    //         ]);
-    //         $this->responseSQL($stmt);
-    //         header('Location: ../index.php');
-    //     }
-    // }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     public function dataEditing($id) {
         $this->getPostInfo();
@@ -187,7 +187,7 @@ class Record
         ]);
 
         $this->responseSQL($stmt);
-        // header(`Location: edit-info.php?id=$id`);
+        
         header('Location: ' . BASE_URL . '/index.php');
         }
     }
@@ -205,7 +205,7 @@ class Record
         ]);
 
         $this->responseSQL($stmt);
-        // header(`Location: edit-info-education.php?id=$id`);
+        
         header('Location: ' . BASE_URL . '/index.php');
         }
     }
@@ -223,7 +223,7 @@ class Record
         ]);
 
         $this->responseSQL($stmt);
-        // header(`Location: edit-info-history.php?id=$id`);
+        
         header('Location: ' . BASE_URL . '/index.php');
         }
     }
@@ -268,7 +268,7 @@ class Record
         return $stmt->rowCount() ? $stmt->fetch() : 0;
     }
 
-    // getVIEW
+    
     public function dataViewInfo($id) {
         if (!$id) return 0;
 
@@ -293,7 +293,7 @@ class Record
         return $stmt->rowCount() ? $stmt->fetch() : 0;
     }
 
-    // database add function
+    
     public function dataAddInfo(){
         if (isset($_POST['dataAddInfo'])) {
             $this->getPostInfo();
@@ -355,16 +355,16 @@ class Record
         }
     }
 
-    // database delete function
-    // public function dataDelete(){
-    //     if (isset($_POST['dataDelete'])) {
-    //         $id = $_POST['id'];
-    //         $stmt = $this->con->prepare("DELETE FROM biodata_test WHERE id=?");
-    //         $stmt->execute([$id]);
-    //         $this->responseSQL($stmt);
-    //         header('Location: index.php');
-    //     }
-    // }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     public function dataDeleteInfo($id) {
         $stmt = $this->con->prepare("DELETE FROM personal WHERE id=?");
@@ -396,13 +396,13 @@ class Record
     }
 }
 
-// added
-// $Record = new Record($db);
-// $Record->dataAddInfo();
-// $Record->dataAddEducation();
-// $Record->dataAddHistory();
 
-// $Record->dataEdit();
-// $Record->dataDelete();
+
+
+
+
+
+
+
 
 ?>

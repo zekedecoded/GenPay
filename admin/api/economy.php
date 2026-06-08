@@ -1,19 +1,5 @@
 <?php
-/**
- * api/topup.php        — Cashier loads a student wallet
- * api/settle.php       — Cashier processes merchant encashment
- * api/circulation.php  — Dashboard circulation health snapshot
- *
- * All three are in this single combined file for clarity.
- * In production split them into separate files.
- *
- * Route: determined by the `action` POST/GET field:
- *   topup       → vault → student wallet
- *   settle      → merchant wallet → vault
- *   circulation → read-only health snapshot
- *   voucher     → vault → voucher pool
- *   pay         → student wallet → merchant wallet
- */
+
 
 declare(strict_types=1);
 header('Content-Type: application/json');
@@ -24,7 +10,7 @@ require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 require_once __DIR__ . '/../../connection/CirculationEngine.php';
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+
 if (!isset($_SESSION['userID'], $_SESSION['roleID'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Unauthenticated.']);
@@ -35,7 +21,7 @@ $userId = (int)$_SESSION['userID'];
 $role = gjc_current_role();
 $adminEconomyRoles = ['admin', 'cashier', 'sub-admin', 'super-admin'];
 
-// ── Parse body ───────────────────────────────────────────────────────────────
+
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 if (str_contains($contentType, 'application/json')) {
     $body = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -49,7 +35,7 @@ $engine = new CirculationEngine($db);
 try {
     switch ($action) {
 
-        // ── CASH-IN: Vault → Student ────────────────────────────────────────
+        
         case 'topup':
             if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
 
@@ -60,7 +46,7 @@ try {
             echo json_encode(array_merge(['success' => true], $result));
             break;
 
-        // ── PAYMENT: Student → Merchant ──────────────────────────────────────
+        
         case 'pay':
             $studentWallet  = (int)($body['student_wallet_id']  ?? 0);
             $merchantWallet = (int)($body['merchant_wallet_id'] ?? 0);
@@ -70,7 +56,7 @@ try {
             echo json_encode(array_merge(['success' => true], $result));
             break;
 
-        // ── SETTLEMENT: Merchant → Vault ─────────────────────────────────────
+        
         case 'settle':
             if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
 
@@ -81,7 +67,7 @@ try {
             echo json_encode(array_merge(['success' => true], $result));
             break;
 
-        // ── VOUCHER CREATE: Vault → Voucher Pool ─────────────────────────────
+        
         case 'voucher':
             if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
 
@@ -96,7 +82,7 @@ try {
             echo json_encode($result);
             break;
 
-        // ── VOUCHER PAY: Voucher → Merchant ──────────────────────────────────
+        
         case 'voucher_pay':
             $voucherCode    = trim($body['voucher_code']       ?? '');
             $merchantWallet = (int)($body['merchant_wallet_id'] ?? 0);
@@ -108,7 +94,7 @@ try {
             echo json_encode($result);
             break;
 
-        // ── EXPIRE VOUCHER: Recycle remaining balance → Vault ────────────────
+        
         case 'expire_voucher':
             if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
 
@@ -117,11 +103,11 @@ try {
             echo json_encode($result);
             break;
 
-        // ── CIRCULATION HEALTH (read-only) ───────────────────────────────────
+        
         case 'circulation':
             $snapshot = $engine->getCirculationSnapshot();
 
-            // Add balance flag
+            
             $drift = abs((float)($snapshot['circulation_drift'] ?? 1));
             $snapshot['is_balanced'] = $drift < 0.01;
             $snapshot['alert']       = $snapshot['is_balanced']

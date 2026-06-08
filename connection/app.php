@@ -8,7 +8,7 @@ if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
 
 function gjc_e($value): string
 {
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    return (string) $value;
 }
 
 function gjc_money($amount): string

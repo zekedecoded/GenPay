@@ -1,16 +1,5 @@
 <?php
-/**
- * create_voucher.php — Cashier Action
- *
- * Issues a one-time QR voucher for a visitor:
- *   vault  →  voucher pool
- *
- * Usage: POST create_voucher.php
- *   { visitor_name, visitor_contact, amount, expiry_hours }
- *
- * The returned voucher_code is the QR payload.
- * Vouchers are NON-REFUNDABLE by architecture.
- */
+
 
 session_start();
 require_once __DIR__ . '/../connection/config.php';
@@ -19,7 +8,6 @@ require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 
-// ── Auth guard ──────────────────────────────────────────────
 $allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
 if (!isset($_SESSION['user_id'], $_SESSION['role'])
     || !in_array($_SESSION['role'], $allowedRoles, true)) {
@@ -28,7 +16,6 @@ if (!isset($_SESSION['user_id'], $_SESSION['role'])
     exit;
 }
 
-// ── Input validation ────────────────────────────────────────
 $visitorName    = trim(filter_input(INPUT_POST, 'visitor_name',    FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $visitorContact = trim(filter_input(INPUT_POST, 'visitor_contact', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 $amount         = filter_input(INPUT_POST, 'amount',       FILTER_VALIDATE_FLOAT);
@@ -40,7 +27,6 @@ if (!$visitorName || !$amount || $amount <= 0 || !$expiryHours || $expiryHours <
     exit;
 }
 
-// ── Execute ─────────────────────────────────────────────────
 try {
     $engine = new CirculationEngine($db);
     $result = $engine->createVoucher(
@@ -60,7 +46,7 @@ try {
         'expires_at'           => $result['expires_at'],
         'reference'            => $result['reference'],
         'non_refundable_notice'=> $result['non_refundable_notice'],
-        // QR code URL — wire up to your preferred QR library
+        
         'qr_url' => BASE_URL . '/admin/print_voucher.php?code=' .
                     urlencode($result['voucher_code']),
     ]);
@@ -72,3 +58,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'A server error occurred.']);
 }
+

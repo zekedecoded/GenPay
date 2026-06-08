@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $role     = $_POST['role'] ?? 'student';
 
-    // SAMPLE LOGIN
+    
     if ($username === "student123" && $password === "123456") {
 
         if ($role === "student") {
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- PREMIUM FONT -->
+    
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h1 class="brand-title">GJC EduPay</h1>
             <p class="sub-text">Cashless Payment System</p>
 
-            <!-- ROLE -->
+            
             <div class="role-switch">
                 <div class="slider"></div>
                 <button type="button" onclick="selectRole('student')" class="role active"
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         Forgot Password?
                     </a>
 
-                    <!-- FORGOT PASSWORD MODAL -->
+                    
                     <div class="modal fade" id="forgotModal" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content custom-modal">

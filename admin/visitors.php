@@ -206,15 +206,15 @@ $visitors = $ve->listVouchers('active', 50);
                             <tr>
                                 <td>
                                     <div class="visitor-name-cell">
-                                        <strong><?php echo htmlspecialchars($v['visitor_name']); ?></strong>
+                                        <strong><?php echo $v['visitor_name']; ?></strong>
                                         <small><?php echo date('M d, Y h:i A', strtotime($v['created_at'])); ?></small>
                                     </div>
                                     <div style="font-size:11px;color:#888;margin-top:2px;">
-                                        Code: <?php echo htmlspecialchars($v['voucher_code']); ?>
+                                        Code: <?php echo $v['voucher_code']; ?>
                                     </div>
                                 </td>
 
-                                <td><?php echo htmlspecialchars($v['visitor_contact'] ?: '—'); ?></td>
+                                <td><?php echo $v['visitor_contact'] ?: '—'; ?></td>
 
                                 <td class="visitor-balance">
                                     ₱<?php echo number_format($v['remaining_balance'], 2); ?>
@@ -226,7 +226,7 @@ $visitors = $ve->listVouchers('active', 50);
                                 <td>
                                     <div class="status-group">
                                         <span class="visitor-status active" style="text-transform: capitalize;">
-                                            <?php echo htmlspecialchars($v['status']); ?>
+                                            <?php echo $v['status']; ?>
                                         </span>
 
                                         <?php if ($v['computed_status'] === 'expired_pending'): ?>
@@ -258,7 +258,7 @@ $visitors = $ve->listVouchers('active', 50);
 
                                         <?php if ($v['is_refundable']): ?>
                                         <button type="button" class="refund-btn"
-                                            onclick="return confirmRefund('<?php echo htmlspecialchars(addslashes($v['visitor_name'])); ?>', '<?php echo number_format($v['remaining_balance'], 2); ?>')">
+                                                onclick="return confirmRefund('<?php echo addslashes($v['visitor_name']); ?>', '<?php echo number_format($v['remaining_balance'], 2); ?>')">
                                             Refund
                                         </button>
                                         <?php else: ?>

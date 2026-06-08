@@ -37,7 +37,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 ?>
 
 <?php
-// session_start();
+
 
 if (isset($_SESSION['force_change'])) {
     header('Location: ' . BASE_URL . '/change_password.php');
@@ -276,7 +276,7 @@ if (isset($_SESSION['force_change'])) {
 
                 <div class="st-economy-grid">
 
-                    <!-- Circulation Cap -->
+                    
                     <div class="st-econ-card st-econ-cap">
                         <div class="st-econ-card-glow"></div>
                         <div class="st-econ-icon">
@@ -287,7 +287,7 @@ if (isset($_SESSION['force_change'])) {
                         <div class="st-econ-desc">Total authorized points in the system</div>
                     </div>
 
-                    <!-- Vault Reserve -->
+                    
                     <div class="st-econ-card st-econ-vault">
                         <div class="st-econ-card-glow"></div>
                         <div class="st-econ-icon">
@@ -301,7 +301,7 @@ if (isset($_SESSION['force_change'])) {
                         <div class="st-econ-desc"><?= $vaultShare ?>% of cap · Available for top-ups</div>
                     </div>
 
-                    <!-- Student Pool -->
+                    
                     <div class="st-econ-card st-econ-students">
                         <div class="st-econ-card-glow"></div>
                         <div class="st-econ-icon">
@@ -315,7 +315,7 @@ if (isset($_SESSION['force_change'])) {
                         <div class="st-econ-desc"><?= $studShare ?>% of cap · All student balances</div>
                     </div>
 
-                    <!-- Balance Integrity -->
+                    
                     <div class="st-econ-card <?= $ceBalanced ? 'st-econ-healthy' : 'st-econ-warn' ?>">
                         <div class="st-econ-card-glow"></div>
                         <div class="st-econ-icon">
@@ -332,7 +332,7 @@ if (isset($_SESSION['force_change'])) {
 
                 </div>
 
-                <!-- Tip row -->
+                
                 <div class="st-economy-tip">
                     <span>💡</span>
                     <span>Your wallet balance is part of this closed-loop economy. Points can only move — they are never created during a transaction.</span>

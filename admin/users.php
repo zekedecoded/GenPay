@@ -283,7 +283,7 @@ foreach ($dbUsers as $u) {
 
     </div>
 
-    <!-- ADD USER MODAL -->
+    
     <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content add-user-modal">

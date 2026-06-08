@@ -1,15 +1,5 @@
 <?php
-/**
- * increase_cap.php — Super-Admin ONLY Action
- *
- * The ONLY entry point that legally "mints" new points
- * by increasing total_circulation_cap.
- *
- * Usage: POST increase_cap.php
- *   { increase_by, reason }
- *
- * Sub-admins and cashiers will get HTTP 403.
- */
+
 
 session_start();
 require_once __DIR__ . '/../connection/config.php';
@@ -18,7 +8,7 @@ require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 
-// ── SUPER-ADMIN ONLY guard ──────────────────────────────────
+
 if (!isset($_SESSION['user_id'], $_SESSION['role'])
     || $_SESSION['role'] !== 'super-admin') {
     http_response_code(403);
@@ -29,7 +19,7 @@ if (!isset($_SESSION['user_id'], $_SESSION['role'])
     exit;
 }
 
-// ── Input validation ────────────────────────────────────────
+
 $increaseBy = filter_input(INPUT_POST, 'increase_by', FILTER_VALIDATE_FLOAT);
 $reason     = trim(filter_input(INPUT_POST, 'reason', FILTER_SANITIZE_SPECIAL_CHARS) ?? '');
 
@@ -44,7 +34,7 @@ if (strlen($reason) < 10) {
     exit;
 }
 
-// ── Execute ─────────────────────────────────────────────────
+
 try {
     $engine = new CirculationEngine($db);
     $result = $engine->increaseCirculationCap($increaseBy, $_SESSION['user_id'], $reason);

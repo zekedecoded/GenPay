@@ -2,13 +2,13 @@
 
 class Database
 {
-    private $host = 'localhost';
-    private $db = 'ewallet';
-    private $user = 'root';
-    // private $pass = 'gacTjM7LapHT';
-    private $pass = 'gitzeke126';
-    private $charset = 'utf8mb4';
-    private $port = '3306';
+    private $host = "localhost";
+    private $db = "ewallet";
+    private $user = "root";
+
+    private $pass = "gitzeke126";
+    private $charset = "utf8mb4";
+    private $port = "3306";
 
     private $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -23,7 +23,12 @@ class Database
         $this->dsn = "mysql:host=$this->host;dbname=$this->db;charset=$this->charset;port=$this->port";
         $this->pdo = null;
         try {
-            $this->pdo = new PDO($this->dsn, $this->user, $this->pass, $this->options);
+            $this->pdo = new PDO(
+                $this->dsn,
+                $this->user,
+                $this->pass,
+                $this->options,
+            );
         } catch (\PDOException $e) {
             throw new \PDOException($e->getMessage(), (int) $e->getCode());
         }

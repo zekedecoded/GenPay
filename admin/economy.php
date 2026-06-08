@@ -97,7 +97,7 @@ $isBalanced = $drift < 0.01;
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
 
                 <div>
                     <h1>System Economy</h1>
@@ -115,26 +115,26 @@ $isBalanced = $drift < 0.01;
             <section class="economy-overview mb-4">
                 <div class="economy-balance-card">
                     <span>Authorized Money Supply</span>
-                    <h2>₱<?= number_format($cap, 2) ?></h2>
+                    <h2>Php <?= number_format($cap, 2) ?></h2>
                     <p><?= $isBalanced ? 'Economy is balanced and ready for transactions.' : 'Drift detected. Review circulation immediately.' ?></p>
                 </div>
 
                 <div class="economy-mini-card">
                     <span>Vault Reserve</span>
-                    <strong>₱<?= number_format($vault, 2) ?></strong>
+                    <strong>Php <?= number_format($vault, 2) ?></strong>
                     <small>Available for cashier top-ups</small>
                 </div>
 
                 <div class="economy-mini-card">
                     <span>Distributed Balance</span>
-                    <strong>₱<?= number_format($distributed, 2) ?></strong>
+                    <strong>Php <?= number_format($distributed, 2) ?></strong>
                     <small>Held by wallets and vouchers</small>
                 </div>
 
                 <div class="economy-mini-card <?= $isBalanced ? 'economy-ok' : 'economy-alert' ?>">
                     <span>Integrity Status</span>
-                    <strong><?= $isBalanced ? 'Balanced' : 'Drift ₱' . number_format($drift, 2) ?></strong>
-                    <small>Last snapshot: <?= htmlspecialchars($snap['as_of'] ?? 'N/A') ?></small>
+                    <strong><?= $isBalanced ? 'Balanced' : 'Drift Php ' . number_format($drift, 2) ?></strong>
+                    <small>Last snapshot: <?= $snap['as_of'] ?? 'N/A' ?></small>
                 </div>
             </section>
 
@@ -155,3 +155,4 @@ $isBalanced = $drift < 0.01;
 </body>
 
 </html>
+
