@@ -47,7 +47,7 @@ body {
 
 .merchant-sidebar {
   width: 280px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 24px 18px;
   position: fixed;
   left: 0;
@@ -62,6 +62,9 @@ body {
   box-shadow: 14px 0 40px rgba(3, 32, 20, 0.22);
   transition: 0.3s ease;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .merchant-sidebar.collapsed {
@@ -76,6 +79,7 @@ body {
   color: white;
   white-space: nowrap;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .merchant-brand-logo {
@@ -123,6 +127,20 @@ body {
   display: flex;
   flex-direction: column;
   gap: 9px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.merchant-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.merchant-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
 }
 
 .merchant-menu a {
@@ -168,10 +186,8 @@ body {
 }
 
 .merchant-logout {
-  position: absolute;
-  bottom: 24px;
-  left: 18px;
-  right: 18px;
+  position: static;
+  margin-top: 16px;
   height: 50px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
@@ -185,6 +201,7 @@ body {
   border: 1px solid rgba(217, 169, 40, 0.22);
   transition: 0.25s;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .merchant-logout-icon {
@@ -199,8 +216,6 @@ body {
 }
 
 .merchant-sidebar.collapsed .merchant-logout {
-  left: 21px;
-  right: 21px;
   padding: 0;
 }
 
@@ -2150,5 +2165,142 @@ body {
   .encash-hero-card h2,
   .history-balance-card h2 {
     font-size: 29px;
+  }
+}
+
+/* Minimal merchant economy summary */
+.me-section {
+  padding: 22px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(6, 68, 32, 0.08);
+  box-shadow: 0 10px 28px rgba(3, 32, 20, 0.06);
+  gap: 14px;
+}
+
+.me-section .me-header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.me-header-left {
+  gap: 10px;
+}
+
+.me-pill {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-main);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.me-pill-icon,
+.me-header-sub,
+.me-pool-grid,
+.me-tip-row {
+  display: none;
+}
+
+.me-status-badge {
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.me-badge-ok {
+  background: #edf7ef;
+  border-color: #cce9d4;
+  color: #166534;
+}
+
+.me-badge-err {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #9f1239;
+}
+
+.me-hero-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.me-hero-divider {
+  display: none;
+}
+
+.me-hero-stat {
+  min-width: 0;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 14px;
+  text-align: left;
+  border-radius: 14px;
+  background: #f8faf8;
+  border: 1px solid rgba(6, 68, 32, 0.07);
+}
+
+.me-hero-stat span {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.me-hero-stat strong,
+.me-hero-highlight strong {
+  color: var(--text-main);
+  font-size: 16px;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.me-hero-stat small,
+.me-hero-highlight span,
+.me-hero-highlight small {
+  color: var(--text-muted);
+}
+
+.me-hero-stat small {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.me-text-green {
+  color: #166534 !important;
+}
+
+.me-text-red {
+  color: #b91c1c !important;
+}
+
+@media (max-width: 1100px) {
+  .me-hero-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .me-section {
+    padding: 16px;
+  }
+
+  .me-section .me-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .me-hero-strip {
+    grid-template-columns: 1fr;
   }
 }

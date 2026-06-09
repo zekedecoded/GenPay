@@ -1,0 +1,205 @@
+<?php
+session_start();
+require_once __DIR__ . '/../../connection/config.php';
+require_once __DIR__ . '/../../connection/pdo.php';
+require_once __DIR__ . '/../../connection/app.php';
+
+header('Content-Type: application/json');
+gjc_require_role(['student']);
+
+$action        = trim((string) ($_POST['action'] ?? ''));
+$currentUserId = gjc_user_id();
+$DAILY_LIMIT   = 5000.00;
+
+try {
+    // ── LOOKUP: find student by student ID ───────────────────────────────
+    if ($action === 'lookup') {
+        $studentIdInput = trim((string) ($_POST['student_id'] ?? ''));
+        if (!$studentIdInput) {
+            echo json_encode(['success' => false, 'message' => 'Student ID required.']);
+            exit;
+        }
+
+        $stmt = $db->prepare(
+            "SELECT u.userID, u.first_name, u.last_name
+               FROM users u
+               JOIN student_info si ON si.userID = u.userID
+              WHERE si.studentID = ? AND u.roleID = 1
+              LIMIT 1"
+        );
+        $stmt->execute([$studentIdInput]);
+        $found = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$found) {
+            echo json_encode(['success' => false, 'message' => 'Student not found.']);
+            exit;
+        }
+
+        if ((int) $found['userID'] === $currentUserId) {
+            echo json_encode(['success' => false, 'message' => 'You cannot look up yourself.']);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'name'    => trim($found['first_name'] . ' ' . $found['last_name']),
+            'user_id' => (int) $found['userID'],
+        ]);
+        exit;
+    }
+
+    // ── TRANSFER ─────────────────────────────────────────────────────────
+    if ($action === 'transfer') {
+        $recipientStudentId = trim((string) ($_POST['recipient_student_id'] ?? ''));
+        $amount             = round((float) ($_POST['amount'] ?? 0), 2);
+        $message            = trim((string) ($_POST['message'] ?? ''));
+
+        // --- Input validation ---
+        if (!$recipientStudentId || $amount <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Recipient ID and valid amount are required.']);
+            exit;
+        }
+
+        if ($amount < 1.00) {
+            echo json_encode(['success' => false, 'message' => 'Minimum transfer amount is ₱1.00.']);
+            exit;
+        }
+
+        // --- Find recipient ---
+        $recipStmt = $db->prepare(
+            "SELECT u.userID, u.first_name, u.last_name
+               FROM users u
+               JOIN student_info si ON si.userID = u.userID
+              WHERE si.studentID = ? AND u.roleID = 1
+              LIMIT 1"
+        );
+        $recipStmt->execute([$recipientStudentId]);
+        $recipient = $recipStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$recipient) {
+            echo json_encode(['success' => false, 'message' => 'Recipient student not found. Check the Student ID and try again.']);
+            exit;
+        }
+
+        $recipientUserId = (int) $recipient['userID'];
+        if ($recipientUserId === $currentUserId) {
+            echo json_encode(['success' => false, 'message' => 'You cannot transfer tokens to yourself.']);
+            exit;
+        }
+
+        // --- Daily limit check ---
+        $dailySent = gjc_p2p_daily_sent($db, $currentUserId);
+        if ($dailySent + $amount > $DAILY_LIMIT) {
+            $remaining = max(0, $DAILY_LIMIT - $dailySent);
+            echo json_encode([
+                'success' => false,
+                'message' => sprintf('Daily transfer limit exceeded. Remaining today: %s', gjc_money($remaining)),
+            ]);
+            exit;
+        }
+
+        // --- Get sender wallet (for balance check BEFORE transaction) ---
+        $senderWallet = gjc_student_wallet($db, $currentUserId);
+        if ($senderWallet['id'] === 0) {
+            echo json_encode(['success' => false, 'message' => 'Sender wallet not found.']);
+            exit;
+        }
+        if ($senderWallet['balance'] < $amount) {
+            echo json_encode(['success' => false, 'message' => 'Insufficient wallet balance.']);
+            exit;
+        }
+
+        // --- Get recipient wallet ---
+        $recipientWallet = gjc_student_wallet($db, $recipientUserId);
+        if ($recipientWallet['id'] === 0) {
+            echo json_encode(['success' => false, 'message' => 'Recipient wallet not found.']);
+            exit;
+        }
+
+        $refNo = 'P2P-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
+        $recipientName = trim($recipient['first_name'] . ' ' . $recipient['last_name']);
+
+        // --- BEGIN TRANSACTION ---
+        $db->beginTransaction();
+        try {
+            // 1. Debit sender
+            $debitStmt = $db->prepare(
+                "UPDATE student_wallets
+                    SET balance = balance - ?
+                  WHERE id = ? AND balance >= ?"
+            );
+            $debitStmt->execute([$amount, $senderWallet['id'], $amount]);
+            if ($debitStmt->rowCount() === 0) {
+                throw new \RuntimeException('Insufficient balance or concurrent modification detected.');
+            }
+
+            // 2. Credit recipient
+            $db->prepare(
+                "UPDATE student_wallets SET balance = balance + ? WHERE id = ?"
+            )->execute([$amount, $recipientWallet['id']]);
+
+            // 3. Snapshot vault (unchanged for P2P)
+            $vaultBefore = (float) $db->query(
+                "SELECT cashier_vault_points FROM system_settings WHERE id = 1"
+            )->fetchColumn();
+
+            $totalCirc = (float) $db->query(
+                "SELECT (cashier_vault_points
+                        + (SELECT COALESCE(SUM(balance),0) FROM student_wallets)
+                        + (SELECT COALESCE(SUM(balance),0) FROM merchant_wallets)
+                        + (SELECT COALESCE(SUM(remaining_balance),0) FROM vouchers WHERE status='active'))
+                   FROM system_settings WHERE id = 1"
+            )->fetchColumn();
+
+            // 4. Log to transactions table (debit side)
+            $db->prepare(
+                "INSERT INTO transactions
+                    (reference_no, transaction_type, initiated_by, student_wallet_id, amount,
+                     vault_before, vault_after, total_in_circulation, status, notes)
+                 VALUES (?, 'p2p_transfer', ?, ?, ?, ?, ?, ?, 'completed', ?)"
+            )->execute([
+                $refNo, $currentUserId, $senderWallet['id'], $amount,
+                $vaultBefore, $vaultBefore, $totalCirc,
+                'P2P Transfer to ' . $recipientName . ($message ? ' — ' . $message : ''),
+            ]);
+
+            // 5. Log p2p_transfers record
+            $db->prepare(
+                "INSERT INTO p2p_transfers
+                    (reference_no, from_wallet_id, to_wallet_id, from_user_id, to_user_id, amount, message, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')"
+            )->execute([
+                $refNo,
+                $senderWallet['id'],
+                $recipientWallet['id'],
+                $currentUserId,
+                $recipientUserId,
+                $amount,
+                $message ?: null,
+            ]);
+
+            // --- COMMIT ---
+            $db->commit();
+
+            echo json_encode([
+                'success'   => true,
+                'reference' => $refNo,
+                'message'   => sprintf(
+                    'Sent %s (%s EduCoins) to %s.',
+                    gjc_money($amount),
+                    number_format($amount / 10, 1),
+                    $recipientName
+                ),
+            ]);
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Transfer failed: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+} catch (\Throwable $e) {
+    if ($db->inTransaction()) $db->rollBack();
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+}

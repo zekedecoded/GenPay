@@ -1,0 +1,247 @@
+<?php
+session_start();
+require_once __DIR__ . '/../connection/config.php';
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['admin']);
+$currentUser = gjc_current_user($db);
+$currentPage = 'restricted_products';
+
+$products = [];
+if (gjc_table_exists($db, 'restricted_products')) {
+    $products = $db->query(
+        "SELECT rp.*, u.first_name, u.last_name
+           FROM restricted_products rp
+           LEFT JOIN users u ON u.userID = rp.flagged_by
+          ORDER BY rp.is_active DESC, rp.created_at DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restricted Products | GJC EduPay Admin</title>
+    <meta name="description" content="Nutritional compliance product blacklist management for GJC EduPay.">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-layout">
+    <?php
+    if (defined('DASHBOARD_URL')) {
+        require_once __DIR__ . '/../includes/partials/sidebar_admin.php';
+    } else { ?>
+    <aside class="admin-sidebar" id="sidebar">
+        <div class="brand-box">
+            <div class="brand-logo"><img src="<?= ICONS_URL ?>/edupay.png" alt="Logo"></div>
+            <div class="brand-text"><h4>GJC EduPay</h4><span>Admin Portal</span></div>
+        </div>
+        <nav class="sidebar-menu">
+            <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt=""><span class="nav-text">Dashboard</span></a>
+            <a href="<?= ADMIN_URL ?>/users.php"><img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt=""><span class="nav-text">Users</span></a>
+            <a href="<?= ADMIN_URL ?>/leases.php"><img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt=""><span class="nav-text">Leases &amp; Rent</span></a>
+            <a href="<?= ADMIN_URL ?>/restricted_products.php" class="active"><img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt=""><span class="nav-text">Restricted Products</span></a>
+            <a href="<?= ADMIN_URL ?>/transactions.php"><img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt=""><span class="nav-text">Transactions</span></a>
+        </nav>
+        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn"><img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt=""><span>Logout</span></a>
+    </aside>
+    <?php } ?>
+
+    <main class="admin-main">
+        <header class="topbar">
+            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
+            <div>
+                <h1>Restricted Products</h1>
+                <p>Nutritional compliance blacklist — prevents merchants from encoding prohibited items.</p>
+            </div>
+            <div class="admin-user">
+                <span><?= gjc_e($currentUser['name']) ?></span>
+                <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
+            </div>
+        </header>
+
+        <!-- Info Banner -->
+        <div style="background:linear-gradient(135deg,#064420 0%,#0d7a3e 100%);color:#fff;padding:20px 28px;border-radius:16px;margin-bottom:24px;">
+            <h4 style="margin:0 0 6px;font-weight:800;">&#127828; Nutritional Compliance Registry</h4>
+            <p style="margin:0;opacity:.85;">Items listed here are cross-checked when merchants add products to their inventory. Matching items are automatically blocked and flagged with the reason on file.</p>
+        </div>
+
+        <!-- Summary Row -->
+        <section class="row g-4 mb-4">
+            <?php
+            $activeCount   = count(array_filter($products, function ($p) {
+                return $p['is_active'];
+            }));
+            $inactiveCount = count($products) - $activeCount;
+            ?>
+            <div class="col-12 col-md-4">
+                <div class="metric-card">
+                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/settings.png" alt=""></div>
+                    <span>Total Restrictions</span>
+                    <h2><?= count($products) ?></h2>
+                    <p>Items on file</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="metric-card" style="border-left:4px solid #ef4444">
+                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/pending-encashments.png" alt=""></div>
+                    <span>Active Blocks</span>
+                    <h2 style="color:#ef4444"><?= $activeCount ?></h2>
+                    <p>Currently enforced</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="metric-card">
+                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/analytics.png" alt=""></div>
+                    <span>Inactive</span>
+                    <h2><?= $inactiveCount ?></h2>
+                    <p>Deactivated rules</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Products Table -->
+        <section class="premium-panel">
+            <div class="panel-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3>Blacklisted Items</h3>
+                    <p><?= count($products) ?> restriction(s) on file.</p>
+                </div>
+                <button class="view-btn" data-bs-toggle="modal" data-bs-target="#restrictModal" id="btn-flag-product">
+                    + Flag Product
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table premium-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Product / Keyword</th>
+                            <th>Category</th>
+                            <th>Match Type</th>
+                            <th>Reason</th>
+                            <th>Flagged By</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if (empty($products)): ?>
+                        <tr><td colspan="8" class="text-center text-muted py-5">No restricted products flagged yet.</td></tr>
+                    <?php endif; ?>
+                    <?php foreach ($products as $p): ?>
+                        <tr>
+                            <td><strong><?= gjc_e($p['product_name']) ?></strong></td>
+                            <td><span class="badge-warning"><?= gjc_e(ucwords(str_replace('_', ' ', $p['category']))) ?></span></td>
+                            <td><code><?= gjc_e($p['match_type']) ?></code></td>
+                            <td style="max-width:280px;font-size:13px"><?= gjc_e($p['reason']) ?></td>
+                            <td><?= gjc_e(trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''))) ?></td>
+                            <td><small><?= date('M d, Y', strtotime($p['created_at'])) ?></small></td>
+                            <td>
+                                <?php if ($p['is_active']): ?>
+                                    <span class="badge-success">Active</span>
+                                <?php else: ?>
+                                    <span class="badge-secondary">Inactive</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm <?= $p['is_active'] ? 'btn-outline-danger' : 'btn-outline-success' ?>"
+                                    onclick="toggleRestriction(<?= (int)$p['id'] ?>, <?= $p['is_active'] ? 0 : 1 ?>)">
+                                    <?= $p['is_active'] ? 'Deactivate' : 'Reactivate' ?>
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Flag Product Modal -->
+<div class="modal fade" id="restrictModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal">
+            <div class="modal-header"><h5 class="modal-title">Flag Restricted Product</h5></div>
+            <div class="modal-body">
+                <form id="restrictForm">
+                    <input type="hidden" name="action" value="flag_product">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Product Name / Keyword *</label>
+                            <input type="text" class="form-control" name="product_name" required
+                                placeholder="e.g. Coca-Cola, Soda, Energy Drink">
+                            <div class="form-text">Use a keyword that appears in the product name. Match type controls how it's compared.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Category</label>
+                            <select class="form-select" name="category">
+                                <option value="beverage">Beverage</option>
+                                <option value="snack">Snack</option>
+                                <option value="junk_food">Junk Food</option>
+                                <option value="candy">Candy</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Match Type</label>
+                            <select class="form-select" name="match_type">
+                                <option value="contains">Contains (substring match)</option>
+                                <option value="exact">Exact (full name only)</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Reason / Policy Note *</label>
+                            <textarea class="form-control" name="reason" rows="2" required
+                                placeholder="e.g. High sugar content — DepEd nutritional guidelines prohibit this item."></textarea>
+                        </div>
+                    </div>
+                    <div id="restrictMsg" class="mt-3"></div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="login-btn" style="flex:1" id="restrictSubmitBtn">Flag Product</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<script>
+document.getElementById('restrictForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('restrictSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Flagging...';
+    const resp = await fetch('<?= ADMIN_URL ?>/api/restricted_products.php', {
+        method: 'POST', body: new FormData(this)
+    });
+    const data = await resp.json();
+    const msg = document.getElementById('restrictMsg');
+    if (data.success) {
+        msg.innerHTML = '<div class="alert alert-success">Product flagged successfully. Reloading...</div>';
+        setTimeout(() => location.reload(), 1300);
+    } else {
+        msg.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+        btn.disabled = false; btn.textContent = 'Flag Product';
+    }
+});
+
+async function toggleRestriction(id, newStatus) {
+    const f = new FormData();
+    f.append('action', 'toggle_restriction');
+    f.append('id', id);
+    f.append('is_active', newStatus);
+    const resp = await fetch('<?= ADMIN_URL ?>/api/restricted_products.php', { method: 'POST', body: f });
+    const data = await resp.json();
+    if (data.success) location.reload();
+    else alert('Error: ' + data.message);
+}
+</script>
+</body>
+</html>

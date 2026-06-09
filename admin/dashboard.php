@@ -1,15 +1,21 @@
 <?php
-require_once __DIR__ . '/../connection/config.php';
-require_once __DIR__ . '/../connection/pdo.php';
-require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . "/../connection/config.php";
+require_once __DIR__ . "/../connection/pdo.php";
+require_once __DIR__ . "/../connection/app.php";
+require_once __DIR__ . "/../connection/MerchantTenantDirectory.php";
 
-gjc_require_role(['admin']);
+gjc_require_role(["admin"]);
 
 $dashboard = gjc_admin_dashboard_data($db);
-$financials = $dashboard['system_financials'];
-$demographics = $dashboard['user_demographics'];
-$recentTransactions = $dashboard['recent_transactions'];
-$transactionChart = $dashboard['transaction_chart'];
+$demographics = $dashboard["user_demographics"];
+$recentTransactions = $dashboard["recent_transactions"];
+$transactionChart = $dashboard["transaction_chart"];
+$isSuperAdmin = gjc_sub_role() === "super_admin";
+$tenantCards = $isSuperAdmin
+    ? (new MerchantTenantDirectory($db))->directoryCards()
+    : [];
+
+$currentPage = "dashboard";
 ?>
 
 <!DOCTYPE html>
@@ -34,67 +40,7 @@ $transactionChart = $dashboard['transaction_chart'];
 
     <div class="admin-layout">
 
-        <aside class="admin-sidebar" id="sidebar">
-
-            <div class="brand-box">
-                <div class="brand-logo">
-                    <img src="<?= ICONS_URL ?>/edupay.png" alt="Logo">
-                </div>
-
-                <div class="brand-text">
-                    <h4>GJC EduPay</h4>
-                    <span>Admin Portal</span>
-                </div>
-            </div>
-
-            <nav class="sidebar-menu">
-                <a href="<?= ADMIN_URL ?>/dashboard.php" class="active">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt="">
-                    <span class="nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/users.php">
-                    <img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt="">
-                    <span class="nav-text">Users</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/topups.php">
-                    <img src="<?= ICONS_URL ?>/topups.png" class="nav-icon" alt="">
-                    <span class="nav-text">Top-ups</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/encashments.php">
-                    <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
-                    <span class="nav-text">Encashments</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/transactions.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
-                    <span class="nav-text">Transactions</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/economy.php">
-                    <img src="<?= ICONS_URL ?>/wallet.png" class="nav-icon" alt="">
-                    <span class="nav-text">Economy</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/visitors.php">
-                    <img src="<?= ICONS_URL ?>/visitors.png" class="nav-icon" alt="">
-                    <span class="nav-text">Visitors</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/settings.php">
-                    <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
-                    <span class="nav-text">Settings</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="logout-btn">
-                <img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt="">
-                <span>Logout</span>
-            </a>
-
-        </aside>
+        <?php require __DIR__ . "/../includes/partials/sidebar_admin.php"; ?>
 
         <main class="admin-main">
 
@@ -114,56 +60,93 @@ $transactionChart = $dashboard['transaction_chart'];
                 </div>
             </header>
 
-            <div class="section-title mb-3 mt-2">
-                <h4 style="font-size: 18px; font-weight: 800; color: var(--emerald-950); margin: 0;">System Financials</h4>
-            </div>
-            <section class="row g-4 mb-4">
-
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <img src="<?= ICONS_URL ?>/wallet.png" alt="">
-                        </div>
-                        <span>Circulating Balance</span>
-                        <h2><?php echo gjc_money($financials['circulating_balance']); ?></h2>
-                        <p>Student, merchant, and active visitor funds</p>
+            <?php if ($isSuperAdmin): ?>
+            <section class="premium-panel mb-4" id="tenantDirectoryPanel">
+                <div class="panel-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3>Merchant/Tenant Directory</h3>
+                        <p>Institutional lease, rent obligation, and inventory compliance overview.</p>
                     </div>
                 </div>
 
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <img src="<?= ICONS_URL ?>/volume.png" alt="">
-                        </div>
-                        <span>Today's Volume</span>
-                        <h2><?php echo gjc_money($financials['todays_volume']); ?></h2>
-                        <p>Successful transactions today</p>
+                <?php if (empty($tenantCards)): ?>
+                    <div class="text-center text-muted py-5">No merchant stalls are registered yet.</div>
+                <?php else: ?>
+                    <div class="row g-3" id="tenantDirectoryGrid">
+                        <?php foreach ($tenantCards as $stall): ?>
+                            <?php
+                            $status = strtolower(
+                                (string) $stall["operational_status"],
+                            );
+                            $leaseStatus = strtolower(
+                                (string) $stall["lease_status"],
+                            );
+                            $statusClass = in_array($status, ["active"], true)
+                                ? "bg-success"
+                                : (in_array(
+                                    $status,
+                                    ["suspended", "inactive"],
+                                    true,
+                                )
+                                    ? "bg-danger"
+                                    : "bg-warning text-dark");
+                            $leaseClass = in_array(
+                                $leaseStatus,
+                                ["paid", "no rent due"],
+                                true,
+                            )
+                                ? "bg-success"
+                                : (in_array(
+                                    $leaseStatus,
+                                    ["unpaid", "partially paid"],
+                                    true,
+                                )
+                                    ? "bg-danger"
+                                    : "bg-secondary");
+                            ?>
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <button type="button"
+                                    class="tenant-card js-stall-card"
+                                    data-merchant-id="<?= (int) $stall[
+                                        "merchant_id"
+                                    ] ?>"
+                                    aria-label="Open stall detail view for <?= htmlspecialchars(
+                                        $stall["stall_name"],
+                                        ENT_QUOTES,
+                                        "UTF-8",
+                                    ) ?>">
+                                    <span class="tenant-card-kicker">Stall #<?= (int) $stall[
+                                        "merchant_id"
+                                    ] ?></span>
+                                    <strong><?= htmlspecialchars(
+                                        $stall["stall_name"],
+                                        ENT_QUOTES,
+                                        "UTF-8",
+                                    ) ?></strong>
+                                    <span class="tenant-proprietor"><?= htmlspecialchars(
+                                        $stall["proprietor_name"],
+                                        ENT_QUOTES,
+                                        "UTF-8",
+                                    ) ?></span>
+                                    <span class="tenant-badges">
+                                        <span class="badge <?= $statusClass ?>"><?= htmlspecialchars(
+    ucwords(str_replace("_", " ", $stall["operational_status"])),
+    ENT_QUOTES,
+    "UTF-8",
+) ?></span>
+                                        <span class="badge <?= $leaseClass ?>"><?= htmlspecialchars(
+    $stall["lease_status"],
+    ENT_QUOTES,
+    "UTF-8",
+) ?></span>
+                                    </span>
+                                </button>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <img src="<?= ICONS_URL ?>/pending-topups.png" alt="">
-                        </div>
-                        <span>Pending Top-ups</span>
-                        <h2><?php echo (int) $financials['pending_topups']; ?></h2>
-                        <p>Awaiting cashier approval</p>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="">
-                        </div>
-                        <span>Pending Encashments</span>
-                        <h2><?php echo (int) $financials['pending_encashments']; ?></h2>
-                        <p>Awaiting disbursement</p>
-                    </div>
-                </div>
-
+                <?php endif; ?>
             </section>
+            <?php endif; ?>
 
             <div class="section-title mb-3">
                 <h4 style="font-size: 18px; font-weight: 800; color: var(--emerald-950); margin: 0;">User Demographics</h4>
@@ -177,7 +160,9 @@ $transactionChart = $dashboard['transaction_chart'];
                         </div>
                         <div class="mini-metric-info">
                             <span>Total Users</span>
-                            <h3><?php echo (int) $demographics['total_users']; ?></h3>
+                            <h3><?php echo (int) $demographics[
+                                "total_users"
+                            ]; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -189,7 +174,9 @@ $transactionChart = $dashboard['transaction_chart'];
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Students</span>
-                            <h3><?php echo (int) $demographics['active_students']; ?></h3>
+                            <h3><?php echo (int) $demographics[
+                                "active_students"
+                            ]; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -201,7 +188,9 @@ $transactionChart = $dashboard['transaction_chart'];
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Merchants</span>
-                            <h3><?php echo (int) $demographics['active_merchants']; ?></h3>
+                            <h3><?php echo (int) $demographics[
+                                "active_merchants"
+                            ]; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -213,7 +202,9 @@ $transactionChart = $dashboard['transaction_chart'];
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Visitors</span>
-                            <h3><?php echo (int) $demographics['active_visitors']; ?></h3>
+                            <h3><?php echo (int) $demographics[
+                                "active_visitors"
+                            ]; ?></h3>
                         </div>
                     </div>
                 </div>
@@ -313,19 +304,40 @@ $transactionChart = $dashboard['transaction_chart'];
                             </tr>
                             <?php endif; ?>
 
-                            <?php foreach ($recentTransactions as $transaction): ?>
+                            <?php foreach (
+                                $recentTransactions
+                                as $transaction
+                            ): ?>
                             <tr>
-                                <td><?php echo gjc_e($transaction['ref']); ?></td>
-                                <td><?php echo gjc_e($transaction['type_label']); ?></td>
-                                <td><?php echo gjc_money($transaction['amount']); ?></td>
-                                <td><?php echo gjc_e($transaction['sender']); ?></td>
-                                <td><?php echo gjc_e($transaction['receiver']); ?></td>
+                                <td><?php echo gjc_e(
+                                    $transaction["ref"],
+                                ); ?></td>
+                                <td><?php echo gjc_e(
+                                    $transaction["type_label"],
+                                ); ?></td>
+                                <td><?php echo gjc_money(
+                                    $transaction["amount"],
+                                ); ?></td>
+                                <td><?php echo gjc_e(
+                                    $transaction["sender"],
+                                ); ?></td>
+                                <td><?php echo gjc_e(
+                                    $transaction["receiver"],
+                                ); ?></td>
                                 <td>
-                                    <span class="<?php echo gjc_transaction_is_success($transaction['status']) ? 'badge-success' : 'badge-warning'; ?>">
-                                        <?php echo gjc_e($transaction['status_label']); ?>
+                                    <span class="<?php echo gjc_transaction_is_success(
+                                        $transaction["status"],
+                                    )
+                                        ? "badge-success"
+                                        : "badge-warning"; ?>">
+                                        <?php echo gjc_e(
+                                            $transaction["status_label"],
+                                        ); ?>
                                     </span>
                                 </td>
-                                <td><?php echo gjc_e($transaction['time_label']); ?></td>
+                                <td><?php echo gjc_e(
+                                    $transaction["time_label"],
+                                ); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -338,8 +350,202 @@ $transactionChart = $dashboard['transaction_chart'];
 
     </div>
 
+    <?php if ($isSuperAdmin): ?>
+    <div class="modal fade" id="stallDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="stallDetailTitle">Stall Detail View</h5>
+                        <small class="text-muted" id="stallDetailSubtitle"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="stallDetailAlert"></div>
+                    <div id="stallDetailLoading" class="text-center text-muted py-5">Loading stall details...</div>
+                    <div id="stallDetailContent" class="d-none">
+                        <div class="alert alert-info py-2">
+                            Revenue privacy enforced: this admin view does not include merchant cash sales metrics or transaction history.
+                        </div>
+
+                        <ul class="nav nav-tabs" id="stallDetailTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="lease-tab" data-bs-toggle="tab" data-bs-target="#leasePane" type="button" role="tab">Lease & Rent</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventoryPane" type="button" role="tab">Inventory Compliance</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content pt-3">
+                            <div class="tab-pane fade show active" id="leasePane" role="tabpanel">
+                                <div id="leaseSummary"></div>
+                                <form class="row g-3 mt-2" id="leaseUpdateForm">
+                                    <input type="hidden" name="action" value="update_lease">
+                                    <input type="hidden" name="lease_id" id="leaseIdInput">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Monthly Rent</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" name="monthly_rent" id="leaseMonthlyRent">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Deposit</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" name="deposit_amount" id="leaseDeposit">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Lease Start</label>
+                                        <input type="date" class="form-control" name="lease_start" id="leaseStart">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Lease End</label>
+                                        <input type="date" class="form-control" name="lease_end" id="leaseEnd">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Next Due Date</label>
+                                        <input type="date" class="form-control" name="next_due_date" id="leaseNextDue">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status" id="leaseStatus">
+                                            <option value="pending">Pending</option>
+                                            <option value="active">Active</option>
+                                            <option value="expired">Expired</option>
+                                            <option value="terminated">Terminated</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Contract Notes</label>
+                                        <input type="text" class="form-control" name="contract_notes" id="leaseNotes">
+                                    </div>
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" type="submit">Update Lease</button>
+                                    </div>
+                                </form>
+
+                                <hr>
+
+                                <form class="row g-3" id="rentPaymentForm">
+                                    <input type="hidden" name="action" value="record_rent_payment">
+                                    <input type="hidden" name="lease_id" id="paymentLeaseIdInput">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Amount Paid</label>
+                                        <input type="number" step="0.01" min="0.01" class="form-control" name="amount_paid" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Period Covered</label>
+                                        <input type="month" class="form-control" name="period_covered" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Payment Date</label>
+                                        <input type="date" class="form-control" name="payment_date" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Method</label>
+                                        <select class="form-select" name="payment_method">
+                                            <option value="cash">Cash</option>
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                            <option value="check">Check</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <label class="form-label">Notes</label>
+                                        <input type="text" class="form-control" name="notes">
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-success w-100" type="submit">Log Collection</button>
+                                    </div>
+                                </form>
+
+                                <div class="row g-2 align-items-end mt-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Payment From</label>
+                                        <input type="date" class="form-control" id="paymentFilterFrom">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Payment To</label>
+                                        <input type="date" class="form-control" id="paymentFilterTo">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-outline-secondary w-100" type="button" id="applyPaymentFilters">Apply Date Filter</button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Reference</th>
+                                                <th>Period</th>
+                                                <th>Payment Date</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rentPaymentsBody"></tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center" id="paymentPager"></div>
+                            </div>
+
+                            <div class="tab-pane fade" id="inventoryPane" role="tabpanel">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Search</label>
+                                        <input type="search" class="form-control" id="inventorySearch" placeholder="Product name or SKU">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Category</label>
+                                        <input type="text" class="form-control" id="inventoryCategory" placeholder="food, beverage">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Restriction</label>
+                                        <select class="form-select" id="inventoryRestriction">
+                                            <option value="">All</option>
+                                            <option value="restricted">Restricted</option>
+                                            <option value="allowed">Allowed</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button class="btn btn-outline-secondary w-100" type="button" id="applyInventoryFilters">Go</button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Category</th>
+                                                <th>Price</th>
+                                                <th>POS Status</th>
+                                                <th>Compliance</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="inventoryComplianceBody"></tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center" id="inventoryPager"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script>
-    window.dashboardTransactionChart = <?php echo json_encode($transactionChart, JSON_UNESCAPED_SLASHES); ?>;
+    window.dashboardTransactionChart = <?php echo json_encode(
+        $transactionChart,
+        JSON_UNESCAPED_SLASHES,
+    ); ?>;
+    <?php if ($isSuperAdmin): ?>
+    window.stallDirectoryConfig = {
+        endpoint: '<?= ADMIN_URL ?>/api/get_stall_details.php'
+    };
+    <?php endif; ?>
     </script>
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -347,6 +553,9 @@ $transactionChart = $dashboard['transaction_chart'];
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
     <script src="<?= JS_URL ?>/admin_datatables.js"></script>
     <script src="<?= JS_URL ?>/dashboard_chart.js"></script>
+    <?php if ($isSuperAdmin): ?>
+    <script src="<?= JS_URL ?>/admin_stall_directory.js"></script>
+    <?php endif; ?>
 
     <script>
         function toggleSidebar() {

@@ -11,7 +11,8 @@ require_once __DIR__ . '/../../connection/VoucherEngine.php';
 gjc_require_role(['merchant']);
 
 $currentUser = gjc_current_user($db);
-$merchantUserId = (int) ($currentUser['id'] ?? 0);
+$sessionUserId = (int) ($currentUser['id'] ?? 0);
+$merchantUserId = gjc_merchant_owner_id($db, $sessionUserId);
 $wallet = gjc_merchant_wallet($db, $merchantUserId);
 
 if ($merchantUserId <= 0 || $wallet['id'] <= 0) {

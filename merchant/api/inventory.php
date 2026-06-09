@@ -1,0 +1,164 @@
+<?php
+session_start();
+require_once __DIR__ . '/../../connection/config.php';
+require_once __DIR__ . '/../../connection/pdo.php';
+require_once __DIR__ . '/../../connection/app.php';
+
+header('Content-Type: application/json');
+gjc_require_role(['merchant']);
+
+$action         = trim((string) ($_POST['action'] ?? ''));
+$merchantUserId = gjc_user_id();
+$ownerMerchId   = gjc_merchant_owner_id($db, $merchantUserId);
+$isMerchAdmin   = gjc_is_merchant_admin() || (gjc_current_role() === 'merchant' && !gjc_is_merchant_staff());
+
+// ── Helper: check against restricted_products ──────────────────────────────
+function gjc_check_restricted(PDO $db, string $productName): ?string {
+    if (!gjc_table_exists($db, 'restricted_products')) return null;
+    $restrictions = $db->query(
+        "SELECT product_name, match_type, reason FROM restricted_products WHERE is_active = 1"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $nameLower = strtolower($productName);
+    foreach ($restrictions as $r) {
+        $rpLower = strtolower($r['product_name']);
+        $hit = ($r['match_type'] === 'exact')
+            ? ($nameLower === $rpLower)
+            : (strpos($nameLower, $rpLower) !== false);
+        if ($hit) return $r['reason'];
+    }
+    return null;
+}
+
+try {
+    switch ($action) {
+        case 'add_product': {
+            if (!$isMerchAdmin) {
+                echo json_encode(['success' => false, 'message' => 'Only Merchant Admin can add products.']);
+                exit;
+            }
+            $sku          = trim((string) ($_POST['sku'] ?? ''));
+            $productName  = trim((string) ($_POST['product_name'] ?? ''));
+            $description  = trim((string) ($_POST['description'] ?? ''));
+            $category     = trim((string) ($_POST['category'] ?? 'general'));
+            $unit         = trim((string) ($_POST['unit'] ?? 'piece'));
+            $price        = (float)  ($_POST['price'] ?? 0);
+            $stockQty     = (int)    ($_POST['stock_qty'] ?? 0);
+            $minAlert     = (int)    ($_POST['min_stock_alert'] ?? 5);
+            $isAvailable  = isset($_POST['is_available']) ? 1 : 0;
+
+            if (!$productName || $price < 0) {
+                echo json_encode(['success' => false, 'message' => 'Product name and valid price are required.']);
+                exit;
+            }
+
+            // Restriction check
+            $restrictionReason = gjc_check_restricted($db, $productName);
+            $isRestricted = $restrictionReason !== null ? 1 : 0;
+            if ($isRestricted) {
+                $isAvailable = 0; // Auto-disable restricted items
+            }
+
+            $stmt = $db->prepare(
+                "INSERT INTO merchant_inventory
+                    (merchant_user_id, sku, product_name, description, category, unit, price,
+                     stock_qty, min_stock_alert, is_available, is_restricted, restriction_note)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $stmt->execute([
+                $merchantUserId,
+                $sku ?: null,
+                $productName,
+                $description ?: null,
+                $category,
+                $unit,
+                $price,
+                $stockQty,
+                $minAlert,
+                $isAvailable,
+                $isRestricted,
+                $restrictionReason,
+            ]);
+
+            $msg = $isRestricted
+                ? "Product saved but flagged as RESTRICTED: {$restrictionReason}"
+                : 'Product added successfully.';
+            echo json_encode(['success' => true, 'message' => $msg, 'is_restricted' => $isRestricted]);
+            break;
+        }
+
+        case 'edit_product': {
+            if (!$isMerchAdmin) {
+                echo json_encode(['success' => false, 'message' => 'Only Merchant Admin can edit products.']);
+                exit;
+            }
+            $itemId      = (int) ($_POST['item_id'] ?? 0);
+            $sku         = trim((string) ($_POST['sku'] ?? ''));
+            $productName = trim((string) ($_POST['product_name'] ?? ''));
+            $description = trim((string) ($_POST['description'] ?? ''));
+            $category    = trim((string) ($_POST['category'] ?? 'general'));
+            $unit        = trim((string) ($_POST['unit'] ?? 'piece'));
+            $price       = (float) ($_POST['price'] ?? 0);
+            $stockQty    = (int)   ($_POST['stock_qty'] ?? 0);
+            $minAlert    = (int)   ($_POST['min_stock_alert'] ?? 5);
+            $isAvailable = isset($_POST['is_available']) ? 1 : 0;
+
+            if (!$itemId || !$productName) {
+                echo json_encode(['success' => false, 'message' => 'Item ID and product name required.']);
+                exit;
+            }
+
+            // Verify ownership
+            $own = $db->prepare("SELECT id FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
+            $own->execute([$itemId, $merchantUserId]);
+            if (!$own->fetch()) {
+                echo json_encode(['success' => false, 'message' => 'Item not found in your inventory.']);
+                exit;
+            }
+
+            $restrictionReason = gjc_check_restricted($db, $productName);
+            $isRestricted = $restrictionReason !== null ? 1 : 0;
+            if ($isRestricted) $isAvailable = 0;
+
+            $stmt = $db->prepare(
+                "UPDATE merchant_inventory
+                    SET sku=?, product_name=?, description=?, category=?, unit=?, price=?,
+                        stock_qty=?, min_stock_alert=?, is_available=?, is_restricted=?, restriction_note=?
+                  WHERE id=? AND merchant_user_id=?"
+            );
+            $stmt->execute([
+                $sku ?: null, $productName, $description ?: null, $category, $unit, $price,
+                $stockQty, $minAlert, $isAvailable, $isRestricted, $restrictionReason,
+                $itemId, $merchantUserId,
+            ]);
+            echo json_encode([
+                'success' => true,
+                'message' => $isRestricted ? "Saved but flagged as RESTRICTED: {$restrictionReason}" : 'Product updated.',
+            ]);
+            break;
+        }
+
+        case 'update_stock': {
+            $itemId   = (int) ($_POST['item_id'] ?? 0);
+            $stockQty = (int) ($_POST['stock_qty'] ?? 0);
+
+            if (!$itemId || $stockQty < 0) {
+                echo json_encode(['success' => false, 'message' => 'Valid item ID and stock quantity required.']);
+                exit;
+            }
+
+            // Ownership check — staff can only update stock for their owner's inventory
+            $stmt = $db->prepare(
+                "UPDATE merchant_inventory SET stock_qty = ? WHERE id = ? AND merchant_user_id = ?"
+            );
+            $stmt->execute([$stockQty, $itemId, $ownerMerchId]);
+            echo json_encode(['success' => $stmt->rowCount() > 0, 'message' => $stmt->rowCount() > 0 ? 'Stock updated.' : 'Item not found.']);
+            break;
+        }
+
+        default:
+            echo json_encode(['success' => false, 'message' => 'Unknown action.']);
+    }
+} catch (\Throwable $e) {
+    echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+}

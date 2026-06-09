@@ -51,7 +51,7 @@ $recentPayments = [];
             </div>
 
             <nav class="student-menu">
-                <a href="<?= STUDENT_URL ?>/dashboard.php">
+                <a href="<?= DASHBOARD_URL ?>">
                     <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
                     <span class="student-nav-text">Dashboard</span>
                 </a>

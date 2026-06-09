@@ -45,3 +45,6 @@ define('MERCHANT_PATH',   BASE_PATH . '/merchant');
 define('STUDENT_PATH',    BASE_PATH . '/student');
 define('INCLUDES_PATH',   BASE_PATH . '/includes');
 define('CONNECTION_PATH', BASE_PATH . '/connection');
+
+define('DASHBOARD_URL',  BASE_URL . '/dashboard.php');
+define('DASHBOARD_PATH', BASE_PATH . '/dashboard.php');

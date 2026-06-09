@@ -1,4 +1,4 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
-header('Location: ' . STUDENT_URL . '/dashboard.php');
+header('Location: ' . DASHBOARD_URL);
 exit;

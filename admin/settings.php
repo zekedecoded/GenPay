@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
 $serverTime = "Apr 25, 2026 12:34:46 AM";
+
+$currentPage = 'settings';
 ?>
 
 <!DOCTYPE html>
@@ -24,66 +26,7 @@ $serverTime = "Apr 25, 2026 12:34:46 AM";
 
     <div class="admin-layout">
 
-        <aside class="admin-sidebar" id="sidebar">
-
-            <div class="brand-box">
-                <div class="brand-logo">
-                    <img src="<?= ICONS_URL ?>/edupay.png" alt="Logo">
-                </div>
-
-                <div class="brand-text">
-                    <h4>GJC EduPay</h4>
-                    <span>Admin Portal</span>
-                </div>
-            </div>
-
-            <nav class="sidebar-menu">
-                <a href="<?= ADMIN_URL ?>/dashboard.php">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt="">
-                    <span class="nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/users.php">
-                    <img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt="">
-                    <span class="nav-text">Users</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/topups.php">
-                    <img src="<?= ICONS_URL ?>/topups.png" class="nav-icon" alt="">
-                    <span class="nav-text">Top-ups</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/encashments.php">
-                    <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
-                    <span class="nav-text">Encashments</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/transactions.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
-                    <span class="nav-text">Transactions</span>
-                </a>
-                <a href="<?= ADMIN_URL ?>/economy.php">
-                    <img src="<?= ICONS_URL ?>/wallet.png" class="nav-icon" alt="">
-                    <span class="nav-text">Economy</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/visitors.php">
-                    <img src="<?= ICONS_URL ?>/visitors.png" class="nav-icon" alt="">
-                    <span class="nav-text">Visitors</span>
-                </a>
-
-                <a href="<?= ADMIN_URL ?>/settings.php" class="active">
-                    <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
-                    <span class="nav-text">Settings</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="logout-btn">
-                <img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt="">
-                <span>Logout</span>
-            </a>
-
-        </aside>
+        <?php require __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
         <main class="admin-main settings-page">
 

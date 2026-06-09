@@ -6,8 +6,11 @@ require_once __DIR__ . '/../connection/app.php';
 gjc_require_role(['merchant']);
 
 $currentUser = gjc_current_user($db);
-$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$ownerMerchId = gjc_merchant_owner_id($db, (int) $currentUser['id']);
+$wallet = gjc_merchant_wallet($db, $ownerMerchId);
 $merchantWalletId = (int) $wallet['id'];
+
+$currentPage = 'qr_scanner';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,49 +28,7 @@ $merchantWalletId = (int) $wallet['id'];
 
 <body>
     <div class="merchant-layout">
-        <aside class="merchant-sidebar" id="merchantSidebar">
-            <div class="merchant-brand">
-                <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
-                <div class="merchant-brand-text">
-                    <h4>GJC EduPay</h4>
-                    <span>Merchant Portal</span>
-                </div>
-            </div>
-
-            <nav class="merchant-menu">
-                <a href="<?= MERCHANT_URL ?>/dashboard.php">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qrcode.php">
-                    <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Generate QR</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qr_scanner.php" class="active">
-                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Scan Voucher</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/encash.php">
-                    <img src="<?= ICONS_URL ?>/encashments.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Encash</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/history.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">History</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">
-                <img src="<?= ICONS_URL ?>/logout.png" class="merchant-logout-icon" alt="">
-                <span>Logout</span>
-            </a>
-        </aside>
+        <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
         <main class="merchant-main">
             <header class="merchant-topbar">

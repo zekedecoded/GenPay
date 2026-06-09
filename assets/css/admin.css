@@ -45,7 +45,7 @@ body {
 
 .admin-sidebar {
   width: 280px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 24px 18px;
   position: fixed;
   left: 0;
@@ -60,6 +60,9 @@ body {
   box-shadow: 14px 0 40px rgba(3, 32, 20, 0.22);
   transition: 0.3s ease;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .admin-sidebar.collapsed {
@@ -74,6 +77,7 @@ body {
   color: white;
   white-space: nowrap;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .brand-logo {
@@ -121,6 +125,20 @@ body {
   display: flex;
   flex-direction: column;
   gap: 9px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
 }
 
 .sidebar-menu a {
@@ -166,10 +184,8 @@ body {
 }
 
 .logout-btn {
-  position: absolute;
-  bottom: 24px;
-  left: 18px;
-  right: 18px;
+  position: static;
+  margin-top: 16px;
   height: 50px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
@@ -183,6 +199,7 @@ body {
   border: 1px solid rgba(217, 169, 40, 0.22);
   transition: 0.25s;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .logout-icon {
@@ -197,8 +214,6 @@ body {
 }
 
 .admin-sidebar.collapsed .logout-btn {
-  left: 21px;
-  right: 21px;
   padding: 0;
 }
 
@@ -1714,3 +1729,66 @@ body {
 .mt-3  { margin-top: 16px !important; }
 .mt-2  { margin-top: 10px !important; }
 .mt-1  { margin-top: 6px !important; }
+
+.tenant-card {
+  width: 100%;
+  min-height: 150px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px;
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.tenant-card:hover,
+.tenant-card:focus {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.10);
+  outline: none;
+}
+
+.tenant-card-kicker,
+.tenant-proprietor {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tenant-card strong {
+  display: block;
+  color: #064e3b;
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 8px 0 4px;
+}
+
+.tenant-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.detail-stat {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.detail-stat span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.detail-stat strong {
+  color: #064e3b;
+  font-size: 18px;
+}

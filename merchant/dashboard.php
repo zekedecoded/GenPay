@@ -7,8 +7,10 @@ require_once __DIR__ . '/../connection/CirculationEngine.php';
 gjc_require_role(['merchant']);
 
 $currentUser = gjc_current_user($db);
-$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$ownerMerchId = gjc_merchant_owner_id($db, (int) $currentUser['id']);
+$wallet = gjc_merchant_wallet($db, $ownerMerchId);
 $currentBalance = $wallet['balance'];
+$canEncash = !gjc_is_merchant_staff();
 $todaysSales = 0;
 $totalEarned = 0;
 $encashmentStatus = "Available";
@@ -45,6 +47,8 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
     $totalStmt->execute(array_merge([$wallet['id']], $earningTypes));
     $totalEarned = (float) $totalStmt->fetchColumn();
 }
+
+$currentPage = 'dashboard';
 ?>
 
 <!DOCTYPE html>
@@ -56,7 +60,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
     <title>Merchant Dashboard | EduPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=10">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -70,52 +74,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 
     <div class="merchant-layout">
 
-        <aside class="merchant-sidebar" id="merchantSidebar">
-
-            <div class="merchant-brand">
-                <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
-
-                <div class="merchant-brand-text">
-                    <h4>GJC EduPay</h4>
-                    <span>Merchant Portal</span>
-                </div>
-            </div>
-
-            <nav class="merchant-menu">
-                <a href="<?= MERCHANT_URL ?>/dashboard.php" class="active">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qrcode.php">
-                    <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Generate QR</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
-                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Scan Voucher</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/encash.php">
-                    <img src="<?= ICONS_URL ?>/encashments.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Encash</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/history.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">History</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">
-                <img src="<?= ICONS_URL ?>/logout.png" class="merchant-logout-icon" alt="">
-                <span>Logout</span>
-            </a>
-
-        </aside>
+        <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
         <main class="merchant-main">
 
@@ -124,7 +83,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 
                 <div>
                     <h1>Merchant Dashboard</h1>
-                    <p>Monitor sales, balance, QR payments, and encashment activity.</p>
+                    <p>Monitor sales, balance, QR payments<?= $canEncash ? ', and encashment activity' : '' ?>.</p>
                 </div>
 
                 <div class="merchant-user">
@@ -144,7 +103,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         </div>
                         <span>Current Balance</span>
                         <h2><?php echo gjc_money($currentBalance); ?></h2>
-                        <p>Available for encashment</p>
+                        <p><?= $canEncash ? 'Available for encashment' : 'Store wallet balance' ?></p>
                     </div>
                 </div>
 
@@ -170,6 +129,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                     </div>
                 </div>
 
+                <?php if ($canEncash): ?>
                 <div class="col-12 col-md-6 col-xl-3">
                     <div class="merchant-metric-card">
                         <div class="merchant-metric-icon">
@@ -180,6 +140,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         <p>Request at anytime</p>
                     </div>
                 </div>
+                <?php endif; ?>
 
             </section>
 
@@ -215,10 +176,12 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                                 <b>›</b>
                             </a>
 
+                            <?php if ($canEncash): ?>
                             <a href="<?= MERCHANT_URL ?>/encash.php">
                                 <span>Request Encashment</span>
                                 <b>›</b>
                             </a>
+                            <?php endif; ?>
 
                             <a href="<?= MERCHANT_URL ?>/history.php">
                                 <span>Full History</span>
@@ -226,10 +189,12 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                             </a>
                         </div>
 
+                        <?php if ($canEncash): ?>
                         <div class="merchant-note">
                             Encash your balance at the <strong>Accountancy Office</strong>. Your wallet holds digital
                             receipts only.
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -289,7 +254,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                     <div class="me-hero-stat me-hero-highlight">
                         <span>Merchant Pool</span>
                         <strong>₱<?= number_format($mceMerch, 2) ?></strong>
-                        <small>Pending encashment</small>
+                        <small><?= $canEncash ? 'Pending encashment' : 'Store earnings pool' ?></small>
                     </div>
                     <div class="me-hero-divider"></div>
                     <div class="me-hero-stat">
@@ -316,7 +281,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         <div class="me-pool-label">Merchant Wallets Total</div>
                         <div class="me-pool-value">₱<?= number_format($mceMerch, 2) ?></div>
                         <div class="me-pool-bar"><div class="me-pool-bar-fill" style="width:<?= $mceMerchPct ?>%"></div></div>
-                        <div class="me-pool-meta"><?= $mceMerchPct ?>% of cap · Encashable at any time</div>
+                        <div class="me-pool-meta"><?= $mceMerchPct ?>% of cap · <?= $canEncash ? 'Encashable at any time' : 'Tracked for merchant admin' ?></div>
                     </div>
 
                     
@@ -348,6 +313,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                     </div>
 
                     
+                    <?php if ($canEncash): ?>
                     <div class="me-pool-card me-pool-tip">
                         <div class="me-pool-glow"></div>
                         <div class="me-pool-top">
@@ -361,14 +327,17 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
                         </div>
                         <div class="me-pool-meta">Points are converted to real PHP when you encash at the Accountancy Office.</div>
                     </div>
+                    <?php endif; ?>
 
                 </div>
 
                 
+                <?php if ($canEncash): ?>
                 <div class="me-tip-row">
                     <span>💡</span>
                     <span>Points in your merchant wallet can only be encashed — they cannot be used to pay other merchants. The campus economy is a closed loop; every peso is always tracked.</span>
                 </div>
+                <?php endif; ?>
 
             </section>
 

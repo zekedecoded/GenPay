@@ -80,7 +80,7 @@ if (isset($_SESSION['force_change'])) {
             </div>
 
             <nav class="student-menu">
-                <a href="<?= STUDENT_URL ?>/dashboard.php" class="active">
+                <a href="<?= DASHBOARD_URL ?>" class="active">
                     <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
                     <span class="student-nav-text">Dashboard</span>
                 </a>
@@ -214,9 +214,8 @@ if (isset($_SESSION['force_change'])) {
             $ceMerchantTotal = (float) ($ceSnap['merchant_wallets_total'] ?? 0);
             $ceVoucherTotal = (float) ($ceSnap['active_vouchers_total'] ?? 0);
             $ceBalanced = abs((float) ($ceSnap['circulation_drift'] ?? 0)) < 0.01;
-            $cePct = fn (float $value): float => min(100, max(0, round(($value / $ceCap) * 100, 1)));
-            $studShare = $cePct($ceStudentTotal);
-            $vaultShare = $cePct($ceVault);
+            $studShare = min(100, max(0, round(($ceStudentTotal / $ceCap) * 100, 1)));
+            $vaultShare = min(100, max(0, round(($ceVault / $ceCap) * 100, 1)));
             ?>
 
             <section class="student-premium-panel st-simple-economy mb-4">

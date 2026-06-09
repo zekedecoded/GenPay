@@ -4,10 +4,15 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['merchant']);
+if (gjc_is_merchant_staff()) {
+    header('Location: ' . MERCHANT_URL . '/dashboard.php');
+    exit;
+}
 gjc_ensure_operational_tables($db);
 
 $currentUser = gjc_current_user($db);
-$wallet = gjc_merchant_wallet($db, $currentUser['id']);
+$ownerMerchId = gjc_merchant_owner_id($db, (int) $currentUser['id']);
+$wallet = gjc_merchant_wallet($db, $ownerMerchId);
 $availableBalance = $wallet['balance'];
 $merchantName = $currentUser['name'];
 $notice = '';
@@ -29,7 +34,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 (user_id, merchant_wallet_id, amount, method, status, reference_no)
              VALUES (?, ?, ?, 'Cashier Release', 'pending', ?)"
         );
-        $stmt->execute([$currentUser['id'], $wallet['id'], $amount, $reference]);
+        $stmt->execute([$ownerMerchId, $wallet['id'], $amount, $reference]);
         $notice = "Encashment request {$reference} was submitted for finance review.";
     }
 }
@@ -41,8 +46,10 @@ $stmt = $db->prepare(
       ORDER BY created_at DESC
       LIMIT 8"
 );
-$stmt->execute([$currentUser['id']]);
+$stmt->execute([$ownerMerchId]);
 $encashHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$currentPage = 'encash';
 ?>
 
 <!DOCTYPE html>
@@ -66,52 +73,7 @@ $encashHistory = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="merchant-layout">
 
-        <aside class="merchant-sidebar" id="merchantSidebar">
-
-            <div class="merchant-brand">
-                <div class="merchant-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
-
-                <div class="merchant-brand-text">
-                    <h4>GJC EduPay</h4>
-                    <span>Merchant Portal</span>
-                </div>
-            </div>
-
-            <nav class="merchant-menu">
-                <a href="<?= MERCHANT_URL ?>/dashboard.php">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qrcode.php">
-                    <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Generate QR</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/qr_scanner.php">
-                    <img src="<?= ICONS_URL ?>/visitors.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Scan Voucher</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/encash.php" class="active">
-                    <img src="<?= ICONS_URL ?>/encashments.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">Encash</span>
-                </a>
-
-                <a href="<?= MERCHANT_URL ?>/history.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="merchant-nav-icon" alt="">
-                    <span class="merchant-nav-text">History</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">
-                <img src="<?= ICONS_URL ?>/logout.png" class="merchant-logout-icon" alt="">
-                <span>Logout</span>
-            </a>
-
-        </aside>
+        <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
         <main class="merchant-main">
 

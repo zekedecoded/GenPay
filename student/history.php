@@ -70,7 +70,9 @@ if (gjc_table_exists($db, 'topup_requests')) {
     }
 }
 
-usort($transactions, fn (array $a, array $b): int => strcmp($b['created_at'], $a['created_at']));
+usort($transactions, function (array $a, array $b): int {
+    return strcmp($b['created_at'], $a['created_at']);
+});
 ?>
 
 <!DOCTYPE html>
@@ -108,7 +110,7 @@ usort($transactions, fn (array $a, array $b): int => strcmp($b['created_at'], $a
             </div>
 
             <nav class="student-menu">
-                <a href="<?= STUDENT_URL ?>/dashboard.php">
+                <a href="<?= DASHBOARD_URL ?>">
                     <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
                     <span class="student-nav-text">Dashboard</span>
                 </a>

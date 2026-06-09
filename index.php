@@ -6,13 +6,13 @@
 
     
     if ($role === 3) {
-        header('Location: ' . ADMIN_URL . '/dashboard.php');
+        header('Location: ' . DASHBOARD_URL);
         exit;
     } elseif ($role === 2) {
-        header('Location: ' . MERCHANT_URL . '/dashboard.php');
+        header('Location: ' . DASHBOARD_URL);
         exit;
     } elseif ($role === 1) {
-        header('Location: ' . STUDENT_URL . '/dashboard.php');
+        header('Location: ' . DASHBOARD_URL);
         exit;
     }
 ?>

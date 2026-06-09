@@ -46,9 +46,27 @@ class Record
                     $_SESSION['userID'] = $userId;
                     $_SESSION['user_id'] = $userId;
                     $_SESSION['roleID'] = $roleId;
-                    $_SESSION['role'] = [1 => 'student', 2 => 'merchant', 3 => 'admin'][$roleId] ?? 'user';
+                    // Determine sub_role via soft remap (no DB changes to roleID)
+                    $subRole = match($roleId) {
+                        1 => 'student',
+                        2 => 'merchant_admin', // legacy merchants become merchant_admin
+                        3 => 'super_admin',    // legacy admin becomes super_admin
+                        4 => 'super_admin',
+                        5 => 'merchant_admin',
+                        6 => 'merchant_staff',
+                        default => 'student',
+                    };
 
-                    header("Location: index.php");
+                    // Override with DB sub_role if present
+                    if (!empty($user['sub_role'])) {
+                        $subRole = (string) $user['sub_role'];
+                    }
+
+                    $_SESSION['sub_role']         = $subRole;
+                    $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
+                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'admin', 4 => 'admin', 5 => 'merchant', 6 => 'merchant'][$roleId] ?? 'user';
+
+                    header('Location: ' . BASE_URL . '/dashboard.php');
                     exit;
                 } else {
                     return "Invalid password";
