@@ -1,0 +1,113 @@
+# ============================================================
+#  General De Jesus EduPay — Apache Security Configuration
+# ============================================================
+
+# ----------------------------------------------------------
+# 1. ENGINE
+# ----------------------------------------------------------
+Options -Indexes -MultiViews
+Options +FollowSymLinks
+RewriteEngine On
+
+# ----------------------------------------------------------
+# 2. HIDE .php EXTENSION (Clean URLs)
+#    /login        → login.php
+#    /admin/users  → admin/users.php
+#    etc.
+# ----------------------------------------------------------
+
+# Always serve real files & directories as-is (covers CSS, JS, images, fonts)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Explicitly pass asset extensions through — never rewrite them
+RewriteRule \.(css|js|jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot|otf|map|pdf)$ - [L,NC]
+
+# Rewrite extensionless URL to the matching .php file
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^.]+)$ $1.php [L,NC]
+
+# Strip .php from URLs typed directly (301 redirect for canonical URLs)
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L,NE]
+
+# ----------------------------------------------------------
+# 3. PROTECT SENSITIVE DIRECTORIES
+#    Block direct HTTP access to backend-only folders
+# ----------------------------------------------------------
+
+# /connection — database credentials
+RewriteRule ^connection(/.*)?$ - [F,L]
+
+# /database — SQL dumps / schema files
+RewriteRule ^database(/.*)?$ - [F,L]
+
+# /includes — shared PHP partials / helpers
+RewriteRule ^includes(/.*)?$ - [F,L]
+
+# /admin/api, /student/api, /merchant/api — internal API endpoints
+# (still callable via server-side; blocked from direct browser access)
+# Comment out the lines below if your frontend JS calls these directly.
+# RewriteRule ^(admin|student|merchant)/api(/.*)?$ - [F,L]
+
+# ----------------------------------------------------------
+# 4. PROTECT SENSITIVE FILES
+# ----------------------------------------------------------
+<FilesMatch "^(\.htaccess|\.htpasswd|\.env|ewallet\.sql|genhash\.php|libraries\.php)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block any file that starts with a dot (e.g. .git, .env)
+<FilesMatch "^\.">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ----------------------------------------------------------
+# 5. FORCE HTTPS  (uncomment when on a live server with SSL)
+# ----------------------------------------------------------
+# RewriteCond %{HTTPS} off
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# ----------------------------------------------------------
+# 6. SECURITY HEADERS
+# ----------------------------------------------------------
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Block MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Enable XSS filter in older browsers
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Referrer policy — don't leak the path to external sites
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Remove server fingerprinting headers
+    Header always unset X-Powered-By
+    Header always unset Server
+</IfModule>
+
+# ----------------------------------------------------------
+# 7. DISABLE SERVER SIGNATURE
+# ----------------------------------------------------------
+ServerSignature Off
+
+# ----------------------------------------------------------
+# 8. PREVENT HOTLINKING OF ASSETS  (live server only — disabled for localhost)
+# ----------------------------------------------------------
+# Uncomment these three lines only when deployed on a real domain with HTTPS:
+# RewriteCond %{HTTP_REFERER} !^$
+# RewriteCond %{HTTP_REFERER} !^https?://(www\.)?%{HTTP_HOST} [NC]
+# RewriteRule \.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?)$ - [F,NC,L]
+
+# ----------------------------------------------------------
+# 9. CUSTOM ERROR PAGES  (create these files if needed)
+# ----------------------------------------------------------
+# ErrorDocument 403 /error/403.php
+# ErrorDocument 404 /error/404.php
+# ErrorDocument 500 /error/500.php
