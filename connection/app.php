@@ -22,11 +22,16 @@ function gjc_role_name($role): string
         return [
             1 => 'student',
             2 => 'merchant',
-            3 => 'admin',
-            4 => 'admin',
+            3 => 'finance',
+            4 => 'finance',
             5 => 'merchant',
             6 => 'merchant',
         ][(int) $role] ?? 'guest';
+    }
+
+    // legacy alias: anything stored as 'admin' is treated as 'finance'
+    if (strtolower((string) $role) === 'admin') {
+        return 'finance';
     }
 
     return strtolower((string) $role);
@@ -987,7 +992,7 @@ function gjc_is_super_admin(): bool
 {
     $sub = gjc_sub_role();
     $role = gjc_current_role();
-    return $sub === "super_admin" || $role === "admin";
+    return $sub === 'super_admin' || $role === 'finance';
 }
 
 function gjc_is_merchant_admin(): bool

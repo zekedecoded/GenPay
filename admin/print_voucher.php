@@ -6,7 +6,7 @@ require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin', 'cashier', 'sub-admin', 'super-admin']);
+gjc_require_role(['finance']);
 
 $voucherId = (int) ($_GET['id'] ?? 0);
 $voucherCode = trim((string) ($_GET['code'] ?? ''));
@@ -44,6 +44,7 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voucher <?= gjc_e($voucher['voucher_code']) ?> | GJC EduPay</title>

@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
 $filters = [
     'search' => trim((string) ($_GET['search'] ?? '')),

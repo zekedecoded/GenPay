@@ -1,13 +1,13 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 $currentUser = gjc_current_user($db);
 $currentPage = 'leases';
 
-// ── Summary stats ─────────────────────────────────────────────────────────────
+// â”€â”€ Summary stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $totalLeases   = 0;
 $activeLeases  = 0;
 $overdueLeases = 0;
@@ -28,7 +28,7 @@ if (gjc_table_exists($db, 'merchant_leases')) {
     $monthlyTotal  = (float) ($row['monthly_total'] ?? 0.0);
 }
 
-// ── Pagination ────────────────────────────────────────────────────────────────
+// â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $page    = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 20;
 $offset  = ($page - 1) * $perPage;
@@ -56,6 +56,7 @@ $today      = date('Y-m-d');
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leases &amp; Rent | GJC EduPay Admin</title>
@@ -67,10 +68,10 @@ $today      = date('Y-m-d');
 <body>
 <div class="admin-layout">
 
-    <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+    <!-- â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <?php require __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
-    <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+    <!-- â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <main class="admin-main">
 
         <header class="topbar">
@@ -85,7 +86,7 @@ $today      = date('Y-m-d');
             </div>
         </header>
 
-        <!-- ── Summary Cards ──────────────────────────────────────────────── -->
+        <!-- â”€â”€ Summary Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
         <section class="row g-4 mb-4">
             <div class="col-12 col-md-6 col-xl-3">
                 <div class="metric-card">
@@ -121,7 +122,7 @@ $today      = date('Y-m-d');
             </div>
         </section>
 
-        <!-- ── Leases Table ───────────────────────────────────────────────── -->
+        <!-- â”€â”€ Leases Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
         <section class="premium-panel">
             <div class="panel-header d-flex justify-content-between align-items-center">
                 <div>
@@ -185,10 +186,10 @@ $today      = date('Y-m-d');
                             <td>
                                 <?php if ($isOverdue): ?>
                                     <span style="color:#ef4444;font-weight:700;">
-                                        <?= gjc_e($l['next_due_date'] ?? '') ?> ⚠
+                                        <?= gjc_e($l['next_due_date'] ?? '') ?> âš 
                                     </span>
                                 <?php else: ?>
-                                    <?= gjc_e($l['next_due_date'] ?? '—') ?>
+                                    <?= gjc_e($l['next_due_date'] ?? 'â€”') ?>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -239,7 +240,7 @@ $today      = date('Y-m-d');
     </main>
 </div>
 
-<!-- ── New / Edit Lease Modal ──────────────────────────────────────────────── -->
+<!-- â”€â”€ New / Edit Lease Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div class="modal fade" id="leaseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content custom-modal">
@@ -268,12 +269,12 @@ $today      = date('Y-m-d');
                                    required placeholder="e.g. Green Hill Canteen">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Monthly Rent (₱) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Monthly Rent (â‚±) <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="monthly_rent" id="monthlyRent"
                                    step="0.01" min="0.01" required placeholder="0.00">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Security Deposit (₱)</label>
+                            <label class="form-label fw-semibold">Security Deposit (â‚±)</label>
                             <input type="number" class="form-control" name="deposit_amount" id="depositAmount"
                                    step="0.01" min="0" value="0">
                         </div>
@@ -311,7 +312,7 @@ $today      = date('Y-m-d');
     </div>
 </div>
 
-<!-- ── Record Payment Modal ────────────────────────────────────────────────── -->
+<!-- â”€â”€ Record Payment Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content custom-modal">
@@ -328,7 +329,7 @@ $today      = date('Y-m-d');
                     </p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Amount Paid (₱) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Amount Paid (â‚±) <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="amount_paid" step="0.01" min="1" required>
                         </div>
                         <div class="col-md-6">
@@ -364,7 +365,7 @@ function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
 }
 
-/* ── Lease Modal helpers ────────────────────────────────────────────────────── */
+/* â”€â”€ Lease Modal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function resetLeaseForm() {
     document.getElementById('leaseModalTitle').textContent = 'New Lease Contract';
     document.getElementById('leaseAction').value = 'create_lease';
@@ -405,12 +406,12 @@ function recordPayment(leaseId, stallName) {
     new bootstrap.Modal(document.getElementById('paymentModal')).show();
 }
 
-/* ── Lease form submission ──────────────────────────────────────────────────── */
+/* â”€â”€ Lease form submission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 document.getElementById('leaseForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const btn = document.getElementById('leaseSubmitBtn');
     btn.disabled = true;
-    btn.textContent = 'Saving…';
+    btn.textContent = 'Savingâ€¦';
     try {
         const resp = await fetch('<?= ADMIN_URL ?>/api/leases.php', {
             method: 'POST',
@@ -419,7 +420,7 @@ document.getElementById('leaseForm').addEventListener('submit', async function (
         const data = await resp.json();
         const msg  = document.getElementById('leaseFormMsg');
         if (data.success) {
-            msg.innerHTML = '<div class="alert alert-success">Saved successfully. Refreshing…</div>';
+            msg.innerHTML = '<div class="alert alert-success">Saved successfully. Refreshingâ€¦</div>';
             setTimeout(() => location.reload(), 1200);
         } else {
             msg.innerHTML = '<div class="alert alert-danger">' + (data.message || 'Unknown error.') + '</div>';
@@ -434,12 +435,12 @@ document.getElementById('leaseForm').addEventListener('submit', async function (
     }
 });
 
-/* ── Payment form submission ────────────────────────────────────────────────── */
+/* â”€â”€ Payment form submission â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 document.getElementById('paymentForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     const btn = document.getElementById('paySubmitBtn');
     btn.disabled = true;
-    btn.textContent = 'Saving…';
+    btn.textContent = 'Savingâ€¦';
     try {
         const resp = await fetch('<?= ADMIN_URL ?>/api/leases.php', {
             method: 'POST',
@@ -448,7 +449,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
         const data = await resp.json();
         const msg  = document.getElementById('payFormMsg');
         if (data.success) {
-            msg.innerHTML = '<div class="alert alert-success">Payment recorded. Refreshing…</div>';
+            msg.innerHTML = '<div class="alert alert-success">Payment recorded. Refreshingâ€¦</div>';
             setTimeout(() => location.reload(), 1200);
         } else {
             msg.innerHTML = '<div class="alert alert-danger">' + (data.message || 'Unknown error.') + '</div>';

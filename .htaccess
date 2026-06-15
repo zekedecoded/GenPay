@@ -29,6 +29,8 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([^.]+)$ $1.php [L,NC]
 
 # Strip .php from URLs typed directly (301 redirect for canonical URLs)
+# Skip /api/ endpoints — stripping .php from AJAX POST turns them into GETs
+RewriteCond %{REQUEST_URI} !^/[^/]+/api/ [NC]
 RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
 RewriteRule ^ /%1 [R=301,L,NE]
 
@@ -45,6 +47,9 @@ RewriteRule ^database(/.*)?$ - [F,L]
 
 # /includes — shared PHP partials / helpers
 RewriteRule ^includes(/.*)?$ - [F,L]
+
+# /uploads — vendor application documents (served through PHP only)
+RewriteRule ^uploads(/.*)?$ - [F,L]
 
 # /admin/api, /student/api, /merchant/api — internal API endpoints
 # (still callable via server-side; blocked from direct browser access)

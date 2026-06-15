@@ -19,6 +19,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GJC EduPay | General de Jesus College</title>
@@ -212,7 +213,8 @@
             <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo" onerror="this.src='<?= ICONS_URL ?>/logo.png'">
             GJC EduPay
         </a>
-        <div>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <a href="<?= BASE_URL ?>/stalls" class="btn btn-primary-custom" style="padding:10px 22px;font-size:15px;background:transparent;border:2px solid #064420;color:#064420;box-shadow:none;">🏪 View Stalls</a>
             <a href="<?= BASE_URL ?>/login.php" class="btn btn-primary-custom" style="padding: 10px 25px; font-size: 16px;">Login to Portal</a>
         </div>
     </nav>
@@ -252,6 +254,16 @@
                     </div>
                     <h3>Real-time Tracking</h3>
                     <p>Monitor your wallet balance, transaction history, encashments, and points flow effortlessly.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <img src="<?= ICONS_URL ?>/merchants.png" alt="Stalls" class="feature-icon-qr">
+                    </div>
+                    <h3>Stall Directory</h3>
+                    <p>Browse available stalls in real-time and submit your vendor application online — no visits required.</p>
+                    <a href="<?= BASE_URL ?>/stalls" style="display:inline-block;margin-top:14px;font-weight:700;color:#064420;text-decoration:none;font-size:14px;">View Stalls &rarr;</a>
                 </div>
             </div>
         </div>

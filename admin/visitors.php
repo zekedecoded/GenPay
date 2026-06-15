@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/VoucherEngine.php';
 
-gjc_require_role(['admin', 'cashier', 'sub-admin', 'super-admin']);
+gjc_require_role(['finance']);
 
 $ve = new VoucherEngine($db);
 
@@ -23,6 +23,7 @@ $currentPage = 'visitors';
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <title>Visitors | GJC EduPay</title>
 
@@ -45,7 +46,7 @@ $currentPage = 'visitors';
         <main class="admin-main visitors-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <button class="menu-btn" onclick="toggleSidebar()">â˜°</button>
 
                 <div>
                     <h1>Visitors</h1>
@@ -100,7 +101,7 @@ $currentPage = 'visitors';
 
                     <div>
                         <span>Total Visitor Funds</span>
-                        <h2>₱<?php echo number_format($totalVisitorFunds, 0); ?></h2>
+                        <h2>â‚±<?php echo number_format($totalVisitorFunds, 0); ?></h2>
                     </div>
                 </div>
 
@@ -156,12 +157,12 @@ $currentPage = 'visitors';
                                     </div>
                                 </td>
 
-                                <td><?php echo $v['visitor_contact'] ?: '—'; ?></td>
+                                <td><?php echo $v['visitor_contact'] ?: 'â€”'; ?></td>
 
                                 <td class="visitor-balance">
-                                    ₱<?php echo number_format($v['remaining_balance'], 2); ?>
+                                    â‚±<?php echo number_format($v['remaining_balance'], 2); ?>
                                     <div style="font-size:11px;color:#888;font-weight:normal;">
-                                        Original: ₱<?php echo number_format($v['initial_value'], 2); ?>
+                                        Original: â‚±<?php echo number_format($v['initial_value'], 2); ?>
                                     </div>
                                 </td>
 
@@ -190,7 +191,7 @@ $currentPage = 'visitors';
 
                                 <td>
                                     <div class="visitor-actions">
-                                        <button type="button" class="load-cash-btn" onclick="alert('Voucher Code: <?= $v['voucher_code'] ?>\nRemaining: ₱<?= number_format($v['remaining_balance'], 2) ?>')">
+                                        <button type="button" class="load-cash-btn" onclick="alert('Voucher Code: <?= $v['voucher_code'] ?>\nRemaining: â‚±<?= number_format($v['remaining_balance'], 2) ?>')">
                                             View
                                         </button>
 
@@ -234,8 +235,8 @@ $currentPage = 'visitors';
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content visitor-load-modal">
                 <div class="visitor-load-header">
-                    <h5><span>▣</span> Mint Visitor Voucher</h5>
-                    <button type="button" class="visitor-modal-close" data-bs-dismiss="modal">×</button>
+                    <h5><span>â–£</span> Mint Visitor Voucher</h5>
+                    <button type="button" class="visitor-modal-close" data-bs-dismiss="modal">Ã—</button>
                 </div>
                 <div class="visitor-load-body">
                     <div id="mintAlert" class="alert d-none" style="font-size:13px; font-weight:600"></div>
@@ -252,7 +253,7 @@ $currentPage = 'visitors';
 
                         <label class="load-label mt-2">Amount to Load (from Vault)</label>
                         <div class="load-money-field mb-3">
-                            <span>₱</span>
+                            <span>â‚±</span>
                             <input type="number" id="mintAmount" placeholder="0.00" min="1" step="0.01" required>
                         </div>
 
@@ -302,7 +303,7 @@ $currentPage = 'visitors';
     }
 
     function confirmRefund(visitorName, balance) {
-        return confirm("Process cash refund of ₱" + balance + " for " + visitorName + "?");
+        return confirm("Process cash refund of â‚±" + balance + " for " + visitorName + "?");
     }
 
     async function submitMint() {

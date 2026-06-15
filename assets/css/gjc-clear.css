@@ -80,20 +80,22 @@ img {
 .brand-logo,
 .student-brand-logo,
 .merchant-brand-logo {
-  width: 48px !important;
-  min-width: 48px !important;
-  height: 48px !important;
+  width: 70px !important;
+  min-width: 70px !important;
+  height: 70px !important;
   border-radius: var(--gjc-radius) !important;
   background: #fff !important;
   box-shadow: none !important;
   border: 2px solid var(--gjc-gold-500);
+  padding: 4px;
 }
 
 .brand-logo img,
 .student-brand-logo img,
 .merchant-brand-logo img {
-  width: 34px !important;
-  height: 34px !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
 }
 
 .brand-box h4,

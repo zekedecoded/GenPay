@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 $currentUser = gjc_current_user($db);
 $currentPage = 'restricted_products';
 
@@ -21,6 +21,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restricted Products | GJC EduPay Admin</title>
@@ -56,7 +57,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
             <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
             <div>
                 <h1>Restricted Products</h1>
-                <p>Nutritional compliance blacklist — prevents merchants from encoding prohibited items.</p>
+                <p>Nutritional compliance blacklist â€” prevents merchants from encoding prohibited items.</p>
             </div>
             <div class="admin-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
@@ -198,7 +199,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
                         <div class="col-12">
                             <label class="form-label fw-semibold">Reason / Policy Note *</label>
                             <textarea class="form-control" name="reason" rows="2" required
-                                placeholder="e.g. High sugar content — DepEd nutritional guidelines prohibit this item."></textarea>
+                                placeholder="e.g. High sugar content â€” DepEd nutritional guidelines prohibit this item."></textarea>
                         </div>
                     </div>
                     <div id="restrictMsg" class="mt-3"></div>

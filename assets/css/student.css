@@ -80,20 +80,22 @@ body {
 }
 
 .student-brand-logo {
-  min-width: 52px;
-  width: 52px;
-  height: 52px;
+  min-width: 70px;
+  width: 70px;
+  height: 70px;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  background: #fff;
   display: grid;
   place-items: center;
   box-shadow: 0 12px 28px rgba(217, 169, 40, 0.25);
   overflow: hidden;
+  padding: 4px;
+  border: 2px solid var(--gold);
 }
 
 .student-brand-logo img {
-  width: 32px;
-  height: 32px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 

@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 gjc_ensure_operational_tables($db);
 
 $pendingRequests = (int) $db->query("SELECT COUNT(*) FROM topup_requests WHERE status = 'pending'")->fetchColumn();
@@ -30,6 +30,7 @@ $currentPage = 'topups';
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <title>Top-ups | GJC EduPay</title>
 
@@ -53,7 +54,7 @@ $currentPage = 'topups';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <button class="menu-btn" onclick="toggleSidebar()">â˜°</button>
 
                 <div>
                     <h1>Top-ups</h1>

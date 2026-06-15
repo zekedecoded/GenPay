@@ -64,7 +64,7 @@ class Record
 
                     $_SESSION['sub_role']         = $subRole;
                     $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
-                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'admin', 4 => 'admin', 5 => 'merchant', 6 => 'merchant'][$roleId] ?? 'user';
+                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant'][$roleId] ?? 'user';
 
                     header('Location: ' . BASE_URL . '/dashboard.php');
                     exit;

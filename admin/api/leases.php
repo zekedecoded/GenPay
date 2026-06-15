@@ -1,16 +1,16 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 
 header('Content-Type: application/json');
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();
 
-// ── Ensure tables exist before any operation ───────────────────────────────
+// â”€â”€ Ensure tables exist before any operation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (!gjc_table_exists($db, 'merchant_leases')) {
     $db->exec(
         "CREATE TABLE IF NOT EXISTS merchant_leases (
@@ -54,7 +54,7 @@ if (!gjc_table_exists($db, 'merchant_rent_payments')) {
 try {
     switch ($action) {
 
-        /* ── CREATE LEASE ───────────────────────────────────────────────────── */
+        /* â”€â”€ CREATE LEASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         case 'create_lease': {
             $merchantUserId = (int)    ($_POST['merchant_user_id'] ?? 0);
             $stallNumber    = trim((string) ($_POST['stall_number']    ?? ''));
@@ -124,7 +124,7 @@ try {
             break;
         }
 
-        /* ── UPDATE LEASE ───────────────────────────────────────────────────── */
+        /* â”€â”€ UPDATE LEASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         case 'update_lease': {
             $leaseId        = (int)    ($_POST['lease_id']        ?? 0);
             $merchantUserId = (int)    ($_POST['merchant_user_id'] ?? 0);
@@ -190,7 +190,7 @@ try {
             break;
         }
 
-        /* ── RECORD PAYMENT ─────────────────────────────────────────────────── */
+        /* â”€â”€ RECORD PAYMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         case 'record_payment': {
             $leaseId    = (int)    ($_POST['lease_id']      ?? 0);
             $amountPaid = (float)  ($_POST['amount_paid']   ?? 0);

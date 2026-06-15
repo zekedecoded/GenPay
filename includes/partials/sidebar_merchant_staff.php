@@ -6,7 +6,7 @@ $currentPage = $currentPage ?? '';
 <aside class="merchant-sidebar" id="merchantSidebar">
     <div class="merchant-brand">
         <div class="merchant-brand-logo">
-            <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
+            <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
         </div>
         <div class="merchant-brand-text">
             <h4>GJC EduPay</h4>

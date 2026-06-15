@@ -18,7 +18,7 @@ define('UNIFIED_DASHBOARD', true);
 
 switch ($subRole) {
     case 'super_admin':
-        // Legacy admin (roleID=3) and new super_admin (roleID=4)
+        // Finance role (roleID=3 or 4)
         require_once ADMIN_PATH . '/dashboard.php';
         break;
 

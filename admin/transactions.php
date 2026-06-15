@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
 $filters = [
     'search' => trim((string) ($_GET['search'] ?? '')),
@@ -23,6 +23,7 @@ $currentPage = 'transactions';
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <title>Transactions | GJC EduPay</title>
 

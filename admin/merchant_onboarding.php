@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 $currentUser = gjc_current_user($db);
 $currentPage = 'onboarding';
 $adminId     = gjc_user_id();
@@ -48,6 +48,7 @@ $stageColors = [
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Merchant Onboarding | GJC EduPay Admin</title>
@@ -325,14 +326,14 @@ function rejectApp(id) {
 }
 
 async function approveApp(id) {
-    if (!confirm('Approve this application and automatically create a Merchant Admin account?\n\nA temporary password will be shown — share it securely with the vendor.')) return;
+    if (!confirm('Approve this application and automatically create a Merchant Admin account?\n\nA temporary password will be shown â€” share it securely with the vendor.')) return;
     const f = new FormData();
     f.append('action', 'approve_application');
     f.append('app_id', id);
     const r = await fetch(API, { method: 'POST', body: f });
     const d = await r.json();
     if (d.success) {
-        alert('✅ Approved!\n\n' + d.message);
+        alert('âœ… Approved!\n\n' + d.message);
         location.reload();
     } else {
         alert('Failed: ' + d.message);

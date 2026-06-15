@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 
 header('Content-Type: application/json');
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();

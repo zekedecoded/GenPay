@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * admin/api/transactions_paginated.php
  * Server-side paginated transaction data endpoint.
@@ -20,9 +20,9 @@ require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 
 header('Content-Type: application/json');
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
-// ── Parse & sanitize inputs ──────────────────────────────────────────────────
+// â”€â”€ Parse & sanitize inputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $input    = array_merge($_GET, $_POST);
 $page     = max(1, (int) ($input['page'] ?? 1));
 $perPage  = min(100, max(5, (int) ($input['per_page'] ?? 20)));
@@ -48,7 +48,7 @@ if ($status && !in_array($status, $allowedStatuses, true)) $status = '';
 if ($dateFrom && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
 if ($dateTo   && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = '';
 
-// ── Build query ──────────────────────────────────────────────────────────────
+// â”€â”€ Build query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $where  = ['1=1'];
 $params = [];
 

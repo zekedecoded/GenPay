@@ -43,6 +43,7 @@ $currentPage = 'users';
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <title>Users Management | GJC EduPay</title>
 

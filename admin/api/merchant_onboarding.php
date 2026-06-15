@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 
 header('Content-Type: application/json');
-gjc_require_role(['admin']);
+gjc_require_role(['finance']);
 
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();
@@ -13,7 +13,7 @@ $adminId = gjc_user_id();
 try {
     switch ($action) {
 
-        // ── Submit new application ───────────────────────────────────────────
+        // â”€â”€ Submit new application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'submit_application': {
             $businessName = trim((string) ($_POST['business_name'] ?? ''));
             $ownerName    = trim((string) ($_POST['owner_name']    ?? ''));
@@ -40,7 +40,7 @@ try {
             break;
         }
 
-        // ── Advance stage ────────────────────────────────────────────────────
+        // â”€â”€ Advance stage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'advance_stage': {
             $appId     = (int) ($_POST['app_id']     ?? 0);
             $nextStage = trim((string) ($_POST['next_stage'] ?? ''));
@@ -75,7 +75,7 @@ try {
             break;
         }
 
-        // ── Approve & auto-create merchant account ───────────────────────────
+        // â”€â”€ Approve & auto-create merchant account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'approve_application': {
             $appId = (int) ($_POST['app_id'] ?? 0);
             if (!$appId) {
@@ -140,7 +140,7 @@ try {
             break;
         }
 
-        // ── Reject application ───────────────────────────────────────────────
+        // â”€â”€ Reject application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         case 'reject_application': {
             $appId  = (int) ($_POST['app_id'] ?? 0);
             $reason = trim((string) ($_POST['rejection_reason'] ?? ''));
