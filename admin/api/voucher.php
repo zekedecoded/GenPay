@@ -11,7 +11,7 @@ require_once __DIR__ . '/../../connection/VoucherEngine.php';
 
 $userId = gjc_user_id();
 $role = gjc_current_role();
-$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
+$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin', 'finance'];
 if (!$userId || !in_array($role, $allowedRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Admin or cashier access required.']);
@@ -40,7 +40,7 @@ try {
             break;
 
         case 'expire':
-            if (!in_array($role, ['admin', 'super-admin'], true)) {
+            if (!in_array($role, ['admin', 'super-admin', 'finance'], true)) {
                 throw new RuntimeException('Only admin-level users can force-expire vouchers.');
             }
 

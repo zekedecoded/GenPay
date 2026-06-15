@@ -11,6 +11,11 @@ if (!$userId) {
     exit;
 }
 
+if (!empty($_SESSION['force_change'])) {
+    header('Location: ' . BASE_URL . '/change_password.php');
+    exit;
+}
+
 $subRole = gjc_sub_role(); // student | super_admin | merchant_admin | merchant_staff
 
 // Flag so role-specific includes know they're inside the unified layout

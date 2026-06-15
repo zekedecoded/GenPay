@@ -19,7 +19,7 @@ if (!isset($_SESSION['userID'], $_SESSION['roleID'])) {
 
 $userId = (int)$_SESSION['userID'];
 $role = gjc_current_role();
-$adminEconomyRoles = ['admin', 'cashier', 'sub-admin', 'super-admin'];
+$adminEconomyRoles = ['admin', 'cashier', 'sub-admin', 'super-admin', 'finance'];
 
 
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
@@ -112,7 +112,7 @@ try {
             $snapshot['is_balanced'] = $drift < 0.01;
             $snapshot['alert']       = $snapshot['is_balanced']
                 ? null
-                : sprintf('⚠ Economy drift detected: ₱%s. Run integrity audit immediately.',
+                : sprintf(' Economy drift detected: ₱%s. Run integrity audit immediately.',
                     number_format($drift, 2));
 
             echo json_encode($snapshot);

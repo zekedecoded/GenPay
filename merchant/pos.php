@@ -313,7 +313,7 @@ function orderTotals() {
     return { items, total };
 }
 
-function generatePaymentQr() {
+function generateLegacyPaymentQr() {
     const { items, total } = orderTotals();
     if (!items.length || total <= 0) {
         return;
@@ -342,6 +342,45 @@ function generatePaymentQr() {
     document.getElementById('posQrSummary').textContent =
         `Total: \u20b1${total.toFixed(2)} · ${items.length} item type(s)`;
     document.getElementById('posQrBox').style.display = 'block';
+}
+
+async function generatePaymentQr() {
+    const { items, total } = orderTotals();
+    if (!items.length || total <= 0) {
+        return;
+    }
+
+    const chargeBtn = document.getElementById('chargeBtn');
+    chargeBtn.disabled = true;
+    chargeBtn.textContent = 'Preparing QR...';
+
+    try {
+        const form = new FormData();
+        form.append('action', 'create_qr_order');
+        form.append('total', total.toFixed(2));
+        form.append('items', JSON.stringify(items));
+
+        const response = await fetch('api/pos.php', {
+            method: 'POST',
+            body: form
+        });
+        const result = await response.json();
+
+        if (!result.success) {
+            alert(result.message || 'Unable to create payment QR.');
+            return;
+        }
+
+        document.getElementById('posQrImage').src =
+            'https://api.qrserver.com/v1/create-qr-code/?size=320x320&ecc=H&margin=20&data=' + encodeURIComponent(result.qr_payload);
+        document.getElementById('posQrSummary').textContent = result.summary || `Total: \u20b1${total.toFixed(2)}`;
+        document.getElementById('posQrBox').style.display = 'block';
+    } catch (error) {
+        alert('Unable to create payment QR. Please try again.');
+    } finally {
+        chargeBtn.disabled = false;
+        chargeBtn.textContent = 'Generate Payment QR';
+    }
 }
 </script>
 </body>

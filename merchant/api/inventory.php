@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
@@ -79,6 +80,31 @@ try {
                 $isRestricted,
                 $restrictionReason,
             ]);
+            $itemId = (int) $db->lastInsertId();
+
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'MENU_MUTATION',
+                'menu_items',
+                null,
+                [
+                    'id' => $itemId,
+                    'merchant_user_id' => $merchantUserId,
+                    'sku' => $sku ?: null,
+                    'product_name' => $productName,
+                    'description' => $description ?: null,
+                    'category' => $category,
+                    'unit' => $unit,
+                    'price' => $price,
+                    'stock_qty' => $stockQty,
+                    'min_stock_alert' => $minAlert,
+                    'is_available' => $isAvailable,
+                    'is_restricted' => $isRestricted,
+                    'restriction_note' => $restrictionReason,
+                ]
+            );
 
             $msg = $isRestricted
                 ? "Product saved but flagged as RESTRICTED: {$restrictionReason}"
@@ -109,9 +135,10 @@ try {
             }
 
             // Verify ownership
-            $own = $db->prepare("SELECT id FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
+            $own = $db->prepare("SELECT * FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
             $own->execute([$itemId, $merchantUserId]);
-            if (!$own->fetch()) {
+            $oldItem = $own->fetch(PDO::FETCH_ASSOC);
+            if (!$oldItem) {
                 echo json_encode(['success' => false, 'message' => 'Item not found in your inventory.']);
                 exit;
             }
@@ -131,6 +158,29 @@ try {
                 $stockQty, $minAlert, $isAvailable, $isRestricted, $restrictionReason,
                 $itemId, $merchantUserId,
             ]);
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'MENU_MUTATION',
+                'menu_items',
+                $oldItem,
+                [
+                    'id' => $itemId,
+                    'merchant_user_id' => $merchantUserId,
+                    'sku' => $sku ?: null,
+                    'product_name' => $productName,
+                    'description' => $description ?: null,
+                    'category' => $category,
+                    'unit' => $unit,
+                    'price' => $price,
+                    'stock_qty' => $stockQty,
+                    'min_stock_alert' => $minAlert,
+                    'is_available' => $isAvailable,
+                    'is_restricted' => $isRestricted,
+                    'restriction_note' => $restrictionReason,
+                ]
+            );
             echo json_encode([
                 'success' => true,
                 'message' => $isRestricted ? "Saved but flagged as RESTRICTED: {$restrictionReason}" : 'Product updated.',
@@ -148,10 +198,27 @@ try {
             }
 
             // Ownership check — staff can only update stock for their owner's inventory
+            $oldStmt = $db->prepare("SELECT * FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
+            $oldStmt->execute([$itemId, $ownerMerchId]);
+            $oldItem = $oldStmt->fetch(PDO::FETCH_ASSOC);
+
             $stmt = $db->prepare(
                 "UPDATE merchant_inventory SET stock_qty = ? WHERE id = ? AND merchant_user_id = ?"
             );
             $stmt->execute([$stockQty, $itemId, $ownerMerchId]);
+            if ($stmt->rowCount() > 0 && $oldItem) {
+                $newItem = $oldItem;
+                $newItem['stock_qty'] = $stockQty;
+                logAudit(
+                    $db,
+                    $merchantUserId,
+                    gjc_current_role(),
+                    'MENU_MUTATION',
+                    'menu_items',
+                    $oldItem,
+                    $newItem
+                );
+            }
             echo json_encode(['success' => $stmt->rowCount() > 0, 'message' => $stmt->rowCount() > 0 ? 'Stock updated.' : 'Item not found.']);
             break;
         }

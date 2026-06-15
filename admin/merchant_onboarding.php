@@ -123,7 +123,6 @@ $stageColors = [
             <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt=""><span class="nav-text">Dashboard</span></a>
             <a href="<?= ADMIN_URL ?>/users.php"><img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt=""><span class="nav-text">Users</span></a>
             <a href="<?= ADMIN_URL ?>/leases.php"><img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt=""><span class="nav-text">Leases &amp; Rent</span></a>
-            <a href="<?= ADMIN_URL ?>/restricted_products.php"><img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt=""><span class="nav-text">Restricted Products</span></a>
             <a href="<?= ADMIN_URL ?>/transactions.php"><img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt=""><span class="nav-text">Transactions</span></a>
         </nav>
         <a href="<?= BASE_URL ?>/logout.php" class="logout-btn"><img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt=""><span>Logout</span></a>
@@ -333,7 +332,7 @@ async function approveApp(id) {
     const r = await fetch(API, { method: 'POST', body: f });
     const d = await r.json();
     if (d.success) {
-        alert('âœ… Approved!\n\n' + d.message);
+        alert('Approved!\n\n' + d.message);
         location.reload();
     } else {
         alert('Failed: ' + d.message);

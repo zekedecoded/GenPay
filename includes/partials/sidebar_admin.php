@@ -32,13 +32,6 @@ $currentPage = $currentPage ?? ""; ?>
             <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
             <span class="nav-text">Leases &amp; Rent</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/restricted_products.php" class="<?= $currentPage ===
-"restricted_products"
-    ? "active"
-    : "" ?>">
-            <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
-            <span class="nav-text">Restricted Products</span>
-        </a>
         <a href="<?= ADMIN_URL ?>/topups.php" class="<?= $currentPage ===
 "topups"
     ? "active"
@@ -87,6 +80,20 @@ $currentPage = $currentPage ?? ""; ?>
             } catch (Throwable $__e) {}
             ?>
         </a>
+        <a href="<?= ADMIN_URL ?>/audit_log.php" class="<?= $currentPage === "audit_log"
+    ? "active"
+    : "" ?>">
+            <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
+            <span class="nav-text">Audit Log</span>
+        </a>
+        <?php if (function_exists('gjc_current_role') && gjc_current_role() === 'finance'): ?>
+        <a href="<?= ADMIN_URL ?>/maintenance.php" class="<?= $currentPage === "maintenance"
+    ? "active"
+    : "" ?>">
+            <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
+            <span class="nav-text">Maintenance</span>
+        </a>
+        <?php endif; ?>
         <a href="<?= ADMIN_URL ?>/settings.php" class="<?= $currentPage ===
 "settings"
     ? "active"

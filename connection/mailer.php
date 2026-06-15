@@ -27,6 +27,7 @@ function gjc_mailer(): PHPMailer
     $mail->Password   = 'mhhr orey kizv wlto';
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = 587;
+    $mail->Timeout    = 10;
     $mail->setFrom('daitodump@gmail.com', 'GJC EduPay');
     $mail->isHTML(true);
     $mail->CharSet = 'UTF-8';

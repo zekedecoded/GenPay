@@ -29,8 +29,10 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([^.]+)$ $1.php [L,NC]
 
 # Strip .php from URLs typed directly (301 redirect for canonical URLs)
-# Skip /api/ endpoints — stripping .php from AJAX POST turns them into GETs
-RewriteCond %{REQUEST_URI} !^/[^/]+/api/ [NC]
+# Only strip GET requests. Redirecting POST requests drops the request body and breaks payments.
+# Skip nested API endpoints - stripping .php from AJAX POST turns them into GETs
+RewriteCond %{REQUEST_METHOD} GET [NC]
+RewriteCond %{REQUEST_URI} !/(admin|student|merchant)/api/ [NC]
 RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
 RewriteRule ^ /%1 [R=301,L,NE]
 

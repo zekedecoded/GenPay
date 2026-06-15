@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-//  apply.php — Public Stall Application Form
+//  apply.php - Public Stall Application Form
 //  Phase 3 + 4: Form render, validation, file upload, DB insert
 // ============================================================
 require_once __DIR__ . '/connection/config.php';
@@ -28,7 +28,7 @@ $old        = [];
 $success    = false;
 $appId      = null;
 
-// ── GET — lock stall & render form ───────────────────────────
+// ── GET - lock stall & render form ───────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (!$stall) {
         $stallError = 'Invalid or unknown stall ID.';
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // status === pending_application: allow (user refreshed page within their window)
 }
 
-// ── POST — validate, upload, insert ──────────────────────────
+// ── POST - validate, upload, insert ──────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $old = [
         'business_name'   => trim($_POST['business_name']   ?? ''),
@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $appId,
             ]);
 
-            // Clear expiry — stall stays pending_application until admin action
+            // Clear expiry - stall stays pending_application until admin action
             $db->prepare(
                 "UPDATE stalls SET pending_expires_at = NULL WHERE stall_id = ?"
             )->execute([$stallId]);
@@ -518,7 +518,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php if ($stallError): ?>
     <!-- Stall unavailable state -->
     <div class="error-state-card">
-        <div class="error-state-icon">🚫</div>
+        <div class="error-state-icon"></div>
         <div class="error-state-title">Stall Unavailable</div>
         <div class="error-state-sub"><?= htmlspecialchars($stallError) ?></div>
         <a href="<?= BASE_URL ?>/stalls" class="btn-back-stalls">Browse Available Stalls</a>
@@ -527,7 +527,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php elseif ($success): ?>
     <!-- Success state -->
     <div class="success-card">
-        <div class="success-icon">🎉</div>
+        <div class="success-icon"></div>
         <div class="success-title">Application Submitted!</div>
         <div class="success-sub">
             Your application for <strong><?= htmlspecialchars($stall['label'] ?? $stallId) ?></strong>
@@ -544,7 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="stall-header">
         <div>
             <div class="stall-header-id"><?= htmlspecialchars($stall['stall_id']) ?></div>
-            <div class="stall-header-label"><?= htmlspecialchars($stall['label']) ?> — Application Form</div>
+            <div class="stall-header-label"><?= htmlspecialchars($stall['label']) ?> - Application Form</div>
         </div>
         <div class="stall-header-specs">
             <?php if ($stall['area_sqm']): ?>
@@ -565,7 +565,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- General error alert -->
     <?php if (!empty($formErrors['general'])): ?>
     <div class="alert alert--error">
-        <span class="alert-icon">⚠️</span>
+        <span class="alert-icon"></span>
         <span><?= htmlspecialchars($formErrors['general']) ?></span>
     </div>
     <?php endif; ?>
@@ -582,7 +582,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 1: Business Info -->
             <div class="form-section">
-                <div class="section-heading">🏪 Business Information</div>
+                <div class="section-heading"> Business Information</div>
 
                 <div class="field-row">
                     <div class="field">
@@ -593,7 +593,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                class="<?= isset($formErrors['business_name']) ? 'is-invalid' : '' ?>"
                                maxlength="120">
                         <?php if (isset($formErrors['business_name'])): ?>
-                        <div class="field-error">⚠ <?= htmlspecialchars($formErrors['business_name']) ?></div>
+                        <div class="field-error"> <?= htmlspecialchars($formErrors['business_name']) ?></div>
                         <?php endif; ?>
                     </div>
                     <div class="field">
@@ -604,7 +604,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                class="<?= isset($formErrors['proprietor_name']) ? 'is-invalid' : '' ?>"
                                maxlength="120">
                         <?php if (isset($formErrors['proprietor_name'])): ?>
-                        <div class="field-error">⚠ <?= htmlspecialchars($formErrors['proprietor_name']) ?></div>
+                        <div class="field-error"> <?= htmlspecialchars($formErrors['proprietor_name']) ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -619,7 +619,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                maxlength="11" pattern="09[0-9]{9}">
                         <div class="field-hint">Format: 09XXXXXXXXX (11 digits)</div>
                         <?php if (isset($formErrors['contact_number'])): ?>
-                        <div class="field-error">⚠ <?= htmlspecialchars($formErrors['contact_number']) ?></div>
+                        <div class="field-error"> <?= htmlspecialchars($formErrors['contact_number']) ?></div>
                         <?php endif; ?>
                     </div>
                     <div class="field">
@@ -629,7 +629,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                value="<?= htmlspecialchars($old['email'] ?? '') ?>"
                                class="<?= isset($formErrors['email']) ? 'is-invalid' : '' ?>">
                         <?php if (isset($formErrors['email'])): ?>
-                        <div class="field-error">⚠ <?= htmlspecialchars($formErrors['email']) ?></div>
+                        <div class="field-error"> <?= htmlspecialchars($formErrors['email']) ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -637,7 +637,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 2: Profile Picture -->
             <div class="form-section">
-                <div class="section-heading">📸 Profile Picture</div>
+                <div class="section-heading"> Profile Picture</div>
                 <p class="field-hint" style="margin-bottom:14px;">Upload a clear photo of the proprietor. JPG or PNG only, max 5 MB.</p>
                 <div class="field">
                     <div class="file-drop <?= isset($formErrors['profile_picture']) ? 'is-invalid' : '' ?>"
@@ -647,29 +647,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                                style="display:none"
                                onchange="handleFile(this,'profile_picture',true)">
-                        <div class="file-icon" id="icon-profile_picture">🖼️</div>
+                        <div class="file-icon" id="icon-profile_picture"></div>
                         <div class="file-label">Click to upload profile picture</div>
                         <div class="file-sub">JPG, PNG • Max 5 MB</div>
                         <img class="file-preview" id="preview-profile_picture" alt="Preview">
                         <div class="file-name-display" id="name-profile_picture"></div>
                     </div>
                     <?php if (isset($formErrors['profile_picture'])): ?>
-                    <div class="field-error">⚠ <?= htmlspecialchars($formErrors['profile_picture']) ?></div>
+                    <div class="field-error"> <?= htmlspecialchars($formErrors['profile_picture']) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
 
             <!-- Section 3: Required Documents -->
             <div class="form-section">
-                <div class="section-heading">📄 Required Documents</div>
+                <div class="section-heading"> Required Documents</div>
                 <p class="field-hint" style="margin-bottom:16px;">Upload PDF, JPG, or PNG. Max 5 MB per file.</p>
                 <div class="file-grid">
                     <?php
                     $docFields = [
-                        'business_permit'  => ['icon'=>'📋','label'=>'Business Permit'],
-                        'sanitary_permit'  => ['icon'=>'🏥','label'=>'Sanitary Permit'],
-                        'gjc_requirements' => ['icon'=>'🎓','label'=>'GJC Requirements'],
-                        'clearance'        => ['icon'=>'✅','label'=>'Clearance'],
+                        'business_permit'  => ['icon'=>'','label'=>'Business Permit'],
+                        'sanitary_permit'  => ['icon'=>'','label'=>'Sanitary Permit'],
+                        'gjc_requirements' => ['icon'=>'','label'=>'GJC Requirements'],
+                        'clearance'        => ['icon'=>'','label'=>'Clearance'],
                     ];
                     foreach ($docFields as $field => $meta):
                     ?>
@@ -688,7 +688,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="file-name-display" id="name-<?= $field ?>"></div>
                         </div>
                         <?php if (isset($formErrors[$field])): ?>
-                        <div class="field-error">⚠ <?= htmlspecialchars($formErrors[$field]) ?></div>
+                        <div class="field-error"> <?= htmlspecialchars($formErrors[$field]) ?></div>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -697,11 +697,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 4: Terms & Conditions -->
             <div class="form-section">
-                <div class="section-heading">📜 Terms & Conditions</div>
+                <div class="section-heading"> Terms & Conditions</div>
                 <p class="field-hint" style="margin-bottom:12px;">Please read the full terms below before accepting.</p>
 
                 <div class="terms-scroll-box" id="termsBox">
-                    <h6>GJC Campus Stall Rental — Terms & Conditions</h6>
+                    <h6>GJC Campus Stall Rental - Terms & Conditions</h6>
                     <p>By submitting this application, you agree to the following terms set forth by the administration of General de Jesus College (GJC):</p>
                     <p><strong>1. Eligibility.</strong> Applicants must be of legal age (18+) and must not have any outstanding financial obligations to GJC. Applications from individuals with existing violations of school policy may be rejected at the institution's discretion.</p>
                     <p><strong>2. Application Review.</strong> All submitted applications are subject to review by the GJC administration. Submission of this form does not guarantee approval. The school reserves the right to approve, reject, or defer any application without prior notice.</p>
@@ -726,7 +726,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </label>
                 </div>
                 <?php if (isset($formErrors['terms'])): ?>
-                <div class="field-error" style="margin-top:8px;">⚠ <?= htmlspecialchars($formErrors['terms']) ?></div>
+                <div class="field-error" style="margin-top:8px;"> <?= htmlspecialchars($formErrors['terms']) ?></div>
                 <?php endif; ?>
             </div>
 
@@ -797,7 +797,7 @@ function handleFile(input, field, isImage) {
         if (icon) icon.style.display = 'none';
     } else {
         const ext = file.name.split('.').pop().toUpperCase();
-        if (icon) { icon.textContent = ext === 'PDF' ? '📄' : '🖼️'; }
+        if (icon) { icon.textContent = ext === 'PDF' ? '' : ''; }
     }
     checkSubmitReady();
 }

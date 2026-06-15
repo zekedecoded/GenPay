@@ -100,7 +100,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             $isLow = $item['stock_qty'] <= $item['min_stock_alert'];
                         ?>
                         <tr class="<?= $item['is_restricted'] ? 'table-danger' : ($isLow ? 'table-warning' : '') ?>">
-                            <td><code><?= gjc_e($item['sku'] ?: '—') ?></code></td>
+                            <td><code><?= gjc_e($item['sku'] ?: '-') ?></code></td>
                             <td>
                                 <strong><?= gjc_e($item['product_name']) ?></strong>
                                 <?php if ($item['is_restricted']): ?>
@@ -116,7 +116,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             <td>
                                 <span class="<?= $isLow ? 'text-danger fw-bold' : '' ?>">
                                     <?= (int) $item['stock_qty'] ?>
-                                    <?= $isLow ? '⚠' : '' ?>
+                                    <?= $isLow ? '' : '' ?>
                                 </span>
                             </td>
                             <td><?= (int) $item['min_stock_alert'] ?></td>

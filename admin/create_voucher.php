@@ -8,7 +8,7 @@ require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 
-$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
+$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin', 'finance'];
 if (!isset($_SESSION['user_id'], $_SESSION['role'])
     || !in_array($_SESSION['role'], $allowedRoles, true)) {
     http_response_code(403);

@@ -32,7 +32,7 @@ $currentPage = 'settings';
         <main class="admin-main settings-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
 
                 <div>
                     <h1>System Settings</h1>

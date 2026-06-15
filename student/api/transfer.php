@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['student']);
@@ -180,6 +181,24 @@ try {
 
             // --- COMMIT ---
             $db->commit();
+            logAudit(
+                $db,
+                $currentUserId,
+                gjc_current_role(),
+                'TRANSACTION',
+                'e_wallet_transactions',
+                null,
+                [
+                    'reference_no' => $refNo,
+                    'transaction_type' => 'p2p_transfer',
+                    'amount' => $amount,
+                    'from_user_id' => $currentUserId,
+                    'to_user_id' => $recipientUserId,
+                    'from_wallet_id' => $senderWallet['id'],
+                    'to_wallet_id' => $recipientWallet['id'],
+                    'status' => 'completed',
+                ]
+            );
 
             echo json_encode([
                 'success'   => true,

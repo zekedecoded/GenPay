@@ -1,12 +1,19 @@
 <?php
 require_once __DIR__ . '/connection/config.php';
-session_start();
+require_once __DIR__ . '/connection/pdo.php';
+require_once __DIR__ . '/connection/app.php';
+require_once __DIR__ . '/connection/audit_logger.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 
 if (!isset($_SESSION['force_change'])) {
     header('Location: ' . BASE_URL . '/login.php');
     exit();
 }
+
+gjc_ensure_first_login_schema($db);
 
 $error = "";
 $success = "";
@@ -22,14 +29,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (strlen($new) < 6) {
         $error = "Password must be at least 6 characters.";
     } else {
+        $userId = gjc_user_id();
+        if (!$userId) {
+            header('Location: ' . BASE_URL . '/login.php');
+            exit();
+        }
 
-        
+        $hash = password_hash($new, PASSWORD_BCRYPT);
+        $db->prepare(
+            "UPDATE users
+                SET password = ?,
+                    force_password_change = 0,
+                    is_first_login = 0,
+                    password_changed = 1,
+                    temp_password = NULL
+              WHERE userID = ?"
+        )->execute([$hash, $userId]);
+
+        logAudit(
+            $db,
+            $userId,
+            gjc_current_role(),
+            'PASSWORD_CHANGE',
+            'users',
+            ['force_password_change' => 1, 'is_first_login' => 1, 'password_changed' => 0],
+            ['force_password_change' => 0, 'is_first_login' => 0, 'password_changed' => 1]
+        );
 
         unset($_SESSION['force_change']);
 
         $success = "Password updated successfully. Redirecting...";
 
-        header('refresh:2;url=' . BASE_URL . '/login.php');
+        header('refresh:2;url=' . BASE_URL . '/dashboard.php');
     }
 }
 ?>

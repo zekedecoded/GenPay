@@ -2,6 +2,7 @@
 
 
 require_once __DIR__ . '/pdo.php';
+require_once __DIR__ . '/audit_logger.php';
 
 class CirculationEngine
 {
@@ -586,6 +587,27 @@ class CirculationEngine
             $merchantWalletId, $voucherId, $amount,
             $vaultBefore, $vaultAfter, $total, $notes,
         ]);
+
+        logAudit(
+            $this->db,
+            $initiatedBy,
+            gjc_audit_role_from_user($this->db, $initiatedBy),
+            'TRANSACTION',
+            'e_wallet_transactions',
+            null,
+            [
+                'reference_no' => $ref,
+                'transaction_type' => $type,
+                'amount' => $amount,
+                'student_wallet_id' => $studentWalletId,
+                'merchant_wallet_id' => $merchantWalletId,
+                'voucher_id' => $voucherId,
+                'vault_before' => $vaultBefore,
+                'vault_after' => $vaultAfter,
+                'total_in_circulation' => $total,
+                'status' => 'completed',
+            ]
+        );
 
         return $ref;
     }

@@ -186,7 +186,7 @@ $today      = date('Y-m-d');
                             <td>
                                 <?php if ($isOverdue): ?>
                                     <span style="color:#ef4444;font-weight:700;">
-                                        <?= gjc_e($l['next_due_date'] ?? '') ?> âš 
+                                        <?= gjc_e($l['next_due_date'] ?? '') ?>
                                     </span>
                                 <?php else: ?>
                                     <?= gjc_e($l['next_due_date'] ?? 'â€”') ?>

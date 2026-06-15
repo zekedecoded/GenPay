@@ -4,7 +4,7 @@ require_once __DIR__ . "/../connection/pdo.php";
 require_once __DIR__ . "/../connection/app.php";
 require_once __DIR__ . "/../connection/MerchantTenantDirectory.php";
 
-gjc_require_role(["admin"]);
+gjc_require_role(['finance']);
 
 $dashboard = gjc_admin_dashboard_data($db);
 $demographics = $dashboard["user_demographics"];

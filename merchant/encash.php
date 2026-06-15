@@ -79,7 +79,7 @@ $currentPage = 'encash';
         <main class="merchant-main">
 
             <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">☰</button>
+                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">Menu</button>
 
                 <div>
                     <h1>Request Encashment</h1>

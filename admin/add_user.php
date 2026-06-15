@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
@@ -15,7 +15,7 @@ $lastName = trim((string) ($_POST['last_name'] ?? ''));
 $email = trim((string) ($_POST['email'] ?? ''));
 $password = (string) ($_POST['password'] ?? '');
 $role = strtolower((string) ($_POST['role'] ?? 'student'));
-$roleId = ['student' => 1, 'merchant' => 2, 'admin' => 3, 'parent' => 1, 'visitor' => 1][$role] ?? 1;
+$roleId = ['student' => 1, 'merchant' => 2, 'admin' => 4, 'finance' => 4, 'parent' => 1, 'visitor' => 1][$role] ?? 1;
 
 if ($firstName === '' || $lastName === '' || $email === '' || $password === '') {
     header('Location: ' . ADMIN_URL . '/users.php?error=missing_fields');

@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['finance']);
 
 $query = "
     SELECT 
@@ -21,10 +24,10 @@ $dbUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $users = [];
 foreach ($dbUsers as $u) {
-    $roleName = ucfirst($u['role'] ?? 'User');
+    $roleName = ($u['role'] === 'finance') ? 'Finance' : ucfirst($u['role'] ?? 'User');
     $schoolIdPrefix = 'GJC';
-    if ($u['role'] === 'merchant') $schoolIdPrefix = 'MER';
-    if ($u['role'] === 'admin') $schoolIdPrefix = 'ADM';
+    if ($u['role'] === 'merchant' || $u['role'] === 'merchant_admin' || $u['role'] === 'merchant_staff') $schoolIdPrefix = 'MER';
+    if ($u['role'] === 'finance') $schoolIdPrefix = 'FIN';
     
     $users[] = [
         "name" => trim($u['first_name'] . ' ' . $u['last_name']),
@@ -66,7 +69,7 @@ $currentPage = 'users';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
 
                 <div>
                     <h1>Users Management</h1>
@@ -105,7 +108,7 @@ $currentPage = 'users';
                         <label>Role</label>
                         <select name="role">
                             <option value="">All Roles</option>
-                            <option value="admin">Admin</option>
+                            <option value="finance">Finance</option>
                             <option value="user">User</option>
                             <option value="merchant">Merchant</option>
                             <option value="parent">Parent</option>
@@ -273,6 +276,7 @@ $currentPage = 'users';
                                 <select name="role" class="add-user-input" required>
                                     <option value="student">Student</option>
                                     <option value="merchant">Merchant</option>
+                                    <option value="finance">Finance</option>
                                     <option value="parent">Parent</option>
                                     <option value="visitor">Visitor</option>
                                 </select>

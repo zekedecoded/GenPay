@@ -80,7 +80,7 @@ $currentPage = 'dashboard';
         <main class="merchant-main">
 
             <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">☰</button>
+                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">Menu</button>
 
                 <div>
                     <h1>Merchant Dashboard</h1>
@@ -261,7 +261,7 @@ $currentPage = 'dashboard';
                     <div class="me-hero-stat">
                         <span>Economy Health</span>
                         <strong class="<?= $mceBalanced ? 'me-text-green' : 'me-text-red' ?>">
-                            <?= $mceBalanced ? '✓ Healthy' : '⚠ Review' ?>
+                            <?= $mceBalanced ? ' Healthy' : ' Review' ?>
                         </strong>
                         <small><?= $mceBalanced ? 'All pools balanced' : 'Contact finance office' ?></small>
                     </div>
@@ -332,11 +332,10 @@ $currentPage = 'dashboard';
 
                 </div>
 
-                
+
                 <?php if ($canEncash): ?>
                 <div class="me-tip-row">
-                    <span>💡</span>
-                    <span>Points in your merchant wallet can only be encashed — they cannot be used to pay other merchants. The campus economy is a closed loop; every peso is always tracked.</span>
+                    <span>Points in your merchant wallet can only be encashed - they cannot be used to pay other merchants. The campus economy is a closed loop; every peso is always tracked.</span>
                 </div>
                 <?php endif; ?>
 

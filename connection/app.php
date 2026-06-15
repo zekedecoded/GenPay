@@ -83,6 +83,75 @@ function gjc_column(PDO $db, string $table, array $candidates): ?string
     return null;
 }
 
+function gjc_ensure_stall_application_workflow_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, "stall_applications")) {
+        return;
+    }
+
+    $columns = gjc_table_columns($db, "stall_applications");
+
+    try {
+        $db->exec(
+            "ALTER TABLE stall_applications
+             MODIFY status ENUM(
+                'pending',
+                'awaiting_meetup',
+                'awaiting_approval',
+                'active',
+                'rejected',
+                'expired',
+                'initially_approved',
+                'approved'
+             ) NOT NULL DEFAULT 'pending'",
+        );
+    } catch (Throwable $ignored) {
+    }
+
+    $adds = [
+        "meetup_scheduled_at" => "DATETIME NULL",
+        "meetup_location" => "VARCHAR(255) NULL",
+        "meetup_notes" => "TEXT NULL",
+        "meetup_scheduled_by" => "INT UNSIGNED NULL",
+        "meetup_scheduled_email_sent_at" => "DATETIME NULL",
+        "down_payment_amount" => "DECIMAL(10,2) NULL",
+        "down_payment_reference" => "VARCHAR(80) NULL",
+        "down_payment_notes" => "TEXT NULL",
+        "down_payment_recorded_by" => "INT UNSIGNED NULL",
+        "down_payment_recorded_at" => "DATETIME NULL",
+        "merchant_user_id" => "INT UNSIGNED NULL",
+        "temp_password_plain" => "VARCHAR(100) NULL",
+    ];
+
+    foreach ($adds as $column => $definition) {
+        if (!in_array($column, $columns, true)) {
+            $db->exec(
+                "ALTER TABLE stall_applications ADD COLUMN {$column} {$definition}",
+            );
+        }
+    }
+}
+
+function gjc_ensure_first_login_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, "users")) {
+        return;
+    }
+
+    $columns = gjc_table_columns($db, "users");
+    $adds = [
+        "is_first_login" => "TINYINT(1) NOT NULL DEFAULT 0",
+        "password_changed" => "TINYINT(1) NOT NULL DEFAULT 1",
+        "temp_password" => "VARCHAR(100) NULL",
+    ];
+
+    foreach ($adds as $column => $definition) {
+        if (!in_array($column, $columns, true)) {
+            $db->exec("ALTER TABLE users ADD COLUMN {$column} {$definition}");
+        }
+    }
+}
+
 function gjc_current_user(PDO $db): array
 {
     $id = gjc_user_id();
@@ -173,6 +242,12 @@ function gjc_require_role(array $roles): void
         header("Location: " . BASE_URL . "/login.php");
         exit();
     }
+
+    $script = str_replace("\\", "/", $_SERVER["SCRIPT_NAME"] ?? "");
+    if (!empty($_SESSION["force_change"]) && !str_ends_with($script, "/change_password.php")) {
+        header("Location: " . BASE_URL . "/change_password.php");
+        exit();
+    }
 }
 
 function gjc_ensure_operational_tables(PDO $db): void
@@ -258,6 +333,49 @@ function gjc_ensure_operational_tables(PDO $db): void
             $db->exec(
                 "ALTER TABLE encashment_requests ADD COLUMN {$column} {$definition}",
             );
+        }
+    }
+}
+
+function gjc_ensure_merchant_qr_orders_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS merchant_qr_orders (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            token VARCHAR(64) NOT NULL UNIQUE,
+            merchant_user_id INT UNSIGNED NOT NULL,
+            merchant_wallet_id INT UNSIGNED NOT NULL,
+            description TEXT NULL,
+            items_json TEXT NOT NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            expires_at DATETIME NOT NULL,
+            paid_by INT UNSIGNED NULL,
+            paid_ref VARCHAR(40) NULL,
+            paid_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_mqo_token (token),
+            INDEX idx_mqo_status_expiry (status, expires_at),
+            INDEX idx_mqo_merchant (merchant_user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
+
+    $adds = [
+        "description" => "TEXT NULL",
+        "items_json" => "TEXT NOT NULL",
+        "amount" => "DECIMAL(15,2) NOT NULL DEFAULT 0.00",
+        "status" => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+        "expires_at" => "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "paid_by" => "INT UNSIGNED NULL",
+        "paid_ref" => "VARCHAR(40) NULL",
+        "paid_at" => "DATETIME NULL",
+        "created_at" => "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    ];
+
+    $columns = gjc_table_columns($db, "merchant_qr_orders");
+    foreach ($adds as $column => $definition) {
+        if (!in_array($column, $columns, true)) {
+            $db->exec("ALTER TABLE merchant_qr_orders ADD COLUMN {$column} {$definition}");
         }
     }
 }
@@ -855,9 +973,10 @@ function gjc_count_users_by_role(PDO $db, string $roleName): int
 
     $roleMap = [
         "student" => 1,
-        "merchant" => 4,
-        "admin" => 3,
-        "super-admin" => 3,
+        "merchant" => 2,
+        "finance" => 4,
+        "admin" => 4,
+        "super-admin" => 4,
     ];
 
     if (

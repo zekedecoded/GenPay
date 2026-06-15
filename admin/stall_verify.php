@@ -1,10 +1,12 @@
-﻿<?php
+<?php
 // ============================================================
 //  admin/stall_verify.php
 //  Phase 3 + 4: Contract review, payment verification,
 //               and Final Approval cascade
 // ============================================================
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
@@ -195,7 +197,7 @@ $paymentDone     = (bool) $payment;
             border-color: #22c55e;
         }
         .step-circle.done::after {
-            content: 'âœ“';
+            content: '\2713';
             font-size: 13px;
             font-weight: 800;
             color: #fff;
@@ -302,7 +304,7 @@ $paymentDone     = (bool) $payment;
             <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
             <div>
                 <h1>Contract &amp; Payment Verification</h1>
-                <p>Step 2.2 â€” Review contract, confirm payment, then grant Final Approval.</p>
+                <p>Step 2.2 - Review contract, confirm payment, then grant Final Approval.</p>
             </div>
             <div class="admin-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
@@ -313,7 +315,7 @@ $paymentDone     = (bool) $payment;
         <!-- Back link -->
         <a href="<?= ADMIN_URL ?>/stall_applications.php"
            style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#6b7280;text-decoration:none;margin-bottom:20px">
-            â† Back to Applications
+            &larr; Back to Applications
         </a>
 
         <!-- Accenture-style step progress bar -->
@@ -337,7 +339,7 @@ $paymentDone     = (bool) $payment;
             <div class="step-item <?= $paymentDone ? 's-done' : 's-active' ?>" id="step-nav-2">
                 <div class="step-circle <?= $paymentDone ? 'done' : 'active' ?>" id="circle-2"></div>
                 <span class="step-label">Contract &amp; Payment</span>
-                <span class="step-sublabel">â‚±150 GCash verification</span>
+                <span class="step-sublabel">&#8369;150 GCash verification</span>
             </div>
 
             <!-- Step 3: Final Approval -->
@@ -355,7 +357,7 @@ $paymentDone     = (bool) $payment;
                 <!-- Application summary -->
                 <div class="vcard">
                     <div class="vcard-head">
-                        <div class="vcard-title">ðŸ“‹ Application Summary</div>
+                        <div class="vcard-title">Application Summary</div>
                         <span style="font-size:12px;font-weight:800;font-family:monospace;color:#15803d;background:#f0fdf4;padding:4px 12px;border-radius:50px">
                             <?= htmlspecialchars($app['contract_ref'] ?? "SA-{$appId}") ?>
                         </span>
@@ -368,7 +370,7 @@ $paymentDone     = (bool) $payment;
                             </div>
                             <div class="detail-field">
                                 <label>Stall Assigned</label>
-                                <p><?= htmlspecialchars($app['stall_id']) ?> â€” <?= htmlspecialchars($app['stall_label'] ?? '') ?></p>
+                                <p><?= htmlspecialchars($app['stall_id']) ?> - <?= htmlspecialchars($app['stall_label'] ?? '') ?></p>
                             </div>
                             <div class="detail-field">
                                 <label>Proprietor</label>
@@ -376,7 +378,7 @@ $paymentDone     = (bool) $payment;
                             </div>
                             <div class="detail-field">
                                 <label>Monthly Rate</label>
-                                <p>â‚±<?= number_format($app['monthly_rate'] ?? 2500, 2) ?></p>
+                                <p>&#8369;<?= number_format($app['monthly_rate'] ?? 2500, 2) ?></p>
                             </div>
                             <div class="detail-field">
                                 <label>Email</label>
@@ -410,7 +412,7 @@ $paymentDone     = (bool) $payment;
                                 ];
                                 foreach ($docs as $label => $path):
                                     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-                                    $icon = $ext === 'pdf' ? 'ðŸ“„' : 'ðŸ–¼ï¸';
+                                    $icon = $ext === 'pdf' ? 'PDF' : 'IMG';
                                 ?>
                                 <a href="<?= ADMIN_URL . '/doc.php?f=' . urlencode(ltrim($path, '/')) ?>"
                                    target="_blank" class="doc-chip">
@@ -425,7 +427,7 @@ $paymentDone     = (bool) $payment;
                 <!-- Contract Terms -->
                 <div class="vcard">
                     <div class="vcard-head">
-                        <div class="vcard-title">ðŸ“œ Stall Lease Contract Terms</div>
+                        <div class="vcard-title">Stall Lease Contract Terms</div>
                     </div>
                     <div class="vcard-body">
                         <div class="contract-body" id="contractBody">
@@ -447,7 +449,7 @@ $paymentDone     = (bool) $payment;
 
                             <h3>4. Monthly Rental</h3>
                             <ol>
-                                <li>The monthly rental rate is <strong>â‚±<?= number_format($app['monthly_rate'] ?? 2500, 2) ?></strong>, payable on or before the <strong>5th day</strong> of each month via GJC EduPay.</li>
+                                <li>The monthly rental rate is <strong>&#8369;<?= number_format($app['monthly_rate'] ?? 2500, 2) ?></strong>, payable on or before the <strong>5th day</strong> of each month via GJC EduPay.</li>
                                 <li>A penalty of <strong>2% per month</strong> shall be imposed on unpaid balances past the due date.</li>
                                 <li>Three (3) consecutive months of default shall be grounds for immediate termination of this agreement.</li>
                             </ol>
@@ -468,7 +470,7 @@ $paymentDone     = (bool) $payment;
                             </ol>
 
                             <h3>7. Processing Fee</h3>
-                            <p>A one-time, non-refundable processing fee of <strong>â‚±150.00</strong> is due upon signing this agreement, payable via GCash to the GJC Finance Office. This fee covers administrative and onboarding costs.</p>
+                            <p>A one-time, non-refundable processing fee of <strong>&#8369;150.00</strong> is due upon signing this agreement, payable via GCash to the GJC Finance Office. This fee covers administrative and onboarding costs.</p>
 
                             <h3>8. Liability &amp; Compliance</h3>
                             <ol>
@@ -494,11 +496,11 @@ $paymentDone     = (bool) $payment;
                 <!-- â”€â”€ Fully Approved State â”€â”€ -->
                 <div class="vcard">
                     <div class="vcard-head">
-                        <div class="vcard-title" style="color:#7c3aed">âœ… Fully Approved</div>
+                        <div class="vcard-title" style="color:#7c3aed">Fully Approved</div>
                     </div>
                     <div class="vcard-body">
                         <div class="fully-approved-banner">
-                            <div style="font-size:42px;margin-bottom:8px">ðŸŽ‰</div>
+                            <div style="font-size:18px;font-weight:900;color:#4c1d95;margin-bottom:8px">Done</div>
                             <div style="font-size:15px;font-weight:800;color:#4c1d95;margin-bottom:4px">Merchant Account Created</div>
                             <div style="font-size:12px;color:#6d28d9">Final approval completed. Account is active.</div>
                         </div>
@@ -508,14 +510,14 @@ $paymentDone     = (bool) $payment;
                                 <div><strong>Email:</strong> <?= htmlspecialchars($merchantAcct['merchant_email'] ?? '') ?></div>
                                 <?php if ($merchantAcct['temp_password_plain']): ?>
                                 <div style="margin-top:6px"><strong>Temp Password:</strong> <?= htmlspecialchars($merchantAcct['temp_password_plain']) ?></div>
-                                <div style="margin-top:4px;font-size:11px;color:#818cf8">âš  Merchant must change this on first login.</div>
+                                <div style="margin-top:4px;font-size:11px;color:#818cf8">Merchant must change this on first login.</div>
                                 <?php else: ?>
                                 <div style="margin-top:6px;font-size:11px;color:#818cf8">Password cleared (merchant has logged in).</div>
                                 <?php endif; ?>
                             </div>
                             <a href="<?= ADMIN_URL ?>/stall_applications.php"
                                style="display:block;margin-top:12px;text-align:center;padding:12px;background:#f0fdf4;color:#15803d;border-radius:50px;font-size:13px;font-weight:800;text-decoration:none">
-                                â† Back to Applications
+                                &larr; Back to Applications
                             </a>
                         </div>
                     </div>
@@ -526,9 +528,9 @@ $paymentDone     = (bool) $payment;
                 <!-- â”€â”€ Step 2: Payment Verification â”€â”€ -->
                 <div class="vcard" id="paymentCard">
                     <div class="vcard-head">
-                        <div class="vcard-title">ðŸ’³ Payment Verification</div>
+                        <div class="vcard-title">Payment Verification</div>
                         <?php if ($paymentDone): ?>
-                        <span style="font-size:11px;font-weight:800;background:#f0fdf4;color:#15803d;padding:4px 12px;border-radius:50px">âœ“ Verified</span>
+                        <span style="font-size:11px;font-weight:800;background:#f0fdf4;color:#15803d;padding:4px 12px;border-radius:50px">Verified</span>
                         <?php endif; ?>
                     </div>
                     <div class="vcard-body">
@@ -536,12 +538,12 @@ $paymentDone     = (bool) $payment;
                         <?php if ($paymentDone): ?>
                         <!-- Payment already recorded -->
                         <div class="payment-done-banner">
-                            <div class="payment-done-icon">âœ…</div>
+                            <div class="payment-done-icon">OK</div>
                             <div>
                                 <div class="payment-done-label">GCash Reference</div>
                                 <div class="payment-done-ref"><?= htmlspecialchars($payment['gcash_ref_number']) ?></div>
                                 <div style="font-size:11px;color:#15803d;margin-top:2px">
-                                    â‚±<?= number_format($payment['amount'], 2) ?> verified by <?= htmlspecialchars($payment['verifier_name'] ?? 'Admin') ?>
+                                    &#8369;<?= number_format($payment['amount'], 2) ?> verified by <?= htmlspecialchars($payment['verifier_name'] ?? 'Admin') ?>
                                     on <?= date('M j, Y g:i A', strtotime($payment['verified_at'])) ?>
                                 </div>
                             </div>
@@ -551,7 +553,7 @@ $paymentDone     = (bool) $payment;
                         <!-- Payment entry form -->
                         <div class="amount-badge">
                             <span class="amount-label">Processing Fee</span>
-                            <span class="amount-value">â‚±150.00</span>
+                            <span class="amount-value">&#8369;150.00</span>
                         </div>
 
                         <div class="payment-form-group">
@@ -565,11 +567,11 @@ $paymentDone     = (bool) $payment;
                         <div class="payment-form-group">
                             <label for="paymentNotes">Notes (optional)</label>
                             <input type="text" id="paymentNotes" class="payment-input"
-                                   placeholder="Any additional remarksâ€¦" maxlength="255">
+                                   placeholder="Any additional remarks..." maxlength="255">
                         </div>
 
                         <button class="btn-verify-pay" id="btnVerifyPay" onclick="submitPayment()">
-                            âœ… Record GCash Payment
+                            Record GCash Payment
                         </button>
                         <?php endif; ?>
 
@@ -579,17 +581,17 @@ $paymentDone     = (bool) $payment;
                 <!-- â”€â”€ Step 3: Final Approval â”€â”€ -->
                 <div class="vcard">
                     <div class="vcard-head">
-                        <div class="vcard-title">ðŸš€ Final Approval</div>
+                        <div class="vcard-title">Final Approval</div>
                     </div>
                     <div class="vcard-body">
 
                         <?php if (!$paymentDone): ?>
                         <div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:#92400e;font-weight:600">
-                            âš  Record GCash payment above before granting Final Approval.
+                            Record GCash payment above before granting Final Approval.
                         </div>
                         <?php else: ?>
                         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:#15803d;font-weight:600">
-                            âœ… Payment confirmed. You may now grant Final Approval.
+                            Payment confirmed. You may now grant Final Approval.
                         </div>
                         <?php endif; ?>
 
@@ -606,7 +608,7 @@ $paymentDone     = (bool) $payment;
                         <button class="btn-final-approve" id="btnFinalApprove"
                                 <?= !$paymentDone ? 'disabled' : '' ?>
                                 onclick="submitFinalApproval()">
-                            ðŸª Grant Final Approval &amp; Create Account
+                            Grant Final Approval &amp; Create Account
                         </button>
 
                     </div>
@@ -622,7 +624,7 @@ $paymentDone     = (bool) $payment;
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
-const API_URL = '<?= ADMIN_URL ?>/api/stall_applications.php';
+const API_URL = '<?= ADMIN_URL ?>/api/stall_applications';
 const APP_ID  = <?= $appId ?>;
 
 function submitPayment() {
@@ -632,7 +634,7 @@ function submitPayment() {
 
     const btn = document.getElementById('btnVerifyPay');
     btn.disabled = true;
-    btn.textContent = 'Recordingâ€¦';
+    btn.textContent = 'Recording...';
 
     const fd = new FormData();
     fd.append('action', 'verify_payment');
@@ -640,8 +642,7 @@ function submitPayment() {
     fd.append('gcash_ref_number', ref);
     fd.append('notes', document.getElementById('paymentNotes')?.value.trim() || '');
 
-    fetch(API_URL, { method:'POST', body:fd })
-        .then(r => r.json())
+    stallApiPost(fd)
         .then(res => {
             if (res.success) {
                 toast(res.message, 'success');
@@ -649,29 +650,28 @@ function submitPayment() {
             } else {
                 toast(res.message, 'error');
                 btn.disabled = false;
-                btn.textContent = 'âœ… Record GCash Payment';
+                btn.textContent = 'Record GCash Payment';
             }
         })
         .catch(() => {
             toast('Network error. Please try again.', 'error');
             btn.disabled = false;
-            btn.textContent = 'âœ… Record GCash Payment';
+            btn.textContent = 'Record GCash Payment';
         });
 }
 
 function submitFinalApproval() {
-    if (!confirm('âš  This will create the merchant account and mark the stall as Occupied.\n\nProceed with Final Approval?')) return;
+    if (!confirm('This will create the merchant account and mark the stall as Occupied.\n\nProceed with Final Approval?')) return;
 
     const btn = document.getElementById('btnFinalApprove');
     btn.disabled = true;
-    btn.textContent = 'Processingâ€¦';
+    btn.textContent = 'Processing...';
 
     const fd = new FormData();
     fd.append('action', 'final_approval');
     fd.append('app_id', APP_ID);
 
-    fetch(API_URL, { method:'POST', body:fd })
-        .then(r => r.json())
+    stallApiPost(fd)
         .then(res => {
             if (res.success) {
                 toast(res.message, 'success');
@@ -679,14 +679,29 @@ function submitFinalApproval() {
             } else {
                 toast(res.message, 'error');
                 btn.disabled = false;
-                btn.textContent = 'ðŸª Grant Final Approval & Create Account';
+                btn.textContent = 'Grant Final Approval & Create Account';
             }
         })
         .catch(() => {
             toast('Network error. Please try again.', 'error');
             btn.disabled = false;
-            btn.textContent = 'ðŸª Grant Final Approval & Create Account';
+            btn.textContent = 'Grant Final Approval & Create Account';
         });
+}
+
+function stallApiPost(fd) {
+    return fetch(API_URL, { method:'POST', body:fd }).then(async r => {
+        const text = await r.text();
+        try {
+            return JSON.parse(text);
+        } catch (err) {
+            console.error('Invalid stall application API response:', text);
+            return {
+                success: false,
+                message: 'The server returned an invalid response. Check the PHP error log for details.'
+            };
+        }
+    });
 }
 
 function toast(msg, type='success') {

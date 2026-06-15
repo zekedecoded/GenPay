@@ -154,10 +154,10 @@ document.getElementById('recipientStudentId').addEventListener('blur', async fun
         const d = await r.json();
         const preview = document.getElementById('recipientPreview');
         if (d.success && d.name) {
-            preview.textContent = '✓ Found: ' + d.name;
+            preview.textContent = ' Found: ' + d.name;
             preview.style.color = '#10b981';
         } else {
-            preview.textContent = '✗ Student not found';
+            preview.textContent = ' Student not found';
             preview.style.color = '#ef4444';
         }
     } catch(e) {}

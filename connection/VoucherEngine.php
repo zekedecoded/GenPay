@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/pdo.php';
 require_once __DIR__ . '/CirculationEngine.php';
+require_once __DIR__ . '/audit_logger.php';
 
 class VoucherEngine
 {
@@ -115,6 +116,23 @@ class VoucherEngine
                     ]);
 
             $this->db->commit();
+            logAudit(
+                $this->db,
+                $issuedBy,
+                gjc_audit_role_from_user($this->db, $issuedBy),
+                'TRANSACTION',
+                'e_wallet_transactions',
+                null,
+                [
+                    'reference_no' => $ref,
+                    'transaction_type' => 'voucher_create',
+                    'voucher_id' => $voucherId,
+                    'amount' => $amount,
+                    'vault_before' => (float) $settings['cashier_vault_points'],
+                    'vault_after' => (float) $settings['cashier_vault_points'] - $amount,
+                    'status' => 'completed',
+                ]
+            );
 
             
             $qrPayload = json_encode([
@@ -339,6 +357,24 @@ class VoucherEngine
             $this->validateCirculation((float) $settings['total_circulation_cap']);
 
             $this->db->commit();
+            logAudit(
+                $this->db,
+                $scannedBy,
+                gjc_audit_role_from_user($this->db, $scannedBy),
+                'TRANSACTION',
+                'e_wallet_transactions',
+                null,
+                [
+                    'reference_no' => $ref,
+                    'transaction_type' => 'voucher_payment',
+                    'voucher_id' => (int) $voucher['id'],
+                    'merchant_wallet_id' => $merchantWalletId,
+                    'amount' => $amount,
+                    'balance_before' => $balBefore,
+                    'balance_after' => $balAfter,
+                    'status' => 'completed',
+                ]
+            );
 
             return [
                 'success' => true,
@@ -441,6 +477,23 @@ class VoucherEngine
                     ]);
 
             $this->db->commit();
+            logAudit(
+                $this->db,
+                $triggeredBy,
+                gjc_audit_role_from_user($this->db, $triggeredBy),
+                'TRANSACTION',
+                'e_wallet_transactions',
+                null,
+                [
+                    'reference_no' => $ref,
+                    'transaction_type' => 'voucher_expire',
+                    'voucher_id' => $voucherId,
+                    'amount' => max($recycled, 0.01),
+                    'vault_before' => $vaultBefore,
+                    'vault_after' => $vaultAfter,
+                    'status' => 'completed',
+                ]
+            );
             return $recycled;
 
         } catch (\Throwable $e) {

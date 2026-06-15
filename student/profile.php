@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/audit_logger.php';
 
 gjc_require_role(['student']);
 
@@ -67,6 +68,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } else {
             $stmt = $db->prepare("UPDATE users SET password = ? WHERE {$idColumn} = ?");
             $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $currentUser['id']]);
+            logAudit(
+                $db,
+                (int) $currentUser['id'],
+                gjc_current_role(),
+                'PASSWORD_CHANGE',
+                'users',
+                ['password' => 'changed_by_student_profile'],
+                ['password' => 'changed_by_student_profile']
+            );
             $notice = 'Password updated successfully!';
         }
     }
@@ -163,7 +173,7 @@ $spendingLimit = 'No Limit';
         <main class="student-main">
 
             <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">☰</button>
+                <button class="student-menu-btn" onclick="toggleStudentSidebar()">Menu</button>
 
                 <div>
                     <h1>My Profile</h1>

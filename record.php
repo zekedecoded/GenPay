@@ -6,6 +6,8 @@ namespace Classes;
 
 require_once __DIR__ . '/connection/config.php';
 require_once __DIR__ . '/connection/pdo.php';
+require_once __DIR__ . '/connection/app.php';
+require_once __DIR__ . '/connection/audit_logger.php';
 
 class Record
 {
@@ -25,6 +27,7 @@ class Record
     
     public function loginUser() {
         if (isset($_POST['login'])) {
+            \gjc_ensure_first_login_schema($this->con);
             
 
             $email = $_POST['email'] ?? '';
@@ -65,6 +68,32 @@ class Record
                     $_SESSION['sub_role']         = $subRole;
                     $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
                     $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant'][$roleId] ?? 'user';
+
+                    $mustChangePassword =
+                        !empty($user['force_password_change']) ||
+                        !empty($user['is_first_login']) ||
+                        (isset($user['password_changed']) && (int) $user['password_changed'] === 0);
+
+                    \logAudit(
+                        $this->con,
+                        $userId,
+                        $_SESSION['role'],
+                        'LOGIN',
+                        'users',
+                        null,
+                        [
+                            'userID' => $userId,
+                            'email' => $user['email'] ?? '',
+                            'roleID' => $roleId,
+                            'sub_role' => $subRole,
+                        ]
+                    );
+
+                    if ($mustChangePassword) {
+                        $_SESSION['force_change'] = true;
+                        header('Location: ' . BASE_URL . '/change_password.php');
+                        exit;
+                    }
 
                     header('Location: ' . BASE_URL . '/dashboard.php');
                     exit;

@@ -12,7 +12,7 @@ header('Content-Type: application/json');
 
 $sessionUserId = gjc_user_id();
 $sessionRole = gjc_current_role();
-$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin'];
+$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin', 'finance'];
 if (!$sessionUserId || !in_array($sessionRole, $allowedRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);

@@ -214,7 +214,7 @@
             GJC EduPay
         </a>
         <div style="display:flex;align-items:center;gap:12px;">
-            <a href="<?= BASE_URL ?>/stalls" class="btn btn-primary-custom" style="padding:10px 22px;font-size:15px;background:transparent;border:2px solid #064420;color:#064420;box-shadow:none;">🏪 View Stalls</a>
+            <a href="<?= BASE_URL ?>/stalls" class="btn btn-primary-custom" style="padding:10px 22px;font-size:15px;background:transparent;border:2px solid #064420;color:#064420;box-shadow:none;"> View Stalls</a>
             <a href="<?= BASE_URL ?>/login.php" class="btn btn-primary-custom" style="padding: 10px 25px; font-size: 16px;">Login to Portal</a>
         </div>
     </nav>
@@ -262,7 +262,7 @@
                         <img src="<?= ICONS_URL ?>/merchants.png" alt="Stalls" class="feature-icon-qr">
                     </div>
                     <h3>Stall Directory</h3>
-                    <p>Browse available stalls in real-time and submit your vendor application online — no visits required.</p>
+                    <p>Browse available stalls in real-time and submit your vendor application online - no visits required.</p>
                     <a href="<?= BASE_URL ?>/stalls" style="display:inline-block;margin-top:14px;font-weight:700;color:#064420;text-decoration:none;font-size:14px;">View Stalls &rarr;</a>
                 </div>
             </div>

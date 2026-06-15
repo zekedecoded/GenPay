@@ -112,7 +112,7 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <main class="student-main">
 
             <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">☰</button>
+                <button class="student-menu-btn" onclick="toggleStudentSidebar()">Menu</button>
 
                 <div>
                     <h1>Top-Up Wallet</h1>

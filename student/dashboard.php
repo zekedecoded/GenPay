@@ -112,7 +112,7 @@ if (isset($_SESSION['force_change'])) {
         <main class="student-main">
 
             <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">☰</button>
+                <button class="student-menu-btn" onclick="toggleStudentSidebar()">Menu</button>
 
                 <div>
                     <h1>My Wallet</h1>
@@ -264,14 +264,14 @@ if (isset($_SESSION['force_change'])) {
 
                 <div class="st-economy-header">
                     <div class="st-economy-title-row">
-                        <span class="st-economy-pill">💰 System Economy Status</span>
+                        <span class="st-economy-pill"> System Economy Status</span>
                         <span class="st-econ-badge <?= $ceBalanced ? 'st-econ-ok' : 'st-econ-err' ?>">
                             <?= $ceBalanced
                                 ? '<span class="st-dot st-dot-green"></span> Economy Balanced'
                                 : '<span class="st-dot st-dot-red st-pulse"></span> Under Review' ?>
                         </span>
                     </div>
-                    <p class="st-economy-sub">The GJC EduPay campus economy is a closed system — every peso is tracked and accounted for.</p>
+                    <p class="st-economy-sub">The GJC EduPay campus economy is a closed system - every peso is tracked and accounted for.</p>
                 </div>
 
                 <div class="st-economy-grid">
@@ -322,7 +322,7 @@ if (isset($_SESSION['force_change'])) {
                             <img src="<?= ICONS_URL ?>/transactions.png" alt="">
                         </div>
                         <span class="st-econ-label">Economy Health</span>
-                        <div class="st-econ-value"><?= $ceBalanced ? '✓ Healthy' : '⚠ Review' ?></div>
+                        <div class="st-econ-value"><?= $ceBalanced ? ' Healthy' : ' Review' ?></div>
                         <div class="st-econ-desc">
                             <?= $ceBalanced
                                 ? 'All pools are in balance. Transactions are safe.'
@@ -334,8 +334,7 @@ if (isset($_SESSION['force_change'])) {
 
                 
                 <div class="st-economy-tip">
-                    <span>💡</span>
-                    <span>Your wallet balance is part of this closed-loop economy. Points can only move — they are never created during a transaction.</span>
+                    <span>Your wallet balance is part of this closed-loop economy. Points can only move - they are never created during a transaction.</span>
                 </div>
 
             </section>

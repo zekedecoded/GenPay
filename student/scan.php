@@ -281,6 +281,7 @@ $recentPayments = [];
     const scanPayNowBtn = document.getElementById("scanPayNowBtn");
     const resumeScannerBtn = document.getElementById("resumeScannerBtn");
     const switchCameraBtn = document.getElementById("switchCameraBtn");
+    const paymentApiUrl = "<?= STUDENT_URL ?>/pay_qr";
 
     let activeStream = null;
     let currentFacingMode = "environment";
@@ -326,9 +327,37 @@ $recentPayments = [];
         scanResultEmpty.classList.add("d-none");
         scanResultText.classList.add("d-none");
         scanMerchantName.textContent = data.merchant || "--";
-        scanItemDesc.textContent = data.desc || "--";
+        scanItemDesc.textContent = data.desc || data.description || "--";
         scanAmount.textContent = "₱" + parseFloat(data.price).toFixed(2);
+        scanAmount.textContent = "PHP " + parseFloat(data.amount || data.price || 0).toFixed(2);
         scanPaymentCard.classList.remove("d-none");
+    }
+
+    function parseQrPayload(rawValue) {
+        const raw = String(rawValue || "").trim();
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch (ignored) {
+        }
+
+        try {
+            const url = new URL(raw);
+            const embedded = url.searchParams.get("data") || url.searchParams.get("payload") || url.searchParams.get("qr");
+            if (embedded) {
+                return JSON.parse(embedded);
+            }
+            const token = url.searchParams.get("token");
+            if (token) {
+                return { type: "payment", token };
+            }
+        } catch (ignored) {
+        }
+
+        return null;
     }
 
     async function startScanner(facingMode = currentFacingMode) {
@@ -372,7 +401,7 @@ $recentPayments = [];
 
             const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                inversionAttempts: "dontInvert",
+                inversionAttempts: "attemptBoth",
             });
 
             if (code) {
@@ -382,8 +411,8 @@ $recentPayments = [];
                 }
 
                 try {
-                    const data = JSON.parse(code.data);
-                    if (data.type === 'payment') {
+                    const data = parseQrPayload(code.data);
+                    if (data && data.type === 'payment' && (data.token || data.merchant_wallet_id)) {
                         lastDetectedPayload = code.data;
                         scanningPaused = true;
                         showPaymentCard(data);
@@ -401,27 +430,49 @@ $recentPayments = [];
         requestAnimationFrame(scanQRCode);
     }
 
-    async function payNow(merchant, price, desc, merchantWalletId) {
-        if (!merchantWalletId) {
+    async function payNow(payment) {
+        const merchant = payment.merchant || "Merchant";
+        const amount = payment.amount || payment.price || 0;
+        const desc = payment.desc || payment.description || "purchase";
+        const merchantWalletId = parseInt(payment.merchant_wallet_id || 0, 10);
+
+        if (!payment.token && !merchantWalletId) {
             alert("This QR code is missing merchant wallet details. Ask the merchant to generate a new QR.");
             return;
         }
 
-        if (!confirm("Pay PHP " + parseFloat(price).toFixed(2) + " to " + merchant + " for " + desc + "?")) {
+        if (!confirm("Pay PHP " + parseFloat(amount).toFixed(2) + " to " + merchant + " for " + desc + "?")) {
             return;
         }
 
-        const response = await fetch("pay_qr.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+        const body = payment.token
+            ? { token: payment.token }
+            : {
                 merchant_wallet_id: merchantWalletId,
-                amount: price,
+                amount: amount,
                 description: desc
-            })
-        });
+            };
 
-        const result = await response.json();
+        let result = null;
+        try {
+            const response = await fetch(paymentApiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const text = await response.text();
+            try {
+                result = JSON.parse(text);
+            } catch (parseError) {
+                throw new Error("Payment server returned an invalid response. Please refresh and log in again.");
+            }
+        } catch (requestError) {
+            alert(requestError.message || "Payment request failed.");
+            scanningPaused = false;
+            setCameraStatus("Camera Active", "active");
+            return;
+        }
+
         if (result.success) {
             alert("Payment completed. Reference: " + result.reference);
             stopScannerStream();
@@ -439,12 +490,7 @@ $recentPayments = [];
             return;
         }
 
-        payNow(
-            pendingPayment.merchant,
-            pendingPayment.price,
-            pendingPayment.desc,
-            parseInt(pendingPayment.merchant_wallet_id || 0, 10)
-        );
+        payNow(pendingPayment);
     });
 
     resumeScannerBtn.addEventListener("click", function() {

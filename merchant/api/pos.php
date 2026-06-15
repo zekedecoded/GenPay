@@ -3,15 +3,122 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
+gjc_ensure_merchant_qr_orders_schema($db);
 
 $action         = trim((string) ($_POST['action'] ?? ''));
 $merchantUserId = gjc_user_id();
 $ownerMerchId   = gjc_merchant_owner_id($db, $merchantUserId);
 
 try {
+    if ($action === 'create_qr_order') {
+        $totalAmt = round((float) ($_POST['total'] ?? 0), 2);
+        $itemsJson = (string) ($_POST['items'] ?? '[]');
+        $items = json_decode($itemsJson, true);
+
+        if ($totalAmt <= 0 || !is_array($items) || empty($items)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid QR order details.']);
+            exit;
+        }
+
+        $merchantWallet = gjc_merchant_wallet($db, $ownerMerchId);
+        if ($merchantWallet['id'] === 0) {
+            echo json_encode(['success' => false, 'message' => 'Merchant wallet not found.']);
+            exit;
+        }
+
+        $validatedItems = [];
+        $serverTotal = 0.0;
+        foreach ($items as $item) {
+            $itemId = (int) ($item['id'] ?? 0);
+            $qty = (int) ($item['qty'] ?? 0);
+            if ($itemId <= 0 || $qty <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid item in QR order.']);
+                exit;
+            }
+
+            $stmt = $db->prepare(
+                "SELECT id, product_name, price, stock_qty
+                   FROM merchant_inventory
+                  WHERE id = ?
+                    AND merchant_user_id = ?
+                    AND is_available = 1
+                    AND is_restricted = 0
+                  LIMIT 1"
+            );
+            $stmt->execute([$itemId, $ownerMerchId]);
+            $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$product) {
+                echo json_encode(['success' => false, 'message' => "Item #{$itemId} is unavailable."]);
+                exit;
+            }
+            if ((int) $product['stock_qty'] < $qty) {
+                echo json_encode(['success' => false, 'message' => "Insufficient stock for {$product['product_name']}."]);
+                exit;
+            }
+
+            $price = (float) $product['price'];
+            $serverTotal += $price * $qty;
+            $validatedItems[] = [
+                'id' => (int) $product['id'],
+                'name' => (string) $product['product_name'],
+                'qty' => $qty,
+                'price' => round($price, 2),
+            ];
+        }
+
+        $serverTotal = round($serverTotal, 2);
+        if (abs($serverTotal - $totalAmt) > 0.01) {
+            echo json_encode(['success' => false, 'message' => 'Cart total changed. Please regenerate the QR.']);
+            exit;
+        }
+
+        $description = implode(', ', array_map(
+            fn($item) => "{$item['qty']}x {$item['name']}",
+            $validatedItems
+        ));
+        $token = bin2hex(random_bytes(16));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+        $merchantName = gjc_current_user($db)['name'] ?? 'Merchant';
+
+        $db->prepare(
+            "INSERT INTO merchant_qr_orders
+                (token, merchant_user_id, merchant_wallet_id, description, items_json, amount, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )->execute([
+            $token,
+            $ownerMerchId,
+            (int) $merchantWallet['id'],
+            $description,
+            json_encode($validatedItems, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $serverTotal,
+            $expiresAt,
+        ]);
+
+        $qrPayload = [
+            'type' => 'payment',
+            'source' => 'pos',
+            'token' => $token,
+            'merchant' => $merchantName,
+            'merchant_wallet_id' => (int) $merchantWallet['id'],
+            'price' => number_format($serverTotal, 2, '.', ''),
+            'amount' => number_format($serverTotal, 2, '.', ''),
+            'desc' => $description,
+            'expires_at' => $expiresAt,
+        ];
+
+        echo json_encode([
+            'success' => true,
+            'qr_payload' => json_encode($qrPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'summary' => 'Total: PHP ' . number_format($serverTotal, 2) . ' - ' . count($validatedItems) . ' item type(s)',
+            'expires_at' => $expiresAt,
+        ]);
+        exit;
+    }
     // ── LOOKUP STUDENT ──────────────────────────────────────────────────────────
     if ($action === 'lookup_student') {
         $studentIdInput = trim((string) ($_POST['student_id'] ?? ''));
@@ -159,6 +266,23 @@ try {
             ]);
 
             $db->commit();
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'TRANSACTION',
+                'e_wallet_transactions',
+                null,
+                [
+                    'reference_no' => $refNo,
+                    'transaction_type' => 'payment',
+                    'amount' => $totalAmt,
+                    'student_wallet_id' => $walletId,
+                    'merchant_wallet_id' => $merchantWallet['id'],
+                    'items' => $items,
+                    'status' => 'completed',
+                ]
+            );
             // ── COMMIT ─────────────────────────────────────────────────────────
 
             echo json_encode([

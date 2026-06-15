@@ -1,5 +1,23 @@
 <?php
-session_start();
+require_once __DIR__ . '/connection/config.php';
+require_once __DIR__ . '/connection/pdo.php';
+require_once __DIR__ . '/connection/app.php';
+require_once __DIR__ . '/connection/audit_logger.php';
+
+$logoutUserId = gjc_user_id();
+$logoutRole = gjc_current_role();
+if ($logoutUserId > 0) {
+    logAudit(
+        $db,
+        $logoutUserId,
+        $logoutRole,
+        'LOGOUT',
+        'users',
+        ['session' => 'active'],
+        ['session' => 'destroyed']
+    );
+}
+
 $_SESSION = [];
 session_destroy();
 ?>

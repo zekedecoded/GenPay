@@ -54,7 +54,7 @@ $currentPage = 'topups';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">â˜°</button>
+                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
 
                 <div>
                     <h1>Top-ups</h1>

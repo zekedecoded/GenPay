@@ -4,7 +4,7 @@ require_once __DIR__ . '/connection/pdo.php';
 require_once __DIR__ . '/connection/StallManager.php';
 
 $stallMgr = new StallManager($db);
-$stallMgr->flushExpiredPending();   // App-level expiry flush — runs before render
+$stallMgr->flushExpiredPending();   // App-level expiry flush - runs before render
 $stalls   = $stallMgr->allStalls();
 
 // Build a 5×2 grid: [rowLabel][colNumber] => stall
@@ -386,15 +386,15 @@ function statusLabel(string $status): string {
 <!-- HERO -->
 <div class="hero">
     <div class="hero-tag">
-        <span>🏪</span> Stall Availability — Live
+        Stall Availability - Live
     </div>
     <h1>GJC Campus <span>Stall Directory</span></h1>
-    <p>Browse available stalls in real-time. Green means open — click any stall to see details and apply online.</p>
+    <p>Browse available stalls in real-time. Green means open - click any stall to see details and apply online.</p>
 </div>
 
 <!-- LEGEND -->
 <div class="legend">
-    <div class="legend-item"><div class="legend-dot legend-dot--vacant"></div> Vacant — Apply Now</div>
+    <div class="legend-item"><div class="legend-dot legend-dot--vacant"></div> Vacant - Apply Now</div>
     <div class="legend-item"><div class="legend-dot legend-dot--occupied"></div> Occupied</div>
     <div class="legend-item"><div class="legend-dot legend-dot--pending"></div> Pending Application (15 min lock)</div>
 </div>
@@ -418,17 +418,17 @@ function statusLabel(string $status): string {
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> — Vacant, click to apply"
+                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Vacant, click to apply"
                  <?php elseif ($stall['status'] === 'occupied'): ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> — Occupied by <?= htmlspecialchars($stall['merchant_stall_name']) ?>"
+                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Occupied by <?= htmlspecialchars($stall['merchant_stall_name']) ?>"
                  <?php else: ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> — Pending application"
+                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Pending application"
                  <?php endif; ?>
             >
                 <div class="stall-id-badge"><?= htmlspecialchars($stall['stall_id']) ?></div>
@@ -558,11 +558,11 @@ function openModal(el) {
         startTimer(data.pending_expires_at, 'modal-pending-timer');
 
     } else {
-        // Vacant — show apply button
+        // Vacant - show apply button
         const a = document.createElement('a');
         a.href      = BASE_URL + '/apply?stall_id=' + encodeURIComponent(data.stall_id);
         a.className = 'btn-apply';
-        a.textContent = '🏪 Apply for ' + data.stall_id;
+        a.textContent = ' Apply for ' + data.stall_id;
         footer.appendChild(a);
     }
 

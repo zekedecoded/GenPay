@@ -2,16 +2,18 @@
 // ============================================================
 //  admin/doc.php  â€” Secure document proxy for admin viewing
 //  Serves files from /uploads/ only to authenticated admins.
-//  Usage: /admin/doc.php?f=uploads/stall_apps/abc.pdf
+//  Usage: /admin/doc?f=uploads/stall_applications/1/file.pdf
 // ============================================================
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['finance']);
 
-$relPath = $_GET['f'] ?? '';
+$relPath = (string) ($_GET['f'] ?? '');
 
 // Sanitise: strip leading slashes, block traversal
 $relPath = ltrim(str_replace('\\', '/', $relPath), '/');
@@ -26,11 +28,17 @@ if (!str_starts_with($relPath, 'uploads/')) {
     exit('Access denied.');
 }
 
-$absPath = BASE_PATH . '/' . $relPath;
+$baseUploads = realpath(BASE_PATH . '/uploads');
+$absPath = realpath(BASE_PATH . '/' . $relPath);
 
-if (!file_exists($absPath) || !is_file($absPath)) {
+if (!$baseUploads || !$absPath || !is_file($absPath)) {
     http_response_code(404);
     exit('File not found.');
+}
+
+if (strpos($absPath, $baseUploads . DIRECTORY_SEPARATOR) !== 0) {
+    http_response_code(403);
+    exit('Access denied.');
 }
 
 // Detect MIME
@@ -44,6 +52,10 @@ $mime = match($ext) {
     default       => 'application/octet-stream',
 };
 
+if (ob_get_length()) {
+    ob_end_clean();
+}
+
 $size = filesize($absPath);
 
 header('Content-Type: '  . $mime);
@@ -51,6 +63,7 @@ header('Content-Length: ' . $size);
 header('Content-Disposition: inline; filename="' . basename($absPath) . '"');
 header('Cache-Control: private, max-age=3600');
 header('X-Content-Type-Options: nosniff');
+header('Accept-Ranges: bytes');
 
 readfile($absPath);
 exit;

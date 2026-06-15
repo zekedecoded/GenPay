@@ -46,7 +46,7 @@ $currentPage = 'visitors';
         <main class="admin-main visitors-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">â˜°</button>
+                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
 
                 <div>
                     <h1>Visitors</h1>
@@ -236,7 +236,7 @@ $currentPage = 'visitors';
             <div class="modal-content visitor-load-modal">
                 <div class="visitor-load-header">
                     <h5><span>â–£</span> Mint Visitor Voucher</h5>
-                    <button type="button" class="visitor-modal-close" data-bs-dismiss="modal">Ã—</button>
+                    <button type="button" class="visitor-modal-close" data-bs-dismiss="modal">Ã-</button>
                 </div>
                 <div class="visitor-load-body">
                     <div id="mintAlert" class="alert d-none" style="font-size:13px; font-weight:600"></div>
