@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
---  GJC EduPay — Visitor Voucher Schema
+--  GenPay — Visitor Voucher Schema
 --  Run ONCE against the 'ewallet' database.
 --  Safe to re-run (uses IF NOT EXISTS / CREATE OR REPLACE).
 -- ═══════════════════════════════════════════════════════════

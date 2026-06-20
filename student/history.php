@@ -82,7 +82,7 @@ usort($transactions, function (array $a, array $b): int {
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction History | EduPay</title>
+    <title>Transaction History | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=21">
@@ -105,7 +105,7 @@ usort($transactions, function (array $a, array $b): int {
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>GJC EduPay</h4>
+                    <h4>GenPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>

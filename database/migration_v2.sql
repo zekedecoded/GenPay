@@ -1,5 +1,5 @@
 -- ============================================================
--- GJC EduPay — Migration v2 (Capstone Refactor)
+-- GenPay — Migration v2 (Capstone Refactor)
 -- Generated: 2026-06-09
 -- Run once on an existing `ewallet` database.
 -- All statements are additive / idempotent (IF NOT EXISTS / IF NOT COLUMN EXISTS).

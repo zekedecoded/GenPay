@@ -9,7 +9,7 @@ $currentPage = $currentPage ?? '';
             <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
         </div>
         <div class="merchant-brand-text">
-            <h4>GJC EduPay</h4>
+            <h4>GenPay</h4>
             <span>Merchant Admin</span>
         </div>
     </div>
@@ -45,6 +45,10 @@ $currentPage = $currentPage ?? '';
         <a href="<?= MERCHANT_URL ?>/history.php" class="<?= $currentPage === 'history' ? 'active' : '' ?>">
             <img src="<?= ICONS_URL ?>/transactions.png" class="merchant-nav-icon" alt="">
             <span class="merchant-nav-text">Sales History</span>
+        </a>
+        <a href="<?= MERCHANT_URL ?>/settings.php" class="<?= $currentPage === 'settings' ? 'active' : '' ?>">
+            <img src="<?= ICONS_URL ?>/settings.png" class="merchant-nav-icon" alt="">
+            <span class="merchant-nav-text">Business Profile</span>
         </a>
     </nav>
     <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">

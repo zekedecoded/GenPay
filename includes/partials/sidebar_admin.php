@@ -8,7 +8,7 @@ $currentPage = $currentPage ?? ""; ?>
             <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="Logo">
         </div>
         <div class="brand-text">
-            <h4>GJC EduPay</h4>
+            <h4>GenPay</h4>
             <span>Finance</span>
         </div>
     </div>
@@ -73,7 +73,7 @@ $currentPage = $currentPage ?? ""; ?>
             <?php
             // Badge: count pending stall applications
             try {
-                $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='pending'")->fetchColumn();
+                $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='review'")->fetchColumn();
                 if ($__pendingCount > 0): ?>
                 <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:800;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
             <?php endif;

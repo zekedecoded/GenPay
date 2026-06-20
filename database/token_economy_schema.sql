@@ -1,5 +1,5 @@
 -- ============================================================
---  GJC EduPay — Token Economic System
+--  GenPay — Token Economic System
 --  MySQL Schema  |  Database: ewallet
 --  Author: Junior Backend Developer (Fintech / DB Integrity)
 --  Date:   2026-04-29

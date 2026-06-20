@@ -1,5 +1,5 @@
 -- ============================================================
---  GJC EduPay — Stall Management Phase 2 Schema Extension
+--  GenPay — Stall Management Phase 2 Schema Extension
 --  Database: ewallet
 --  Generated: 2026-06-15
 --  All statements are additive / idempotent.

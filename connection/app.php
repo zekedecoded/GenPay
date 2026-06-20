@@ -83,6 +83,10 @@ function gjc_column(PDO $db, string $table, array $candidates): ?string
     return null;
 }
 
+/**
+ * Pipeline status vocabulary: review -> meeting -> down_payment -> approval -> active.
+ * Maps 1:1 to the 4-step application pipeline (current_step 1-4).
+ */
 function gjc_ensure_stall_application_workflow_schema(PDO $db): void
 {
     if (!gjc_table_exists($db, "stall_applications")) {
@@ -91,21 +95,61 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
 
     $columns = gjc_table_columns($db, "stall_applications");
 
-    try {
+    // One-time migration from the old pending/awaiting_*/approved chain to the
+    // 4-step pipeline. Detected by the absence of the current_step column.
+    if (!in_array("current_step", $columns, true)) {
+        try {
+            $db->exec(
+                "ALTER TABLE stall_applications
+                 MODIFY stall_id VARCHAR(10) NULL DEFAULT NULL,
+                 ADD COLUMN current_step TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER status",
+            );
+        } catch (Throwable $ignored) {
+        }
+
+        // Widen the enum so old and new values coexist while data is migrated.
+        try {
+            $db->exec(
+                "ALTER TABLE stall_applications
+                 MODIFY status ENUM(
+                    'pending','awaiting_meetup','awaiting_approval','active','rejected','expired',
+                    'initially_approved','approved',
+                    'review','meeting','down_payment','approval'
+                 ) NOT NULL DEFAULT 'review'",
+            );
+        } catch (Throwable $ignored) {
+        }
+
+        $db->exec("UPDATE stall_applications SET status='review', current_step=1 WHERE status='pending'");
+        $db->exec("UPDATE stall_applications SET status='meeting', current_step=2 WHERE status IN ('initially_approved','awaiting_meetup')");
+        $db->exec("UPDATE stall_applications SET status='approval', current_step=4 WHERE status='awaiting_approval'");
+        $db->exec("UPDATE stall_applications SET status='active', current_step=4 WHERE status IN ('approved', 'active')");
+
+        // Early-rejection archiving: anything already rejected moves out of the
+        // live pipeline into archived_rejections (step unknown for legacy rows -> 1).
+        gjc_ensure_archived_rejections_schema($db);
         $db->exec(
-            "ALTER TABLE stall_applications
-             MODIFY status ENUM(
-                'pending',
-                'awaiting_meetup',
-                'awaiting_approval',
-                'active',
-                'rejected',
-                'expired',
-                'initially_approved',
-                'approved'
-             ) NOT NULL DEFAULT 'pending'",
+            "INSERT INTO archived_rejections
+                (original_application_id, rejected_at_step, business_name, proprietor_name,
+                 contact_number, email, profile_picture, business_permit, sanitary_permit,
+                 gjc_requirements, clearance, rejection_reason, rejected_by, rejected_at)
+             SELECT id, 1, business_name, proprietor_name, contact_number, email,
+                    profile_picture, business_permit, sanitary_permit, gjc_requirements, clearance,
+                    COALESCE(rejection_reason, 'Rejected (reason not recorded prior to pipeline migration)'),
+                    COALESCE(reviewed_by, 0), COALESCE(reviewed_at, updated_at)
+             FROM stall_applications WHERE status = 'rejected'",
         );
-    } catch (Throwable $ignored) {
+        $db->exec("DELETE FROM stall_applications WHERE status = 'rejected'");
+
+        // Narrow the enum down to the final 4-step vocabulary.
+        try {
+            $db->exec(
+                "ALTER TABLE stall_applications
+                 MODIFY status ENUM('review','meeting','down_payment','approval','active','expired')
+                    NOT NULL DEFAULT 'review'",
+            );
+        } catch (Throwable $ignored) {
+        }
     }
 
     $adds = [
@@ -130,6 +174,39 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
             );
         }
     }
+}
+
+/**
+ * Archive table for applications declined during Step 1 (Review) or
+ * Step 2 (Meeting). Kept separate from the live pipeline so finance staff
+ * can reference or reactivate a declined application later.
+ */
+function gjc_ensure_archived_rejections_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS archived_rejections (
+            id                       INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            original_application_id INT UNSIGNED NOT NULL,
+            rejected_at_step         TINYINT UNSIGNED NOT NULL,
+            business_name            VARCHAR(120)  NOT NULL,
+            proprietor_name          VARCHAR(120)  NOT NULL,
+            contact_number           VARCHAR(15)   NOT NULL,
+            email                    VARCHAR(255)  NOT NULL,
+            profile_picture          VARCHAR(500)  NULL,
+            business_permit          VARCHAR(500)  NULL,
+            sanitary_permit          VARCHAR(500)  NULL,
+            gjc_requirements         VARCHAR(500)  NULL,
+            clearance                VARCHAR(500)  NULL,
+            rejection_reason         TEXT          NOT NULL,
+            rejected_by              INT UNSIGNED  NOT NULL,
+            rejected_at              DATETIME      NOT NULL,
+            archived_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reactivated              TINYINT(1)    NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY idx_ar_original (original_application_id),
+            KEY idx_ar_email    (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
 }
 
 function gjc_ensure_first_login_schema(PDO $db): void

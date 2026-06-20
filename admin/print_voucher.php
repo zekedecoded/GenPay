@@ -47,7 +47,7 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voucher <?= gjc_e($voucher['voucher_code']) ?> | GJC EduPay</title>
+    <title>Voucher <?= gjc_e($voucher['voucher_code']) ?> | GenPay</title>
     <style>
         :root {
             --green: #064420;
@@ -287,7 +287,7 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
     <main class="voucher" id="voucherCard">
         <section class="voucher-top">
             <div class="brand">
-                <h1>GJC EduPay Visitor Voucher</h1>
+                <h1>GenPay Visitor Voucher</h1>
                 <p>Present this QR code to participating campus merchants.</p>
             </div>
             <div class="amount">
@@ -370,7 +370,7 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
   <rect width="900" height="560" rx="18" fill="#ffffff"/>
   <rect width="900" height="140" rx="18" fill="#064420"/>
   <rect y="120" width="900" height="30" fill="#064420"/>
-  <text x="42" y="58" fill="#ffffff" font-family="Arial" font-size="31" font-weight="700">GJC EduPay Visitor Voucher</text>
+  <text x="42" y="58" fill="#ffffff" font-family="Arial" font-size="31" font-weight="700">GenPay Visitor Voucher</text>
   <text x="42" y="92" fill="#d9eadf" font-family="Arial" font-size="16">Present this QR code to participating campus merchants.</text>
   <text x="858" y="54" text-anchor="end" fill="#d9eadf" font-family="Arial" font-size="15">Loaded Value</text>
   <text x="858" y="102" text-anchor="end" fill="#ffe39a" font-family="Arial" font-size="44" font-weight="700">${escapeSvg(voucherData.amount)}</text>

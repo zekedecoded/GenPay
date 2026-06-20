@@ -9,7 +9,7 @@ $currentPage = $currentPage ?? '';
             <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
         </div>
         <div class="student-brand-text">
-            <h4>GJC EduPay</h4>
+            <h4>GenPay</h4>
             <span>Student Portal</span>
         </div>
     </div>

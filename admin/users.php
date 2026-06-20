@@ -48,10 +48,10 @@ $currentPage = 'users';
 <head>
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
-    <title>Users Management | GJC EduPay</title>
+    <title>Users Management | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/users.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
@@ -89,7 +89,7 @@ $currentPage = 'users';
                 <div class="users-panel-header">
                     <div>
                         <h3>Users Directory</h3>
-                        <p>Search and filter accounts across the GJC EduPay system.</p>
+                        <p>Search and filter accounts across the GenPay system.</p>
                     </div>
 
                     <button type="button" class="add-user-btn" data-bs-toggle="modal" data-bs-target="#addUserModal">

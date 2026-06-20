@@ -320,9 +320,9 @@ $currentPage = "audit_log";
 <head>
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
-    <title>Audit Log | GJC EduPay</title>
+    <title>Audit Log | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>

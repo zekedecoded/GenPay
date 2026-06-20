@@ -31,7 +31,7 @@ $currentPage = 'history';
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales History | EduPay</title>
+    <title>Sales History | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=13">

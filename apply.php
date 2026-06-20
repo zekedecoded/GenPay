@@ -1,11 +1,11 @@
 <?php
 // ============================================================
-//  apply.php - Public Stall Application Form
-//  Phase 3 + 4: Form render, validation, file upload, DB insert
+//  apply.php - Public Stall Application Form (general submission)
+//  Stall assignment now happens at Step 4 (Approval/Award) of the
+//  admin pipeline, not at submission time - no stall pick or lock here.
 // ============================================================
 require_once __DIR__ . '/connection/config.php';
 require_once __DIR__ . '/connection/pdo.php';
-require_once __DIR__ . '/connection/StallManager.php';
 
 // ── Upload constants ──────────────────────────────────────────
 const MAX_FILE_BYTES  = 5 * 1024 * 1024;  // 5 MB
@@ -14,35 +14,10 @@ const ALLOWED_EXT     = ['jpg','jpeg','png','pdf'];
 const IMG_ONLY_MIMES  = ['image/jpeg','image/png'];
 const IMG_ONLY_EXT    = ['jpg','jpeg','png'];
 
-$stallMgr = new StallManager($db);
-$stallMgr->flushExpiredPending();   // clear any expired locks first
-
-// ── Parse & sanitise stall_id ─────────────────────────────────
-$stallId = strtoupper(trim($_POST['stall_id'] ?? $_GET['stall_id'] ?? ''));
-if (!preg_match('/^[A-Z]\d+$/', $stallId)) { $stallId = ''; }
-
-$stall      = $stallId ? $stallMgr->getStall($stallId) : null;
-$stallError = null;
 $formErrors = [];
 $old        = [];
 $success    = false;
 $appId      = null;
-
-// ── GET - lock stall & render form ───────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (!$stall) {
-        $stallError = 'Invalid or unknown stall ID.';
-    } elseif ($stall['status'] === 'occupied') {
-        $stallError = 'This stall is already occupied by an active merchant.';
-    } elseif ($stall['status'] === 'vacant') {
-        if (!$stallMgr->lockStall($stallId)) {
-            $stallError = 'This stall was just taken by another applicant. Please choose a different stall.';
-        } else {
-            $stall = $stallMgr->getStall($stallId); // refresh with timer
-        }
-    }
-    // status === pending_application: allow (user refreshed page within their window)
-}
 
 // ── POST - validate, upload, insert ──────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -52,15 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'contact_number'  => trim($_POST['contact_number']  ?? ''),
         'email'           => trim($_POST['email']           ?? ''),
     ];
-
-    // Stall availability guard
-    if (!$stall) {
-        $formErrors['general'] = 'Invalid stall.';
-    } elseif ($stall['status'] !== 'pending_application') {
-        $formErrors['general'] = 'This stall is no longer available.';
-    } elseif (($stall['pending_seconds_left'] ?? 1) <= 0) {
-        $formErrors['general'] = 'Your 15-minute window has expired. Please start a new application.';
-    }
 
     // Text field validation
     if (empty($old['business_name'])) {
@@ -127,19 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $db->beginTransaction();
 
-            // Atomic re-check: stall still pending and not expired
-            $chk = $db->prepare(
-                "SELECT stall_id FROM stalls
-                 WHERE stall_id = ?
-                   AND status = 'pending_application'
-                   AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
-                 LIMIT 1"
-            );
-            $chk->execute([$stallId]);
-            if (!$chk->fetch()) {
-                throw new RuntimeException('STALL_EXPIRED');
-            }
-
             // Create temp dir
             if (!mkdir($tmpDir, 0755, true)) {
                 throw new RuntimeException('DIR_CREATE');
@@ -156,16 +109,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tmpPaths[$field] = $fname;
             }
 
-            // Insert record (paths updated after we have the ID)
+            // Insert record (paths updated after we have the ID) — no stall_id yet;
+            // assigned by the admin at Step 4 (Approval/Award) of the pipeline.
             $ins = $db->prepare(
                 "INSERT INTO stall_applications
-                    (stall_id, business_name, proprietor_name, contact_number, email,
+                    (business_name, proprietor_name, contact_number, email,
                      profile_picture, business_permit, sanitary_permit, gjc_requirements,
-                     clearance, terms_accepted, status)
-                 VALUES (?,?,?,?,?, 'pending_path','pending_path','pending_path','pending_path','pending_path', 1, 'pending')"
+                     clearance, terms_accepted, status, current_step)
+                 VALUES (?,?,?,?, 'pending_path','pending_path','pending_path','pending_path','pending_path', 1, 'review', 1)"
             );
             $ins->execute([
-                $stallId,
                 $old['business_name'],
                 $old['proprietor_name'],
                 $old['contact_number'],
@@ -199,11 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $appId,
             ]);
 
-            // Clear expiry - stall stays pending_application until admin action
-            $db->prepare(
-                "UPDATE stalls SET pending_expires_at = NULL WHERE stall_id = ?"
-            )->execute([$stallId]);
-
             $db->commit();
             $success = true;
 
@@ -214,18 +162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 array_map('unlink', glob($tmpDir . '/*') ?: []);
                 @rmdir($tmpDir);
             }
-            if (str_starts_with($e->getMessage(), 'STALL_EXPIRED')) {
-                $formErrors['general'] = 'Your application window expired. Please go back and apply again.';
-                $stallMgr->releaseStall($stallId, 'vacant');
-            } else {
-                $formErrors['general'] = 'A server error occurred. Please try again. (ref: ' . $e->getMessage() . ')';
-                $stallMgr->releaseStall($stallId, 'vacant');
-            }
+            $formErrors['general'] = 'A server error occurred. Please try again. (ref: ' . $e->getMessage() . ')';
         }
-    }
-
-    if (!$success) {
-        $stall = $stallMgr->getStall($stallId); // refresh timer
     }
 }
 ?>
@@ -235,8 +173,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apply for <?= $stall ? htmlspecialchars($stall['label']) : 'Stall' ?> | GJC EduPay</title>
+    <title>Apply for a Stall | GenPay</title>
     <meta name="description" content="Submit your stall application at General de Jesus College. Fill in your business details and upload required documents.">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -273,41 +212,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 800; font-size: 18px; color: var(--green-800); text-decoration: none;
         }
         .navbar-brand img { width: 36px; height: 36px; object-fit: contain; }
-        .btn-back {
-            padding: 8px 20px; border-radius: 50px; font-weight: 700; font-size: 14px;
-            text-decoration: none; color: var(--green-800);
-            border: 2px solid var(--green-800); transition: all .2s;
-        }
-        .btn-back:hover { background: var(--green-800); color: #fff; }
 
         /* ── MAIN LAYOUT ── */
         .page-wrap {
             padding: 100px 20px 60px;
             max-width: 760px; margin: 0 auto;
-        }
-
-        /* ── STALL HEADER CARD ── */
-        .stall-header {
-            background: linear-gradient(135deg, var(--green-900) 0%, #0a5c2e 100%);
-            border-radius: 20px; padding: 28px 32px; color: #fff;
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 20px; margin-bottom: 24px;
-            box-shadow: 0 8px 32px rgba(5,46,22,.3);
-        }
-        .stall-header-id {
-            font-size: 48px; font-weight: 800; line-height: 1;
-            color: var(--green-400);
-        }
-        .stall-header-label { font-size: 13px; color: rgba(255,255,255,.65); margin-top: 4px; }
-        .stall-header-specs { display: flex; flex-direction: column; gap: 4px; text-align: right; }
-        .stall-header-spec { font-size: 13px; color: rgba(255,255,255,.8); }
-        .stall-header-spec strong { color: var(--green-400); }
-
-        .timer-pill {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: rgba(245,158,11,.2); border: 1px solid rgba(245,158,11,.4);
-            border-radius: 50px; padding: 6px 16px;
-            font-size: 13px; font-weight: 700; color: #fcd34d;
         }
 
         /* ── ALERTS ── */
@@ -387,30 +296,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .file-drop:hover { border-color: var(--green-400); background: var(--green-100); }
         .file-drop.has-file { border-color: var(--green-500); background: #f0fdf4; border-style: solid; }
         .file-drop.is-invalid { border-color: var(--red-500); background: var(--red-100); }
+        .file-drop.is-dragover { border-color: var(--green-500); background: var(--green-100); transform: scale(1.01); }
         .file-drop input[type=file] {
             position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
         }
         .file-icon { font-size: 28px; margin-bottom: 6px; }
         .file-label { font-size: 12px; font-weight: 700; color: var(--gray-600); }
         .file-sub { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
-        .file-preview {
-            width: 100%; height: 60px; object-fit: cover;
-            border-radius: 6px; margin-top: 8px; display: none;
-        }
         .file-name-display {
             font-size: 10px; color: var(--green-700); font-weight: 700;
             margin-top: 6px; word-break: break-all; display: none;
         }
 
+        /* ── Profile picture: centered circular avatar preview, drag & drop ── */
+        .avatar-drop {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .avatar-preview-wrap {
+            width: 96px; height: 96px; margin: 0 auto 10px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .file-preview {
+            width: 96px; height: 96px; object-fit: cover; object-position: center;
+            border-radius: 50%; display: none;
+            border: 3px solid var(--white); box-shadow: 0 4px 14px rgba(0,0,0,.14);
+        }
+
         /* ── TERMS ── */
+        .terms-link {
+            background: none; border: none; padding: 0; cursor: pointer;
+            font-family: inherit; font-size: inherit; font-weight: 700;
+            color: var(--green-700); text-decoration: underline;
+            text-decoration-color: var(--green-400); text-underline-offset: 2px;
+        }
+        .terms-link:hover { color: var(--green-800); }
+        .terms-lock-note {
+            display: block; font-size: 11px; font-weight: 600;
+            color: var(--gray-400); margin-top: 4px;
+        }
+
         .terms-scroll-box {
-            height: 180px; overflow-y: auto; padding: 16px;
+            height: 320px; overflow-y: auto; padding: 16px;
             background: var(--gray-50); border-radius: 10px;
             border: 2px solid var(--gray-200); font-size: 13px;
             line-height: 1.7; color: var(--gray-600); margin-bottom: 14px;
             scroll-behavior: smooth;
         }
-        .terms-scroll-box h6 { font-weight: 800; color: var(--gray-800); margin-bottom: 8px; font-size: 13px; }
         .terms-scroll-box p { margin-bottom: 10px; }
 
         .terms-check-wrap {
@@ -428,9 +359,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .terms-check-wrap input[type=checkbox]:disabled { opacity: .4; cursor: not-allowed; }
         .terms-check-label { font-size: 13px; font-weight: 600; color: var(--gray-700, #374151); line-height: 1.5; }
         .scroll-hint {
-            font-size: 11px; color: var(--amber-500); font-weight: 600;
-            margin-top: 6px; text-align: center; display: none;
+            font-size: 12px; color: var(--amber-500); font-weight: 700;
+            text-align: center;
         }
+        .btn-modal-close {
+            padding: 10px 22px; border-radius: 50px; font-family: inherit;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            background: var(--green-800); color: #fff; border: none;
+        }
+        .btn-modal-close:hover { background: var(--green-900); }
 
         /* ── SUBMIT ── */
         .submit-section { padding: 24px 32px; background: var(--gray-50); }
@@ -467,34 +404,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 10px; padding: 10px 24px; font-weight: 800;
             font-size: 18px; letter-spacing: .05em; margin-bottom: 28px;
         }
-        .btn-back-stalls {
-            display: inline-block; padding: 14px 36px; border-radius: 50px;
-            background: linear-gradient(135deg, var(--green-400), var(--green-500));
-            color: var(--green-900); font-weight: 800; font-size: 15px;
-            text-decoration: none; transition: all .2s;
-            box-shadow: 0 4px 16px rgba(34,197,94,.3);
-        }
-        .btn-back-stalls:hover { transform: translateY(-2px); color: var(--green-900); }
-
-        /* ── ERROR STATE (stall unavailable) ── */
-        .error-state-card {
-            background: var(--white); border-radius: 20px; padding: 56px 40px;
-            box-shadow: var(--shadow-md); text-align: center;
-        }
-        .error-state-icon { font-size: 64px; margin-bottom: 20px; }
-        .error-state-title {
-            font-size: 24px; font-weight: 800; color: var(--red-700); margin-bottom: 10px;
-        }
-        .error-state-sub {
-            font-size: 15px; color: var(--gray-600); margin-bottom: 28px; line-height: 1.6;
-        }
-
         /* ── RESPONSIVE ── */
         @media (max-width: 600px) {
             .navbar { padding: 12px 20px; }
             .page-wrap { padding: 88px 16px 48px; }
-            .stall-header { flex-direction: column; align-items: flex-start; gap: 14px; }
-            .stall-header-specs { text-align: left; }
             .form-section { padding: 22px 20px; }
             .field-row { grid-template-columns: 1fr; }
             .file-grid { grid-template-columns: 1fr; }
@@ -508,60 +421,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <nav class="navbar">
     <a href="<?= BASE_URL ?>" class="navbar-brand">
         <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
-        GJC EduPay
+        GenPay
     </a>
-    <a href="<?= BASE_URL ?>/stalls" class="btn-back">← Back to Stalls</a>
+    <a href="<?= BASE_URL ?>/stalls" class="btn-close" aria-label="Back to stall map"></a>
 </nav>
 
 <div class="page-wrap">
 
-<?php if ($stallError): ?>
-    <!-- Stall unavailable state -->
-    <div class="error-state-card">
-        <div class="error-state-icon"></div>
-        <div class="error-state-title">Stall Unavailable</div>
-        <div class="error-state-sub"><?= htmlspecialchars($stallError) ?></div>
-        <a href="<?= BASE_URL ?>/stalls" class="btn-back-stalls">Browse Available Stalls</a>
-    </div>
-
-<?php elseif ($success): ?>
+<?php if ($success): ?>
     <!-- Success state -->
     <div class="success-card">
         <div class="success-icon"></div>
         <div class="success-title">Application Submitted!</div>
         <div class="success-sub">
-            Your application for <strong><?= htmlspecialchars($stall['label'] ?? $stallId) ?></strong>
-            has been received. Our team will review your documents and contact you via email.
+            Your general stall application has been received.
+            Our team will review your documents and contact you via email about next steps,
+            including stall assignment.
         </div>
         <div class="success-ref">Application #<?= str_pad($appId, 5, '0', STR_PAD_LEFT) ?></div>
-        <br>
-        <a href="<?= BASE_URL ?>/stalls" class="btn-back-stalls">← Back to Stall Map</a>
     </div>
 
 <?php else: ?>
-    <!-- Stall header -->
-    <?php if ($stall): ?>
-    <div class="stall-header">
-        <div>
-            <div class="stall-header-id"><?= htmlspecialchars($stall['stall_id']) ?></div>
-            <div class="stall-header-label"><?= htmlspecialchars($stall['label']) ?> - Application Form</div>
-        </div>
-        <div class="stall-header-specs">
-            <?php if ($stall['area_sqm']): ?>
-            <div class="stall-header-spec">Area: <strong><?= $stall['area_sqm'] ?> m²</strong></div>
-            <?php endif; ?>
-            <?php if ($stall['monthly_rate']): ?>
-            <div class="stall-header-spec">Rate: <strong>₱<?= number_format($stall['monthly_rate'], 2) ?>/mo</strong></div>
-            <?php endif; ?>
-            <?php if ($stall['pending_expires_at']): ?>
-            <div class="timer-pill" style="margin-top:10px;">
-                ⏳ Reserved for: <span id="page-timer">--:--</span>
-            </div>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <!-- General error alert -->
     <?php if (!empty($formErrors['general'])): ?>
     <div class="alert alert--error">
@@ -572,11 +452,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- THE FORM -->
     <form method="POST"
-          action="<?= BASE_URL ?>/apply?stall_id=<?= urlencode($stallId) ?>"
+          action="<?= BASE_URL ?>/apply"
           enctype="multipart/form-data"
           id="applyForm"
           novalidate>
-        <input type="hidden" name="stall_id" value="<?= htmlspecialchars($stallId) ?>">
 
         <div class="form-card">
 
@@ -640,17 +519,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="section-heading"> Profile Picture</div>
                 <p class="field-hint" style="margin-bottom:14px;">Upload a clear photo of the proprietor. JPG or PNG only, max 5 MB.</p>
                 <div class="field">
-                    <div class="file-drop <?= isset($formErrors['profile_picture']) ? 'is-invalid' : '' ?>"
+                    <div class="file-drop avatar-drop <?= isset($formErrors['profile_picture']) ? 'is-invalid' : '' ?>"
                          id="drop-profile_picture"
-                         onclick="document.getElementById('file-profile_picture').click()">
+                         onclick="document.getElementById('file-profile_picture').click()"
+                         ondragover="handleDragOver(event, this)"
+                         ondragleave="handleDragLeave(event, this)"
+                         ondrop="handleDrop(event, this, 'profile_picture', true)">
                         <input type="file" id="file-profile_picture" name="profile_picture"
                                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                                style="display:none"
                                onchange="handleFile(this,'profile_picture',true)">
-                        <div class="file-icon" id="icon-profile_picture"></div>
-                        <div class="file-label">Click to upload profile picture</div>
+                        <div class="avatar-preview-wrap">
+                            <div class="file-icon" id="icon-profile_picture"></div>
+                            <img class="file-preview" id="preview-profile_picture" alt="Preview">
+                        </div>
+                        <div class="file-label">Click or drag a photo here</div>
                         <div class="file-sub">JPG, PNG • Max 5 MB</div>
-                        <img class="file-preview" id="preview-profile_picture" alt="Preview">
                         <div class="file-name-display" id="name-profile_picture"></div>
                     </div>
                     <?php if (isset($formErrors['profile_picture'])): ?>
@@ -698,23 +582,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Section 4: Terms & Conditions -->
             <div class="form-section">
                 <div class="section-heading"> Terms & Conditions</div>
-                <p class="field-hint" style="margin-bottom:12px;">Please read the full terms below before accepting.</p>
-
-                <div class="terms-scroll-box" id="termsBox">
-                    <h6>GJC Campus Stall Rental - Terms & Conditions</h6>
-                    <p>By submitting this application, you agree to the following terms set forth by the administration of General de Jesus College (GJC):</p>
-                    <p><strong>1. Eligibility.</strong> Applicants must be of legal age (18+) and must not have any outstanding financial obligations to GJC. Applications from individuals with existing violations of school policy may be rejected at the institution's discretion.</p>
-                    <p><strong>2. Application Review.</strong> All submitted applications are subject to review by the GJC administration. Submission of this form does not guarantee approval. The school reserves the right to approve, reject, or defer any application without prior notice.</p>
-                    <p><strong>3. Document Accuracy.</strong> All uploaded documents must be authentic, current, and valid. Submission of falsified or expired documents is grounds for immediate rejection and may result in legal action.</p>
-                    <p><strong>4. Nutritional Compliance.</strong> Approved vendors must comply with GJC's nutritional policy. Products flagged under the Restricted Products list (including high-sugar beverages, energy drinks, and items of low nutritional value) are prohibited from being sold on campus.</p>
-                    <p><strong>5. Lease Obligations.</strong> Approved vendors will be required to sign a formal lease agreement and pay the applicable monthly rental rate. Failure to pay rent on time may result in stall suspension or termination of the lease.</p>
-                    <p><strong>6. Operational Standards.</strong> Vendors must maintain cleanliness, observe proper waste disposal, and adhere to campus operating hours. Any violation of operational standards may result in temporary closure or lease termination.</p>
-                    <p><strong>7. Data Privacy.</strong> Personal information and documents submitted through this form are collected solely for the purpose of processing your application. Your data will be handled in accordance with the Data Privacy Act of 2012 (RA 10173) and will not be shared with third parties without your consent.</p>
-                    <p><strong>8. Application Lock.</strong> Submitting this form reserves the stall for administrative review. Misuse of this system (e.g. submitting multiple applications for the same stall) may result in disqualification.</p>
-                    <p style="font-weight:700; color:#064420;">By checking the box below, you confirm that you have read, understood, and agree to all of the above terms and conditions.</p>
-                </div>
-
-                <div class="scroll-hint" id="scrollHint">⬇ Scroll to the bottom of the terms to enable acceptance</div>
 
                 <div class="terms-check-wrap <?= isset($formErrors['terms']) ? 'is-invalid' : '' ?>"
                      id="termsCheckWrap">
@@ -722,7 +589,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            value="1" disabled
                            <?= !empty($_POST['terms_accepted']) ? 'checked' : '' ?>>
                     <label class="terms-check-label" for="terms_accepted">
-                        I have read and agree to the GJC Campus Stall Rental Terms & Conditions.
+                        I have read and agree to the
+                        <button type="button" class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">GJC Campus Stall Rental Terms &amp; Conditions</button>.
+                        <span class="terms-lock-note">Open and scroll to the bottom to unlock this checkbox.</span>
                     </label>
                 </div>
                 <?php if (isset($formErrors['terms'])): ?>
@@ -735,44 +604,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Submit -->
         <div class="submit-section">
             <button type="submit" class="btn-submit" id="submitBtn" disabled>
-                Submit Application for <?= htmlspecialchars($stallId) ?>
+                Submit Application
             </button>
             <p style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:10px;">
-                All fields and documents are required. Your stall slot is reserved for <strong id="submit-timer">--:--</strong>.
+                All fields and documents are required. A specific stall will be assigned later in the review process.
             </p>
         </div>
 
     </form>
+
+    <!-- Terms & Conditions modal: scroll to the bottom to unlock the checkbox -->
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">GJC Campus Stall Rental &mdash; Terms &amp; Conditions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="terms-scroll-box" id="termsBox">
+                        <p>By submitting this application, you agree to the following terms set forth by the administration of General de Jesus College (GJC):</p>
+                        <p><strong>1. Eligibility.</strong> Applicants must be of legal age (18+) and must not have any outstanding financial obligations to GJC. Applications from individuals with existing violations of school policy may be rejected at the institution's discretion.</p>
+                        <p><strong>2. Application Review.</strong> All submitted applications are subject to review by the GJC administration. Submission of this form does not guarantee approval. The school reserves the right to approve, reject, or defer any application without prior notice.</p>
+                        <p><strong>3. Document Accuracy.</strong> All uploaded documents must be authentic, current, and valid. Submission of falsified or expired documents is grounds for immediate rejection and may result in legal action.</p>
+                        <p><strong>4. Nutritional Compliance.</strong> Approved vendors must comply with GJC's nutritional policy. Products flagged under the Restricted Products list (including high-sugar beverages, energy drinks, and items of low nutritional value) are prohibited from being sold on campus.</p>
+                        <p><strong>5. Lease Obligations.</strong> Approved vendors will be required to sign a formal lease agreement and pay the applicable monthly rental rate. Failure to pay rent on time may result in stall suspension or termination of the lease.</p>
+                        <p><strong>6. Operational Standards.</strong> Vendors must maintain cleanliness, observe proper waste disposal, and adhere to campus operating hours. Any violation of operational standards may result in temporary closure or lease termination.</p>
+                        <p><strong>7. Data Privacy.</strong> Personal information and documents submitted through this form are collected solely for the purpose of processing your application. Your data will be handled in accordance with the Data Privacy Act of 2012 (RA 10173) and will not be shared with third parties without your consent.</p>
+                        <p><strong>8. Application Lock.</strong> Submitting this form reserves the stall for administrative review. Misuse of this system (e.g. submitting multiple applications for the same stall) may result in disqualification.</p>
+                        <p style="font-weight:700; color:#064420;">By checking the box below, you confirm that you have read, understood, and agree to all of the above terms and conditions.</p>
+                    </div>
+                    <div class="scroll-hint" id="scrollHint">&#8681; Scroll to the bottom of the terms to unlock the checkbox</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-close" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 <?php endif; ?>
 </div><!-- /.page-wrap -->
 
 <footer style="background:#052e16;color:rgba(255,255,255,.65);text-align:center;padding:20px;font-size:12px;">
-    &copy; <?= date('Y') ?> General de Jesus College &mdash; GJC EduPay
+    &copy; <?= date('Y') ?> General de Jesus College &mdash; GenPay
 </footer>
 
+<script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
-// ── Countdown timer ──────────────────────────────────────────
-<?php if ($stall && $stall['pending_expires_at'] && !$success): ?>
-const expiresAt = new Date('<?= str_replace(' ', 'T', $stall['pending_expires_at']) ?>').getTime();
-function updateTimers() {
-    const diff = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
-    const m = String(Math.floor(diff / 60)).padStart(2, '0');
-    const s = String(diff % 60).padStart(2, '0');
-    const str = m + ':' + s;
-    const pageTimer   = document.getElementById('page-timer');
-    const submitTimer = document.getElementById('submit-timer');
-    if (pageTimer)   pageTimer.textContent   = str;
-    if (submitTimer) submitTimer.textContent = str;
-    if (diff <= 0) {
-        clearInterval(timerInterval);
-        alert('Your 15-minute application window has expired. You will be redirected to the stall map.');
-        location.href = '<?= BASE_URL ?>/stalls';
-    }
-}
-updateTimers();
-const timerInterval = setInterval(updateTimers, 1000);
-<?php endif; ?>
-
 // ── File upload handler ──────────────────────────────────────
 function handleFile(input, field, isImage) {
     const file    = input.files[0];
@@ -802,14 +680,29 @@ function handleFile(input, field, isImage) {
     checkSubmitReady();
 }
 
-// ── Terms scroll-lock ────────────────────────────────────────
-const termsBox  = document.getElementById('termsBox');
-const termsChk  = document.getElementById('terms_accepted');
-const scrollHint = document.getElementById('scrollHint');
-const termsWrap = document.getElementById('termsCheckWrap');
+// ── Drag & drop (profile picture) ─────────────────────────────
+function handleDragOver(e, dropEl) {
+    e.preventDefault();
+    dropEl.classList.add('is-dragover');
+}
+function handleDragLeave(e, dropEl) {
+    dropEl.classList.remove('is-dragover');
+}
+function handleDrop(e, dropEl, field, isImage) {
+    e.preventDefault();
+    dropEl.classList.remove('is-dragover');
+    const dropped = e.dataTransfer.files;
+    if (!dropped || !dropped.length) return;
+    const input = document.getElementById('file-' + field);
+    input.files = dropped; // wire the dropped file into the real <input type=file>
+    handleFile(input, field, isImage);
+}
 
-// Show hint initially
-if (scrollHint) scrollHint.style.display = 'block';
+// ── Terms modal scroll-lock ───────────────────────────────────
+const termsBox   = document.getElementById('termsBox');
+const termsChk   = document.getElementById('terms_accepted');
+const scrollHint = document.getElementById('scrollHint');
+const termsWrap  = document.getElementById('termsCheckWrap');
 
 termsBox.addEventListener('scroll', function () {
     const atBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 10;

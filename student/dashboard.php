@@ -52,7 +52,7 @@ if (isset($_SESSION['force_change'])) {
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard | EduPay</title>
+    <title>Student Dashboard | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=10">
@@ -75,7 +75,7 @@ if (isset($_SESSION['force_change'])) {
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>GJC EduPay</h4>
+                    <h4>GenPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>
@@ -271,7 +271,7 @@ if (isset($_SESSION['force_change'])) {
                                 : '<span class="st-dot st-dot-red st-pulse"></span> Under Review' ?>
                         </span>
                     </div>
-                    <p class="st-economy-sub">The GJC EduPay campus economy is a closed system - every peso is tracked and accounted for.</p>
+                    <p class="st-economy-sub">The GenPay campus economy is a closed system - every peso is tracked and accounted for.</p>
                 </div>
 
                 <div class="st-economy-grid">

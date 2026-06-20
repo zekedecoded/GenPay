@@ -36,8 +36,9 @@ function statusLabel(string $status): string {
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Available Stalls | GJC EduPay</title>
+    <title>Available Stalls | GenPay</title>
     <meta name="description" content="Browse available stalls at General de Jesus College. View real-time occupancy and apply online for a stall slot.">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,11 +52,11 @@ function statusLabel(string $status): string {
             --green-100: #dcfce7;
             --gold:      #d4a017;
             --gold-light:#f6d860;
+            --cream:     #fdfbf6;
             --red-500:   #ef4444;
             --red-100:   #fee2e2;
             --amber-500: #f59e0b;
             --amber-100: #fef3c7;
-            --gray-50:   #f9fafb;
             --gray-100:  #f3f4f6;
             --gray-200:  #e5e7eb;
             --gray-600:  #4b5563;
@@ -69,7 +70,7 @@ function statusLabel(string $status): string {
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--gray-50);
+            background: var(--cream);
             color: var(--gray-800);
             min-height: 100vh;
         }
@@ -79,9 +80,9 @@ function statusLabel(string $status): string {
             position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
             display: flex; align-items: center; justify-content: space-between;
             padding: 14px 40px;
-            background: rgba(255,255,255,.95);
+            background: rgba(253,251,246,.92);
             backdrop-filter: blur(14px);
-            box-shadow: 0 2px 20px rgba(0,0,0,.08);
+            box-shadow: 0 2px 20px rgba(0,0,0,.06);
         }
         .navbar-brand {
             display: flex; align-items: center; gap: 10px;
@@ -109,7 +110,7 @@ function statusLabel(string $status): string {
         /* ── HERO ── */
         .hero {
             margin-top: 72px;
-            padding: 60px 40px 40px;
+            padding: 64px 40px 48px;
             background: linear-gradient(135deg, var(--green-900) 0%, #0a5c2e 60%, #0d7a3e 100%);
             text-align: center; color: #fff; position: relative; overflow: hidden;
         }
@@ -122,15 +123,34 @@ function statusLabel(string $status): string {
             background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
             border-radius: 50px; padding: 5px 16px; font-size: 13px;
             font-weight: 600; color: var(--green-400); margin-bottom: 18px;
+            position: relative; z-index: 1;
         }
-        .hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: 14px; }
+        .hero h1 { font-size: 42px; font-weight: 800; line-height: 1.15; margin-bottom: 14px; position: relative; z-index: 1; }
         .hero h1 span { color: var(--green-400); }
-        .hero p { font-size: 16px; color: rgba(255,255,255,.78); max-width: 540px; margin: 0 auto 28px; }
+        .hero p { font-size: 16px; color: rgba(255,255,255,.78); max-width: 480px; margin: 0 auto 32px; position: relative; z-index: 1; }
+
+        /* The one gold thing on the page: there is exactly one action here. */
+        .btn-apply-now {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 16px 38px; border-radius: 50px;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold));
+            color: var(--green-900); border: none;
+            font-size: 16px; font-weight: 800; text-decoration: none;
+            box-shadow: 0 8px 28px rgba(212,160,23,.4);
+            transition: transform .2s, box-shadow .2s;
+            position: relative; z-index: 1;
+        }
+        .btn-apply-now:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 34px rgba(212,160,23,.5);
+            color: var(--green-900);
+        }
+        .btn-apply-now svg { width: 18px; height: 18px; flex-shrink: 0; }
 
         /* ── LEGEND ── */
         .legend {
             display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
-            padding: 20px 40px;
+            padding: 18px 40px;
             background: var(--white);
             border-bottom: 1px solid var(--gray-200);
         }
@@ -139,7 +159,7 @@ function statusLabel(string $status): string {
             font-size: 13px; font-weight: 600; color: var(--gray-600);
         }
         .legend-dot {
-            width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
         }
         .legend-dot--vacant  { background: var(--green-500); }
         .legend-dot--occupied { background: var(--red-500); }
@@ -218,14 +238,24 @@ function statusLabel(string $status): string {
             letter-spacing: .08em; padding: 3px 10px; border-radius: 50px;
         }
         .stall--vacant  .stall-status-badge { background: var(--green-500); color: #fff; }
-        .stall--occupied .stall-status-badge { background: var(--red-500); color: #fff; }
         .stall--pending  .stall-status-badge { background: var(--amber-500); color: #fff; }
 
+        /* Circular tenant logo - matches the .avatar pattern used app-wide for profile imagery */
+        .stall-logo {
+            width: 44px; height: 44px; border-radius: 50%;
+            object-fit: cover; border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,.12);
+        }
+        .stall-logo--fallback {
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--green-800), var(--green-700));
+            color: #fff; font-weight: 800; font-size: 16px;
+        }
+
         .stall-name {
-            font-size: 11px; font-weight: 600; color: #6b7280;
+            font-size: 11px; font-weight: 600; color: #374151;
             max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .stall--occupied .stall-name { color: #dc2626; }
 
         .stall-timer {
             font-size: 11px; font-weight: 700; color: #b45309;
@@ -234,21 +264,7 @@ function statusLabel(string $status): string {
 
         .stall-apply-hint {
             font-size: 10px; font-weight: 600; color: var(--green-700);
-            opacity: .8;
-        }
-
-        /* Pulse on vacant */
-        .stall--vacant::after {
-            content: ''; position: absolute; top: 10px; right: 10px;
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--green-500);
-            box-shadow: 0 0 0 0 rgba(34,197,94,.6);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
-            70%  { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
-            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+            opacity: .7;
         }
 
         /* ── PEEK MODAL ── */
@@ -287,16 +303,7 @@ function statusLabel(string $status): string {
             letter-spacing: .07em;
         }
         .chip--vacant   { background: var(--green-100); color: var(--green-700); }
-        .chip--occupied { background: var(--red-100);   color: #b91c1c; }
         .chip--pending  { background: var(--amber-100); color: #92400e; }
-
-        .modal-close {
-            background: var(--gray-100); border: none; border-radius: 50%;
-            width: 34px; height: 34px; cursor: pointer; font-size: 18px;
-            display: flex; align-items: center; justify-content: center;
-            color: var(--gray-600); transition: background .15s;
-        }
-        .modal-close:hover { background: var(--gray-200); }
 
         .modal-body { padding: 24px 28px; }
 
@@ -313,18 +320,19 @@ function statusLabel(string $status): string {
         .spec-value--green { color: var(--green-700); }
 
         .modal-merchant-block {
-            background: var(--red-100); border-radius: 12px;
+            background: var(--green-100); border-radius: 12px;
             padding: 14px 16px; margin-bottom: 18px;
             display: flex; align-items: center; gap: 12px;
         }
         .modal-merchant-avatar {
-            width: 42px; height: 42px; border-radius: 10px;
-            background: var(--red-500); color: #fff;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--green-700); color: #fff;
             display: flex; align-items: center; justify-content: center;
             font-size: 20px; font-weight: 800; flex-shrink: 0;
+            object-fit: cover; overflow: hidden;
         }
-        .modal-merchant-name { font-weight: 700; font-size: 15px; color: #b91c1c; }
-        .modal-merchant-sub  { font-size: 12px; color: #dc2626; }
+        .modal-merchant-name { font-weight: 700; font-size: 15px; color: var(--green-800); }
+        .modal-merchant-sub  { font-size: 12px; color: var(--green-700); }
 
         .modal-pending-block {
             background: var(--amber-100); border-radius: 12px;
@@ -332,23 +340,6 @@ function statusLabel(string $status): string {
         }
         .modal-pending-text { font-size: 13px; font-weight: 600; color: #92400e; }
         .modal-pending-timer { font-size: 22px; font-weight: 800; color: #b45309; margin-top: 4px; }
-
-        .modal-footer { padding: 0 28px 28px; }
-
-        .btn-apply {
-            display: block; width: 100%; padding: 16px;
-            background: linear-gradient(135deg, var(--green-400), var(--green-500));
-            color: var(--green-900); border: none; border-radius: 50px;
-            font-size: 16px; font-weight: 800; cursor: pointer;
-            text-decoration: none; text-align: center;
-            box-shadow: 0 6px 24px rgba(34,197,94,.35);
-            transition: all .2s;
-        }
-        .btn-apply:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(34,197,94,.45);
-            color: var(--green-900);
-        }
 
         /* ── FOOTER ── */
         footer {
@@ -375,7 +366,7 @@ function statusLabel(string $status): string {
 <nav class="navbar">
     <a href="<?= BASE_URL ?>" class="navbar-brand">
         <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
-        GJC EduPay
+        GenPay
     </a>
     <div class="navbar-links">
         <a href="<?= BASE_URL ?>/stalls" class="btn-nav btn-nav--outline">View Stalls</a>
@@ -386,17 +377,21 @@ function statusLabel(string $status): string {
 <!-- HERO -->
 <div class="hero">
     <div class="hero-tag">
-        Stall Availability - Live
+        Now Leasing &middot; Live Occupancy
     </div>
     <h1>GJC Campus <span>Stall Directory</span></h1>
-    <p>Browse available stalls in real-time. Green means open - click any stall to see details and apply online.</p>
+    <p>See what's open below. Apply once and we'll assign your stall during review &mdash; no need to pick one here.</p>
+    <a href="<?= BASE_URL ?>/apply" class="btn-apply-now">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Apply Now
+    </a>
 </div>
 
 <!-- LEGEND -->
 <div class="legend">
-    <div class="legend-item"><div class="legend-dot legend-dot--vacant"></div> Vacant - Apply Now</div>
+    <div class="legend-item"><div class="legend-dot legend-dot--vacant"></div> Vacant</div>
     <div class="legend-item"><div class="legend-dot legend-dot--occupied"></div> Occupied</div>
-    <div class="legend-item"><div class="legend-dot legend-dot--pending"></div> Pending Application (15 min lock)</div>
+    <div class="legend-item"><div class="legend-dot legend-dot--pending"></div> Pending Application</div>
 </div>
 
 <!-- STALL GRID -->
@@ -410,20 +405,26 @@ function statusLabel(string $status): string {
                 $cls   = statusClass($stall['status']);
                 $lbl   = statusLabel($stall['status']);
             ?>
+            <?php
+                // Rental rate stays out of the public payload entirely - not just
+                // unrendered - so it never appears in view-source/devtools either.
+                $publicStall = $stall;
+                unset($publicStall['monthly_rate']);
+            ?>
             <div class="stall <?= $cls ?>"
                  id="stall-<?= htmlspecialchars($stall['stall_id']) ?>"
                  role="listitem"
-                 data-stall='<?= htmlspecialchars(json_encode($stall), ENT_QUOTES) ?>'
+                 data-stall='<?= htmlspecialchars(json_encode($publicStall), ENT_QUOTES) ?>'
                  <?php if ($stall['status'] === 'vacant'): ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Vacant, click to apply"
+                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Vacant, view details"
                  <?php elseif ($stall['status'] === 'occupied'): ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Occupied by <?= htmlspecialchars($stall['merchant_stall_name']) ?>"
+                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Operated by <?= htmlspecialchars($stall['merchant_stall_name']) ?>"
                  <?php else: ?>
                  onclick="openModal(this)"
                  tabindex="0"
@@ -432,17 +433,25 @@ function statusLabel(string $status): string {
                  <?php endif; ?>
             >
                 <div class="stall-id-badge"><?= htmlspecialchars($stall['stall_id']) ?></div>
-                <div class="stall-status-badge"><?= $lbl ?></div>
 
-                <?php if ($stall['status'] === 'occupied' && $stall['merchant_stall_name']): ?>
+                <?php if ($stall['status'] === 'occupied'): ?>
+                    <!-- A tenant logo + company name implies occupancy; no "Occupied" text needed. -->
+                    <?php if ($stall['merchant_logo']): ?>
+                    <img class="stall-logo" src="<?= htmlspecialchars(BASE_URL . '/' . $stall['merchant_logo']) ?>" alt="<?= htmlspecialchars($stall['merchant_stall_name']) ?> logo">
+                    <?php else: ?>
+                    <div class="stall-logo stall-logo--fallback"><?= htmlspecialchars(mb_substr($stall['merchant_stall_name'] ?: '?', 0, 1)) ?></div>
+                    <?php endif; ?>
                     <div class="stall-name"><?= htmlspecialchars($stall['merchant_stall_name']) ?></div>
-                <?php elseif ($stall['status'] === 'pending_application'): ?>
+                <?php else: ?>
+                    <div class="stall-status-badge"><?= $lbl ?></div>
+                    <?php if ($stall['status'] === 'pending_application'): ?>
                     <div class="stall-timer"
                          data-expires="<?= htmlspecialchars($stall['pending_expires_at'] ?? '') ?>">
                          --:--
                     </div>
-                <?php else: ?>
-                    <div class="stall-apply-hint">Tap to apply</div>
+                    <?php else: ?>
+                    <div class="stall-apply-hint">View details</div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
             <?php endfor; ?>
@@ -460,21 +469,17 @@ function statusLabel(string $status): string {
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <span class="modal-status-chip" id="modal-status-chip">--</span>
-                <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
+                <button type="button" class="btn-close" onclick="closeModal()" aria-label="Close"></button>
             </div>
         </div>
 
         <div class="modal-body">
 
-            <!-- Specs grid -->
+            <!-- Specs grid (rental rate stays out of public view - finance-only) -->
             <div class="modal-specs">
                 <div class="spec-item">
                     <div class="spec-label">Area</div>
                     <div class="spec-value" id="modal-area">--</div>
-                </div>
-                <div class="spec-item">
-                    <div class="spec-label">Monthly Rate</div>
-                    <div class="spec-value spec-value--green" id="modal-rate">--</div>
                 </div>
                 <div class="spec-item">
                     <div class="spec-label">Location</div>
@@ -486,7 +491,7 @@ function statusLabel(string $status): string {
                 </div>
             </div>
 
-            <!-- Occupied block -->
+            <!-- Occupied block - logo + name implies occupancy, no "Occupied" text -->
             <div class="modal-merchant-block" id="modal-merchant-block" style="display:none">
                 <div class="modal-merchant-avatar" id="modal-merchant-avatar">?</div>
                 <div>
@@ -503,15 +508,11 @@ function statusLabel(string $status): string {
             </div>
 
         </div>
-
-        <div class="modal-footer" id="modal-footer">
-            <!-- Injected by JS -->
-        </div>
     </div>
 </div>
 
 <footer>
-    &copy; <?= date('Y') ?> General de Jesus College &mdash; GJC EduPay Stall Management
+    &copy; <?= date('Y') ?> General de Jesus College &mdash; GenPay Stall Management
 </footer>
 
 <script>
@@ -527,43 +528,39 @@ function openModal(el) {
     document.getElementById('modal-stall-label').textContent = data.label;
     document.getElementById('modal-id-detail').textContent   = data.stall_id;
 
-    // Status chip
+    // Status chip - occupied has no chip; the logo + name below implies it
     const chip = document.getElementById('modal-status-chip');
-    chip.textContent = { vacant:'Vacant', occupied:'Occupied', pending_application:'Pending' }[data.status] ?? data.status;
-    chip.className = 'modal-status-chip ' + { vacant:'chip--vacant', occupied:'chip--occupied', pending_application:'chip--pending' }[data.status];
+    const chipMeta = { vacant: ['Vacant', 'chip--vacant'], pending_application: ['Pending', 'chip--pending'] }[data.status];
+    chip.style.display = chipMeta ? 'inline-block' : 'none';
+    if (chipMeta) { chip.textContent = chipMeta[0]; chip.className = 'modal-status-chip ' + chipMeta[1]; }
 
-    // Specs
+    // Specs (rental rate is finance-only, not shown publicly)
     document.getElementById('modal-area').textContent     = data.area_sqm ? data.area_sqm + ' m²' : 'N/A';
-    document.getElementById('modal-rate').textContent     = data.monthly_rate ? '₱' + Number(data.monthly_rate).toLocaleString('en-PH', {minimumFractionDigits:2}) + '/mo' : 'N/A';
     document.getElementById('modal-location').textContent = 'Row ' + data.row_label + ', Slot ' + data.col_number;
 
-    // Conditional blocks
+    // Conditional blocks - this modal is informational only. Applying
+    // happens exactly one way on this page: the gold button in the hero.
     const merchantBlock = document.getElementById('modal-merchant-block');
     const pendingBlock  = document.getElementById('modal-pending-block');
-    const footer        = document.getElementById('modal-footer');
 
     merchantBlock.style.display = 'none';
     pendingBlock.style.display  = 'none';
-    footer.innerHTML = '';
     if (modalTimer) clearInterval(modalTimer);
 
     if (data.status === 'occupied') {
         merchantBlock.style.display = 'flex';
-        const name = data.merchant_stall_name || 'Occupied Stall';
+        const name = data.merchant_stall_name || 'This Stall';
+        const avatar = document.getElementById('modal-merchant-avatar');
         document.getElementById('modal-merchant-name').textContent = name;
-        document.getElementById('modal-merchant-avatar').textContent = name.charAt(0).toUpperCase();
+        if (data.merchant_logo) {
+            avatar.innerHTML = `<img src="${BASE_URL}/${data.merchant_logo}" alt="${name} logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+        } else {
+            avatar.textContent = name.charAt(0).toUpperCase();
+        }
 
     } else if (data.status === 'pending_application') {
         pendingBlock.style.display = 'block';
         startTimer(data.pending_expires_at, 'modal-pending-timer');
-
-    } else {
-        // Vacant - show apply button
-        const a = document.createElement('a');
-        a.href      = BASE_URL + '/apply?stall_id=' + encodeURIComponent(data.stall_id);
-        a.className = 'btn-apply';
-        a.textContent = ' Apply for ' + data.stall_id;
-        footer.appendChild(a);
     }
 
     modal.classList.add('is-open');

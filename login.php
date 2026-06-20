@@ -21,7 +21,7 @@ $error = $message ?: $error;
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | GJC EduPay</title>
+    <title>Login | GenPay</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
@@ -43,7 +43,7 @@ $error = $message ?: $error;
                     style="width: 150px; height: 150px; object-fit: contain;">
             </div>
 
-            <h1 class="brand-title">GJC EduPay</h1>
+            <h1 class="brand-title">GenPay</h1>
             <p class="sub-text">Cashless Payment System</p>
 
             <?php if ($error): ?>

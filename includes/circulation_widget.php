@@ -45,7 +45,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
     <div class="ce-alert-danger">
         <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="" style="width:20px;opacity:.7">
         <div>
-            <strong>INTEGRITY FAILURE - Economy Drift Php <?= number_format($drift, 2) ?></strong><br>
+            <strong>INTEGRITY FAILURE - Economy Drift <?= gjc_money($drift) ?></strong><br>
             <small>All transactions should be halted until this is resolved by the Admin.</small>
         </div>
     </div>
@@ -54,39 +54,43 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
     <div class="ce-hero-panel">
         <div class="ce-hero-left">
             <div class="ce-hero-label">Total Circulation Cap</div>
-            <div class="ce-hero-amount">Php <?= number_format($cap, 2) ?></div>
+            <div class="ce-hero-amount"><?= gjc_money($cap) ?></div>
             <div class="ce-hero-sub">Maximum authorized money supply in the closed-loop economy</div>
         </div>
         <div class="ce-hero-right">
             <div class="ce-hero-stat">
                 <span>Distributed</span>
-                <strong>Php <?= number_format($cap - $vault, 2) ?></strong>
+                <strong><?= gjc_money($cap - $vault) ?></strong>
             </div>
             <div class="ce-hero-divider"></div>
             <div class="ce-hero-stat">
                 <span>Vault Reserve</span>
-                <strong>Php <?= number_format($vault, 2) ?></strong>
+                <strong><?= gjc_money($vault) ?></strong>
             </div>
             <div class="ce-hero-divider"></div>
             <div class="ce-hero-stat">
                 <span>Total in Circulation</span>
                 <strong class="<?= $isBalanced ? 'ce-text-green' : 'ce-text-red' ?>">
-                    Php <?= number_format($circulation, 2) ?>
+                    <?= gjc_money($circulation) ?>
                 </strong>
             </div>
         </div>
     </div>
 
+    <div class="ce-pool-intro">
+        <div class="ce-flow-title">Wallet Pools</div>
+        <div class="ce-flow-sub">All pools must sum to the cap at all times</div>
+    </div>
+
     <div class="ce-pool-grid">
 
         <div class="ce-pool-card ce-pool-vault">
-            <div class="ce-pool-glow"></div>
             <div class="ce-pool-icon-wrap">
                 <img src="<?= ICONS_URL ?>/pending-topups.png" alt="" class="ce-pool-icon">
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Cashier Vault</span>
-                <div class="ce-pool-amt">Php <?= number_format($vault, 2) ?></div>
+                <div class="ce-pool-amt"><?= gjc_money($vault) ?></div>
                 <div class="ce-pool-pct-bar">
                     <div class="ce-pool-pct-fill" style="width:<?= $vaultPct ?>%"></div>
                 </div>
@@ -95,13 +99,12 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         </div>
 
         <div class="ce-pool-card ce-pool-students">
-            <div class="ce-pool-glow"></div>
             <div class="ce-pool-icon-wrap">
                 <img src="<?= ICONS_URL ?>/students.png" alt="" class="ce-pool-icon">
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Student Wallets</span>
-                <div class="ce-pool-amt">Php <?= number_format($students, 2) ?></div>
+                <div class="ce-pool-amt"><?= gjc_money($students) ?></div>
                 <div class="ce-pool-pct-bar">
                     <div class="ce-pool-pct-fill" style="width:<?= $studPct ?>%"></div>
                 </div>
@@ -110,13 +113,12 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         </div>
 
         <div class="ce-pool-card ce-pool-merchants">
-            <div class="ce-pool-glow"></div>
             <div class="ce-pool-icon-wrap">
                 <img src="<?= ICONS_URL ?>/merchants.png" alt="" class="ce-pool-icon">
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Merchant Wallets</span>
-                <div class="ce-pool-amt">Php <?= number_format($merchants, 2) ?></div>
+                <div class="ce-pool-amt"><?= gjc_money($merchants) ?></div>
                 <div class="ce-pool-pct-bar">
                     <div class="ce-pool-pct-fill" style="width:<?= $merchPct ?>%"></div>
                 </div>
@@ -125,13 +127,12 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         </div>
 
         <div class="ce-pool-card ce-pool-vouchers">
-            <div class="ce-pool-glow"></div>
             <div class="ce-pool-icon-wrap">
                 <img src="<?= ICONS_URL ?>/visitors.png" alt="" class="ce-pool-icon">
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Active Vouchers</span>
-                <div class="ce-pool-amt">Php <?= number_format($vouchers, 2) ?></div>
+                <div class="ce-pool-amt"><?= gjc_money($vouchers) ?></div>
                 <div class="ce-pool-pct-bar">
                     <div class="ce-pool-pct-fill" style="width:<?= $vchPct ?>%"></div>
                 </div>
@@ -139,68 +140,6 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             </div>
         </div>
 
-    </div>
-
-    <div class="ce-flow-panel">
-        <div class="ce-flow-header">
-            <div>
-                <div class="ce-flow-title">Circulation Breakdown</div>
-                <div class="ce-flow-sub">All pools must sum to the cap at all times</div>
-            </div>
-            <button class="ce-refresh-btn" onclick="ceRefresh()" title="Refresh snapshot">
-                <span id="ce-refresh-icon">Refresh</span>
-            </button>
-        </div>
-
-        <div class="ce-flow-bar">
-            <?php if ($vaultPct > 0): ?>
-            <div class="ce-fb-seg ce-fb-vault" style="width:<?= $vaultPct ?>%"
-                 data-tip="Vault: Php <?= number_format($vault,2) ?> (<?= $vaultPct ?>%)">
-                <?php if ($vaultPct >= 8): ?>
-                <span><?= $vaultPct ?>%</span>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            <?php if ($studPct > 0): ?>
-            <div class="ce-fb-seg ce-fb-students" style="width:<?= $studPct ?>%"
-                 data-tip="Students: Php <?= number_format($students,2) ?> (<?= $studPct ?>%)">
-                <?php if ($studPct >= 8): ?>
-                <span><?= $studPct ?>%</span>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            <?php if ($merchPct > 0): ?>
-            <div class="ce-fb-seg ce-fb-merchants" style="width:<?= $merchPct ?>%"
-                 data-tip="Merchants: Php <?= number_format($merchants,2) ?> (<?= $merchPct ?>%)">
-                <?php if ($merchPct >= 8): ?>
-                <span><?= $merchPct ?>%</span>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            <?php if ($vchPct > 0): ?>
-            <div class="ce-fb-seg ce-fb-vouchers" style="width:<?= $vchPct ?>%"
-                 data-tip="Vouchers: Php <?= number_format($vouchers,2) ?> (<?= $vchPct ?>%)">
-                <?php if ($vchPct >= 8): ?>
-                <span><?= $vchPct ?>%</span>
-                <?php endif; ?>
-            </div>
-            <?php endif; ?>
-            
-            <?php $remaining = max(0, 100 - $vaultPct - $studPct - $merchPct - $vchPct); ?>
-            <?php if ($remaining > 0): ?>
-            <div class="ce-fb-seg ce-fb-empty" style="width:<?= $remaining ?>%"></div>
-            <?php endif; ?>
-        </div>
-
-        <div class="ce-flow-legend">
-            <span><i class="ce-dot-sm ce-dot-vault"></i> Vault</span>
-            <span><i class="ce-dot-sm ce-dot-students"></i> Students</span>
-            <span><i class="ce-dot-sm ce-dot-merchants"></i> Merchants</span>
-            <span><i class="ce-dot-sm ce-dot-vouchers"></i> Vouchers</span>
-        </div>
-
-        
-        <div class="ce-bar-tooltip" id="ce-tooltip"></div>
     </div>
 
     <div class="ce-bottom-grid">
@@ -214,7 +153,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                     <div class="ce-mint-info-sub">
                         <?= $limitHit
                             ? 'Soft limit exceeded - Mint PIN required'
-                            : 'Within the Php ' . number_format(MintingGuard::SOFT_LIMIT, 0) . ' monthly soft limit' ?>
+                            : 'Within the ' . gjc_money(MintingGuard::SOFT_LIMIT) . ' monthly soft limit' ?>
                     </div>
                 </div>
             </div>
@@ -229,11 +168,11 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <div class="ce-mint-stats">
                 <div class="ce-mint-stat-item">
                     <span>Minted this month</span>
-                    <strong>Php <?= number_format($minted, 2) ?></strong>
+                    <strong><?= gjc_money($minted) ?></strong>
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Remaining budget</span>
-                    <strong>Php <?= number_format(max(0, (float)$monthly['remaining_soft_limit']), 2) ?></strong>
+                    <strong><?= gjc_money(max(0, (float)$monthly['remaining_soft_limit'])) ?></strong>
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Mint events</span>
@@ -241,13 +180,13 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Hard limit</span>
-                    <strong>Php <?= number_format((float)$monthly['hard_limit'], 0) ?></strong>
+                    <strong><?= gjc_money((float)$monthly['hard_limit']) ?></strong>
                 </div>
             </div>
         </div>
 
         
-        <?php if (isset($_SESSION['roleID']) && (int)$_SESSION['roleID'] === 3): ?>
+        <?php if (($_SESSION['sub_role'] ?? '') === 'super_admin'): ?>
         <div class="ce-mint-form-panel">
             <div class="ce-mint-form-header">
                 <span class="ce-mint-badge">Admin</span>
@@ -260,7 +199,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <form id="ce-mint-form">
                 <div class="ce-field-row">
                     <div class="ce-field">
-                        <label class="ce-label">Amount (Php)</label>
+                        <label class="ce-label">Amount (&#8369;)</label>
                         <input type="number" id="ce-amount" class="ce-input"
                                min="1" step="0.01" placeholder="e.g. 10,000" required>
                     </div>
@@ -274,7 +213,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                      style="display:<?= $limitHit ? 'block' : 'none' ?>">
                     <label class="ce-label">
                         Mint PIN
-                        <span class="ce-pin-badge">Required above Php <?= number_format(MintingGuard::SOFT_LIMIT, 0) ?>/mo</span>
+                        <span class="ce-pin-badge">Required above <?= gjc_money(MintingGuard::SOFT_LIMIT) ?>/mo</span>
                     </label>
                     <input type="password" id="ce-pin" class="ce-input" placeholder="Enter Mint PIN">
                 </div>
@@ -329,14 +268,10 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 
     </div>
 
+    <!-- Total circulation and balance status are already shown above
+         (hero panel + section badge) - the footer only adds the timestamp. -->
     <div class="ce-footer">
         <span>Snapshot: <strong><?= $snap['as_of'] ?? 'N/A' ?></strong></span>
-        <span class="ce-footer-sep">-</span>
-        <span>Total: <strong>Php <?= number_format($circulation, 2) ?></strong></span>
-        <span class="ce-footer-sep">-</span>
-        <span class="<?= $isBalanced ? 'ce-text-green' : 'ce-text-red' ?>">
-            <?= $isBalanced ? 'Balanced (Php 0.00 drift)' : 'Drift Php ' . number_format($drift, 2) ?>
-        </span>
     </div>
 
 </section>
@@ -345,21 +280,6 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 (function () {
     const SOFT_LIMIT   = <?= MintingGuard::SOFT_LIMIT ?>;
     const mintedSoFar  = <?= $minted ?>;
-    const tooltip      = document.getElementById('ce-tooltip');
-
-    document.querySelectorAll('.ce-fb-seg[data-tip]').forEach(seg => {
-        seg.addEventListener('mouseenter', e => {
-            tooltip.textContent = seg.dataset.tip;
-            tooltip.style.opacity = 1;
-        });
-        seg.addEventListener('mousemove', e => {
-            const bar = seg.closest('.ce-flow-bar').getBoundingClientRect();
-            tooltip.style.left = (e.clientX - bar.left) + 'px';
-        });
-        seg.addEventListener('mouseleave', () => {
-            tooltip.style.opacity = 0;
-        });
-    });
 
     const amtInput = document.getElementById('ce-amount');
     if (amtInput) {
@@ -398,9 +318,9 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 if (data.success) {
                     alertEl.innerHTML = `
                         <div class="ce-alert ce-alert-ok">
-                            Minted <strong>Php ${payload.amount.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
-                            New Cap: <strong>Php ${parseFloat(data.new_cap).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
-                            New Vault: <strong>Php ${parseFloat(data.new_vault).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
+                            Minted <strong>&#8369;${payload.amount.toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
+                            New Cap: <strong>&#8369;${parseFloat(data.new_cap).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
+                            New Vault: <strong>&#8369;${parseFloat(data.new_vault).toLocaleString('en-PH',{minimumFractionDigits:2})}</strong>.
                             <a href="" onclick="location.reload();return false">Refresh</a>
                         </div>`;
                     form.reset();
@@ -415,25 +335,6 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             btn.innerHTML = `<span class="ce-mint-btn-content"><img src="<?= ICONS_URL ?>/wallet.png" alt=""><span>Mint Points into Economy</span></span>`;
         });
     }
-
-    window.ceRefresh = async function () {
-        const icon = document.getElementById('ce-refresh-icon');
-        icon.style.display = 'none';
-        const btn = icon.parentElement;
-        btn.insertAdjacentHTML('beforeend', '<span class="ce-spinner ce-spinner-sm"></span>');
-
-        const res  = await fetch('<?= ADMIN_URL ?>/api/economy.php?action=circulation');
-        const data = await res.json();
-
-        btn.querySelector('.ce-spinner').remove();
-        icon.style.display = '';
-
-        if (data && data.cap !== undefined) {
-            // Light flash to signal refresh
-            document.querySelector('.ce-flow-bar').style.opacity = '0.5';
-            setTimeout(() => document.querySelector('.ce-flow-bar').style.opacity = '1', 400);
-        }
-    };
 })();
 </script>
 

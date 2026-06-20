@@ -51,10 +51,10 @@ $stageColors = [
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merchant Onboarding | GJC EduPay Admin</title>
-    <meta name="description" content="Multi-stage merchant vendor application pipeline for GJC EduPay.">
+    <title>Merchant Onboarding | GenPay Admin</title>
+    <meta name="description" content="Multi-stage merchant vendor application pipeline for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         .pipeline-board {
@@ -117,7 +117,7 @@ $stageColors = [
     <aside class="admin-sidebar" id="sidebar">
         <div class="brand-box">
             <div class="brand-logo"><img src="<?= ICONS_URL ?>/edupay.png" alt="Logo"></div>
-            <div class="brand-text"><h4>GJC EduPay</h4><span>Admin Portal</span></div>
+            <div class="brand-text"><h4>GenPay</h4><span>Admin Portal</span></div>
         </div>
         <nav class="sidebar-menu">
             <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt=""><span class="nav-text">Dashboard</span></a>

@@ -19,7 +19,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfer Tokens | GJC EduPay</title>
+    <title>Transfer Tokens | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=11">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -29,7 +29,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
     <aside class="student-sidebar" id="studentSidebar">
         <div class="student-brand">
             <div class="student-brand-logo"><img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo"></div>
-            <div class="student-brand-text"><h4>GJC EduPay</h4><span>Student Portal</span></div>
+            <div class="student-brand-text"><h4>GenPay</h4><span>Student Portal</span></div>
         </div>
         <nav class="student-menu">
             <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt=""><span class="student-nav-text">Dashboard</span></a>

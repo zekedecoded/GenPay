@@ -12,9 +12,6 @@ class MintingGuard
     
     public const HARD_LIMIT = 500_000.00;
 
-    
-    private const ROLE_SUPER_ADMIN = 3;
-
     private CirculationEngine $engine;
 
     public function __construct(private PDO $db)
@@ -72,8 +69,8 @@ class MintingGuard
     {
         $this->assertSuperAdmin($superAdminId);
 
-        
-        $stmt = $this->db->prepare("SELECT password FROM users WHERE id = ?");
+
+        $stmt = $this->db->prepare("SELECT password FROM users WHERE userID = ?");
         $stmt->execute([$superAdminId]);
         $hash = $stmt->fetchColumn();
 
@@ -88,7 +85,7 @@ class MintingGuard
         }
 
         $pinHash = password_hash($newPin, PASSWORD_BCRYPT);
-        $this->db->prepare("UPDATE users SET mint_pin = ? WHERE id = ?")->execute([$pinHash, $superAdminId]);
+        $this->db->prepare("UPDATE users SET mint_pin = ? WHERE userID = ?")->execute([$pinHash, $superAdminId]);
 
         return true;
     }
@@ -133,9 +130,9 @@ class MintingGuard
             SELECT
                 c.*,
                 u.email  AS admin_email,
-                u.name   AS admin_name
+                CONCAT(u.first_name, ' ', u.last_name) AS admin_name
             FROM cap_increase_log c
-            LEFT JOIN users u ON u.id = c.super_admin_id
+            LEFT JOIN users u ON u.userID = c.super_admin_id
             ORDER BY c.created_at DESC
             LIMIT ? OFFSET ?
         ");
@@ -145,10 +142,10 @@ class MintingGuard
     
     private function assertSuperAdmin(int $userId): void
     {
-        $stmt = $this->db->prepare("SELECT roleID FROM users WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT sub_role FROM users WHERE userID = ?");
         $stmt->execute([$userId]);
-        $role = $stmt->fetchColumn();
-        if ((int)$role !== self::ROLE_SUPER_ADMIN) {
+        $subRole = $stmt->fetchColumn();
+        if ($subRole !== 'super_admin') {
             throw new RuntimeException('ACCESS_DENIED: Only Super-Admins can mint points.');
         }
     }
@@ -188,7 +185,7 @@ class MintingGuard
             ));
         }
 
-        $stmt = $this->db->prepare("SELECT mint_pin FROM users WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT mint_pin FROM users WHERE userID = ?");
         $stmt->execute([$adminId]);
         $hash = $stmt->fetchColumn();
 

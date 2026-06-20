@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
---  GJC EduPay — Voucher Schema PATCH
+--  GenPay — Voucher Schema PATCH
 --  Adds missing columns to existing 'vouchers' table,
 --  creates voucher_payment_log, and installs triggers/view.
 --  Safe to run multiple times (IF NOT EXISTS / CREATE OR REPLACE).

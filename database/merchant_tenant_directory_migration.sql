@@ -1,5 +1,5 @@
 -- ============================================================
--- GJC EduPay - Admin Merchant/Tenant Directory Migration
+-- GenPay - Admin Merchant/Tenant Directory Migration
 -- Generated: 2026-06-09
 -- Purpose:
 --   Adds metadata and audit columns needed for the Super Admin

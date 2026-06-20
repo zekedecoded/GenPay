@@ -1,4 +1,4 @@
-/* GJC EduPay Clear UI Theme
+/* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
 
 :root {
@@ -633,6 +633,112 @@ img {
 .scan-status-badge.blocked {
   background: #fde8e5 !important;
   color: var(--gjc-danger) !important;
+}
+
+/* ── Remaining heavy gradient/blur components (Dashboard, Economy) ── */
+.economy-balance-card {
+  background: var(--gjc-green-800) !important;
+  border: 1px solid var(--gjc-green-700) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+}
+
+.economy-mini-card {
+  background: var(--gjc-panel) !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+}
+
+.economy-mini-card.economy-ok {
+  background: #f0fbf4 !important;
+  border-color: #a8dcbc !important;
+}
+
+.economy-mini-card.economy-alert {
+  background: var(--gjc-gold-100) !important;
+  border-color: var(--gjc-gold-500) !important;
+}
+
+.quick-actions a {
+  background: var(--gjc-panel) !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.quick-actions a:hover {
+  background: var(--gjc-green-800) !important;
+  color: #fff !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Metric card colour-coded variants - flat colour, not a gradient,
+   keeps the category distinction (cap/vault/students/merchants) meaningful. */
+.metric-card.metric-cap       { background: var(--gjc-green-800) !important; }
+.metric-card.metric-vault     { background: #1d4ed8 !important; }
+.metric-card.metric-students  { background: #b45309 !important; }
+.metric-card.metric-merchants { background: #6d28d9 !important; }
+
+/* Circulation widget (admin/economy.php via includes/circulation_widget.php) */
+.ce-hero-panel {
+  background: var(--gjc-green-900) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+}
+.ce-hero-panel::after { display: none !important; }
+
+.ce-label-pill {
+  background: var(--gjc-green-800) !important;
+  box-shadow: none !important;
+}
+
+.ce-alert-danger {
+  background: #fde8e5 !important;
+  border: 1px solid #f0b8b2 !important;
+  color: var(--gjc-danger) !important;
+  border-radius: var(--gjc-radius) !important;
+}
+
+.ce-pool-card,
+.ce-pool-vault,
+.ce-pool-students,
+.ce-pool-merchants,
+.ce-pool-vouchers {
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+}
+.ce-pool-vault     { background: var(--gjc-green-800) !important; }
+.ce-pool-students  { background: #b45309 !important; }
+.ce-pool-merchants { background: #6d28d9 !important; }
+.ce-pool-vouchers  { background: #0369a1 !important; }
+.ce-pool-glow      { display: none !important; }
+
+.ce-fb-vault     { background: var(--gjc-green-800) !important; }
+.ce-fb-students  { background: #b45309 !important; }
+.ce-fb-merchants { background: #6d28d9 !important; }
+.ce-fb-vouchers  { background: #0369a1 !important; }
+
+.ce-mint-form-panel {
+  background: var(--gjc-gold-100) !important;
+  backdrop-filter: none !important;
+  border: 1px solid var(--gjc-gold-500) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+}
+
+.ce-mint-info-icon { background: var(--gjc-green-800) !important; }
+.ce-mint-badge      { background: var(--gjc-gold-500) !important; color: var(--gjc-green-950) !important; }
+.ce-mint-btn        { background: var(--gjc-gold-500) !important; color: var(--gjc-green-950) !important; box-shadow: none !important; }
+.ce-mint-btn:hover  { background: var(--gjc-gold-600) !important; transform: none !important; box-shadow: none !important; }
+
+.ce-track-ok   { background: var(--gjc-success) !important; }
+.ce-track-warn { background: #b45309 !important; }
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background: var(--gjc-green-800) !important;
 }
 
 /* Login and public pages */

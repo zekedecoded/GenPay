@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/MintingGuard.php';
 
-if (!isset($_SESSION['userID'], $_SESSION['roleID']) || (int)$_SESSION['roleID'] !== 3) {
+if (!isset($_SESSION['userID']) || ($_SESSION['sub_role'] ?? '') !== 'super_admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'ACCESS_DENIED: Super-Admin only.']);
     exit;

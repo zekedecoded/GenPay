@@ -114,7 +114,7 @@ $spendingLimit = 'No Limit';
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile | EduPay</title>
+    <title>My Profile | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=31">
@@ -136,7 +136,7 @@ $spendingLimit = 'No Limit';
                 </div>
 
                 <div class="student-brand-text">
-                    <h4>GJC EduPay</h4>
+                    <h4>GenPay</h4>
                     <span>Student Portal</span>
                 </div>
             </div>

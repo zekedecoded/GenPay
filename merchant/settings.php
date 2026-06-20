@@ -1,4 +1,159 @@
 <?php
+// ============================================================
+//  merchant/settings.php
+//  Business Profile - lets the merchant admin edit the display name
+//  and logo that appear publicly on the Stall Directory (stalls.php).
+// ============================================================
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../connection/config.php';
-header('Location: ' . DASHBOARD_URL);
-exit;
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['merchant']);
+if (gjc_is_merchant_staff()) {
+    header('Location: ' . DASHBOARD_URL);
+    exit;
+}
+
+$currentUser = gjc_current_user($db);
+$userId = (int) $currentUser['id'];
+
+$stmt = $db->prepare(
+    "SELECT m.merchantID, m.stall_name, m.stall_id, s.label AS stall_label, u.profile_img
+       FROM merchant m
+       LEFT JOIN stalls s ON s.stall_id = m.stall_id
+       LEFT JOIN users  u ON u.userID = m.userID
+      WHERE m.userID = ?
+      LIMIT 1"
+);
+$stmt->execute([$userId]);
+$merchant = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$currentPage = 'settings';
+$logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['profile_img'] : null;
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Profile | GenPay Merchant</title>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=11">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .profile-logo-preview {
+            width: 96px; height: 96px; border-radius: 50%;
+            object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+            background: #f3f4f6;
+        }
+        .profile-logo-fallback {
+            width: 96px; height: 96px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #064420, #15803d);
+            color: #fff; font-weight: 800; font-size: 32px;
+        }
+    </style>
+</head>
+<body>
+<div class="merchant-layout">
+    <?php require __DIR__ . '/../includes/partials/sidebar_merchant_admin.php'; ?>
+
+    <main class="merchant-main">
+        <header class="merchant-topbar">
+            <button class="merchant-menu-btn" onclick="document.getElementById('merchantSidebar').classList.toggle('collapsed')">&#9776;</button>
+            <div>
+                <h1>Business Profile</h1>
+                <p>This display name and logo appear publicly on the Stall Directory.</p>
+            </div>
+            <div class="merchant-user">
+                <span><?= gjc_e($currentUser['name']) ?></span>
+                <div class="merchant-avatar"><img src="<?= ICONS_URL ?>/store.png" alt=""></div>
+            </div>
+        </header>
+
+        <?php if (!$merchant): ?>
+        <section class="merchant-premium-panel">
+            <p class="text-muted mb-0">No merchant record is linked to this account yet.</p>
+        </section>
+        <?php else: ?>
+        <section class="merchant-premium-panel">
+            <div class="merchant-panel-header">
+                <div>
+                    <h3>Stall Directory Listing</h3>
+                    <p>Stall <?= gjc_e($merchant['stall_id'] ?? 'Not yet assigned') ?><?= $merchant['stall_label'] ? ' - ' . gjc_e($merchant['stall_label']) : '' ?></p>
+                </div>
+            </div>
+
+            <form id="profileForm" enctype="multipart/form-data" class="mt-3">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-md-3 text-center">
+                        <?php if ($logoUrl): ?>
+                        <img id="logoPreview" class="profile-logo-preview" src="<?= htmlspecialchars($logoUrl) ?>" alt="Current logo">
+                        <?php else: ?>
+                        <div id="logoPreview" class="profile-logo-fallback"><?= htmlspecialchars(mb_substr($merchant['stall_name'], 0, 1)) ?></div>
+                        <?php endif; ?>
+                        <label class="btn btn-outline-secondary btn-sm mt-3 w-100" for="logoInput">Change Logo</label>
+                        <input type="file" id="logoInput" name="logo" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="d-none">
+                        <div class="form-text">JPG or PNG, max 5 MB.</div>
+                    </div>
+                    <div class="col-12 col-md-9">
+                        <label class="form-label fw-semibold">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="stall_name" id="stallNameInput"
+                               value="<?= htmlspecialchars($merchant['stall_name']) ?>" maxlength="255" required>
+                        <div class="form-text">Shown as your company name on the public Stall Directory.</div>
+
+                        <div id="profileMsg" class="mt-3"></div>
+                        <button type="submit" class="login-btn mt-3" id="profileSubmitBtn">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+        <?php endif; ?>
+    </main>
+</div>
+
+<script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<script>
+const PROFILE_API = '<?= MERCHANT_URL ?>/api/profile.php';
+
+document.getElementById('logoInput')?.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        let img = document.getElementById('logoPreview');
+        if (img.tagName !== 'IMG') {
+            const newImg = document.createElement('img');
+            newImg.id = 'logoPreview';
+            newImg.className = 'profile-logo-preview';
+            img.replaceWith(newImg);
+            img = newImg;
+        }
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('profileForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const btn = document.getElementById('profileSubmitBtn');
+    const msg = document.getElementById('profileMsg');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        const r = await fetch(PROFILE_API, { method: 'POST', body: new FormData(this) });
+        const d = await r.json();
+        msg.innerHTML = `<div class="alert ${d.success ? 'alert-success' : 'alert-danger'} mb-0">${d.message}</div>`;
+    } catch (err) {
+        msg.innerHTML = '<div class="alert alert-danger mb-0">Unable to contact the server. Please try again.</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+});
+</script>
+</body>
+</html>

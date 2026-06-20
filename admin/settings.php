@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/../connection/config.php';
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['finance']);
+$currentUser = gjc_current_user($db);
 $serverTime = "Apr 25, 2026 12:34:46 AM";
 
 $currentPage = 'settings';
@@ -11,10 +16,10 @@ $currentPage = 'settings';
 <head>
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
-    <title>Settings | GJC EduPay</title>
+    <title>Settings | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/settings.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
@@ -40,7 +45,7 @@ $currentPage = 'settings';
                 </div>
 
                 <div class="admin-user">
-                    <span>Admin</span>
+                    <span><?= gjc_e($currentUser['name']) ?></span>
                     <div class="avatar">
                         <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
                     </div>
@@ -150,7 +155,7 @@ $currentPage = 'settings';
 
                     <div class="system-info-row">
                         <span>Application</span>
-                        <strong>GJC EduPay v1.0.0</strong>
+                        <strong>GenPay v1.0.0</strong>
                     </div>
 
                     <div class="system-info-row">

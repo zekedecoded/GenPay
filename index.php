@@ -22,7 +22,7 @@
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GJC EduPay | General de Jesus College</title>
+    <title>GenPay | General de Jesus College</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=1">
@@ -60,6 +60,25 @@
             width: 45px;
             height: 45px;
             object-fit: contain;
+        }
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .nav-actions .btn-outline-custom {
+            padding: 10px 22px;
+            font-size: 15px;
+            background: transparent;
+            border: 2px solid #064420;
+            color: #064420;
+            box-shadow: none;
+        }
+        .nav-actions .btn-login {
+            padding: 10px 25px;
+            font-size: 16px;
         }
         .hero {
             flex: 1;
@@ -170,6 +189,18 @@
             opacity: 0.9;
         }
         @media (max-width: 768px) {
+            .navbar { padding: 12px 20px; }
+            .navbar-brand { font-size: 19px; gap: 8px; }
+            .navbar-brand img { width: 36px; height: 36px; }
+            .nav-actions { gap: 8px; }
+            .nav-actions .btn-outline-custom,
+            .nav-actions .btn-login {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            .hero {
+                padding: 190px 20px 60px 20px;
+            }
             .hero h1 { font-size: 40px; }
             .hero p { font-size: 16px; }
             .features {
@@ -211,11 +242,11 @@
     <nav class="navbar">
         <a class="navbar-brand" href="#">
             <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo" onerror="this.src='<?= ICONS_URL ?>/logo.png'">
-            GJC EduPay
+            GenPay
         </a>
-        <div style="display:flex;align-items:center;gap:12px;">
-            <a href="<?= BASE_URL ?>/stalls" class="btn btn-primary-custom" style="padding:10px 22px;font-size:15px;background:transparent;border:2px solid #064420;color:#064420;box-shadow:none;"> View Stalls</a>
-            <a href="<?= BASE_URL ?>/login.php" class="btn btn-primary-custom" style="padding: 10px 25px; font-size: 16px;">Login to Portal</a>
+        <div class="nav-actions">
+            <a href="<?= BASE_URL ?>/stalls" class="btn btn-primary-custom btn-outline-custom">View Stalls</a>
+            <a href="<?= BASE_URL ?>/login.php" class="btn btn-primary-custom btn-login">Login<span class="d-none d-sm-inline"> to Portal</span></a>
         </div>
     </nav>
 

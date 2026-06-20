@@ -1,6 +1,6 @@
 <?php
 /**
- * GJC EduPay — Mailer Helper
+ * GenPay — Mailer Helper
  * Wraps PHPMailer with project SMTP credentials.
  * Usage:
  *   $mail = gjc_mailer();
@@ -24,11 +24,11 @@ function gjc_mailer(): PHPMailer
     $mail->Host       = 'smtp.gmail.com';
     $mail->SMTPAuth   = true;
     $mail->Username   = 'daitodump@gmail.com';
-    $mail->Password   = 'mhhr orey kizv wlto';
+    $mail->Password   = 'ogfj biau oeyr ntab';
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = 587;
     $mail->Timeout    = 10;
-    $mail->setFrom('daitodump@gmail.com', 'GJC EduPay');
+    $mail->setFrom('daitodump@gmail.com', 'GenPay');
     $mail->isHTML(true);
     $mail->CharSet = 'UTF-8';
     return $mail;

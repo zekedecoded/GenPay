@@ -24,9 +24,9 @@ $currentPage = "dashboard";
 <head>
     <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
     <meta charset="UTF-8">
-    <title>Admin Dashboard | GJC EduPay</title>
+    <title>Admin Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

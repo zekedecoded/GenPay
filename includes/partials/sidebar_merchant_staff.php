@@ -9,7 +9,7 @@ $currentPage = $currentPage ?? '';
             <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
         </div>
         <div class="merchant-brand-text">
-            <h4>GJC EduPay</h4>
+            <h4>GenPay</h4>
             <span>Cashier Staff</span>
         </div>
     </div>

@@ -1,5 +1,5 @@
 -- ============================================================
---  GJC EduPay — Token Economy Additions & Migrations
+--  GenPay — Token Economy Additions & Migrations
 --  Run ONCE against the 'ewallet' database.
 --  Safe to run on a database that already has the base schema.
 -- ============================================================
