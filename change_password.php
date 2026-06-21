@@ -109,13 +109,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST">
 
                 <div class="input-group-box">
-                    <input type="password" name="new_pass" required placeholder=" ">
+                    <input type="password" name="new_pass" id="new_pass" required placeholder=" ">
                     <label>New Password</label>
+
+                    <button type="button" class="eye" data-target="new_pass" aria-label="Show password">
+                        <img src="<?= ICONS_URL ?>/eye.png" alt="">
+                    </button>
                 </div>
 
                 <div class="input-group-box">
-                    <input type="password" name="confirm_pass" required placeholder=" ">
+                    <input type="password" name="confirm_pass" id="confirm_pass" required placeholder=" ">
                     <label>Confirm Password</label>
+
+                    <button type="button" class="eye" data-target="confirm_pass" aria-label="Show password">
+                        <img src="<?= ICONS_URL ?>/eye.png" alt="">
+                    </button>
                 </div>
 
                 <button type="submit">Update Password</button>
@@ -125,6 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
     </div>
+
+    <script>
+        function togglePass(button) {
+            const target = document.getElementById(button.dataset.target);
+            if (!target) return;
+
+            const shouldShow = target.type === "password";
+            target.type = shouldShow ? "text" : "password";
+            button.setAttribute("aria-label", shouldShow ? "Hide password" : "Show password");
+            button.classList.toggle("is-visible", shouldShow);
+        }
+
+        document.querySelectorAll(".eye").forEach((button) => {
+            button.addEventListener("click", () => togglePass(button));
+        });
+    </script>
 
 </body>
 

@@ -87,6 +87,39 @@ class MerchantTenantDirectory
         }, $rows);
     }
 
+    public function merchantsForPicker(): array
+    {
+        if (!gjc_table_exists($this->db, 'merchant')) {
+            return [];
+        }
+
+        $hasLeases = gjc_table_exists($this->db, 'merchant_leases');
+        $activeLeaseSelect = $hasLeases
+            ? "EXISTS (SELECT 1 FROM merchant_leases l WHERE l.merchant_user_id = m.userID AND l.status = 'active')"
+            : "0";
+
+        $sql = "
+            SELECT
+                m.userID AS merchant_user_id,
+                m.stall_name,
+                TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS proprietor_name,
+                u.email AS proprietor_email,
+                {$activeLeaseSelect} AS has_active_lease
+            FROM merchant m
+            LEFT JOIN users u ON u.userID = m.userID
+            ORDER BY m.stall_name ASC";
+
+        $rows = $this->db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(static fn (array $row): array => [
+            'merchant_user_id' => (int) $row['merchant_user_id'],
+            'stall_name' => (string) $row['stall_name'],
+            'proprietor_name' => trim((string) $row['proprietor_name']) ?: ((string) ($row['proprietor_email'] ?? 'Unnamed proprietor')),
+            'proprietor_email' => (string) ($row['proprietor_email'] ?? ''),
+            'has_active_lease' => (bool) $row['has_active_lease'],
+        ], $rows);
+    }
+
     public function stallSummary(int $merchantId): ?array
     {
         $hasOperationalStatus = in_array('operational_status', gjc_table_columns($this->db, 'merchant'), true);
@@ -131,7 +164,7 @@ class MerchantTenantDirectory
         }
 
         $stmt = $this->db->prepare(
-            "SELECT *
+            "SELECT id
              FROM merchant_leases
              WHERE merchant_user_id = ?
              ORDER BY
@@ -141,6 +174,19 @@ class MerchantTenantDirectory
              LIMIT 1"
         );
         $stmt->execute([$merchantUserId]);
+        $id = (int) $stmt->fetchColumn();
+
+        return $id > 0 ? $this->leaseById($id) : null;
+    }
+
+    public function leaseById(int $leaseId): ?array
+    {
+        if ($leaseId <= 0 || !gjc_table_exists($this->db, 'merchant_leases')) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("SELECT * FROM merchant_leases WHERE id = ? LIMIT 1");
+        $stmt->execute([$leaseId]);
         $lease = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$lease) {

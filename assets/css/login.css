@@ -106,7 +106,7 @@ body {
 
 .input-group-box input {
   width: 100%;
-  padding: 15px 45px 15px 15px;
+  padding: 15px 40px 15px 15px;
   border-radius: 12px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
@@ -135,14 +135,16 @@ body {
 /* ===== PASSWORD EYE ===== */
 .eye {
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   font-size: 14px;
   display: inline-flex;
@@ -207,8 +209,8 @@ body {
 }
 
 .eye img {
-  width: 18px;
-  height: 18px;
+  width: 13px;
+  height: 13px;
   opacity: 0.95;
   filter: brightness(0) saturate(100%) invert(18%) sepia(36%) saturate(802%) hue-rotate(91deg) brightness(88%) contrast(92%);
 }
@@ -270,7 +272,7 @@ body {
 
   .input-group-box input {
     min-height: 52px;
-    padding-right: 54px;
+    padding-right: 44px;
     border-radius: 12px;
     font-size: 15px;
   }

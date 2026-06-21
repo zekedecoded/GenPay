@@ -117,7 +117,7 @@ $spendingLimit = 'No Limit';
     <title>My Profile | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=31">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=41">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"

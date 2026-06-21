@@ -74,7 +74,7 @@ try {
 
             stall_app_json([
                 'success' => true,
-                'message' => 'Documents accepted. Moved to Step 2 - Meeting Schedule.',
+                'message' => 'Documents accepted. Moved to Step 2 - Meeting.',
                 'status' => 'meeting', 'current_step' => 2,
             ]);
         }
@@ -137,7 +137,7 @@ try {
             ]);
         }
 
-        // ── Step 2: Meeting Schedule — save & advance ──────────
+        // ── Step 2: Meeting — save & advance ──────────
         case 'save_meeting': {
             $appId = (int) ($_POST['app_id'] ?? 0);
             $date  = trim((string) ($_POST['meetup_date'] ?? ''));
@@ -172,7 +172,7 @@ try {
             try {
                 $mail = gjc_mailer();
                 $mail->addAddress($app['email'], $app['proprietor_name']);
-                $mail->Subject = 'GenPay - Stall Application Meeting Schedule';
+                $mail->Subject = 'GenPay - Stall Application Meeting';
                 $prettyDate = $dt->format('F j, Y');
                 $prettyTime = $dt->format('g:i A');
                 $mail->Body = '

@@ -5,7 +5,7 @@
 //  Source requirement: adviser feedback session (SIR EMMAN 4.mp3)
 //
 //  Step 1: Review Requirements   - Accept / Decline
-//  Step 2: Meeting Schedule      - Accept / Decline
+//  Step 2: Meeting                - Accept / Decline
 //  Step 3: Down Payment          - Next (forward-only)
 //  Step 4: Approval / Award      - Approve & Award (forward-only)
 //
@@ -49,7 +49,7 @@ $archivedCount = (int) $db->query("SELECT COUNT(*) FROM archived_rejections WHER
 
 const STEP_LABELS = [
     1 => 'Review Requirements',
-    2 => 'Meeting Schedule',
+    2 => 'Meeting',
     3 => 'Down Payment',
     4 => 'Approval / Award',
 ];
@@ -74,6 +74,46 @@ const STEP_LABELS = [
         .app-row[aria-expanded="true"] .chevron { transform: rotate(90deg); }
         .app-detail-row > td { padding: 0; border-top: 0; }
         .app-detail-inner { padding: 1.25rem 1.5rem; }
+
+        /* Step filter cards */
+        .step-filter-card {
+            width: 100%;
+            border: 1px solid rgba(6, 68, 32, 0.12);
+            background: #fff;
+            border-radius: 16px;
+            padding: 14px 18px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            cursor: pointer;
+            transition: 0.18s ease;
+        }
+        .step-filter-card:hover {
+            border-color: var(--emerald-600);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(6, 68, 32, 0.08);
+        }
+        .step-filter-card.active {
+            border-color: var(--emerald-700);
+            background: var(--emerald-soft);
+            box-shadow: 0 10px 24px rgba(6, 68, 32, 0.12);
+        }
+        .step-filter-card .sfc-count {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--emerald-900);
+            line-height: 1.1;
+        }
+        .step-filter-card.active .sfc-count { color: var(--emerald-800); }
+        .step-filter-card .sfc-label {
+            font-size: 12px;
+            font-weight: 750;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+        .step-filter-card.active .sfc-label { color: var(--emerald-800); }
     </style>
 </head>
 <body>
@@ -94,6 +134,19 @@ const STEP_LABELS = [
                 <input type="search" id="appSearch" class="form-control" placeholder="Search business, proprietor, or email&hellip;">
             </div>
 
+            <!-- Sort control -->
+            <div class="input-group input-group-sm me-3" style="max-width:230px">
+                <label class="input-group-text bg-white" for="appSort">Sort</label>
+                <select id="appSort" class="form-select">
+                    <option value="submitted_desc">Date Submitted (Newest)</option>
+                    <option value="submitted_asc">Date Submitted (Oldest)</option>
+                    <option value="business_asc">Business Name (A&ndash;Z)</option>
+                    <option value="business_desc">Business Name (Z&ndash;A)</option>
+                    <option value="proprietor_asc">Proprietor (A&ndash;Z)</option>
+                    <option value="proprietor_desc">Proprietor (Z&ndash;A)</option>
+                </select>
+            </div>
+
             <button type="button" class="btn btn-outline-secondary btn-sm me-3" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
                 Archived Rejections <span class="badge bg-danger ms-1"><?= $archivedCount ?></span>
             </button>
@@ -103,6 +156,24 @@ const STEP_LABELS = [
                 <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
             </div>
         </header>
+
+        <!-- Filter by pipeline step (cards) -->
+        <section class="row g-3 mb-3" id="stepFilterCards">
+            <div class="col-6 col-md">
+                <button type="button" class="step-filter-card active" data-step="0">
+                    <span class="sfc-count"><?= count($apps) ?></span>
+                    <span class="sfc-label">All Applications</span>
+                </button>
+            </div>
+            <?php foreach (STEP_LABELS as $stepNum => $stepLabel): ?>
+            <div class="col-6 col-md">
+                <button type="button" class="step-filter-card" data-step="<?= $stepNum ?>">
+                    <span class="sfc-count"><?= count(array_filter($apps, fn ($a) => (int) $a['current_step'] === $stepNum)) ?></span>
+                    <span class="sfc-label"><?= htmlspecialchars($stepLabel) ?></span>
+                </button>
+            </div>
+            <?php endforeach; ?>
+        </section>
 
         <?php if (empty($apps)): ?>
         <div class="text-center text-muted py-5">
@@ -125,6 +196,7 @@ const STEP_LABELS = [
                     <tbody id="appTableBody">
                         <?php foreach ($apps as $app): ?>
                         <tr class="app-row" data-app-id="<?= (int) $app['id'] ?>"
+                            data-step="<?= (int) $app['current_step'] ?>"
                             data-search="<?= htmlspecialchars(strtolower($app['business_name'] . ' ' . $app['proprietor_name'] . ' ' . $app['email'])) ?>"
                             data-bs-toggle="collapse" data-bs-target="#detail-<?= (int) $app['id'] ?>" aria-expanded="false">
                             <td><span class="chevron">&#9656;</span></td>
@@ -377,12 +449,18 @@ function renderRow(app) {
     detail.querySelector('.step-panel').innerHTML = renderPanel(app);
 
     const row = document.querySelector(`.app-row[data-app-id="${app.id}"]`);
-    if (row) row.querySelector('.step-badge').textContent = `Step ${app.current_step} · ${STEP_LABELS[app.current_step]}`;
+    if (row) {
+        row.querySelector('.step-badge').textContent = `Step ${app.current_step} · ${STEP_LABELS[app.current_step]}`;
+        row.dataset.step = app.current_step;
+        applyFilters();
+        updateStepCounts();
+    }
 }
 
 function removeRow(id) {
     document.querySelector(`.app-row[data-app-id="${id}"]`)?.remove();
     document.querySelector(`.app-detail-row[data-app-id="${id}"]`)?.remove();
+    updateStepCounts();
 }
 
 function findApp(id) { return APPS.find(a => a.id == id); }
@@ -482,13 +560,66 @@ function reactivate(id) {
     });
 }
 
-// ── Global search filter ──
-document.getElementById('appSearch').addEventListener('input', function () {
-    const q = this.value.trim().toLowerCase();
+// ── Global search + step filter (combined) ──
+let currentStepFilter = '0';
+
+function applyFilters() {
+    const q = document.getElementById('appSearch').value.trim().toLowerCase();
     document.querySelectorAll('.app-row').forEach(row => {
-        row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+        const matchesSearch = row.dataset.search.includes(q);
+        const matchesStep = currentStepFilter === '0' || row.dataset.step === currentStepFilter;
+        row.style.display = (matchesSearch && matchesStep) ? '' : 'none';
+    });
+}
+document.getElementById('appSearch').addEventListener('input', applyFilters);
+
+// ── Step filter cards ──
+function updateStepCounts() {
+    const rows = document.querySelectorAll('.app-row');
+    document.querySelectorAll('.step-filter-card').forEach(card => {
+        const step = card.dataset.step;
+        const count = step === '0'
+            ? rows.length
+            : Array.from(rows).filter(r => r.dataset.step === step).length;
+        card.querySelector('.sfc-count').textContent = count;
+    });
+}
+document.querySelectorAll('.step-filter-card').forEach(card => {
+    card.addEventListener('click', function () {
+        currentStepFilter = this.dataset.step;
+        document.querySelectorAll('.step-filter-card').forEach(c => c.classList.toggle('active', c === this));
+        applyFilters();
     });
 });
+
+// ── Sort control ──
+const SORTERS = {
+    submitted_desc:  (a, b) => b.created_at.localeCompare(a.created_at),
+    submitted_asc:   (a, b) => a.created_at.localeCompare(b.created_at),
+    business_asc:    (a, b) => a.business_name.localeCompare(b.business_name),
+    business_desc:   (a, b) => b.business_name.localeCompare(a.business_name),
+    proprietor_asc:  (a, b) => a.proprietor_name.localeCompare(b.proprietor_name),
+    proprietor_desc: (a, b) => b.proprietor_name.localeCompare(a.proprietor_name),
+};
+
+function applySort() {
+    const sorter = SORTERS[document.getElementById('appSort').value];
+    if (!sorter) return;
+
+    const tbody = document.getElementById('appTableBody');
+    const rows = Array.from(tbody.querySelectorAll('.app-row'));
+    const sorted = rows
+        .map(row => ({ row, app: findApp(row.dataset.appId) }))
+        .filter(entry => entry.app)
+        .sort((a, b) => sorter(a.app, b.app));
+
+    sorted.forEach(({ row }) => {
+        const detail = tbody.querySelector(`.app-detail-row[data-app-id="${row.dataset.appId}"]`);
+        tbody.appendChild(row);
+        if (detail) tbody.appendChild(detail);
+    });
+}
+document.getElementById('appSort').addEventListener('change', applySort);
 
 // ── Initial render ──
 APPS.forEach(renderRow);

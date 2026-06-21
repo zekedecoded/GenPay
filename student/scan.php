@@ -24,7 +24,7 @@ $recentPayments = [];
     <title>Scan & Pay | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=41">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 

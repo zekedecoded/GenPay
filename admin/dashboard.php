@@ -68,6 +68,7 @@ $currentPage = "dashboard";
                         <h3>Merchant/Tenant Directory</h3>
                         <p>Institutional lease, rent obligation, and inventory compliance overview.</p>
                     </div>
+                    <a href="<?= ADMIN_URL ?>/leases.php" class="view-btn">Manage Leases &amp; Rent</a>
                 </div>
 
                 <?php if (empty($tenantCards)): ?>

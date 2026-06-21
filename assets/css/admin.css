@@ -1609,7 +1609,32 @@ body {
   font-size: 12px;
   font-weight: 800;
 }
-.badge-danger  { background: #fee2e2; color: #991b1b; }
+.badge-danger    { background: #fee2e2; color: #991b1b; }
+.badge-secondary { background: #e2e8f0; color: #475569; padding: 7px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+
+/* ── Leases & Rent filter bar ── */
+.lease-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 16px;
+}
+.lease-filter-bar input[type="search"] {
+  flex: 1 1 260px;
+}
+.lease-filter-bar select {
+  flex: 0 1 180px;
+}
+.lease-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+}
 
 /* ── Panel footer ── */
 .panel-footer { font-size: 12px; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px; }
