@@ -16,59 +16,59 @@ $currentPage = $currentPage ?? ""; ?>
         <a href="<?= DASHBOARD_URL ?>" class="<?= $currentPage === "dashboard"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-gauge-high nav-icon"></i>
             <span class="nav-text">Dashboard</span>
         </a>
         <a href="<?= ADMIN_URL ?>/users.php" class="<?= $currentPage === "users"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-users nav-icon"></i>
             <span class="nav-text">Users</span>
         </a>
         <a href="<?= ADMIN_URL ?>/leases.php" class="<?= $currentPage ===
 "leases"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-file-signature nav-icon"></i>
             <span class="nav-text">Leases &amp; Rent</span>
         </a>
         <a href="<?= ADMIN_URL ?>/topups.php" class="<?= $currentPage ===
 "topups"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/topups.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-money-bill-transfer nav-icon"></i>
             <span class="nav-text">Top-up Log</span>
         </a>
         <a href="<?= ADMIN_URL ?>/encashments.php" class="<?= $currentPage ===
 "encashments"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-money-check-dollar nav-icon"></i>
             <span class="nav-text">Encashments</span>
         </a>
         <a href="<?= ADMIN_URL ?>/transactions.php" class="<?= $currentPage ===
 "transactions"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-receipt nav-icon"></i>
             <span class="nav-text">Transactions</span>
         </a>
         <a href="<?= ADMIN_URL ?>/economy.php" class="<?= $currentPage ===
 "economy"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/wallet.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-coins nav-icon"></i>
             <span class="nav-text">Economy</span>
         </a>
         <a href="<?= ADMIN_URL ?>/visitors.php" class="<?= $currentPage ===
 "visitors"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/visitors.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-person-walking nav-icon"></i>
             <span class="nav-text">Visitors</span>
         </a>
         <a href="<?= ADMIN_URL ?>/stall_applications.php" class="<?= $currentPage === 'stall_applications' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/merchants.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-store nav-icon"></i>
             <span class="nav-text">Stall Applications</span>
             <?php
             // Badge: count pending stall applications
@@ -83,14 +83,14 @@ $currentPage = $currentPage ?? ""; ?>
         <a href="<?= ADMIN_URL ?>/audit_log.php" class="<?= $currentPage === "audit_log"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-clipboard-list nav-icon"></i>
             <span class="nav-text">Audit Log</span>
         </a>
         <?php if (function_exists('gjc_current_role') && gjc_current_role() === 'finance'): ?>
         <a href="<?= ADMIN_URL ?>/maintenance.php" class="<?= $currentPage === "maintenance"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-screwdriver-wrench nav-icon"></i>
             <span class="nav-text">Maintenance</span>
         </a>
         <?php endif; ?>
@@ -98,12 +98,14 @@ $currentPage = $currentPage ?? ""; ?>
 "settings"
     ? "active"
     : "" ?>">
-            <img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt="">
+            <i class="fa-solid fa-gear nav-icon"></i>
             <span class="nav-text">Settings</span>
         </a>
     </nav>
-    <a href="<?= BASE_URL ?>/logout.php" class="logout-btn">
-        <img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt="">
+    <a href="<?= BASE_URL ?>/logout.php" class="logout-btn"
+       onclick="openLogoutModal(event);">
+        <i class="fa-solid fa-arrow-right-from-bracket logout-icon"></i>
         <span>Logout</span>
     </a>
 </aside>
+<?php require __DIR__ . '/logout_modal.php'; ?>

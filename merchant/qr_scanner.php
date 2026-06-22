@@ -16,12 +16,15 @@ $currentPage = 'qr_scanner';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor QR Scanner | Merchant Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=12">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -42,7 +45,7 @@ $currentPage = 'qr_scanner';
                 <div class="merchant-user">
                     <span><?php echo gjc_e($currentUser['name']); ?></span>
                     <div class="merchant-avatar">
-                        <img src="<?= ICONS_URL ?>/store.png" alt="Merchant">
+                        <i class="fa-solid fa-store"></i>
                     </div>
                 </div>
             </header>
@@ -87,7 +90,7 @@ $currentPage = 'qr_scanner';
                     <div id="voucherResult" class="merchant-voucher-card is-empty">
                         <div class="merchant-voucher-empty">
                             <div class="merchant-voucher-empty-icon">
-                                <img src="<?= ICONS_URL ?>/visitors.png" alt="">
+                                <i class="fa-solid fa-person-walking"></i>
                             </div>
                             <h4>No voucher selected</h4>
                             <p>Scan a voucher or paste its payload to load the visitor details.</p>

@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['finance']);
@@ -36,6 +37,25 @@ try {
                 $businessName, $ownerName, $ownerEmail, $ownerContact,
                 $stallNumber ?: null, $productTypes,
             ]);
+            $newAppId = (int) $db->lastInsertId();
+
+            logAudit(
+                $db,
+                $adminId,
+                gjc_current_role(),
+                'MERCHANT_ONBOARDING',
+                'merchant_applications',
+                null,
+                [
+                    'event' => 'submitted',
+                    'app_id' => $newAppId,
+                    'business_name' => $businessName,
+                    'owner_name' => $ownerName,
+                    'owner_email' => $ownerEmail,
+                    'stage' => 'submitted',
+                ]
+            );
+
             echo json_encode(['success' => true, 'message' => 'Application submitted into the pipeline.']);
             break;
         }
@@ -67,6 +87,16 @@ try {
             $params[] = $appId;
             $sql = 'UPDATE merchant_applications SET ' . implode(', ', $updates) . ' WHERE id = ?';
             $db->prepare($sql)->execute($params);
+
+            logAudit(
+                $db,
+                $adminId,
+                gjc_current_role(),
+                'MERCHANT_ONBOARDING',
+                'merchant_applications',
+                ['app_id' => $appId],
+                ['event' => 'stage_advanced', 'app_id' => $appId, 'stage' => $nextStage, 'advanced_by' => $adminId]
+            );
 
             echo json_encode([
                 'success' => true,
@@ -127,6 +157,25 @@ try {
 
                 $db->commit();
 
+                // Note: the temp password is never written to the audit log -
+                // it's a one-time secret returned to the admin's screen only.
+                logAudit(
+                    $db,
+                    $adminId,
+                    gjc_current_role(),
+                    'MERCHANT_CREATE',
+                    'merchant_applications',
+                    ['app_id' => $appId, 'stage' => 'exec_review'],
+                    [
+                        'app_id' => $appId,
+                        'stage' => 'approved',
+                        'approved_by' => $adminId,
+                        'generated_user_id' => $newUserId,
+                        'business_name' => $app['business_name'],
+                        'owner_email' => $app['owner_email'],
+                    ]
+                );
+
                 echo json_encode([
                     'success'       => true,
                     'message'       => "Account created for {$app['owner_name']}.\n\nEmail: {$app['owner_email']}\nTemp Password: {$tempPassword}\n\nShare these credentials securely with the vendor.",
@@ -155,6 +204,16 @@ try {
                     SET stage='rejected', rejected_by=?, rejected_at=NOW(), rejection_reason=?
                   WHERE id=?"
             )->execute([$adminId, $reason, $appId]);
+
+            logAudit(
+                $db,
+                $adminId,
+                gjc_current_role(),
+                'MERCHANT_ONBOARDING',
+                'merchant_applications',
+                ['app_id' => $appId],
+                ['event' => 'rejected', 'app_id' => $appId, 'rejected_by' => $adminId, 'reason' => $reason]
+            );
 
             echo json_encode(['success' => true, 'message' => 'Application rejected.']);
             break;

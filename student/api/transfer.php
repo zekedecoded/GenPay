@@ -204,7 +204,7 @@ try {
                 'success'   => true,
                 'reference' => $refNo,
                 'message'   => sprintf(
-                    'Sent %s (%s EduCoins) to %s.',
+                    'Sent %s (%s GenCoins) to %s.',
                     gjc_money($amount),
                     number_format($amount / 10, 1),
                     $recipientName

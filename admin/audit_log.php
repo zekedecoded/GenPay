@@ -6,8 +6,9 @@ require_once __DIR__ . "/../connection/audit_logger.php";
 
 gjc_require_role(["finance"]);
 gjc_ensure_audit_table($db);
+$currentUser = gjc_current_user($db);
 
-$roles = ["", "GJC Admin", "Student", "Merchant", "Vendor/Staff"];
+$roles = ["", "Finance", "Student", "Merchant", "Vendor/Staff"];
 $actions = [
     "",
     "LOGIN",
@@ -18,6 +19,10 @@ $actions = [
     "STALL_UPDATE",
     "USER_IMPORT",
     "MERCHANT_CREATE",
+    "USER_ACCOUNT",
+    "MERCHANT_ONBOARDING",
+    "PRODUCT_RESTRICTION",
+    "LOGIN_FAILED",
 ];
 
 $userRole = (string) ($_GET["user_role"] ?? "");
@@ -313,77 +318,233 @@ function audit_e($value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, "UTF-8");
 }
 
+function audit_render_row(array $log): string
+{
+    $rowClass = $log["action_type"] === "LOGIN" ? "audit-row-login" : "";
+    $rowClass = $log["action_type"] === "PASSWORD_CHANGE" ? "audit-row-password" : $rowClass;
+    $rowClass = $log["action_type"] === "LOGIN_FAILED" ? "audit-row-login-failed" : $rowClass;
+    $actor = trim(
+        (string) ($log["actor_name"] ?:
+        $log["actor_email"] ?:
+        "User #" . $log["user_id"]),
+    );
+
+    ob_start();
+    ?>
+    <tr class="<?= $rowClass ?>">
+        <td><?= audit_e(
+            date(
+                "M j, Y g:i A",
+                strtotime((string) $log["timestamp"]),
+            ),
+        ) ?></td>
+        <td>
+            <strong><?= audit_e($actor) ?></strong><br>
+            <small><?= audit_e(
+                (string) ($log["actor_email"] ?? ""),
+            ) ?></small>
+        </td>
+        <td><?= audit_e($log["user_role"]) ?></td>
+        <td><span class="audit-pill <?= audit_e(
+            $log["action_type"],
+        ) ?>"><?= audit_e(
+    $log["action_type"],
+) ?></span></td>
+        <td><?= audit_e($log["affected_table"]) ?></td>
+        <td>
+            <button
+                type="button"
+                class="details-btn"
+                data-bs-toggle="modal"
+                data-bs-target="#auditDetailsModal"
+                data-actor="<?= audit_e($actor) ?>"
+                data-role="<?= audit_e(
+                    $log["user_role"],
+                ) ?>"
+                data-action="<?= audit_e(
+                    $log["action_type"],
+                ) ?>"
+                data-time="<?= audit_e(
+                    date(
+                        "M j, Y g:i A",
+                        strtotime(
+                            (string) $log["timestamp"],
+                        ),
+                    ),
+                ) ?>"
+                data-table="<?= audit_e(
+                    $log["affected_table"],
+                ) ?>"
+                data-transaction-details="<?= audit_e(
+                    $log["transaction_details_json"] ??
+                        "",
+                ) ?>"
+                data-old-value="<?= audit_e(
+                    $log["old_value"] ?? "",
+                ) ?>"
+                data-new-value="<?= audit_e(
+                    $log["new_value"] ?? "",
+                ) ?>">
+        <i class="fa-solid fa-eye"></i> View
+            </button>
+        </td>
+    </tr>
+    <?php
+    return ob_get_clean();
+}
+
+function audit_render_pagination(int $page, int $totalPages, int $totalRows, array $queryBase): string
+{
+    ob_start();
+    ?>
+    <div class="audit-pagination">
+        <span>Page <?= (int) $page ?> of <?= (int) $totalPages ?> &middot; <?= (int) $totalRows ?> records</span>
+        <div class="audit-pagination-links">
+            <a class="<?= $page <= 1
+                ? "disabled"
+                : "" ?>" href="<?= audit_e(
+    ADMIN_URL,
+) ?>/audit_log.php?<?= audit_e(
+    http_build_query($queryBase + ["page" => max(1, $page - 1)]),
+) ?>"><i class="fa-solid fa-chevron-left"></i> Previous</a>
+            <a class="<?= $page >= $totalPages
+                ? "disabled"
+                : "" ?>" href="<?= audit_e(
+    ADMIN_URL,
+) ?>/audit_log.php?<?= audit_e(
+    http_build_query($queryBase + ["page" => min($totalPages, $page + 1)]),
+) ?>">Next <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+if (($_GET["ajax"] ?? "") === "1") {
+    header("Content-Type: application/json");
+    echo json_encode([
+        "success" => true,
+        "rows_html" => $logs
+            ? implode("", array_map("audit_render_row", $logs))
+            : '<tr><td colspan="6" class="text-center py-4">No audit records matched the selected filters.</td></tr>',
+        "pagination_html" => audit_render_pagination($page, $totalPages, $totalRows, $queryBase),
+        "total_rows" => $totalRows,
+    ]);
+    exit;
+}
+
 $currentPage = "audit_log";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Audit Log | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        .audit-panel { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:22px; box-shadow:0 18px 40px rgba(15,23,42,.06); }
+        .audit-panel { background:var(--gjc-panel); border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); padding:22px; box-shadow:var(--gjc-shadow-sm); }
         .audit-filter-grid { display:grid; grid-template-columns:repeat(5, minmax(140px, 1fr)); gap:14px; align-items:end; }
-        .audit-field label { display:block; font-size:12px; font-weight:800; color:#64748b; margin-bottom:6px; text-transform:uppercase; }
-        .audit-field select, .audit-field input { width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; font-weight:700; color:#111827; background:#fff; }
-        .audit-filter-btn { border:0; border-radius:8px; padding:11px 16px; background:#0b5c2c; color:#fff; font-weight:900; }
-        .audit-reset { display:inline-flex; align-items:center; justify-content:center; border:1px solid #d1d5db; border-radius:8px; padding:10px 14px; color:#374151; text-decoration:none; font-weight:800; }
-        .audit-table { font-size:13px; }
-        .audit-table th { color:#475569; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
-        .audit-row-login { background:#ecfdf5; }
-        .audit-row-password { background:#fff7ed; }
-        .audit-pill { display:inline-flex; border-radius:999px; padding:4px 9px; font-size:11px; font-weight:900; background:#eef2ff; color:#3730a3; }
-        .audit-pill.LOGIN { background:#dcfce7; color:#166534; }
-        .audit-pill.PASSWORD_CHANGE { background:#ffedd5; color:#9a3412; }
-        .audit-pill.USER_IMPORT { background:#fef3c7; color:#92400e; }
-        .audit-pill.MERCHANT_CREATE { background:#dcfce7; color:#14532d; }
-        .audit-details-btn { border:0; border-radius:8px; padding:8px 12px; background:#0b5c2c; color:#fff; font-size:12px; font-weight:900; white-space:nowrap; }
-        .audit-details-btn:hover { background:#064420; color:#fff; }
-        .audit-pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:16px; }
-        .audit-pagination a { border:1px solid #d1d5db; border-radius:8px; padding:8px 12px; text-decoration:none; color:#0f172a; font-weight:800; }
-        .audit-pagination .disabled { opacity:.45; pointer-events:none; }
-        .audit-modal-header { background:#064420; color:#fff; border-bottom:4px solid #e6bc2f; }
+        .audit-field label { display:block; font-size:12px; font-weight:700; color:var(--gjc-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+        .audit-field select, .audit-field input { width:100%; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); padding:10px 12px; font-weight:600; color:var(--gjc-ink); background:#fff; }
+        .audit-field select:focus, .audit-field input:focus { outline:none; border-color:var(--gjc-green-700); box-shadow:0 0 0 3px rgba(17,106,56,.14); }
+        .audit-filter-btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gjc-green-800); border-radius:var(--gjc-radius); padding:11px 18px; background:var(--gjc-green-800); color:#fff; font-weight:700; }
+        .audit-filter-btn:hover { background:var(--gjc-green-950); border-color:var(--gjc-green-950); }
+        .audit-reset { display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); padding:10px 14px; color:var(--gjc-ink); text-decoration:none; font-weight:700; background:#fff; }
+        .audit-reset:hover { background:#f4f7f1; }
+
+        .audit-table-wrap { border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); overflow:hidden; }
+        .audit-table { font-size:13px; margin:0; }
+        .audit-table thead th { background:var(--gjc-green-900); color:#fff; text-transform:uppercase; font-size:11px; letter-spacing:.04em; font-weight:700; border:0; padding:12px 14px; }
+        .audit-table tbody td { padding:12px 14px; border-color:var(--gjc-line); vertical-align:middle; }
+        .audit-table tbody tr:hover { background:#f9fbf8; }
+        .audit-row-login { background:#f0fdf4; }
+        .audit-row-password { background:#fff8ec; }
+        .audit-row-login-failed { background:#fef2f2; }
+
+        /* Brief highlight when AJAX polling brings in new rows */
+        #auditLogBody.queue-flash { animation: audit-flash-kf 1s ease-out; }
+        @keyframes audit-flash-kf {
+            0%   { background-color: rgba(217, 169, 40, 0.18); }
+            100% { background-color: transparent; }
+        }
+
+        .audit-pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; background:#eef2ff; color:#3730a3; white-space:nowrap; }
+        .audit-pill.LOGIN { background:#e9f8ef; color:var(--gjc-success); }
+        .audit-pill.LOGOUT { background:#f1f5f4; color:var(--gjc-muted); }
+        .audit-pill.PASSWORD_CHANGE { background:var(--gjc-gold-100); color:#7a5a00; }
+        .audit-pill.USER_IMPORT { background:var(--gjc-gold-100); color:#7a5a00; }
+        .audit-pill.MERCHANT_CREATE { background:#e9f8ef; color:var(--gjc-success); }
+        .audit-pill.USER_ACCOUNT { background:#dbeafe; color:#1e40af; }
+        .audit-pill.MERCHANT_ONBOARDING { background:#cffafe; color:#155e75; }
+        .audit-pill.PRODUCT_RESTRICTION { background:#fde8e5; color:var(--gjc-danger); }
+        .audit-pill.LOGIN_FAILED { background:#fde8e5; color:var(--gjc-danger); }
+
+        /* Base box-model for .details-btn - this page doesn't load
+           transactions.css, only the colours from gjc-clear.css. */
+        .details-btn { min-height:34px; padding:0 13px; border-radius:var(--gjc-radius); text-decoration:none; font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+
+        .audit-pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:16px; font-size:13px; color:var(--gjc-muted); font-weight:600; }
+        .audit-pagination .audit-pagination-links { display:flex; gap:8px; }
+        .audit-pagination a { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); padding:8px 14px; text-decoration:none; color:var(--gjc-ink); font-weight:700; background:#fff; }
+        .audit-pagination a:hover { background:#f4f7f1; }
+        .audit-pagination .disabled { opacity:.4; pointer-events:none; }
+
+        /* ── Details modal ───────────────────────────────────────── */
+        .audit-modal-header { background:var(--gjc-green-900); color:#fff; border-bottom:3px solid var(--gjc-gold-500); }
         .audit-modal-header .btn-close { filter:invert(1); opacity:.9; }
-        .audit-meta-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 18px; padding:16px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc; }
-        .audit-meta-item span { display:block; color:#64748b; font-size:11px; font-weight:900; text-transform:uppercase; margin-bottom:3px; }
-        .audit-meta-item strong { color:#0f172a; font-size:14px; }
-        .audit-summary { margin:16px 0; border-left:5px solid #e6bc2f; background:#fffbeb; border-radius:8px; padding:13px 15px; color:#713f12; font-weight:800; }
+        .audit-modal-title-icon { margin-right:8px; }
+
+        .audit-meta-strip { display:flex; flex-wrap:wrap; gap:10px; padding:14px; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); background:#f9fbf8; }
+        .audit-meta-chip { display:flex; align-items:center; gap:9px; flex:1 1 170px; }
+        .audit-meta-chip i { width:30px; height:30px; border-radius:8px; background:var(--gjc-green-800); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+        .audit-meta-chip span { display:block; color:var(--gjc-muted); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
+        .audit-meta-chip strong { display:block; color:var(--gjc-green-950); font-size:13.5px; word-break:break-word; }
+
+        .audit-summary { margin:16px 0; display:flex; align-items:flex-start; gap:10px; border:1px solid #bfdbfe; background:#eff6ff; border-radius:var(--gjc-radius); padding:13px 15px; color:#1e40af; font-weight:600; font-size:13.5px; }
+        .audit-summary i { margin-top:2px; flex-shrink:0; }
+
         .audit-diff-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
         .audit-diff-grid.is-hidden { display:none; }
-        .audit-diff-card { border-radius:10px; border:1px solid #e5e7eb; overflow:hidden; min-height:180px; }
-        .audit-diff-card h6 { margin:0; padding:12px 14px; font-size:12px; font-weight:900; text-transform:uppercase; }
-        .audit-diff-card.old { background:#fff1f2; }
-        .audit-diff-card.old h6 { background:#fecdd3; color:#9f1239; }
-        .audit-diff-card.new { background:#f0fdf4; }
-        .audit-diff-card.new h6 { background:#bbf7d0; color:#166534; }
+        .audit-diff-grid.is-single { grid-template-columns:1fr; }
+        .audit-diff-card { border-radius:var(--gjc-radius); border:1px solid var(--gjc-line); overflow:hidden; min-height:120px; }
+        .audit-diff-card h6 { margin:0; padding:11px 14px; font-size:12px; font-weight:700; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+        .audit-diff-card.old { background:#fff; }
+        .audit-diff-card.old h6 { background:#fde8e5; color:var(--gjc-danger); }
+        .audit-diff-card.new { background:#fff; }
+        .audit-diff-card.new h6 { background:#e9f8ef; color:var(--gjc-success); }
         .audit-detail-list { padding:12px 14px; }
-        .audit-detail-row { display:grid; grid-template-columns:minmax(120px, 42%) 1fr; gap:10px; padding:8px 0; border-bottom:1px solid rgba(15,23,42,.08); }
+        .audit-detail-row { display:grid; grid-template-columns:minmax(120px, 42%) 1fr; gap:10px; padding:8px 0; border-bottom:1px solid var(--gjc-line); }
         .audit-detail-row:last-child { border-bottom:0; }
-        .audit-detail-label { color:#475569; font-size:12px; font-weight:900; }
-        .audit-detail-value { color:#111827; font-size:13px; word-break:break-word; }
-        .audit-placeholder { color:#64748b; background:#f1f5f9; border:1px dashed #cbd5e1; border-radius:8px; padding:14px; font-weight:800; text-align:center; }
-        .audit-nested { margin-top:5px; padding-left:10px; border-left:3px solid rgba(6,68,32,.16); }
-        .audit-transaction-panel { display:none; margin:16px 0; border:1px solid #bbf7d0; border-radius:12px; overflow:hidden; background:#f0fdf4; }
+        .audit-detail-label { color:var(--gjc-muted); font-size:12px; font-weight:700; }
+        .audit-detail-value { color:var(--gjc-ink); font-size:13px; word-break:break-word; }
+        .audit-placeholder { color:var(--gjc-muted); background:#f4f7f1; border:1px dashed var(--gjc-line); border-radius:var(--gjc-radius); padding:14px; font-weight:600; text-align:center; }
+        .audit-nested { margin-top:5px; padding-left:10px; border-left:3px solid var(--gjc-line); }
+
+        .audit-transaction-panel { display:none; margin:16px 0; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); overflow:hidden; background:#fff; }
         .audit-transaction-panel.is-visible { display:block; }
-        .audit-transaction-head { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:14px 16px; background:#064420; color:#fff; border-bottom:4px solid #e6bc2f; }
-        .audit-transaction-head h6 { margin:0; font-size:13px; font-weight:900; text-transform:uppercase; }
-        .audit-transaction-ref { font-size:12px; font-weight:900; color:#fde68a; word-break:break-word; }
+        .audit-transaction-head { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:13px 16px; background:var(--gjc-green-800); color:#fff; }
+        .audit-transaction-head h6 { margin:0; font-size:13px; font-weight:700; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
+        .audit-transaction-ref { font-size:12px; font-weight:700; color:var(--gjc-gold-100); word-break:break-word; }
         .audit-transaction-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; padding:16px; }
-        .audit-transaction-card { background:#fff; border:1px solid #d1fae5; border-radius:10px; padding:12px; min-height:74px; }
-        .audit-transaction-card span { display:block; color:#64748b; font-size:10px; font-weight:900; text-transform:uppercase; margin-bottom:5px; }
-        .audit-transaction-card strong { color:#064420; font-size:15px; font-weight:900; word-break:break-word; }
-        .audit-transaction-card small { display:block; margin-top:4px; color:#475569; font-weight:700; word-break:break-word; }
+        .audit-transaction-card { background:#f9fbf8; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); padding:12px; min-height:74px; }
+        .audit-transaction-card span { display:block; color:var(--gjc-muted); font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:5px; }
+        .audit-transaction-card strong { color:var(--gjc-green-950); font-size:15px; font-weight:700; word-break:break-word; }
+        .audit-transaction-card small { display:block; margin-top:4px; color:var(--gjc-muted); font-weight:600; word-break:break-word; }
         .audit-transaction-wide { grid-column:1 / -1; }
         .audit-transaction-items { padding:0 16px 16px; }
-        .audit-transaction-items table { margin:0; background:#fff; border-radius:10px; overflow:hidden; font-size:12px; }
-        .audit-transaction-items th { color:#475569; font-size:10px; font-weight:900; text-transform:uppercase; }
+        .audit-transaction-items table { margin:0; background:#fff; border:1px solid var(--gjc-line); border-radius:var(--gjc-radius); overflow:hidden; font-size:12px; }
+        .audit-transaction-items th { color:var(--gjc-muted); font-size:10px; font-weight:700; text-transform:uppercase; }
+
         @media (max-width:1100px) { .audit-filter-grid { grid-template-columns:1fr 1fr; } }
         @media (max-width:1100px) { .audit-transaction-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
-        @media (max-width:760px) { .audit-meta-grid, .audit-diff-grid, .audit-transaction-grid { grid-template-columns:1fr; } }
+        @media (max-width:760px) { .audit-diff-grid, .audit-transaction-grid { grid-template-columns:1fr; } }
     </style>
 </head>
 <body>
@@ -392,14 +553,14 @@ $currentPage = "audit_log";
 
         <main class="admin-main">
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
                 <div>
                     <h1>Systemic Audit Trail</h1>
                     <p>Read-only activity log for authentication, wallet, menu, and stall events.</p>
                 </div>
                 <div class="admin-user">
-                    <span>Admin</span>
-                    <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
+                    <span><?= audit_e($currentUser['name'] ?? 'Admin') ?></span>
+                    <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
                 </div>
             </header>
 
@@ -449,16 +610,17 @@ $currentPage = "audit_log";
                             $dateTo,
                         ) ?>">
                     </div>
-                    <div>
-                        <button class="audit-filter-btn" type="submit">Filter</button>
+                    <div class="d-flex gap-2">
+                        <button class="audit-filter-btn" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
                         <a class="audit-reset" href="<?= audit_e(
                             ADMIN_URL,
-                        ) ?>/audit_log.php">Reset</a>
+                        ) ?>/audit_log.php"><i class="fa-solid fa-rotate-left"></i> Reset</a>
                     </div>
                 </form>
             </section>
 
             <section class="audit-panel">
+                <div class="audit-table-wrap">
                 <div class="table-responsive">
                     <table class="table audit-table align-middle">
                         <thead>
@@ -471,107 +633,37 @@ $currentPage = "audit_log";
                                 <th>Details</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="auditLogBody">
                             <?php if (!$logs): ?>
                             <tr><td colspan="6" class="text-center py-4">No audit records matched the selected filters.</td></tr>
-                            <?php endif; ?>
-                            <?php foreach ($logs as $log): ?>
-                            <?php
-                            $rowClass =
-                                $log["action_type"] === "LOGIN"
-                                    ? "audit-row-login"
-                                    : "";
-                            $rowClass =
-                                $log["action_type"] === "PASSWORD_CHANGE"
-                                    ? "audit-row-password"
-                                    : $rowClass;
-                            $actor = trim(
-                                (string) ($log["actor_name"] ?:
-                                $log["actor_email"] ?:
-                                "User #" . $log["user_id"]),
-                            );
-                            ?>
-                            <tr class="<?= $rowClass ?>">
-                                <td><?= audit_e(
-                                    date(
-                                        "M j, Y g:i A",
-                                        strtotime((string) $log["timestamp"]),
-                                    ),
-                                ) ?></td>
-                                <td>
-                                    <strong><?= audit_e($actor) ?></strong><br>
-                                    <small><?= audit_e(
-                                        (string) ($log["actor_email"] ?? ""),
-                                    ) ?></small>
-                                </td>
-                                <td><?= audit_e($log["user_role"]) ?></td>
-                                <td><span class="audit-pill <?= audit_e(
-                                    $log["action_type"],
-                                ) ?>"><?= audit_e(
-    $log["action_type"],
-) ?></span></td>
-                                <td><?= audit_e($log["affected_table"]) ?></td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="audit-details-btn"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#auditDetailsModal"
-                                        data-actor="<?= audit_e($actor) ?>"
-                                        data-role="<?= audit_e(
-                                            $log["user_role"],
-                                        ) ?>"
-                                        data-action="<?= audit_e(
-                                            $log["action_type"],
-                                        ) ?>"
-                                        data-time="<?= audit_e(
-                                            date(
-                                                "M j, Y g:i A",
-                                                strtotime(
-                                                    (string) $log["timestamp"],
-                                                ),
-                                            ),
-                                        ) ?>"
-                                        data-table="<?= audit_e(
-                                            $log["affected_table"],
-                                        ) ?>"
-                                        data-transaction-details="<?= audit_e(
-                                            $log["transaction_details_json"] ??
-                                                "",
-                                        ) ?>"
-                                        data-old-value="<?= audit_e(
-                                            $log["old_value"] ?? "",
-                                        ) ?>"
-                                        data-new-value="<?= audit_e(
-                                            $log["new_value"] ?? "",
-                                        ) ?>">
-                                View Details
-                                    </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
+                            <?php else: foreach ($logs as $log): echo audit_render_row($log);
+                            endforeach;
+                            endif; ?>
                         </tbody>
                     </table>
                 </div>
+                </div>
 
+                <div id="auditPaginationWrap">
                 <div class="audit-pagination">
-                    <span>Page <?= (int) $page ?> of <?= (int) $totalPages ?>, <?= (int) $totalRows ?> records</span>
-                    <div>
+                    <span>Page <?= (int) $page ?> of <?= (int) $totalPages ?> &middot; <?= (int) $totalRows ?> records</span>
+                    <div class="audit-pagination-links">
                         <a class="<?= $page <= 1
                             ? "disabled"
                             : "" ?>" href="<?= audit_e(
     ADMIN_URL,
 ) ?>/audit_log.php?<?= audit_e(
     http_build_query($queryBase + ["page" => max(1, $page - 1)]),
-) ?>">Previous</a>
+) ?>"><i class="fa-solid fa-chevron-left"></i> Previous</a>
                         <a class="<?= $page >= $totalPages
                             ? "disabled"
                             : "" ?>" href="<?= audit_e(
     ADMIN_URL,
 ) ?>/audit_log.php?<?= audit_e(
     http_build_query($queryBase + ["page" => min($totalPages, $page + 1)]),
-) ?>">Next</a>
+) ?>">Next <i class="fa-solid fa-chevron-right"></i></a>
                     </div>
+                </div>
                 </div>
             </section>
         </main>
@@ -581,40 +673,41 @@ $currentPage = "audit_log";
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header audit-modal-header">
-                    <h5 class="modal-title" id="auditDetailsTitle"> Audit Log Details</h5>
+                    <h5 class="modal-title" id="auditDetailsTitle"><i class="fa-solid fa-clipboard-list audit-modal-title-icon"></i>Audit Log Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="audit-meta-grid">
-                        <div class="audit-meta-item">
-                            <span> Actor</span>
-                            <strong id="auditModalActor">-</strong>
+                    <div class="audit-meta-strip">
+                        <div class="audit-meta-chip">
+                            <i class="fa-solid fa-user"></i>
+                            <div><span>Actor</span><strong id="auditModalActor">-</strong></div>
                         </div>
-                        <div class="audit-meta-item">
-                            <span> Role</span>
-                            <strong id="auditModalRole">-</strong>
+                        <div class="audit-meta-chip">
+                            <i class="fa-solid fa-id-badge"></i>
+                            <div><span>Role</span><strong id="auditModalRole">-</strong></div>
                         </div>
-                        <div class="audit-meta-item">
-                            <span> Action</span>
-                            <strong id="auditModalAction">-</strong>
+                        <div class="audit-meta-chip">
+                            <i class="fa-solid fa-bolt"></i>
+                            <div><span>Action</span><strong id="auditModalAction">-</strong></div>
                         </div>
-                        <div class="audit-meta-item">
-                            <span> Time</span>
-                            <strong id="auditModalTime">-</strong>
+                        <div class="audit-meta-chip">
+                            <i class="fa-solid fa-clock"></i>
+                            <div><span>Time</span><strong id="auditModalTime">-</strong></div>
                         </div>
-                        <div class="audit-meta-item">
-                            <span> Table</span>
-                            <strong id="auditModalTable">-</strong>
+                        <div class="audit-meta-chip">
+                            <i class="fa-solid fa-table"></i>
+                            <div><span>Table</span><strong id="auditModalTable">-</strong></div>
                         </div>
                     </div>
 
                     <div class="audit-summary">
-                         Summary: <span id="auditModalSummary">-</span>
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span id="auditModalSummary">-</span>
                     </div>
 
                     <div class="audit-transaction-panel" id="auditTransactionPanel">
                         <div class="audit-transaction-head">
-                            <h6>Transaction Details</h6>
+                            <h6><i class="fa-solid fa-receipt"></i> Transaction Details</h6>
                             <span class="audit-transaction-ref" id="auditTransactionReference">-</span>
                         </div>
                         <div class="audit-transaction-grid" id="auditTransactionGrid"></div>
@@ -622,12 +715,12 @@ $currentPage = "audit_log";
                     </div>
 
                     <div class="audit-diff-grid" id="auditDiffGrid">
-                        <div class="audit-diff-card old">
-                            <h6> Old Value</h6>
+                        <div class="audit-diff-card old" id="auditOldCard">
+                            <h6><i class="fa-solid fa-circle-minus"></i> Before</h6>
                             <div class="audit-detail-list" id="auditModalOldValue"></div>
                         </div>
-                        <div class="audit-diff-card new">
-                            <h6> New Value</h6>
+                        <div class="audit-diff-card new" id="auditNewCard">
+                            <h6><i class="fa-solid fa-circle-plus"></i> <span id="auditNewCardLabel">After</span></h6>
                             <div class="audit-detail-list" id="auditModalNewValue"></div>
                         </div>
                     </div>
@@ -650,7 +743,11 @@ $currentPage = "audit_log";
         MENU_MUTATION: 'A menu item was added or modified.',
         STALL_UPDATE: 'A stall record was updated.',
         USER_IMPORT: 'Student accounts were imported in bulk.',
-        MERCHANT_CREATE: 'A merchant account was manually created.'
+        MERCHANT_CREATE: 'A merchant account was manually created.',
+        USER_ACCOUNT: 'A user account was created or deactivated.',
+        MERCHANT_ONBOARDING: 'A merchant application moved through the onboarding pipeline.',
+        PRODUCT_RESTRICTION: 'A restricted product entry was flagged or updated.',
+        LOGIN_FAILED: 'A login attempt failed due to an incorrect password.'
     };
 
     function auditSetText(id, value) {
@@ -892,6 +989,13 @@ $currentPage = "audit_log";
         }
     }
 
+    function auditIsEmptyValue(data) {
+        if (data === null || data === undefined || data === '') return true;
+        if (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0) return true;
+        if (Array.isArray(data) && data.length === 0) return true;
+        return false;
+    }
+
     document.getElementById('auditDetailsModal').addEventListener('show.bs.modal', function(event) {
         const button = event.relatedTarget;
         if (!button) return;
@@ -904,11 +1008,54 @@ $currentPage = "audit_log";
         auditSetText('auditModalTable', button.dataset.table);
         auditSetText('auditModalSummary', auditSummaries[action] || 'Audit activity was recorded.');
 
-        document.getElementById('auditDiffGrid').classList.toggle('is-hidden', action === 'TRANSACTION');
+        const oldData = auditParseJson(button.dataset.oldValue);
+        const newData = auditParseJson(button.dataset.newValue);
+        const hasOldData = !auditIsEmptyValue(oldData);
+
+        const diffGrid = document.getElementById('auditDiffGrid');
+        diffGrid.classList.toggle('is-hidden', action === 'TRANSACTION');
+        diffGrid.classList.toggle('is-single', !hasOldData);
+        document.getElementById('auditOldCard').style.display = hasOldData ? '' : 'none';
+        document.getElementById('auditNewCardLabel').textContent = hasOldData ? 'After' : 'Record';
+
         auditRenderTransaction(auditParseJson(button.dataset.transactionDetails));
-        auditRenderValue('auditModalOldValue', auditParseJson(button.dataset.oldValue));
-        auditRenderValue('auditModalNewValue', auditParseJson(button.dataset.newValue));
+        auditRenderValue('auditModalOldValue', oldData);
+        auditRenderValue('auditModalNewValue', newData);
     });
+
+    // ── Live refresh: pick up new audit entries without a manual reload ─────────
+    const auditLogBody = document.getElementById('auditLogBody');
+    const auditPaginationWrap = document.getElementById('auditPaginationWrap');
+    let lastAuditTotalRows = null;
+
+    function auditFlashBody() {
+        auditLogBody.classList.remove('queue-flash');
+        void auditLogBody.offsetWidth;
+        auditLogBody.classList.add('queue-flash');
+    }
+
+    async function refreshAuditLog() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            params.set('ajax', '1');
+            const res = await fetch(window.location.pathname + '?' + params.toString());
+            const data = await res.json();
+            if (!data.success) return;
+
+            if (lastAuditTotalRows !== null && data.total_rows === lastAuditTotalRows) return;
+
+            const isFirstLoad = lastAuditTotalRows === null;
+            lastAuditTotalRows = data.total_rows;
+            auditLogBody.innerHTML = data.rows_html;
+            auditPaginationWrap.innerHTML = data.pagination_html;
+            if (!isFirstLoad) auditFlashBody();
+        } catch (error) {
+            // Keep showing the last known rows on a transient network error.
+        }
+    }
+
+    lastAuditTotalRows = <?= (int) $totalRows ?>;
+    setInterval(refreshAuditLog, 5000);
     </script>
 </body>
 </html>

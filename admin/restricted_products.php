@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
@@ -21,12 +21,15 @@ if (gjc_table_exists($db, 'restricted_products')) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restricted Products | GenPay Admin</title>
     <meta name="description" content="Nutritional compliance product blacklist management for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -42,32 +45,33 @@ if (gjc_table_exists($db, 'restricted_products')) {
             <div class="brand-text"><h4>GenPay</h4><span>Admin Portal</span></div>
         </div>
         <nav class="sidebar-menu">
-            <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt=""><span class="nav-text">Dashboard</span></a>
-            <a href="<?= ADMIN_URL ?>/users.php"><img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt=""><span class="nav-text">Users</span></a>
-            <a href="<?= ADMIN_URL ?>/leases.php"><img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt=""><span class="nav-text">Leases &amp; Rent</span></a>
-            <a href="<?= ADMIN_URL ?>/restricted_products.php" class="active"><img src="<?= ICONS_URL ?>/settings.png" class="nav-icon" alt=""><span class="nav-text">Restricted Products</span></a>
-            <a href="<?= ADMIN_URL ?>/transactions.php"><img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt=""><span class="nav-text">Transactions</span></a>
+            <a href="<?= DASHBOARD_URL ?>"><i class="fa-solid fa-gauge-high nav-icon"></i><span class="nav-text">Dashboard</span></a>
+            <a href="<?= ADMIN_URL ?>/users.php"><i class="fa-solid fa-users nav-icon"></i><span class="nav-text">Users</span></a>
+            <a href="<?= ADMIN_URL ?>/leases.php"><i class="fa-solid fa-file-signature nav-icon"></i><span class="nav-text">Leases &amp; Rent</span></a>
+            <a href="<?= ADMIN_URL ?>/restricted_products.php" class="active"><i class="fa-solid fa-ban nav-icon"></i><span class="nav-text">Restricted Products</span></a>
+            <a href="<?= ADMIN_URL ?>/transactions.php"><i class="fa-solid fa-receipt nav-icon"></i><span class="nav-text">Transactions</span></a>
         </nav>
-        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn"><img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt=""><span>Logout</span></a>
+        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn" onclick="openLogoutModal(event);"><i class="fa-solid fa-arrow-right-from-bracket logout-icon"></i><span>Logout</span></a>
     </aside>
+    <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
     <?php } ?>
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
+            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Restricted Products</h1>
                 <p>Nutritional compliance blacklist â€” prevents merchants from encoding prohibited items.</p>
             </div>
             <div class="admin-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
 
         <!-- Info Banner -->
         <div style="background:linear-gradient(135deg,#064420 0%,#0d7a3e 100%);color:#fff;padding:20px 28px;border-radius:16px;margin-bottom:24px;">
-            <h4 style="margin:0 0 6px;font-weight:800;">&#127828; Nutritional Compliance Registry</h4>
+            <h4 style="margin:0 0 6px;font-weight:800;"><i class="fa-solid fa-utensils"></i> Nutritional Compliance Registry</h4>
             <p style="margin:0;opacity:.85;">Items listed here are cross-checked when merchants add products to their inventory. Matching items are automatically blocked and flagged with the reason on file.</p>
         </div>
 
@@ -81,7 +85,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
             ?>
             <div class="col-12 col-md-4">
                 <div class="metric-card">
-                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/settings.png" alt=""></div>
+                    <div class="metric-icon"><i class="fa-solid fa-clipboard-list"></i></div>
                     <span>Total Restrictions</span>
                     <h2><?= count($products) ?></h2>
                     <p>Items on file</p>
@@ -89,7 +93,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
             </div>
             <div class="col-12 col-md-4">
                 <div class="metric-card" style="border-left:4px solid #ef4444">
-                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/pending-encashments.png" alt=""></div>
+                    <div class="metric-icon"><i class="fa-solid fa-ban"></i></div>
                     <span>Active Blocks</span>
                     <h2 style="color:#ef4444"><?= $activeCount ?></h2>
                     <p>Currently enforced</p>
@@ -97,7 +101,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
             </div>
             <div class="col-12 col-md-4">
                 <div class="metric-card">
-                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/analytics.png" alt=""></div>
+                    <div class="metric-icon"><i class="fa-solid fa-circle-pause"></i></div>
                     <span>Inactive</span>
                     <h2><?= $inactiveCount ?></h2>
                     <p>Deactivated rules</p>
@@ -113,7 +117,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
                     <p><?= count($products) ?> restriction(s) on file.</p>
                 </div>
                 <button class="view-btn" data-bs-toggle="modal" data-bs-target="#restrictModal" id="btn-flag-product">
-                    + Flag Product
+                    <i class="fa-solid fa-flag"></i> Flag Product
                 </button>
             </div>
             <div class="table-responsive">

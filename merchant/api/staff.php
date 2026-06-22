@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
@@ -50,7 +51,26 @@ try {
                  VALUES (?, ?, ?, ?, 6, 'merchant_staff', ?, ?, '')"
             );
             $stmt->execute([$lastName, $firstName, $email, $contact ?: '0', $merchantUserId, $hashedPw]);
-            echo json_encode(['success' => true, 'message' => 'Staff account created successfully.', 'user_id' => $db->lastInsertId()]);
+            $newStaffId = (int) $db->lastInsertId();
+
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'USER_ACCOUNT',
+                'users',
+                null,
+                [
+                    'event' => 'created',
+                    'user_id' => $newStaffId,
+                    'name' => trim($firstName . ' ' . $lastName),
+                    'email' => $email,
+                    'role' => 'merchant_staff',
+                    'merchant_owner_id' => $merchantUserId,
+                ]
+            );
+
+            echo json_encode(['success' => true, 'message' => 'Staff account created successfully.', 'user_id' => $newStaffId]);
             break;
         }
 
@@ -76,6 +96,17 @@ try {
                 "UPDATE users SET email = CONCAT('DEACTIVATED_', userID, '_', email)
                   WHERE userID = ? AND merchant_owner_id = ?"
             )->execute([$userId, $merchantUserId]);
+
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'USER_ACCOUNT',
+                'users',
+                ['user_id' => $userId, 'status' => 'active'],
+                ['event' => 'deactivated', 'user_id' => $userId, 'deactivated_by' => $merchantUserId]
+            );
+
             echo json_encode(['success' => true, 'message' => 'Staff account deactivated.']);
             break;
         }

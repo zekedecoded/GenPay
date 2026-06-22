@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
@@ -30,11 +30,14 @@ $currentPage = 'encashments';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Encashments | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/encashments.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -53,7 +56,7 @@ $currentPage = 'encashments';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Encashments</h1>
@@ -63,7 +66,7 @@ $currentPage = 'encashments';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -72,7 +75,7 @@ $currentPage = 'encashments';
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="">
+                        <i class="fa-solid fa-hourglass-half"></i>
                     </div>
                     <span>Pending Encashments</span>
                     <h2><?php echo $pendingEncashments; ?></h2>
@@ -81,7 +84,7 @@ $currentPage = 'encashments';
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
                     <span>Released Today</span>
                     <h2><?php echo gjc_money($releasedToday); ?></h2>
@@ -90,7 +93,7 @@ $currentPage = 'encashments';
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/encashments.png" alt="">
+                        <i class="fa-solid fa-money-check-dollar"></i>
                     </div>
                     <span>Encashment Queue</span>
                     <h2><?php echo $encashmentQueue; ?></h2>
@@ -108,7 +111,7 @@ $currentPage = 'encashments';
                     </div>
 
                     <a href="#pending-encashments" class="create-encash-btn">
-                        <span>+</span> Create Encashment
+                        <i class="fa-solid fa-plus"></i> Create Encashment
                     </a>
                 </div>
 

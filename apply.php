@@ -170,13 +170,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apply for a Stall | GenPay</title>
     <meta name="description" content="Submit your stall application at General de Jesus College. Fill in your business details and upload required documents.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -199,25 +202,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: var(--gray-800); min-height: 100vh;
         }
 
-        /* ── NAVBAR ── */
-        .navbar {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 14px 40px;
-            background: rgba(255,255,255,.95); backdrop-filter: blur(14px);
-            box-shadow: 0 2px 16px rgba(0,0,0,.07);
-        }
-        .navbar-brand {
-            display: flex; align-items: center; gap: 10px;
-            font-weight: 800; font-size: 18px; color: var(--green-800); text-decoration: none;
-        }
-        .navbar-brand img { width: 36px; height: 36px; object-fit: contain; }
-
         /* ── MAIN LAYOUT ── */
         .page-wrap {
-            padding: 100px 20px 60px;
+            padding: 48px 20px 60px;
             max-width: 760px; margin: 0 auto;
+            position: relative;
         }
+
+        /* ── FORM CLOSE (X) ── */
+        .form-close {
+            position: absolute; top: 28px; right: 20px; z-index: 10;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--white); color: var(--gray-600);
+            box-shadow: var(--shadow-md); text-decoration: none;
+            font-size: 16px; transition: all .2s;
+        }
+        .form-close:hover { background: var(--red-100); color: var(--red-700); transform: rotate(90deg); }
 
         /* ── ALERTS ── */
         .alert {
@@ -362,11 +363,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 12px; color: var(--amber-500); font-weight: 700;
             text-align: center;
         }
+        .scroll-hint i { margin-right: 5px; }
         .btn-modal-close {
             padding: 10px 22px; border-radius: 50px; font-family: inherit;
             font-size: 13px; font-weight: 700; cursor: pointer;
             background: var(--green-800); color: #fff; border: none;
         }
+        .btn-modal-close i { margin-right: 5px; }
         .btn-modal-close:hover { background: var(--green-900); }
 
         /* ── SUBMIT ── */
@@ -406,8 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         /* ── RESPONSIVE ── */
         @media (max-width: 600px) {
-            .navbar { padding: 12px 20px; }
-            .page-wrap { padding: 88px 16px 48px; }
+            .page-wrap { padding: 40px 16px 48px; }
             .form-section { padding: 22px 20px; }
             .field-row { grid-template-columns: 1fr; }
             .file-grid { grid-template-columns: 1fr; }
@@ -417,21 +419,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar">
-    <a href="<?= BASE_URL ?>" class="navbar-brand">
-        <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
-        GenPay
-    </a>
-    <a href="<?= BASE_URL ?>/stalls" class="btn-close" aria-label="Back to stall map"></a>
-</nav>
-
 <div class="page-wrap">
+<a href="<?= BASE_URL ?>/stalls" class="form-close" aria-label="Close and return to stall map"><i class="fa-solid fa-xmark"></i></a>
 
 <?php if ($success): ?>
     <!-- Success state -->
     <div class="success-card">
-        <div class="success-icon"></div>
+        <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
         <div class="success-title">Application Submitted!</div>
         <div class="success-sub">
             Your general stall application has been received.
@@ -445,7 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- General error alert -->
     <?php if (!empty($formErrors['general'])): ?>
     <div class="alert alert--error">
-        <span class="alert-icon"></span>
+        <span class="alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
         <span><?= htmlspecialchars($formErrors['general']) ?></span>
     </div>
     <?php endif; ?>
@@ -461,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 1: Business Info -->
             <div class="form-section">
-                <div class="section-heading"> Business Information</div>
+                <div class="section-heading"><i class="fa-solid fa-store"></i> Business Information</div>
 
                 <div class="field-row">
                     <div class="field">
@@ -472,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                class="<?= isset($formErrors['business_name']) ? 'is-invalid' : '' ?>"
                                maxlength="120">
                         <?php if (isset($formErrors['business_name'])): ?>
-                        <div class="field-error"> <?= htmlspecialchars($formErrors['business_name']) ?></div>
+                        <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['business_name']) ?></div>
                         <?php endif; ?>
                     </div>
                     <div class="field">
@@ -483,7 +477,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                class="<?= isset($formErrors['proprietor_name']) ? 'is-invalid' : '' ?>"
                                maxlength="120">
                         <?php if (isset($formErrors['proprietor_name'])): ?>
-                        <div class="field-error"> <?= htmlspecialchars($formErrors['proprietor_name']) ?></div>
+                        <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['proprietor_name']) ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -498,7 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                maxlength="11" pattern="09[0-9]{9}">
                         <div class="field-hint">Format: 09XXXXXXXXX (11 digits)</div>
                         <?php if (isset($formErrors['contact_number'])): ?>
-                        <div class="field-error"> <?= htmlspecialchars($formErrors['contact_number']) ?></div>
+                        <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['contact_number']) ?></div>
                         <?php endif; ?>
                     </div>
                     <div class="field">
@@ -508,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                value="<?= htmlspecialchars($old['email'] ?? '') ?>"
                                class="<?= isset($formErrors['email']) ? 'is-invalid' : '' ?>">
                         <?php if (isset($formErrors['email'])): ?>
-                        <div class="field-error"> <?= htmlspecialchars($formErrors['email']) ?></div>
+                        <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['email']) ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -516,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 2: Profile Picture -->
             <div class="form-section">
-                <div class="section-heading"> Profile Picture</div>
+                <div class="section-heading"><i class="fa-solid fa-camera"></i> Profile Picture</div>
                 <p class="field-hint" style="margin-bottom:14px;">Upload a clear photo of the proprietor. JPG or PNG only, max 5 MB.</p>
                 <div class="field">
                     <div class="file-drop avatar-drop <?= isset($formErrors['profile_picture']) ? 'is-invalid' : '' ?>"
@@ -530,7 +524,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                style="display:none"
                                onchange="handleFile(this,'profile_picture',true)">
                         <div class="avatar-preview-wrap">
-                            <div class="file-icon" id="icon-profile_picture"></div>
+                            <div class="file-icon" id="icon-profile_picture"><i class="fa-solid fa-user"></i></div>
                             <img class="file-preview" id="preview-profile_picture" alt="Preview">
                         </div>
                         <div class="file-label">Click or drag a photo here</div>
@@ -538,22 +532,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="file-name-display" id="name-profile_picture"></div>
                     </div>
                     <?php if (isset($formErrors['profile_picture'])): ?>
-                    <div class="field-error"> <?= htmlspecialchars($formErrors['profile_picture']) ?></div>
+                    <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['profile_picture']) ?></div>
                     <?php endif; ?>
                 </div>
             </div>
 
             <!-- Section 3: Required Documents -->
             <div class="form-section">
-                <div class="section-heading"> Required Documents</div>
+                <div class="section-heading"><i class="fa-solid fa-folder-open"></i> Required Documents</div>
                 <p class="field-hint" style="margin-bottom:16px;">Upload PDF, JPG, or PNG. Max 5 MB per file.</p>
                 <div class="file-grid">
                     <?php
                     $docFields = [
-                        'business_permit'  => ['icon'=>'','label'=>'Business Permit'],
-                        'sanitary_permit'  => ['icon'=>'','label'=>'Sanitary Permit'],
-                        'gjc_requirements' => ['icon'=>'','label'=>'GJC Requirements'],
-                        'clearance'        => ['icon'=>'','label'=>'Clearance'],
+                        'business_permit'  => ['icon'=>'fa-briefcase',    'label'=>'Business Permit'],
+                        'sanitary_permit'  => ['icon'=>'fa-pump-soap',    'label'=>'Sanitary Permit'],
+                        'gjc_requirements' => ['icon'=>'fa-graduation-cap','label'=>'GJC Requirements'],
+                        'clearance'        => ['icon'=>'fa-clipboard-check','label'=>'Clearance'],
                     ];
                     foreach ($docFields as $field => $meta):
                     ?>
@@ -566,13 +560,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
                                    style="display:none"
                                    onchange="handleFile(this,'<?= $field ?>',false)">
-                            <div class="file-icon" id="icon-<?= $field ?>"><?= $meta['icon'] ?></div>
+                            <div class="file-icon" id="icon-<?= $field ?>"><i class="fa-solid <?= $meta['icon'] ?>"></i></div>
                             <div class="file-label"><?= $meta['label'] ?></div>
                             <div class="file-sub">PDF, JPG, PNG • Max 5 MB</div>
                             <div class="file-name-display" id="name-<?= $field ?>"></div>
                         </div>
                         <?php if (isset($formErrors[$field])): ?>
-                        <div class="field-error"> <?= htmlspecialchars($formErrors[$field]) ?></div>
+                        <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors[$field]) ?></div>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -581,7 +575,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Section 4: Terms & Conditions -->
             <div class="form-section">
-                <div class="section-heading"> Terms & Conditions</div>
+                <div class="section-heading"><i class="fa-solid fa-file-contract"></i> Terms & Conditions</div>
 
                 <div class="terms-check-wrap <?= isset($formErrors['terms']) ? 'is-invalid' : '' ?>"
                      id="termsCheckWrap">
@@ -595,7 +589,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </label>
                 </div>
                 <?php if (isset($formErrors['terms'])): ?>
-                <div class="field-error" style="margin-top:8px;"> <?= htmlspecialchars($formErrors['terms']) ?></div>
+                <div class="field-error" style="margin-top:8px;"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($formErrors['terms']) ?></div>
                 <?php endif; ?>
             </div>
 
@@ -634,10 +628,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p><strong>8. Application Lock.</strong> Submitting this form reserves the stall for administrative review. Misuse of this system (e.g. submitting multiple applications for the same stall) may result in disqualification.</p>
                         <p style="font-weight:700; color:#064420;">By checking the box below, you confirm that you have read, understood, and agree to all of the above terms and conditions.</p>
                     </div>
-                    <div class="scroll-hint" id="scrollHint">&#8681; Scroll to the bottom of the terms to unlock the checkbox</div>
+                    <div class="scroll-hint" id="scrollHint"><i class="fa-solid fa-circle-chevron-down"></i> Scroll to the bottom of the terms to unlock the checkbox</div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-modal-close" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn-modal-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark"></i> Close</button>
                 </div>
             </div>
         </div>

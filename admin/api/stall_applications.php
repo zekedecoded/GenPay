@@ -6,11 +6,12 @@
 //
 //  Pipeline: review -> meeting -> down_payment -> approval -> active
 //  Actions:
-//    accept_review   Step 1 -> Step 2   (docs accepted)
-//    decline         Step 1 or 2 only   (archives to archived_rejections)
-//    save_meeting    Step 2 -> Step 3   (saves meeting details)
+//    accept_review     Step 1 -> Step 2   (docs accepted)
+//    decline           Step 1 or 2 only   (archives to archived_rejections)
+//    get_booked_slots  (lookup)           (fixed meeting slots already taken on a date)
+//    save_meeting      Step 2 -> Step 3   (saves meeting details)
 //    save_down_payment Step 3 -> Step 4 (saves down payment record)
-//    award_stall     Step 4 -> active   (assigns stall, creates merchant)
+//    award_stall       Step 4 -> active   (assigns stall, creates merchant)
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -137,6 +138,26 @@ try {
             ]);
         }
 
+        // ── Lookup: fixed meeting slots already taken on a given date ─
+        case 'get_booked_slots': {
+            $date = trim((string) ($_POST['meetup_date'] ?? ''));
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) {
+                stall_app_json(['success' => false, 'message' => 'Invalid date.']);
+            }
+
+            $stmt = $db->prepare(
+                "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
+                   FROM stall_applications
+                  WHERE meetup_scheduled_at IS NOT NULL
+                    AND DATE(meetup_scheduled_at) = ?"
+            );
+            $stmt->execute([$date]);
+            $booked = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            stall_app_json(['success' => true, 'slots' => gjc_meeting_time_slots(), 'booked' => array_values($booked)]);
+        }
+
         // ── Step 2: Meeting — save & advance ──────────
         case 'save_meeting': {
             $appId = (int) ($_POST['app_id'] ?? 0);
@@ -152,11 +173,22 @@ try {
             if (!$date || !$time || !$place) {
                 stall_app_json(['success' => false, 'message' => 'Date, time, and location are required.']);
             }
+            if (!in_array($time, gjc_meeting_time_slots(), true)) {
+                stall_app_json(['success' => false, 'message' => 'Please choose one of the fixed meeting time slots.']);
+            }
 
             $scheduledAt = $date . ' ' . $time . ':00';
             $dt = DateTime::createFromFormat('Y-m-d H:i:s', $scheduledAt);
             if (!$dt || $dt->format('Y-m-d H:i:s') !== $scheduledAt) {
                 stall_app_json(['success' => false, 'message' => 'Invalid meeting date or time.']);
+            }
+
+            $conflict = $db->prepare(
+                "SELECT id FROM stall_applications WHERE meetup_scheduled_at = ? AND id != ? LIMIT 1"
+            );
+            $conflict->execute([$scheduledAt, $appId]);
+            if ($conflict->fetch()) {
+                stall_app_json(['success' => false, 'message' => 'That time slot was just booked by another applicant. Please pick a different one.']);
             }
 
             $db->prepare(

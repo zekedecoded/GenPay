@@ -31,8 +31,8 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 
     <div class="ce-section-label">
         <span class="ce-label-pill">
-            <img src="<?= ICONS_URL ?>/wallet.png" alt="" class="ce-label-icon">
-            Token Economy
+            <i class="fa-solid fa-coins ce-label-icon"></i>
+            GenCoin Economy
         </span>
         <div class="ce-balance-badge <?= $isBalanced ? 'ce-badge-ok' : 'ce-badge-err' ?>">
             <?= $isBalanced
@@ -43,7 +43,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 
     <?php if (!$isBalanced): ?>
     <div class="ce-alert-danger">
-        <img src="<?= ICONS_URL ?>/pending-encashments.png" alt="" style="width:20px;opacity:.7">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:20px;opacity:.7"></i>
         <div>
             <strong>INTEGRITY FAILURE - Economy Drift <?= gjc_money($drift) ?></strong><br>
             <small>All transactions should be halted until this is resolved by the Admin.</small>
@@ -51,92 +51,96 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
     </div>
     <?php endif; ?>
 
-    <div class="ce-hero-panel">
-        <div class="ce-hero-left">
-            <div class="ce-hero-label">Total Circulation Cap</div>
-            <div class="ce-hero-amount"><?= gjc_money($cap) ?></div>
-            <div class="ce-hero-sub">Maximum authorized money supply in the closed-loop economy</div>
+    <div class="ce-ledger-panel">
+
+        <div class="ce-ledger-head">
+            <div>
+                <span class="ce-ledger-label">Total Circulation Cap</span>
+                <div class="ce-ledger-amount"><?= gjc_money($cap) ?></div>
+                <p class="ce-ledger-sub">Maximum authorized money supply in the closed-loop economy</p>
+                <p class="ce-ledger-sub" style="margin-top:2px;font-weight:700;">
+                    &asymp; <?= number_format($cap / 10, 1) ?> GC &middot; Fixed rate &middot; &#8369;10 = 1.0 GenCoin
+                </p>
+            </div>
+
+            <?php if ($isBalanced): ?>
+            <div class="ce-reconcile ce-reconcile--ok">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Reconciled - vault and wallet pools sum exactly to the cap.</span>
+            </div>
+            <?php else: ?>
+            <div class="ce-reconcile ce-reconcile--err">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Ledger total <strong><?= gjc_money($circulation) ?></strong> doesn't match the pool sum - drift of <strong><?= gjc_money($drift) ?></strong>.</span>
+            </div>
+            <?php endif; ?>
         </div>
-        <div class="ce-hero-right">
-            <div class="ce-hero-stat">
-                <span>Distributed</span>
-                <strong><?= gjc_money($cap - $vault) ?></strong>
-            </div>
-            <div class="ce-hero-divider"></div>
-            <div class="ce-hero-stat">
-                <span>Vault Reserve</span>
-                <strong><?= gjc_money($vault) ?></strong>
-            </div>
-            <div class="ce-hero-divider"></div>
-            <div class="ce-hero-stat">
-                <span>Total in Circulation</span>
-                <strong class="<?= $isBalanced ? 'ce-text-green' : 'ce-text-red' ?>">
-                    <?= gjc_money($circulation) ?>
-                </strong>
-            </div>
+
+        <div class="ce-ledger-bar" role="img"
+             aria-label="Circulation breakdown: Cashier Vault <?= $vaultPct ?>%, Student Wallets <?= $studPct ?>%, Merchant Wallets <?= $merchPct ?>%, Active Vouchers <?= $vchPct ?>%">
+            <div class="ce-ledger-seg ce-pool-vault"     style="width:<?= $vaultPct ?>%"></div>
+            <div class="ce-ledger-seg ce-pool-students"  style="width:<?= $studPct ?>%"></div>
+            <div class="ce-ledger-seg ce-pool-merchants" style="width:<?= $merchPct ?>%"></div>
+            <div class="ce-ledger-seg ce-pool-vouchers"  style="width:<?= $vchPct ?>%"></div>
         </div>
+
+        <ul class="ce-ledger-legend">
+            <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-vault"></span>Cashier Vault <b><?= $vaultPct ?>%</b></li>
+            <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-students"></span>Student Wallets <b><?= $studPct ?>%</b></li>
+            <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-merchants"></span>Merchant Wallets <b><?= $merchPct ?>%</b></li>
+            <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-vouchers"></span>Active Vouchers <b><?= $vchPct ?>%</b></li>
+        </ul>
+
     </div>
 
     <div class="ce-pool-intro">
         <div class="ce-flow-title">Wallet Pools</div>
-        <div class="ce-flow-sub">All pools must sum to the cap at all times</div>
+        <div class="ce-flow-sub">Where the cap currently sits - detail behind the bar above</div>
     </div>
 
     <div class="ce-pool-grid">
 
         <div class="ce-pool-card ce-pool-vault">
             <div class="ce-pool-icon-wrap">
-                <img src="<?= ICONS_URL ?>/pending-topups.png" alt="" class="ce-pool-icon">
+                <i class="fa-solid fa-building-columns ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Cashier Vault</span>
                 <div class="ce-pool-amt"><?= gjc_money($vault) ?></div>
-                <div class="ce-pool-pct-bar">
-                    <div class="ce-pool-pct-fill" style="width:<?= $vaultPct ?>%"></div>
-                </div>
-                <small class="ce-pool-share"><?= $vaultPct ?>% of cap - Available to load</small>
+                <small class="ce-pool-share">Available to load</small>
             </div>
         </div>
 
         <div class="ce-pool-card ce-pool-students">
             <div class="ce-pool-icon-wrap">
-                <img src="<?= ICONS_URL ?>/students.png" alt="" class="ce-pool-icon">
+                <i class="fa-solid fa-user-graduate ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Student Wallets</span>
                 <div class="ce-pool-amt"><?= gjc_money($students) ?></div>
-                <div class="ce-pool-pct-bar">
-                    <div class="ce-pool-pct-fill" style="width:<?= $studPct ?>%"></div>
-                </div>
-                <small class="ce-pool-share"><?= $studPct ?>% of cap - Spendable balance</small>
+                <small class="ce-pool-share">Spendable balance</small>
             </div>
         </div>
 
         <div class="ce-pool-card ce-pool-merchants">
             <div class="ce-pool-icon-wrap">
-                <img src="<?= ICONS_URL ?>/merchants.png" alt="" class="ce-pool-icon">
+                <i class="fa-solid fa-store ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Merchant Wallets</span>
                 <div class="ce-pool-amt"><?= gjc_money($merchants) ?></div>
-                <div class="ce-pool-pct-bar">
-                    <div class="ce-pool-pct-fill" style="width:<?= $merchPct ?>%"></div>
-                </div>
-                <small class="ce-pool-share"><?= $merchPct ?>% of cap - Pending encashment</small>
+                <small class="ce-pool-share">Pending encashment</small>
             </div>
         </div>
 
         <div class="ce-pool-card ce-pool-vouchers">
             <div class="ce-pool-icon-wrap">
-                <img src="<?= ICONS_URL ?>/visitors.png" alt="" class="ce-pool-icon">
+                <i class="fa-solid fa-ticket ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Active Vouchers</span>
                 <div class="ce-pool-amt"><?= gjc_money($vouchers) ?></div>
-                <div class="ce-pool-pct-bar">
-                    <div class="ce-pool-pct-fill" style="width:<?= $vchPct ?>%"></div>
-                </div>
-                <small class="ce-pool-share"><?= $vchPct ?>% of cap - Visitor QR balances</small>
+                <small class="ce-pool-share">Visitor QR balances</small>
             </div>
         </div>
 
@@ -147,7 +151,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
         
         <div class="ce-mint-info-panel <?= $limitHit ? 'ce-limit-hit' : '' ?>">
             <div class="ce-mint-info-header">
-                <div class="ce-mint-info-icon">P</div>
+                <div class="ce-mint-info-icon"><i class="fa-solid fa-chart-pie"></i></div>
                 <div>
                     <div class="ce-mint-info-title">Monthly Minting Budget</div>
                     <div class="ce-mint-info-sub">
@@ -166,13 +170,13 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 <span class="ce-mint-pct"><?= min(100, $mintUsedPct) ?>%</span>
             </div>
             <div class="ce-mint-stats">
+                <div class="ce-mint-stat-item ce-mint-stat-primary">
+                    <span>Remaining budget</span>
+                    <strong><?= gjc_money(max(0, (float)$monthly['remaining_soft_limit'])) ?></strong>
+                </div>
                 <div class="ce-mint-stat-item">
                     <span>Minted this month</span>
                     <strong><?= gjc_money($minted) ?></strong>
-                </div>
-                <div class="ce-mint-stat-item">
-                    <span>Remaining budget</span>
-                    <strong><?= gjc_money(max(0, (float)$monthly['remaining_soft_limit'])) ?></strong>
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Mint events</span>
@@ -199,19 +203,19 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <form id="ce-mint-form">
                 <div class="ce-field-row">
                     <div class="ce-field">
-                        <label class="ce-label">Amount (&#8369;)</label>
+                        <label class="ce-label" for="ce-amount">Amount (&#8369;)</label>
                         <input type="number" id="ce-amount" class="ce-input"
                                min="1" step="0.01" placeholder="e.g. 10,000" required>
                     </div>
                     <div class="ce-field ce-field-wide">
-                        <label class="ce-label">Audit Justification</label>
+                        <label class="ce-label" for="ce-reason">Audit Justification</label>
                         <input type="text" id="ce-reason" class="ce-input"
                                placeholder="e.g. Q3 budget approved by board" required>
                     </div>
                 </div>
                 <div class="ce-field" id="ce-pin-wrap"
                      style="display:<?= $limitHit ? 'block' : 'none' ?>">
-                    <label class="ce-label">
+                    <label class="ce-label" for="ce-pin">
                         Mint PIN
                         <span class="ce-pin-badge">Required above <?= gjc_money(MintingGuard::SOFT_LIMIT) ?>/mo</span>
                     </label>
@@ -219,7 +223,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 </div>
                 <button type="submit" class="ce-mint-btn" id="ce-mint-btn">
                     <span class="ce-mint-btn-content">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                        <i class="fa-solid fa-coins"></i>
                         <span>Mint Points into Economy</span>
                     </span>
                 </button>
@@ -231,36 +235,36 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <div class="ce-flow-guide-title">Money Flow Reference</div>
             <div class="ce-flow-steps">
                 <div class="ce-flow-step">
-                    <div class="ce-flow-step-icon" style="background:linear-gradient(135deg,#064420,#137a3f)">1</div>
+                    <div class="ce-flow-step-icon" style="background:var(--gjc-green-800)">1</div>
                     <div class="ce-flow-step-info">
                         <strong>Mint</strong>
                         <span>Admin to Vault</span>
                     </div>
-                    <div class="ce-flow-arrow">&gt;</div>
+                    <div class="ce-flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
                 </div>
                 <div class="ce-flow-step">
-                    <div class="ce-flow-step-icon" style="background:linear-gradient(135deg,#1e3a5f,#2563eb)">2</div>
+                    <div class="ce-flow-step-icon" style="background:var(--gjc-green-700)">2</div>
                     <div class="ce-flow-step-info">
                         <strong>Load</strong>
                         <span>Vault to Student</span>
                     </div>
-                    <div class="ce-flow-arrow">&gt;</div>
+                    <div class="ce-flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
                 </div>
                 <div class="ce-flow-step">
-                    <div class="ce-flow-step-icon" style="background:linear-gradient(135deg,#713f12,#d97706)">3</div>
+                    <div class="ce-flow-step-icon" style="background:var(--gjc-gold-600)">3</div>
                     <div class="ce-flow-step-info">
                         <strong>Pay</strong>
                         <span>Student to Merchant</span>
                     </div>
-                    <div class="ce-flow-arrow">&gt;</div>
+                    <div class="ce-flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
                 </div>
                 <div class="ce-flow-step">
-                    <div class="ce-flow-step-icon" style="background:linear-gradient(135deg,#4c1d95,#7c3aed)">4</div>
+                    <div class="ce-flow-step-icon" style="background:var(--gjc-slate)">4</div>
                     <div class="ce-flow-step-info">
                         <strong>Settle</strong>
                         <span>Merchant to Vault</span>
                     </div>
-                    <div class="ce-flow-arrow ce-invisible">&gt;</div>
+                    <div class="ce-flow-arrow ce-invisible"><i class="fa-solid fa-chevron-right"></i></div>
                 </div>
             </div>
         </div>
@@ -269,8 +273,9 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
     </div>
 
     <!-- Total circulation and balance status are already shown above
-         (hero panel + section badge) - the footer only adds the timestamp. -->
+         (ledger panel + section badge) - the footer only adds the timestamp. -->
     <div class="ce-footer">
+        <i class="fa-solid fa-clock-rotate-left" style="opacity:.6"></i>
         <span>Snapshot: <strong><?= $snap['as_of'] ?? 'N/A' ?></strong></span>
     </div>
 
@@ -332,7 +337,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             }
 
             btn.disabled  = false;
-            btn.innerHTML = `<span class="ce-mint-btn-content"><img src="<?= ICONS_URL ?>/wallet.png" alt=""><span>Mint Points into Economy</span></span>`;
+            btn.innerHTML = `<span class="ce-mint-btn-content"><i class="fa-solid fa-coins"></i><span>Mint Points into Economy</span></span>`;
         });
     }
 })();

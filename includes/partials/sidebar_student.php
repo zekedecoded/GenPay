@@ -1,6 +1,6 @@
 <?php
 // Partial: Student sidebar — included by dashboard.php
-// Requires: $currentPage string (e.g. 'dashboard', 'scan', 'transfer', 'topup', 'history', 'profile')
+// Requires: $currentPage string (e.g. 'dashboard', 'scan', 'cart', 'transfer', 'topup', 'history', 'profile')
 $currentPage = $currentPage ?? '';
 ?>
 <aside class="student-sidebar" id="studentSidebar">
@@ -15,32 +15,34 @@ $currentPage = $currentPage ?? '';
     </div>
     <nav class="student-menu">
         <a href="<?= DASHBOARD_URL ?>" class="<?= $currentPage === 'dashboard' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
+            <i class="fa-solid fa-gauge-high student-nav-icon"></i>
             <span class="student-nav-text">Dashboard</span>
         </a>
-        <a href="<?= STUDENT_URL ?>/scan.php" class="<?= $currentPage === 'scan' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/qr.png" class="student-nav-icon" alt="">
-            <span class="student-nav-text">Scan &amp; Pay</span>
+        <a href="<?= STUDENT_URL ?>/cart.php" class="<?= $currentPage === 'cart' ? 'active' : '' ?>">
+            <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
+            <span class="student-nav-text">Shop Cart</span>
         </a>
         <a href="<?= STUDENT_URL ?>/transfer.php" class="<?= $currentPage === 'transfer' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/payment.png" class="student-nav-icon" alt="">
+            <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
             <span class="student-nav-text">Transfer Tokens</span>
         </a>
         <a href="<?= STUDENT_URL ?>/topup_request.php" class="<?= $currentPage === 'topup' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/topups.png" class="student-nav-icon" alt="">
+            <i class="fa-solid fa-circle-plus student-nav-icon"></i>
             <span class="student-nav-text">Top-Up</span>
         </a>
         <a href="<?= STUDENT_URL ?>/history.php" class="<?= $currentPage === 'history' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/transactions.png" class="student-nav-icon" alt="">
+            <i class="fa-solid fa-receipt student-nav-icon"></i>
             <span class="student-nav-text">History</span>
         </a>
         <a href="<?= STUDENT_URL ?>/profile.php" class="<?= $currentPage === 'profile' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/users.png" class="student-nav-icon" alt="">
+            <i class="fa-solid fa-user student-nav-icon"></i>
             <span class="student-nav-text">Profile</span>
         </a>
     </nav>
-    <a href="<?= BASE_URL ?>/logout.php" class="student-logout">
-        <img src="<?= ICONS_URL ?>/logout.png" class="student-logout-icon" alt="">
+    <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
+       onclick="openLogoutModal(event);">
+        <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
         <span>Logout</span>
     </a>
 </aside>
+<?php require __DIR__ . '/logout_modal.php'; ?>

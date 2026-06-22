@@ -33,7 +33,9 @@ function statusLabel(string $status): string {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Stalls | GenPay</title>
@@ -219,6 +221,26 @@ function statusLabel(string $status): string {
             cursor: default;
         }
 
+        /* Occupied cards with a merchant logo use it as the card's full
+           background (set inline via style="background-image:...") with a
+           soft dark veil so the centered ID circle and name stay legible
+           over any logo's colors. */
+        .stall--occupied.stall--has-logo {
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .stall--occupied.stall--has-logo::before {
+            content: "";
+            position: absolute; inset: 0;
+            border-radius: var(--radius);
+            background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.45));
+        }
+        .stall--occupied.stall--has-logo .stall-id-badge--circle,
+        .stall--occupied.stall--has-logo .stall-name {
+            position: relative; z-index: 1;
+        }
+
         .stall--pending {
             background: linear-gradient(145deg, #fffbeb, #fef3c7);
             border-color: #fcd34d;
@@ -233,6 +255,16 @@ function statusLabel(string $status): string {
         .stall--occupied .stall-id-badge { color: #b91c1c; }
         .stall--pending  .stall-id-badge { color: #92400e; }
 
+        /* Occupied cards use the merchant logo as the card background; the
+           stall ID sits on top inside a circular badge, like a sticker. */
+        .stall-id-badge--circle {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,.95);
+            color: #b91c1c; font-size: 17px;
+            border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+        }
+
         .stall-status-badge {
             font-size: 10px; font-weight: 700; text-transform: uppercase;
             letter-spacing: .08em; padding: 3px 10px; border-radius: 50px;
@@ -240,21 +272,16 @@ function statusLabel(string $status): string {
         .stall--vacant  .stall-status-badge { background: var(--green-500); color: #fff; }
         .stall--pending  .stall-status-badge { background: var(--amber-500); color: #fff; }
 
-        /* Circular tenant logo - matches the .avatar pattern used app-wide for profile imagery */
-        .stall-logo {
-            width: 44px; height: 44px; border-radius: 50%;
-            object-fit: cover; border: 2px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,.12);
-        }
-        .stall-logo--fallback {
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, var(--green-800), var(--green-700));
-            color: #fff; font-weight: 800; font-size: 16px;
-        }
-
         .stall-name {
             font-size: 11px; font-weight: 600; color: #374151;
             max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .stall--occupied.stall--has-logo .stall-name {
+            color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+        }
+        .stall--occupied:not(.stall--has-logo) .stall-id-badge--circle {
+            background: linear-gradient(135deg, var(--green-800), var(--green-700));
+            color: #fff;
         }
 
         .stall-timer {
@@ -411,10 +438,13 @@ function statusLabel(string $status): string {
                 $publicStall = $stall;
                 unset($publicStall['monthly_rate']);
             ?>
-            <div class="stall <?= $cls ?>"
+            <div class="stall <?= $cls ?><?= ($stall['status'] === 'occupied' && $stall['merchant_logo']) ? ' stall--has-logo' : '' ?>"
                  id="stall-<?= htmlspecialchars($stall['stall_id']) ?>"
                  role="listitem"
                  data-stall='<?= htmlspecialchars(json_encode($publicStall), ENT_QUOTES) ?>'
+                 <?php if ($stall['status'] === 'occupied' && $stall['merchant_logo']): ?>
+                 style="background-image:url('<?= htmlspecialchars(BASE_URL . '/' . $stall['merchant_logo']) ?>')"
+                 <?php endif; ?>
                  <?php if ($stall['status'] === 'vacant'): ?>
                  onclick="openModal(this)"
                  tabindex="0"
@@ -432,17 +462,14 @@ function statusLabel(string $status): string {
                  aria-label="<?= htmlspecialchars($stall['label']) ?> - Pending application"
                  <?php endif; ?>
             >
-                <div class="stall-id-badge"><?= htmlspecialchars($stall['stall_id']) ?></div>
-
                 <?php if ($stall['status'] === 'occupied'): ?>
-                    <!-- A tenant logo + company name implies occupancy; no "Occupied" text needed. -->
-                    <?php if ($stall['merchant_logo']): ?>
-                    <img class="stall-logo" src="<?= htmlspecialchars(BASE_URL . '/' . $stall['merchant_logo']) ?>" alt="<?= htmlspecialchars($stall['merchant_stall_name']) ?> logo">
-                    <?php else: ?>
-                    <div class="stall-logo stall-logo--fallback"><?= htmlspecialchars(mb_substr($stall['merchant_stall_name'] ?: '?', 0, 1)) ?></div>
-                    <?php endif; ?>
+                    <!-- A tenant logo + company name implies occupancy; no "Occupied" text needed.
+                         The logo is the card's background image, and the stall ID sits on
+                         top inside a circular badge, like a sticker. -->
+                    <div class="stall-id-badge stall-id-badge--circle"><?= htmlspecialchars($stall['stall_id']) ?></div>
                     <div class="stall-name"><?= htmlspecialchars($stall['merchant_stall_name']) ?></div>
                 <?php else: ?>
+                    <div class="stall-id-badge"><?= htmlspecialchars($stall['stall_id']) ?></div>
                     <div class="stall-status-badge"><?= $lbl ?></div>
                     <?php if ($stall['status'] === 'pending_application'): ?>
                     <div class="stall-timer"

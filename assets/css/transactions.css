@@ -35,10 +35,9 @@
   z-index: 2 !important;
 }
 
-.transactions-page .stat-icon-wrap img {
-  width: 26px !important;
-  height: 26px !important;
-  object-fit: contain !important;
+.transactions-page .stat-icon-wrap i {
+  font-size: 23px !important;
+  color: #fff !important;
 }
 
 .transactions-page .transaction-stat-card span,

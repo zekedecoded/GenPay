@@ -49,13 +49,16 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Top-Up Wallet | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=41">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -82,32 +85,44 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <nav class="student-menu">
                 <a href="<?= DASHBOARD_URL ?>">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
                     <span class="student-nav-text">Dashboard</span>
                 </a>
 
-                <a href="<?= STUDENT_URL ?>/scan.php">
-                    <img src="<?= ICONS_URL ?>/qr.png" class="student-nav-icon" alt="">
-                    <span class="student-nav-text">Scan &amp; Pay</span>
+                <a href="<?= STUDENT_URL ?>/cart.php">
+                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
+                    <span class="student-nav-text">Shop Cart</span>
+                </a>
+
+                <a href="<?= STUDENT_URL ?>/transfer.php">
+                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
+                    <span class="student-nav-text">Transfer Tokens</span>
+                </a>
+
+                <a href="<?= STUDENT_URL ?>/topup_request.php" class="active">
+                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
+                    <span class="student-nav-text">Top-Up</span>
                 </a>
 
                 <a href="<?= STUDENT_URL ?>/history.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-receipt student-nav-icon"></i>
                     <span class="student-nav-text">History</span>
                 </a>
 
                 <a href="<?= STUDENT_URL ?>/profile.php">
-                    <img src="<?= ICONS_URL ?>/users.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-user student-nav-icon"></i>
                     <span class="student-nav-text">Profile</span>
                 </a>
             </nav>
 
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout">
-                <img src="<?= ICONS_URL ?>/logout.png" class="student-logout-icon" alt="">
+            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
+               onclick="openLogoutModal(event);">
+                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
                 <span>Logout</span>
             </a>
 
         </aside>
+        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
 
         <main class="student-main">
 
@@ -327,6 +342,8 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
     function toggleStudentSidebar() {
         document.getElementById("studentSidebar").classList.toggle("collapsed");
     }
+
+    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
 
     function setTopupAmount(amount) {
         document.getElementById("topupAmount").value = amount;

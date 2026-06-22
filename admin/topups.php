@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
@@ -30,11 +30,14 @@ $currentPage = 'topups';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Top-ups | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -54,7 +57,7 @@ $currentPage = 'topups';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Top-ups</h1>
@@ -64,7 +67,7 @@ $currentPage = 'topups';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -73,7 +76,7 @@ $currentPage = 'topups';
 
                 <div class="topup-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/pending-topups.png" alt="">
+                        <i class="fa-solid fa-hourglass-half"></i>
                     </div>
                     <span>Pending Requests</span>
                     <h2><?php echo $pendingRequests; ?></h2>
@@ -82,7 +85,7 @@ $currentPage = 'topups';
 
                 <div class="topup-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
                     <span>Loaded Today</span>
                     <h2><?php echo gjc_money($loadedToday); ?></h2>
@@ -91,7 +94,7 @@ $currentPage = 'topups';
 
                 <div class="topup-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/topups.png" alt="">
+                        <i class="fa-solid fa-money-bill-transfer"></i>
                     </div>
                     <span>Top-up Request Queue</span>
                     <h2><?php echo $requestQueue; ?></h2>
@@ -109,7 +112,7 @@ $currentPage = 'topups';
                     </div>
 
                     <a href="#pending-topups" class="create-topup-btn">
-                        <span>+</span> Create Top-up
+                        <i class="fa-solid fa-plus"></i> Create Top-up
                     </a>
                 </div>
 

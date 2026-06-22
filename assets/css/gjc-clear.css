@@ -16,6 +16,7 @@
   --gjc-panel: #ffffff;
   --gjc-danger: #b42318;
   --gjc-success: #126b39;
+  --gjc-slate: #3f4b45;
   --gjc-radius: 8px;
   --gjc-shadow-sm: 0 1px 2px rgba(5, 37, 21, 0.08);
   --gjc-shadow-md: 0 10px 24px rgba(5, 37, 21, 0.10);
@@ -83,7 +84,7 @@ img {
   width: 70px !important;
   min-width: 70px !important;
   height: 70px !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: 50% !important;
   background: #fff !important;
   box-shadow: none !important;
   border: 2px solid var(--gjc-gold-500);
@@ -204,6 +205,13 @@ img {
   box-shadow: none !important;
 }
 
+.user-avatar,
+.topup-avatar,
+.encash-avatar {
+  background: var(--gjc-green-800) !important;
+  box-shadow: none !important;
+}
+
 /* Panels, cards, and dashboards */
 .premium-panel,
 .student-premium-panel,
@@ -295,7 +303,8 @@ img {
 .scan-balance-card::after,
 .topup-hero-card::after,
 .profile-hero-card::after,
-.history-balance-card::after {
+.history-balance-card::after,
+.visitor-stat-card::after {
   display: none !important;
 }
 
@@ -373,7 +382,8 @@ img {
 .ce-input,
 .input-modern input,
 .input-group-box input,
-.topup-method-card {
+.topup-method-card,
+.gateway-card {
   background: #fff !important;
   border: 1px solid var(--gjc-line) !important;
   border-radius: var(--gjc-radius) !important;
@@ -406,7 +416,9 @@ img {
 
 .qr-money-input span,
 .encash-money-input span,
-.topup-money-input span {
+.topup-money-input span,
+.input-with-prefix span,
+.load-money-field span {
   background: var(--gjc-green-800) !important;
   color: #fff !important;
 }
@@ -425,7 +437,11 @@ img {
 .btn-primary-custom,
 .create-topup-btn,
 .create-encash-btn,
-.export-btn {
+.export-btn,
+.visitor-primary-btn,
+.load-cash-btn,
+.visitor-load-btn,
+.save-settings-btn {
   background: var(--gjc-green-800) !important;
   color: #fff !important;
   border: 1px solid var(--gjc-green-800) !important;
@@ -447,7 +463,11 @@ img {
 .ce-mint-btn:hover,
 .create-topup-btn:hover,
 .create-encash-btn:hover,
-.export-btn:hover {
+.export-btn:hover,
+.visitor-primary-btn:hover,
+.load-cash-btn:hover,
+.visitor-load-btn:hover,
+.save-settings-btn:hover {
   background: var(--gjc-green-950) !important;
   border-color: var(--gjc-green-950) !important;
   color: #fff !important;
@@ -469,11 +489,9 @@ img {
   width: 100% !important;
 }
 
-.ce-mint-btn-content img {
-  width: 18px !important;
-  height: 18px !important;
-  object-fit: contain !important;
-  filter: brightness(0) invert(1) !important;
+.ce-mint-btn-content i {
+  font-size: 16px !important;
+  color: var(--gjc-green-950) !important;
 }
 
 .view-btn,
@@ -674,67 +692,79 @@ img {
   box-shadow: none !important;
 }
 
-/* Metric card colour-coded variants - flat colour, not a gradient,
-   keeps the category distinction (cap/vault/students/merchants) meaningful. */
+/* Metric card colour-coded variants - one restrained brand-green/gold/neutral
+   family instead of unrelated primary hues, keeps the category distinction
+   (cap/vault/students/merchants) meaningful without reading as a rainbow. */
 .metric-card.metric-cap       { background: var(--gjc-green-800) !important; }
-.metric-card.metric-vault     { background: #1d4ed8 !important; }
-.metric-card.metric-students  { background: #b45309 !important; }
-.metric-card.metric-merchants { background: #6d28d9 !important; }
+.metric-card.metric-vault     { background: var(--gjc-green-700) !important; }
+.metric-card.metric-students  { background: var(--gjc-gold-600) !important; }
+.metric-card.metric-merchants { background: var(--gjc-slate) !important; }
 
-/* Circulation widget (admin/economy.php via includes/circulation_widget.php) */
-.ce-hero-panel {
-  background: var(--gjc-green-900) !important;
-  border-radius: var(--gjc-radius) !important;
-  box-shadow: var(--gjc-shadow-md) !important;
+/* Gold is light - swap to dark ink text so this variant stays readable */
+.metric-card.metric-students h2,
+.metric-card.metric-students span,
+.metric-card.metric-students p,
+.metric-card.metric-students small {
+  color: var(--gjc-green-950) !important;
 }
-.ce-hero-panel::after { display: none !important; }
-
-.ce-label-pill {
-  background: var(--gjc-green-800) !important;
-  box-shadow: none !important;
+.metric-card.metric-students .metric-icon {
+  background: rgba(5, 37, 21, 0.12) !important;
 }
-
-.ce-alert-danger {
-  background: #fde8e5 !important;
-  border: 1px solid #f0b8b2 !important;
-  color: var(--gjc-danger) !important;
-  border-radius: var(--gjc-radius) !important;
+.metric-card.metric-students .metric-icon i {
+  color: var(--gjc-green-950) !important;
 }
 
-.ce-pool-card,
-.ce-pool-vault,
-.ce-pool-students,
-.ce-pool-merchants,
-.ce-pool-vouchers {
+/* Circulation widget (admin/economy.php via includes/circulation_widget.php)
+   The widget's own CSS in admin.css now owns this component's look (flat
+   white panels, ledger bar, neutral pool cards) - nothing left to override
+   here. .ce-pool-vault/.ce-pool-students/.ce-pool-merchants/.ce-pool-vouchers
+   are colour identifiers consumed directly by admin.css, not full-card
+   background painters, so no !important fight is needed any more. */
+
+/* economy.php's non-namespaced mint/budget panels - same flat treatment
+   as the rest of the panel system instead of their own gold gradient. */
+.minting-budget-card {
+  background: var(--gjc-panel) !important;
+  border: 1px solid var(--gjc-line) !important;
   border-radius: var(--gjc-radius) !important;
   box-shadow: var(--gjc-shadow-sm) !important;
 }
-.ce-pool-vault     { background: var(--gjc-green-800) !important; }
-.ce-pool-students  { background: #b45309 !important; }
-.ce-pool-merchants { background: #6d28d9 !important; }
-.ce-pool-vouchers  { background: #0369a1 !important; }
-.ce-pool-glow      { display: none !important; }
-
-.ce-fb-vault     { background: var(--gjc-green-800) !important; }
-.ce-fb-students  { background: #b45309 !important; }
-.ce-fb-merchants { background: #6d28d9 !important; }
-.ce-fb-vouchers  { background: #0369a1 !important; }
-
-.ce-mint-form-panel {
+.minting-budget-card.limit-exceeded {
   background: var(--gjc-gold-100) !important;
-  backdrop-filter: none !important;
+  border-color: var(--gjc-gold-500) !important;
+}
+.minting-budget-card.limit-ok { border-color: var(--gjc-line) !important; }
+
+.mint-panel {
+  background: var(--gjc-gold-100) !important;
   border: 1px solid var(--gjc-gold-500) !important;
   border-radius: var(--gjc-radius) !important;
   box-shadow: var(--gjc-shadow-sm) !important;
 }
+.mint-panel h4 { color: var(--gjc-green-950) !important; }
 
-.ce-mint-info-icon { background: var(--gjc-green-800) !important; }
-.ce-mint-badge      { background: var(--gjc-gold-500) !important; color: var(--gjc-green-950) !important; }
-.ce-mint-btn        { background: var(--gjc-gold-500) !important; color: var(--gjc-green-950) !important; box-shadow: none !important; }
-.ce-mint-btn:hover  { background: var(--gjc-gold-600) !important; transform: none !important; box-shadow: none !important; }
+.ce-mint-info-panel.ce-limit-hit {
+  background: var(--gjc-gold-100) !important;
+  border-color: var(--gjc-gold-500) !important;
+}
 
-.ce-track-ok   { background: var(--gjc-success) !important; }
-.ce-track-warn { background: #b45309 !important; }
+.badge-secondary {
+  background: #eef1ef !important;
+  color: var(--gjc-muted) !important;
+}
+
+.session-btn {
+  background: var(--gjc-gold-500) !important;
+  color: var(--gjc-green-950) !important;
+}
+.session-btn:hover {
+  background: var(--gjc-gold-600) !important;
+  transform: none !important;
+}
+
+.mini-icon-wrap {
+  background: #eaf5ee !important;
+}
 
 .dataTables_wrapper .dataTables_paginate .paginate_button.current,
 .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
@@ -933,5 +963,111 @@ footer {
 
   .hero-content {
     margin: 0 20px;
+  }
+}
+
+/* ── Logout confirmation modal (includes/partials/logout_modal.php) ───── */
+.logout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 37, 21, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease;
+}
+.logout-modal-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.logout-modal {
+  background: var(--gjc-panel);
+  border-radius: var(--gjc-radius);
+  box-shadow: var(--gjc-shadow-md);
+  width: 100%;
+  max-width: 360px;
+  padding: 28px 26px 24px;
+  text-align: center;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.18s ease;
+}
+.logout-modal-overlay.is-open .logout-modal {
+  transform: translateY(0) scale(1);
+}
+
+.logout-modal-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #fde8e5;
+  color: var(--gjc-danger);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+}
+
+.logout-modal-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gjc-green-950);
+}
+
+.logout-modal-sub {
+  margin: 0 0 22px;
+  font-size: 13px;
+  color: var(--gjc-muted);
+  line-height: 1.5;
+}
+
+.logout-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.logout-modal-cancel,
+.logout-modal-confirm {
+  flex: 1;
+  box-sizing: border-box;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--gjc-radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.logout-modal-cancel {
+  background: #fff;
+  border: 1px solid var(--gjc-line);
+  color: var(--gjc-ink);
+}
+.logout-modal-cancel:hover { background: #f4f7f1; }
+
+.logout-modal-confirm {
+  background: var(--gjc-danger);
+  border: 1px solid var(--gjc-danger);
+  color: #fff;
+}
+.logout-modal-confirm:hover { background: #8f1c14; }
+
+@media (prefers-reduced-motion: reduce) {
+  .logout-modal-overlay,
+  .logout-modal {
+    transition: none !important;
   }
 }

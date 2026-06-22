@@ -16,12 +16,15 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transfer Tokens | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=41">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -32,22 +35,24 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
             <div class="student-brand-text"><h4>GenPay</h4><span>Student Portal</span></div>
         </div>
         <nav class="student-menu">
-            <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt=""><span class="student-nav-text">Dashboard</span></a>
-            <a href="<?= STUDENT_URL ?>/scan.php"><img src="<?= ICONS_URL ?>/qr.png" class="student-nav-icon" alt=""><span class="student-nav-text">Scan &amp; Pay</span></a>
-            <a href="<?= STUDENT_URL ?>/transfer.php" class="active"><img src="<?= ICONS_URL ?>/payment.png" class="student-nav-icon" alt=""><span class="student-nav-text">Transfer Tokens</span></a>
-            <a href="<?= STUDENT_URL ?>/topup_request.php"><img src="<?= ICONS_URL ?>/topups.png" class="student-nav-icon" alt=""><span class="student-nav-text">Top-Up</span></a>
-            <a href="<?= STUDENT_URL ?>/history.php"><img src="<?= ICONS_URL ?>/transactions.png" class="student-nav-icon" alt=""><span class="student-nav-text">History</span></a>
-            <a href="<?= STUDENT_URL ?>/profile.php"><img src="<?= ICONS_URL ?>/users.png" class="student-nav-icon" alt=""><span class="student-nav-text">Profile</span></a>
+            <a href="<?= DASHBOARD_URL ?>"><i class="fa-solid fa-gauge-high student-nav-icon"></i><span class="student-nav-text">Dashboard</span></a>
+            <a href="<?= STUDENT_URL ?>/cart.php"><i class="fa-solid fa-cart-shopping student-nav-icon"></i><span class="student-nav-text">Shop Cart</span></a>
+            <a href="<?= STUDENT_URL ?>/transfer.php" class="active"><i class="fa-solid fa-money-bill-transfer student-nav-icon"></i><span class="student-nav-text">Transfer Tokens</span></a>
+            <a href="<?= STUDENT_URL ?>/topup_request.php"><i class="fa-solid fa-circle-plus student-nav-icon"></i><span class="student-nav-text">Top-Up</span></a>
+            <a href="<?= STUDENT_URL ?>/history.php"><i class="fa-solid fa-receipt student-nav-icon"></i><span class="student-nav-text">History</span></a>
+            <a href="<?= STUDENT_URL ?>/profile.php"><i class="fa-solid fa-user student-nav-icon"></i><span class="student-nav-text">Profile</span></a>
         </nav>
-        <a href="<?= BASE_URL ?>/logout.php" class="student-logout">
-            <img src="<?= ICONS_URL ?>/logout.png" class="student-logout-icon" alt=""><span>Logout</span>
+        <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
+           onclick="openLogoutModal(event);">
+            <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i><span>Logout</span>
         </a>
     </aside>
+    <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
 
     <main class="student-main">
         <header class="student-topbar">
             <button class="student-menu-btn" onclick="toggleStudentSidebar()">&#9776;</button>
-            <div><h1>Transfer Tokens</h1><p>Send EduCoins instantly to another student.</p></div>
+            <div><h1>Transfer Tokens</h1><p>Send GenCoins instantly to another student.</p></div>
             <div class="student-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
                 <div class="student-avatar"><?= strtoupper(substr($currentUser['name'], 0, 1)) ?></div>
@@ -60,7 +65,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
                 <div>
                     <span>Available Balance</span>
                     <h2><?= gjc_money($balance) ?></h2>
-                    <p style="margin-top:4px;opacity:.8"><?= gjc_token_display($balance) ?> EduCoins</p>
+                    <p style="margin-top:4px;opacity:.8"><?= gjc_token_display($balance) ?> GenCoins</p>
                     <p style="font-size:12px;opacity:.65;margin:0"><?= gjc_e($currentUser['name']) ?></p>
                 </div>
                 <div class="student-wallet-badge">Student</div>
@@ -85,7 +90,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
 
         <section class="student-premium-panel">
             <div class="student-panel-header">
-                <div><h3>Send EduCoins</h3><p>Transfer tokens to another enrolled student using their Student ID.</p></div>
+                <div><h3>Send GenCoins</h3><p>Transfer tokens to another enrolled student using their Student ID.</p></div>
             </div>
 
             <div style="max-width:520px;margin:0 auto;padding:8px 0 24px">
@@ -121,7 +126,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
                 </form>
 
                 <div class="student-empty-state" style="padding:20px 0 0;text-align:center;">
-                    <p style="font-size:12px;color:#9ca3af;margin:0">&#8377;10 = 1 EduCoin &bull; Transfers are instant and irreversible &bull; Daily limit: &#8377;5,000</p>
+                    <p style="font-size:12px;color:#9ca3af;margin:0">&#8369;10 = 1.0 GenCoin &bull; Transfers are instant and irreversible &bull; Daily limit: &#8369;5,000</p>
                 </div>
             </div>
         </section>
@@ -134,12 +139,14 @@ function toggleStudentSidebar() {
     document.getElementById('studentSidebar').classList.toggle('collapsed');
 }
 
+document.querySelector('.student-menu a.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+
 // Live token preview
 document.getElementById('transferAmount').addEventListener('input', function() {
     const php = parseFloat(this.value) || 0;
     const tokens = (php / 10).toFixed(1);
     document.getElementById('tokenPreview').textContent =
-        php > 0 ? `= ${tokens} EduCoins` : '';
+        php > 0 ? `= ${tokens} GenCoins` : '';
 });
 
 // Recipient lookup on blur

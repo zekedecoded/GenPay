@@ -98,6 +98,21 @@ class Record
                     header('Location: ' . BASE_URL . '/dashboard.php');
                     exit;
                 } else {
+                    $failedUserId = (int) ($user['id'] ?? $user['userID'] ?? 0);
+                    $failedRoleId = (int) ($user['roleID'] ?? 0);
+                    \logAudit(
+                        $this->con,
+                        $failedUserId,
+                        \gjc_audit_role_from_user($this->con, $failedUserId),
+                        'LOGIN_FAILED',
+                        'users',
+                        null,
+                        [
+                            'userID' => $failedUserId,
+                            'email' => $user['email'] ?? '',
+                            'roleID' => $failedRoleId,
+                        ]
+                    );
                     return "Invalid password";
                 }
             } else {

@@ -4,6 +4,7 @@ require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
+require_once __DIR__ . '/../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 
@@ -72,6 +73,23 @@ try {
     if ($update->rowCount() !== 1) {
         throw new RuntimeException('Encashment release state changed before completion. Please refresh and verify the record.');
     }
+
+    logAudit(
+        $db,
+        $sessionUserId,
+        $sessionRole,
+        'TRANSACTION',
+        'encashment_requests',
+        ['id' => $encashmentId, 'status' => 'pending'],
+        [
+            'id' => $encashmentId,
+            'status' => 'released',
+            'released_by' => $sessionUserId,
+            'merchant_wallet_id' => $requestWalletId,
+            'amount' => $requestAmount,
+            'reference_no' => $result['reference'],
+        ]
+    );
 
     echo json_encode([
         'success' => true,

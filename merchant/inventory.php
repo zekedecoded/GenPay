@@ -28,12 +28,15 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=11">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -46,16 +49,21 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
             <div><h1>Product Inventory</h1><p><?= $isMerchAdmin ? 'Manage your full product catalog.' : 'Update stock levels for available items.' ?></p></div>
             <div class="merchant-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="merchant-avatar"><img src="<?= ICONS_URL ?>/store.png" alt="Merchant"></div>
+                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
             </div>
         </header>
 
         <section class="merchant-premium-panel">
             <div class="merchant-panel-header d-flex justify-content-between align-items-center">
                 <div><h3>Product Catalog</h3><p><?= count($inventory) ?> items on file.</p></div>
-                <?php if ($isMerchAdmin): ?>
-                <button class="merchant-view-btn" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
-                <?php endif; ?>
+                <div class="d-flex gap-2">
+                    <a href="<?= MERCHANT_URL ?>/print_menu.php" class="btn btn-outline-success">
+                        <i class="fa-solid fa-print"></i> Print Full Menu
+                    </a>
+                    <?php if ($isMerchAdmin): ?>
+                    <button class="merchant-view-btn" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <?php
@@ -129,17 +137,28 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                     <span style="color:#9ca3af;font-size:12px">Unavailable</span>
                                 <?php endif; ?>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary me-1"
-                                    onclick="editStock(<?= (int)$item['id'] ?>, <?= (int)$item['stock_qty'] ?>, '<?= gjc_e($item['product_name']) ?>')">
-                                    Stock
-                                </button>
-                                <?php if ($isMerchAdmin): ?>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                    onclick="editProduct(<?= htmlspecialchars(json_encode($item), ENT_QUOTES) ?>)">
-                                    Edit
-                                </button>
-                                <?php endif; ?>
+                            <td class="text-nowrap">
+                                <div class="d-flex align-items-center gap-1 flex-nowrap">
+                                    <button class="btn btn-sm btn-outline-primary"
+                                        onclick="editStock(<?= (int)$item['id'] ?>, <?= (int)$item['stock_qty'] ?>, '<?= gjc_e($item['product_name']) ?>')">
+                                        Stock
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success"
+                                        <?= $item['sku'] ? '' : 'disabled title="Add a SKU first — the QR encodes the SKU."' ?>
+                                        onclick='openItemQr(<?= json_encode([
+                                            "sku" => $item["sku"],
+                                            "name" => $item["product_name"],
+                                            "price" => number_format((float) $item["price"], 2),
+                                        ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
+                                        <i class="fa-solid fa-qrcode"></i> QR
+                                    </button>
+                                    <?php if ($isMerchAdmin): ?>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="editProduct(<?= htmlspecialchars(json_encode($item), ENT_QUOTES) ?>)">
+                                        Edit
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -245,6 +264,28 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     </div>
 </div>
 
+<!-- Item QR Modal -->
+<div class="modal fade" id="itemQrModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal">
+            <div class="modal-header">
+                <h5 class="modal-title">Item QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-muted mb-3">Print this and stick it next to the item on your cardboard menu. Students scan it to add this item to their cart.</p>
+                <img id="itemQrImage" src="" alt="Item QR" style="width:240px;height:240px;border-radius:12px;background:#fff;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+                <h5 class="mt-3 mb-1" id="itemQrName">--</h5>
+                <p class="text-muted mb-0" id="itemQrPrice">--</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="itemQrPrintBtn"><i class="fa-solid fa-print"></i> Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
 const INV_API = '<?= MERCHANT_URL ?>/api/inventory.php';
@@ -256,6 +297,48 @@ function editStock(id, qty, name) {
     document.getElementById('stockMsg').innerHTML = '';
     new bootstrap.Modal(document.getElementById('stockModal')).show();
 }
+
+let currentItemQrSku = '';
+let currentItemQrName = '';
+let currentItemQrPrice = '';
+
+function openItemQr(item) {
+    if (!item || !item.sku) return;
+    currentItemQrSku = item.sku;
+    currentItemQrName = item.name;
+    currentItemQrPrice = item.price;
+
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&ecc=H&margin=10&data=' + encodeURIComponent(item.sku);
+    document.getElementById('itemQrImage').src = qrUrl;
+    document.getElementById('itemQrName').textContent = item.name;
+    document.getElementById('itemQrPrice').textContent = '₱' + item.price;
+    new bootstrap.Modal(document.getElementById('itemQrModal')).show();
+}
+
+document.getElementById('itemQrPrintBtn').addEventListener('click', function () {
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&ecc=H&margin=14&data=' + encodeURIComponent(currentItemQrSku);
+    const win = window.open('', '_blank', 'width=420,height=560');
+    win.document.write(`
+        <html>
+        <head>
+            <title>${currentItemQrName} QR</title>
+            <style>
+                body { font-family: sans-serif; text-align: center; padding: 24px; }
+                img { width: 280px; height: 280px; }
+                h2 { margin: 16px 0 4px; }
+                p { color: #555; }
+            </style>
+        </head>
+        <body>
+            <img src="${qrUrl}" alt="Item QR">
+            <h2>${currentItemQrName}</h2>
+            <p>₱${currentItemQrPrice}</p>
+            <script>window.onload = () => window.print();<\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+});
 
 <?php if ($isMerchAdmin): ?>
 function editProduct(item) {

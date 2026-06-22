@@ -20,6 +20,8 @@ if (gjc_is_merchant_staff()) {
 $currentUser = gjc_current_user($db);
 $userId = (int) $currentUser['id'];
 
+$wallet = gjc_merchant_wallet($db, $userId);
+
 $stmt = $db->prepare(
     "SELECT m.merchantID, m.stall_name, m.stall_id, s.label AS stall_label, u.profile_img
        FROM merchant m
@@ -33,16 +35,28 @@ $merchant = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $currentPage = 'settings';
 $logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['profile_img'] : null;
+
+$walletDisplayName = $merchant['stall_name'] ?? $currentUser['name'];
+$walletQrPayload = json_encode([
+    'type' => 'merchant_wallet',
+    'merchant_wallet_id' => $wallet['id'],
+    'merchant_user_id' => $userId,
+    'merchant' => $walletDisplayName,
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ecc=H&margin=12&data=' . rawurlencode($walletQrPayload);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Profile | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=11">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         .profile-logo-preview {
@@ -55,6 +69,26 @@ $logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['p
             display: flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, #064420, #15803d);
             color: #fff; font-weight: 800; font-size: 32px;
+        }
+        .wallet-qr-print-card {
+            display: flex; align-items: center; gap: 24px;
+            flex-wrap: wrap; padding: 20px; border-radius: 16px;
+            background: #f8fafc; border: 1px solid #e5e7eb;
+        }
+        .wallet-qr-image {
+            width: 200px; height: 200px; border-radius: 12px;
+            background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+        }
+        .wallet-qr-caption { display: flex; flex-direction: column; gap: 4px; }
+        .wallet-qr-caption strong { font-size: 18px; color: #064420; }
+        .wallet-qr-caption span { font-size: 13px; color: #6b7280; }
+
+        @media print {
+            .merchant-sidebar, .merchant-topbar, .merchant-premium-panel:not(#walletQrPanel) {
+                display: none !important;
+            }
+            #walletQrPanel .merchant-panel-header button { display: none; }
+            .wallet-qr-image { width: 320px; height: 320px; }
         }
     </style>
 </head>
@@ -71,7 +105,7 @@ $logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['p
             </div>
             <div class="merchant-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="merchant-avatar"><img src="<?= ICONS_URL ?>/store.png" alt=""></div>
+                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
             </div>
         </header>
 
@@ -113,6 +147,26 @@ $logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['p
             </form>
         </section>
         <?php endif; ?>
+
+        <section class="merchant-premium-panel mt-4" id="walletQrPanel">
+            <div class="merchant-panel-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3>Shop Wallet QR</h3>
+                    <p>Print this once and tape it to your cardboard menu. Students scan it to pay for their whole cart &mdash; it never expires and carries no fixed amount.</p>
+                </div>
+                <button type="button" class="merchant-view-btn" onclick="window.print()">
+                    <i class="fa-solid fa-print"></i> Print
+                </button>
+            </div>
+
+            <div class="wallet-qr-print-card">
+                <img src="<?= htmlspecialchars($walletQrImageUrl) ?>" alt="Shop Wallet QR" class="wallet-qr-image">
+                <div class="wallet-qr-caption">
+                    <strong><?= gjc_e($walletDisplayName) ?></strong>
+                    <span>Scan to pay your GenPay cart total</span>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 

@@ -86,7 +86,7 @@ body {
   min-width: 70px;
   width: 70px;
   height: 70px;
-  border-radius: 18px;
+  border-radius: 50%;
   background: #fff;
   display: grid;
   place-items: center;
@@ -162,9 +162,9 @@ body {
 
 .merchant-nav-icon {
   width: 24px;
-  height: 24px;
   min-width: 24px;
-  object-fit: contain;
+  font-size: 17px;
+  text-align: center;
   display: block;
 }
 
@@ -183,8 +183,8 @@ body {
 
 .merchant-sidebar.collapsed .merchant-nav-icon {
   width: 26px;
-  height: 26px;
   min-width: 26px;
+  font-size: 18px;
 }
 
 .merchant-logout {
@@ -208,8 +208,8 @@ body {
 
 .merchant-logout-icon {
   width: 22px;
-  height: 22px;
-  object-fit: contain;
+  font-size: 16px;
+  text-align: center;
 }
 
 .merchant-logout:hover {
@@ -291,10 +291,9 @@ body {
   overflow: hidden;
 }
 
-.merchant-avatar img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+.merchant-avatar i {
+  font-size: 18px;
+  color: white;
 }
 
 .merchant-metric-card {
@@ -338,10 +337,9 @@ body {
   z-index: 2;
 }
 
-.merchant-metric-icon img {
-  width: 25px;
-  height: 25px;
-  object-fit: contain;
+.merchant-metric-icon i {
+  font-size: 19px;
+  color: white;
 }
 
 .merchant-metric-card span {
@@ -367,6 +365,163 @@ body {
   color: rgba(255, 255, 255, 0.76);
   position: relative;
   z-index: 2;
+}
+
+/* GenCoin ledger ticket — compact balance + peso-equivalent strip */
+.gc-ticket {
+  display: flex;
+  align-items: stretch;
+  border-radius: 16px;
+  background: linear-gradient(
+    115deg,
+    var(--emerald-900) 0%,
+    var(--emerald-800) 55%,
+    var(--emerald-700) 100%
+  );
+  border: 1px solid rgba(217, 169, 40, 0.22);
+  box-shadow: 0 12px 28px rgba(4, 53, 31, 0.2);
+  overflow: hidden;
+}
+
+.gc-ticket-side {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+}
+
+.gc-ticket-equiv {
+  justify-content: flex-start;
+}
+
+.gc-ticket-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.gc-ticket-icon i {
+  font-size: 17px;
+  color: var(--gold-light);
+}
+
+.gc-ticket-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(243, 246, 241, 0.62);
+}
+
+.gc-ticket-figure {
+  margin: 3px 0 2px;
+  font-family: "IBM Plex Mono", "Inter", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 700;
+  color: #f3f6f1;
+  line-height: 1.1;
+}
+
+.gc-ticket-figure small {
+  margin-left: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+
+.gc-ticket-figure-peso {
+  color: var(--gold-light);
+}
+
+.gc-ticket-note {
+  display: block;
+  font-size: 11.5px;
+  color: rgba(243, 246, 241, 0.6);
+}
+
+.gc-ticket-seam {
+  flex: 0 0 auto;
+  position: relative;
+  width: 1px;
+  margin: 12px 0;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(217, 169, 40, 0.55) 6px,
+    rgba(217, 169, 40, 0.55) 10px,
+    transparent 10px
+  );
+  background-size: 1px 14px;
+  background-repeat: repeat-y;
+}
+
+.gc-ticket-seam::before,
+.gc-ticket-seam::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(217, 169, 40, 0.6);
+  background: var(--emerald-800);
+  transform: translateX(-50%);
+}
+
+.gc-ticket-seam::before {
+  top: -3.5px;
+}
+
+.gc-ticket-seam::after {
+  bottom: -3.5px;
+}
+
+@media (max-width: 576px) {
+  .gc-ticket {
+    flex-direction: column;
+  }
+
+  .gc-ticket-seam {
+    width: auto;
+    height: 1px;
+    margin: 0 16px;
+    background-image: linear-gradient(
+      to right,
+      transparent 0,
+      rgba(217, 169, 40, 0.55) 6px,
+      rgba(217, 169, 40, 0.55) 10px,
+      transparent 10px
+    );
+    background-size: 14px 1px;
+    background-repeat: repeat-x;
+  }
+
+  .gc-ticket-seam::before,
+  .gc-ticket-seam::after {
+    top: 50%;
+    left: auto;
+    transform: translateY(-50%);
+  }
+
+  .gc-ticket-seam::before {
+    left: -3.5px;
+  }
+
+  .gc-ticket-seam::after {
+    right: -3.5px;
+    left: auto;
+  }
+
+  .gc-ticket-figure {
+    font-size: 22px;
+  }
 }
 
 .merchant-premium-panel {
@@ -741,10 +896,9 @@ body {
   place-items: center;
 }
 
-.qr-preview-icon img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
+.qr-preview-icon i {
+  font-size: 40px;
+  color: var(--emerald-700);
 }
 
 .qr-preview-empty h3 {
@@ -1012,11 +1166,9 @@ body {
   place-items: center;
 }
 
-.merchant-voucher-empty-icon img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
+.merchant-voucher-empty-icon i {
+  font-size: 32px;
+  color: white;
 }
 
 .merchant-voucher-empty h4 {
@@ -1449,7 +1601,7 @@ body {
 
 .history-summary-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 24px;
 }
 
@@ -1528,10 +1680,9 @@ body {
   place-items: center;
 }
 
-.history-balance-icon img {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
+.history-balance-icon i {
+  font-size: 30px;
+  color: white;
 }
 
 .history-mini-card {
@@ -1627,9 +1778,8 @@ body {
   box-shadow: 0 8px 22px rgba(4,68,32,0.22);
 }
 .me-pill-icon {
-  width: 18px; height: 18px;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
+  font-size: 14px;
+  color: inherit;
 }
 
 .me-status-badge {
@@ -1666,6 +1816,15 @@ body {
 }
 .me-text-green { color: #16a34a; }
 .me-text-red   { color: #dc2626; }
+
+/* Live Order Queue — brief highlight when new AJAX data lands */
+#liveQueueBody.queue-flash {
+  animation: queue-flash-kf 1s ease-out;
+}
+@keyframes queue-flash-kf {
+  0%   { background-color: rgba(217, 169, 40, 0.18); }
+  100% { background-color: transparent; }
+}
 
 /* ── Hero strip ──────────────────────────────────────────── */
 .me-hero-strip {
@@ -1787,10 +1946,9 @@ body {
   position: relative;
   z-index: 1;
 }
-.me-pool-icon img {
-  width: 20px; height: 20px;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
+.me-pool-icon i {
+  font-size: 17px;
+  color: white;
 }
 
 /* "Your Pool" badge */
@@ -1967,9 +2125,8 @@ body {
     box-shadow: none;
   }
 
-  .merchant-avatar img {
-    width: 22px;
-    height: 22px;
+  .merchant-avatar i {
+    font-size: 15px;
   }
 
   .merchant-sidebar,
@@ -2052,8 +2209,8 @@ body {
   .merchant-menu a .merchant-nav-icon,
   .merchant-sidebar.collapsed .merchant-menu a .merchant-nav-icon {
     width: 22px;
-    height: 22px;
     min-width: 22px;
+    font-size: 16px;
   }
 
   .merchant-scanner-grid,

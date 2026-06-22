@@ -13,10 +13,13 @@ $currentPage = 'economy';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>System Economy | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,7 +37,7 @@ $currentPage = 'economy';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>System Economy</h1>
@@ -44,7 +47,7 @@ $currentPage = 'economy';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>

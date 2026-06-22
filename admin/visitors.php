@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
@@ -23,11 +23,14 @@ $currentPage = 'visitors';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Visitors | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/visitors.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -46,7 +49,7 @@ $currentPage = 'visitors';
         <main class="admin-main visitors-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Visitors</h1>
@@ -55,7 +58,7 @@ $currentPage = 'visitors';
 
                 <div class="ms-auto me-4">
                     <button type="button" class="visitor-primary-btn" data-bs-toggle="modal" data-bs-target="#mintVoucherModal">
-                        <span>+</span>
+                        <i class="fa-solid fa-ticket"></i>
                         Mint New Voucher
                     </button>
                 </div>
@@ -63,7 +66,7 @@ $currentPage = 'visitors';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -72,7 +75,7 @@ $currentPage = 'visitors';
 
                 <div class="visitor-stat-card">
                     <div class="visitor-icon yellow">
-                        <img src="<?= ICONS_URL ?>/visitors.png" alt="">
+                        <i class="fa-solid fa-person-walking"></i>
                     </div>
 
                     <div class="visitor-stat-copy">
@@ -84,7 +87,7 @@ $currentPage = 'visitors';
 
                 <div class="visitor-stat-card">
                     <div class="visitor-icon blue">
-                        <img src="<?= ICONS_URL ?>/registered_today.png" alt="">
+                        <i class="fa-solid fa-calendar-check"></i>
                     </div>
 
                     <div class="visitor-stat-copy">
@@ -96,7 +99,7 @@ $currentPage = 'visitors';
 
                 <div class="visitor-stat-card">
                     <div class="visitor-icon green">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
 
                     <div>
@@ -107,7 +110,7 @@ $currentPage = 'visitors';
 
                 <div class="visitor-stat-card cleanup-card">
                     <div class="visitor-icon red">
-                        <img src="<?= ICONS_URL ?>/cleanup_visitors.png" alt="">
+                        <i class="fa-solid fa-broom"></i>
                     </div>
 
                     <div>
@@ -124,7 +127,7 @@ $currentPage = 'visitors';
                 <div class="visitors-table-header">
                     <div>
                         <h3>
-                            <img src="<?= ICONS_URL ?>/visitors.png" alt="">
+                            <i class="fa-solid fa-person-walking"></i>
                             All Visitors
                         </h3>
                         <p>Temporary guest accounts with wallet balance and session status.</p>

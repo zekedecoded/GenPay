@@ -36,10 +36,9 @@
   font-weight: 900;
 }
 
-.settings-panel-header h3 img {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
+.settings-panel-header h3 i {
+  font-size: 18px;
+  color: #0d7a3e;
 }
 
 .settings-form {

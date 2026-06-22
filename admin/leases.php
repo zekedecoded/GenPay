@@ -110,11 +110,14 @@ function gjc_lease_qs(array $overrides = []): string
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leases &amp; Rent | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -129,14 +132,14 @@ function gjc_lease_qs(array $overrides = []): string
     <main class="admin-main">
 
         <header class="topbar">
-            <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+            <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Leases &amp; Rent</h1>
                 <p>Manage merchant stall contracts and rental payment tracking.</p>
             </div>
             <div class="admin-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
 
@@ -145,7 +148,7 @@ function gjc_lease_qs(array $overrides = []): string
             <div class="col-12 col-md-6 col-xl-3">
                 <a href="?<?= gjc_lease_qs(['status' => '', 'overdue' => '', 'page' => '']) ?>" class="text-decoration-none">
                     <div class="metric-card">
-                        <div class="metric-icon"><img src="<?= ICONS_URL ?>/encashments.png" alt=""></div>
+                        <div class="metric-icon"><i class="fa-solid fa-file-signature"></i></div>
                         <span>Total Leases</span>
                         <h2><?= $totalLeases ?></h2>
                         <p>All contract records</p>
@@ -155,7 +158,7 @@ function gjc_lease_qs(array $overrides = []): string
             <div class="col-12 col-md-6 col-xl-3">
                 <a href="?<?= gjc_lease_qs(['status' => 'active', 'overdue' => '', 'page' => '']) ?>" class="text-decoration-none">
                     <div class="metric-card">
-                        <div class="metric-icon"><img src="<?= ICONS_URL ?>/merchants.png" alt=""></div>
+                        <div class="metric-icon"><i class="fa-solid fa-store"></i></div>
                         <span>Active Leases</span>
                         <h2><?= $activeLeases ?></h2>
                         <p>Currently running contracts</p>
@@ -165,7 +168,7 @@ function gjc_lease_qs(array $overrides = []): string
             <div class="col-12 col-md-6 col-xl-3">
                 <a href="?<?= gjc_lease_qs(['status' => '', 'overdue' => '1', 'page' => '']) ?>" class="text-decoration-none">
                     <div class="metric-card" style="border-left:4px solid #ef4444;">
-                        <div class="metric-icon"><img src="<?= ICONS_URL ?>/pending-encashments.png" alt=""></div>
+                        <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                         <span>Overdue Payments</span>
                         <h2 style="color:#ef4444"><?= $overdueLeases ?></h2>
                         <p>Past due date today</p>
@@ -174,7 +177,7 @@ function gjc_lease_qs(array $overrides = []): string
             </div>
             <div class="col-12 col-md-6 col-xl-3">
                 <div class="metric-card">
-                    <div class="metric-icon"><img src="<?= ICONS_URL ?>/volume.png" alt=""></div>
+                    <div class="metric-icon"><i class="fa-solid fa-sack-dollar"></i></div>
                     <span>Monthly Revenue</span>
                     <h2><?= gjc_money($monthlyTotal) ?></h2>
                     <p>Active lease total</p>

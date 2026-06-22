@@ -43,27 +43,29 @@
   z-index: 1;
 }
 
-.visitor-icon img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+.visitor-icon i {
+  font-size: 21px;
 }
 
 .visitor-icon.yellow {
   background: #fff4cc;
 }
+.visitor-icon.yellow i { color: #b45309; }
 
 .visitor-icon.blue {
   background: #dbeafe;
 }
+.visitor-icon.blue i { color: #1d4ed8; }
 
 .visitor-icon.green {
   background: #e3f8ec;
 }
+.visitor-icon.green i { color: #0d7a3e; }
 
 .visitor-icon.red {
   background: #fde2e2;
 }
+.visitor-icon.red i { color: #dc2626; }
 
 .visitor-stat-card span {
   display: block;
@@ -176,10 +178,9 @@
   font-weight: 900;
 }
 
-.visitors-table-header h3 img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
+.visitors-table-header h3 i {
+  font-size: 19px;
+  color: #0d7a3e;
 }
 
 .visitors-table-header p {

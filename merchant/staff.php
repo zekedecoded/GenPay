@@ -29,12 +29,15 @@ $currentPage = 'staff';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Management | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=11">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -47,7 +50,7 @@ $currentPage = 'staff';
             <div><h1>Staff Management</h1><p>Create and manage cashier staff accounts for your stall.</p></div>
             <div class="merchant-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="merchant-avatar"><img src="<?= ICONS_URL ?>/store.png" alt=""></div>
+                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
             </div>
         </header>
 

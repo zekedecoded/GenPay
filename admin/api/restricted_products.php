@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['finance']);
@@ -29,6 +30,25 @@ try {
                  VALUES (?, ?, ?, ?, ?)"
             );
             $stmt->execute([$name, $category, $reason, $matchType, $adminId]);
+            $newProductId = (int) $db->lastInsertId();
+
+            logAudit(
+                $db,
+                $adminId,
+                gjc_current_role(),
+                'PRODUCT_RESTRICTION',
+                'restricted_products',
+                null,
+                [
+                    'event' => 'flagged',
+                    'id' => $newProductId,
+                    'product_name' => $name,
+                    'category' => $category,
+                    'match_type' => $matchType,
+                    'reason' => $reason,
+                ]
+            );
+
             echo json_encode(['success' => true, 'message' => 'Product flagged successfully.']);
             break;
         }
@@ -42,8 +62,23 @@ try {
                 exit;
             }
 
+            $prevStmt = $db->prepare("SELECT is_active FROM restricted_products WHERE id = ?");
+            $prevStmt->execute([$id]);
+            $prevActive = $prevStmt->fetchColumn();
+
             $db->prepare("UPDATE restricted_products SET is_active = ? WHERE id = ?")
                ->execute([$isActive, $id]);
+
+            logAudit(
+                $db,
+                $adminId,
+                gjc_current_role(),
+                'PRODUCT_RESTRICTION',
+                'restricted_products',
+                $prevActive === false ? null : ['id' => $id, 'is_active' => (int) $prevActive],
+                ['event' => 'status_changed', 'id' => $id, 'is_active' => $isActive]
+            );
+
             echo json_encode(['success' => true, 'message' => 'Status updated.']);
             break;
         }

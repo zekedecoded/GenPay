@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 
@@ -41,6 +42,16 @@ try {
         echo json_encode(['success' => false, 'message' => 'Top-up request is no longer pending.']);
         exit;
     }
+
+    logAudit(
+        $db,
+        $sessionUserId,
+        $sessionRole,
+        'TRANSACTION',
+        'topup_requests',
+        ['id' => $topupId, 'status' => 'pending'],
+        ['id' => $topupId, 'status' => 'rejected', 'rejected_by' => $sessionUserId]
+    );
 
     echo json_encode(['success' => true, 'message' => 'Top-up request rejected.']);
 } catch (\Throwable $e) {

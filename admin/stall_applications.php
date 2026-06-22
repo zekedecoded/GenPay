@@ -57,11 +57,14 @@ const STEP_LABELS = [
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stall Applications | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -74,6 +77,19 @@ const STEP_LABELS = [
         .app-row[aria-expanded="true"] .chevron { transform: rotate(90deg); }
         .app-detail-row > td { padding: 0; border-top: 0; }
         .app-detail-inner { padding: 1.25rem 1.5rem; }
+
+        /* Search / sort / archived toolbar - separate from the topbar
+           so the topbar stays consistent with the rest of the admin pages. */
+        .app-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .app-toolbar-search { flex: 1 1 280px; max-width: 420px; }
+        .app-toolbar-sort { flex: 0 1 220px; }
+        .app-toolbar-archived { margin-left: auto; white-space: nowrap; }
 
         /* Step filter cards */
         .step-filter-card {
@@ -122,20 +138,27 @@ const STEP_LABELS = [
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
+            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Stall Applications</h1>
-                <p>Submitted applications awaiting review &mdash; Review &rarr; Meeting &rarr; Down Payment &rarr; Approval.</p>
+                <p>Manage incoming vendor applications.</p>
             </div>
 
-            <!-- Global search (Bootstrap 5 input-group) -->
-            <div class="input-group input-group-sm flex-grow-1 mx-3" style="max-width:360px">
-                <span class="input-group-text bg-white">&#128269;</span>
+            <div class="admin-user">
+                <span><?= gjc_e($currentUser['name']) ?></span>
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+            </div>
+        </header>
+
+        <!-- Search, sort, and archived rejections - kept out of the topbar
+             so it stays consistent with every other admin page. -->
+        <div class="app-toolbar">
+            <div class="input-group input-group-sm app-toolbar-search">
+                <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
                 <input type="search" id="appSearch" class="form-control" placeholder="Search business, proprietor, or email&hellip;">
             </div>
 
-            <!-- Sort control -->
-            <div class="input-group input-group-sm me-3" style="max-width:230px">
+            <div class="input-group input-group-sm app-toolbar-sort">
                 <label class="input-group-text bg-white" for="appSort">Sort</label>
                 <select id="appSort" class="form-select">
                     <option value="submitted_desc">Date Submitted (Newest)</option>
@@ -147,15 +170,10 @@ const STEP_LABELS = [
                 </select>
             </div>
 
-            <button type="button" class="btn btn-outline-secondary btn-sm me-3" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
+            <button type="button" class="btn btn-outline-secondary btn-sm app-toolbar-archived" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
                 Archived Rejections <span class="badge bg-danger ms-1"><?= $archivedCount ?></span>
             </button>
-
-            <div class="admin-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
-            </div>
-        </header>
+        </div>
 
         <!-- Filter by pipeline step (cards) -->
         <section class="row g-3 mb-3" id="stepFilterCards">
@@ -199,7 +217,7 @@ const STEP_LABELS = [
                             data-step="<?= (int) $app['current_step'] ?>"
                             data-search="<?= htmlspecialchars(strtolower($app['business_name'] . ' ' . $app['proprietor_name'] . ' ' . $app['email'])) ?>"
                             data-bs-toggle="collapse" data-bs-target="#detail-<?= (int) $app['id'] ?>" aria-expanded="false">
-                            <td><span class="chevron">&#9656;</span></td>
+                            <td><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></td>
                             <td class="fw-semibold"><?= htmlspecialchars($app['business_name']) ?></td>
                             <td><?= htmlspecialchars($app['proprietor_name']) ?></td>
                             <td class="small text-muted"><?= htmlspecialchars($app['contact_number']) ?><br><?= htmlspecialchars($app['email']) ?></td>
@@ -281,6 +299,7 @@ const STEP_LABELS = [
 <script>
 const APPS = <?= json_encode(array_values($apps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?>;
 const VACANT_STALLS = <?= json_encode($vacantStalls, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const MEETING_TIME_SLOTS = <?= json_encode(gjc_meeting_time_slots()) ?>;
 const STEP_LABELS = <?= json_encode(STEP_LABELS) ?>;
 const DOC_URL  = '<?= ADMIN_URL ?>/doc?f=';
 const API_URL  = '<?= ADMIN_URL ?>/api/stall_applications';
@@ -386,11 +405,13 @@ function renderPanel(app) {
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Date</label>
-                    <input type="date" class="form-control" id="meetDate-${app.id}">
+                    <input type="date" class="form-control" id="meetDate-${app.id}" min="${todayStr()}" onchange="refreshMeetingSlots(${app.id})">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Time</label>
-                    <input type="time" class="form-control" id="meetTime-${app.id}">
+                    <select class="form-select" id="meetTime-${app.id}" disabled>
+                        <option value="">Pick a date first</option>
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Location</label>
@@ -481,6 +502,48 @@ function acceptReview(id) {
     });
 }
 
+function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+function slotLabel(slot) {
+    const [h, m] = slot.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+// Refetch which fixed slots are already booked on the chosen date, then
+// rebuild the dropdown so a taken slot can't be picked twice.
+function refreshMeetingSlots(id) {
+    const dateInput = document.getElementById(`meetDate-${id}`);
+    const select = document.getElementById(`meetTime-${id}`);
+    const date = dateInput.value;
+
+    if (!date) {
+        select.disabled = true;
+        select.innerHTML = '<option value="">Pick a date first</option>';
+        return;
+    }
+
+    select.disabled = true;
+    select.innerHTML = '<option value="">Loading...</option>';
+
+    post({ action: 'get_booked_slots', meetup_date: date }).then(res => {
+        if (!res.success) {
+            select.innerHTML = '<option value="">Failed to load slots</option>';
+            return;
+        }
+        const booked = new Set(res.booked || []);
+        const options = (res.slots || MEETING_TIME_SLOTS).map(slot => {
+            const taken = booked.has(slot);
+            return `<option value="${slot}" ${taken ? 'disabled' : ''}>${slotLabel(slot)}${taken ? ' - Already booked' : ''}</option>`;
+        }).join('');
+        select.innerHTML = `<option value="">Select a time</option>${options}`;
+        select.disabled = false;
+    });
+}
+
 function saveMeeting(id) {
     const date = document.getElementById(`meetDate-${id}`).value;
     const time = document.getElementById(`meetTime-${id}`).value;
@@ -490,7 +553,11 @@ function saveMeeting(id) {
     post({ action: 'save_meeting', app_id: id, meetup_date: date, meetup_time: time, meetup_location: loc, meetup_notes: notes })
         .then(res => {
             toast(res.message, res.success ? 'success' : 'error');
-            if (res.success) mergeAndRender(id, { status: res.status, current_step: res.current_step });
+            if (res.success) {
+                mergeAndRender(id, { status: res.status, current_step: res.current_step });
+            } else if (/just booked/i.test(res.message)) {
+                refreshMeetingSlots(id);
+            }
         });
 }
 
@@ -568,7 +635,19 @@ function applyFilters() {
     document.querySelectorAll('.app-row').forEach(row => {
         const matchesSearch = row.dataset.search.includes(q);
         const matchesStep = currentStepFilter === '0' || row.dataset.step === currentStepFilter;
-        row.style.display = (matchesSearch && matchesStep) ? '' : 'none';
+        const visible = matchesSearch && matchesStep;
+
+        // A row being filtered out should collapse its expanded detail row too -
+        // otherwise switching tabs/search leaves an orphaned open detail behind.
+        if (!visible && row.getAttribute('aria-expanded') === 'true') {
+            row.setAttribute('aria-expanded', 'false');
+            const detail = document.getElementById(`detail-${row.dataset.appId}`);
+            if (detail) {
+                detail.classList.remove('show');
+            }
+        }
+
+        row.style.display = visible ? '' : 'none';
     });
 }
 document.getElementById('appSearch').addEventListener('input', applyFilters);

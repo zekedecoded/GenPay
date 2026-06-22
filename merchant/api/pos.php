@@ -4,10 +4,12 @@ require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
 require_once __DIR__ . '/../../connection/audit_logger.php';
+require_once __DIR__ . '/../../connection/CirculationEngine.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
 gjc_ensure_merchant_qr_orders_schema($db);
+gjc_ensure_cart_orders_schema($db);
 
 $action         = trim((string) ($_POST['action'] ?? ''));
 $merchantUserId = gjc_user_id();
@@ -113,12 +115,271 @@ try {
 
         echo json_encode([
             'success' => true,
+            'order_id' => (int) $db->lastInsertId(),
             'qr_payload' => json_encode($qrPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             'summary' => 'Total: PHP ' . number_format($serverTotal, 2) . ' - ' . count($validatedItems) . ' item type(s)',
             'expires_at' => $expiresAt,
         ]);
         exit;
     }
+
+    // ── LIVE ORDER QUEUE ─────────────────────────────────────────────────────────
+    if ($action === 'list_queue') {
+        $db->prepare(
+            "UPDATE merchant_qr_orders SET status = 'expired'
+              WHERE merchant_user_id = ? AND status = 'pending' AND expires_at < NOW()"
+        )->execute([$ownerMerchId]);
+
+        $posStmt = $db->prepare(
+            "SELECT id, description, amount, status, created_at
+               FROM merchant_qr_orders
+              WHERE merchant_user_id = ?
+              ORDER BY created_at DESC
+              LIMIT 15"
+        );
+        $posStmt->execute([$ownerMerchId]);
+        $orders = array_map(function ($row) {
+            return [
+                'uid' => 'pos-' . $row['id'],
+                'id' => (int) $row['id'],
+                'source' => 'pos',
+                'description' => $row['description'],
+                'amount' => (float) $row['amount'],
+                'status' => $row['status'],
+                'created_at' => $row['created_at'],
+            ];
+        }, $posStmt->fetchAll(PDO::FETCH_ASSOC));
+
+        // Orders the student already submitted from the Shop Cart but hasn't
+        // paid for yet — visible the moment they tap "Submit Order", before
+        // any money moves. Excludes 'paid' rows since those are represented
+        // below by their resulting transactions row instead (avoids duplicates).
+        $pendingCartStmt = $db->prepare(
+            "SELECT id, description, amount, status, created_at
+               FROM cart_orders
+              WHERE merchant_user_id = ? AND status != 'paid'
+              ORDER BY created_at DESC
+              LIMIT 15"
+        );
+        $pendingCartStmt->execute([$ownerMerchId]);
+        foreach ($pendingCartStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $orders[] = [
+                'uid' => 'cartpending-' . $row['id'],
+                'id' => (int) $row['id'],
+                'source' => 'cart_pending',
+                'description' => $row['description'],
+                'amount' => (float) $row['amount'],
+                'status' => $row['status'],
+                'created_at' => $row['created_at'],
+            ];
+        }
+
+        $merchantWallet = gjc_merchant_wallet($db, $ownerMerchId);
+        if ($merchantWallet['id'] > 0) {
+            $cartStmt = $db->prepare(
+                "SELECT id, notes, amount, created_at
+                   FROM transactions
+                  WHERE merchant_wallet_id = ?
+                    AND transaction_type = 'payment'
+                    AND status = 'completed'
+                    AND reference_no LIKE 'CART-%'
+                  ORDER BY created_at DESC
+                  LIMIT 15"
+            );
+            $cartStmt->execute([$merchantWallet['id']]);
+            foreach ($cartStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $orders[] = [
+                    'uid' => 'cart-' . $row['id'],
+                    'id' => (int) $row['id'],
+                    'source' => 'cart',
+                    'description' => $row['notes'],
+                    'amount' => (float) $row['amount'],
+                    'status' => 'paid',
+                    'created_at' => $row['created_at'],
+                ];
+            }
+        }
+
+        usort($orders, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+        $orders = array_slice($orders, 0, 15);
+
+        echo json_encode(['success' => true, 'orders' => $orders]);
+        exit;
+    }
+
+    // ── LIVE SALES SUMMARY (Today's Sales / Total Earned) ───────────────────────
+    if ($action === 'get_sales_summary') {
+        $merchantWallet = gjc_merchant_wallet($db, $ownerMerchId);
+        $todaysSales = 0.0;
+        $totalEarned = 0.0;
+
+        if ($merchantWallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
+            $earningTypes = [CirculationEngine::TXN_PAYMENT, CirculationEngine::TXN_VOUCHER_PAYMENT];
+            $placeholders = implode(', ', array_fill(0, count($earningTypes), '?'));
+
+            $todayStmt = $db->prepare(
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions
+                  WHERE merchant_wallet_id = ?
+                    AND transaction_type IN ({$placeholders})
+                    AND DATE(created_at) = CURDATE()"
+            );
+            $todayStmt->execute(array_merge([$merchantWallet['id']], $earningTypes));
+            $todaysSales = (float) $todayStmt->fetchColumn();
+
+            $totalStmt = $db->prepare(
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions
+                  WHERE merchant_wallet_id = ?
+                    AND transaction_type IN ({$placeholders})"
+            );
+            $totalStmt->execute(array_merge([$merchantWallet['id']], $earningTypes));
+            $totalEarned = (float) $totalStmt->fetchColumn();
+        }
+
+        echo json_encode([
+            'success' => true,
+            'todays_sales' => $todaysSales,
+            'total_earned' => $totalEarned,
+        ]);
+        exit;
+    }
+
+    // ── VIEW FULL ORDER DETAILS ──────────────────────────────────────────────────
+    if ($action === 'view_order') {
+        $orderId = (int) ($_POST['order_id'] ?? 0);
+        $source = trim((string) ($_POST['source'] ?? ''));
+        if (!$orderId || !$source) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order.']);
+            exit;
+        }
+
+        if ($source === 'pos') {
+            $stmt = $db->prepare(
+                "SELECT mqo.*, u.first_name, u.last_name
+                   FROM merchant_qr_orders mqo
+                   LEFT JOIN users u ON u.userID = mqo.paid_by
+                  WHERE mqo.id = ? AND mqo.merchant_user_id = ?"
+            );
+            $stmt->execute([$orderId, $ownerMerchId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                echo json_encode(['success' => false, 'message' => 'Order not found.']);
+                exit;
+            }
+
+            $items = json_decode((string) $row['items_json'], true);
+            $studentName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+
+            echo json_encode([
+                'success' => true,
+                'reference' => $row['token'],
+                'description' => $row['description'],
+                'items' => is_array($items) ? $items : [],
+                'amount' => (float) $row['amount'],
+                'status' => $row['status'],
+                'created_at' => $row['created_at'],
+                'paid_at' => $row['paid_at'],
+                'student_name' => $studentName !== '' ? $studentName : null,
+            ]);
+            exit;
+        }
+
+        if ($source === 'cart_pending') {
+            $stmt = $db->prepare(
+                "SELECT co.*, u.first_name, u.last_name
+                   FROM cart_orders co
+                   LEFT JOIN users u ON u.userID = co.student_user_id
+                  WHERE co.id = ? AND co.merchant_user_id = ?"
+            );
+            $stmt->execute([$orderId, $ownerMerchId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                echo json_encode(['success' => false, 'message' => 'Order not found.']);
+                exit;
+            }
+
+            $items = json_decode((string) $row['items_json'], true);
+            $studentName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+
+            echo json_encode([
+                'success' => true,
+                'reference' => $row['reference_no'],
+                'description' => $row['description'],
+                'items' => is_array($items) ? $items : [],
+                'amount' => (float) $row['amount'],
+                'status' => $row['status'],
+                'created_at' => $row['created_at'],
+                'paid_at' => $row['paid_at'],
+                'student_name' => $studentName !== '' ? $studentName : 'Student',
+            ]);
+            exit;
+        }
+
+        if ($source === 'cart') {
+            $merchantWallet = gjc_merchant_wallet($db, $ownerMerchId);
+            $stmt = $db->prepare(
+                "SELECT t.*, u.first_name, u.last_name, co.items_json
+                   FROM transactions t
+                   LEFT JOIN student_wallets sw ON sw.id = t.student_wallet_id
+                   LEFT JOIN users u ON u.userID = sw.user_id
+                   LEFT JOIN cart_orders co ON co.paid_ref = t.reference_no
+                  WHERE t.id = ? AND t.merchant_wallet_id = ?"
+            );
+            $stmt->execute([$orderId, $merchantWallet['id']]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                echo json_encode(['success' => false, 'message' => 'Order not found.']);
+                exit;
+            }
+
+            $studentName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+            $items = json_decode((string) ($row['items_json'] ?? ''), true);
+
+            echo json_encode([
+                'success' => true,
+                'reference' => $row['reference_no'],
+                'description' => $row['notes'],
+                'items' => is_array($items) ? $items : [],
+                'amount' => (float) $row['amount'],
+                'status' => $row['status'],
+                'created_at' => $row['created_at'],
+                'paid_at' => $row['created_at'],
+                'student_name' => $studentName !== '' ? $studentName : 'Student',
+            ]);
+            exit;
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Unknown order source.']);
+        exit;
+    }
+
+    // ── VOID / CANCEL A PENDING ORDER ───────────────────────────────────────────
+    if ($action === 'void_order') {
+        $orderId = (int) ($_POST['order_id'] ?? 0);
+        $source = trim((string) ($_POST['source'] ?? 'pos'));
+        if (!$orderId) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order.']);
+            exit;
+        }
+
+        $table = $source === 'cart_pending' ? 'cart_orders' : 'merchant_qr_orders';
+
+        $own = $db->prepare(
+            "SELECT * FROM {$table} WHERE id = ? AND merchant_user_id = ? AND status = 'pending'"
+        );
+        $own->execute([$orderId, $ownerMerchId]);
+        $order = $own->fetch(PDO::FETCH_ASSOC);
+        if (!$order) {
+            echo json_encode(['success' => false, 'message' => 'Order not found or already settled.']);
+            exit;
+        }
+
+        $db->prepare("UPDATE {$table} SET status = 'voided' WHERE id = ?")->execute([$orderId]);
+        logAudit($db, $merchantUserId, gjc_current_role(), 'TRANSACTION', $table, $order, ['status' => 'voided']);
+
+        echo json_encode(['success' => true, 'message' => 'Order voided.']);
+        exit;
+    }
+
     // ── LOOKUP STUDENT ──────────────────────────────────────────────────────────
     if ($action === 'lookup_student') {
         $studentIdInput = trim((string) ($_POST['student_id'] ?? ''));

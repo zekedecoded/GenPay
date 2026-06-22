@@ -17,8 +17,8 @@ function gjc_audit_table_sql(): string
 CREATE TABLE IF NOT EXISTS systemic_audit_trail (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    user_role ENUM('GJC Admin', 'Student', 'Merchant', 'Vendor/Staff') NOT NULL,
-    action_type ENUM('LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE') NOT NULL,
+    user_role ENUM('Finance', 'Student', 'Merchant', 'Vendor/Staff') NOT NULL,
+    action_type ENUM('LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED') NOT NULL,
     stall_id VARCHAR(20) NULL,
     affected_table VARCHAR(50) NOT NULL,
     old_value TEXT NULL,
@@ -40,10 +40,15 @@ function gjc_ensure_audit_table(PDO $pdo): void
         $pdo->exec(gjc_audit_table_sql());
         $column = $pdo->query("SHOW COLUMNS FROM systemic_audit_trail LIKE 'action_type'")->fetch(PDO::FETCH_ASSOC);
         $actionType = (string) ($column['Type'] ?? '');
-        if (
-            $column &&
-            (strpos($actionType, 'USER_IMPORT') === false || strpos($actionType, 'MERCHANT_CREATE') === false)
-        ) {
+        $requiredActions = ['USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED'];
+        $missingAny = false;
+        foreach ($requiredActions as $required) {
+            if (strpos($actionType, $required) === false) {
+                $missingAny = true;
+                break;
+            }
+        }
+        if ($column && $missingAny) {
             $pdo->exec(
                 "ALTER TABLE systemic_audit_trail
                  MODIFY action_type ENUM(
@@ -54,8 +59,28 @@ function gjc_ensure_audit_table(PDO $pdo): void
                     'MENU_MUTATION',
                     'STALL_UPDATE',
                     'USER_IMPORT',
-                    'MERCHANT_CREATE'
+                    'MERCHANT_CREATE',
+                    'USER_ACCOUNT',
+                    'MERCHANT_ONBOARDING',
+                    'PRODUCT_RESTRICTION',
+                    'LOGIN_FAILED'
                  ) NOT NULL"
+            );
+        }
+
+        // Renamed 'GJC Admin' -> 'Finance'. Widen the enum, migrate existing
+        // rows, then drop the old label once nothing references it.
+        $roleColumn = $pdo->query("SHOW COLUMNS FROM systemic_audit_trail LIKE 'user_role'")->fetch(PDO::FETCH_ASSOC);
+        $roleType = (string) ($roleColumn['Type'] ?? '');
+        if ($roleColumn && strpos($roleType, "'Finance'") === false) {
+            $pdo->exec(
+                "ALTER TABLE systemic_audit_trail
+                 MODIFY user_role ENUM('GJC Admin', 'Finance', 'Student', 'Merchant', 'Vendor/Staff') NOT NULL"
+            );
+            $pdo->exec("UPDATE systemic_audit_trail SET user_role = 'Finance' WHERE user_role = 'GJC Admin'");
+            $pdo->exec(
+                "ALTER TABLE systemic_audit_trail
+                 MODIFY user_role ENUM('Finance', 'Student', 'Merchant', 'Vendor/Staff') NOT NULL"
             );
         }
     } catch (Throwable) {
@@ -94,7 +119,7 @@ function gjc_audit_role(string $role): string
     $role = strtolower(trim($role));
 
     return match ($role) {
-        'gjc admin', 'admin', 'finance', 'super_admin', 'cashier' => 'GJC Admin',
+        'gjc admin', 'admin', 'finance', 'super_admin', 'cashier' => 'Finance',
         'student' => 'Student',
         'merchant', 'merchant_admin' => 'Merchant',
         'vendor/staff', 'vendor', 'staff', 'merchant_staff' => 'Vendor/Staff',
@@ -120,7 +145,7 @@ function gjc_audit_role_from_user(PDO $pdo, int $userId): string
         return match ((int) ($user['roleID'] ?? 0)) {
             1 => 'Student',
             2, 5 => 'Merchant',
-            3, 4 => 'GJC Admin',
+            3, 4 => 'Finance',
             6 => 'Vendor/Staff',
             default => gjc_audit_role((string) ($_SESSION['role'] ?? 'student')),
         };
@@ -154,7 +179,7 @@ function logAudit(
             return;
         }
 
-        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE'];
+        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED'];
         $action_type = strtoupper(trim($action_type));
         if (!in_array($action_type, $allowedActions, true)) {
             return;

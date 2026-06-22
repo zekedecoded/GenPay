@@ -18,13 +18,16 @@ $recentPayments = [];
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan & Pay | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=41">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -53,32 +56,44 @@ $recentPayments = [];
 
             <nav class="student-menu">
                 <a href="<?= DASHBOARD_URL ?>">
-                    <img src="<?= ICONS_URL ?>/dashboard.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
                     <span class="student-nav-text">Dashboard</span>
                 </a>
 
-                <a href="<?= STUDENT_URL ?>/scan.php" class="active">
-                    <img src="<?= ICONS_URL ?>/qr.png" class="student-nav-icon" alt="">
-                    <span class="student-nav-text">Scan &amp; Pay</span>
+                <a href="<?= STUDENT_URL ?>/cart.php">
+                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
+                    <span class="student-nav-text">Shop Cart</span>
+                </a>
+
+                <a href="<?= STUDENT_URL ?>/transfer.php">
+                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
+                    <span class="student-nav-text">Transfer Tokens</span>
+                </a>
+
+                <a href="<?= STUDENT_URL ?>/topup_request.php">
+                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
+                    <span class="student-nav-text">Top-Up</span>
                 </a>
 
                 <a href="<?= STUDENT_URL ?>/history.php">
-                    <img src="<?= ICONS_URL ?>/transactions.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-receipt student-nav-icon"></i>
                     <span class="student-nav-text">History</span>
                 </a>
 
                 <a href="<?= STUDENT_URL ?>/profile.php">
-                    <img src="<?= ICONS_URL ?>/users.png" class="student-nav-icon" alt="">
+                    <i class="fa-solid fa-user student-nav-icon"></i>
                     <span class="student-nav-text">Profile</span>
                 </a>
             </nav>
 
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout">
-                <img src="<?= ICONS_URL ?>/logout.png" class="student-logout-icon" alt="">
+            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
+               onclick="openLogoutModal(event);">
+                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
                 <span>Logout</span>
             </a>
 
         </aside>
+        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
 
         <main class="student-main">
 
@@ -147,23 +162,6 @@ $recentPayments = [];
                     <div class="scan-result-box" id="scanResultBox">
                         <span>Scan Result</span>
                         <div class="scan-result-empty" id="scanResultEmpty">No QR detected yet.</div>
-                        <div class="scan-payment-card d-none" id="scanPaymentCard">
-                            <div class="scan-payment-grid">
-                                <div>
-                                    <label>Merchant</label>
-                                    <strong id="scanMerchantName">--</strong>
-                                </div>
-                                <div>
-                                    <label>Item</label>
-                                    <strong id="scanItemDesc">--</strong>
-                                </div>
-                                <div>
-                                    <label>Amount</label>
-                                    <strong id="scanAmount">--</strong>
-                                </div>
-                            </div>
-                            <button type="button" class="scan-action-btn" id="scanPayNowBtn">Pay Now</button>
-                        </div>
                         <div id="scanResultText" class="scan-result-note d-none"></div>
                     </div>
                 </div>
@@ -256,6 +254,39 @@ $recentPayments = [];
 
     </div>
 
+    <div class="modal fade" id="scanConfirmModal" tabindex="-1" aria-labelledby="scanConfirmModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scanConfirmModalTitle">Confirm Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="scan-payment-card" style="margin-top:0;">
+                        <div class="scan-payment-grid">
+                            <div>
+                                <label>Merchant</label>
+                                <strong id="scanMerchantName">--</strong>
+                            </div>
+                            <div>
+                                <label>Item</label>
+                                <strong id="scanItemDesc">--</strong>
+                            </div>
+                            <div>
+                                <label>Amount</label>
+                                <strong id="scanAmount">--</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="scan-action-btn secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="scan-action-btn" id="scanPayNowBtn">Pay Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
@@ -267,6 +298,8 @@ $recentPayments = [];
         document.getElementById("studentSidebar").classList.toggle("collapsed");
     }
 
+    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
+
     const video = document.getElementById("qrVideo");
     const canvas = document.getElementById("qrCanvas");
     const canvasContext = canvas.getContext("2d");
@@ -274,7 +307,8 @@ $recentPayments = [];
     const cameraStatus = document.getElementById("cameraStatus");
     const scanResultEmpty = document.getElementById("scanResultEmpty");
     const scanResultText = document.getElementById("scanResultText");
-    const scanPaymentCard = document.getElementById("scanPaymentCard");
+    const scanConfirmModalEl = document.getElementById("scanConfirmModal");
+    const scanConfirmModal = bootstrap.Modal.getOrCreateInstance(scanConfirmModalEl);
     const scanMerchantName = document.getElementById("scanMerchantName");
     const scanItemDesc = document.getElementById("scanItemDesc");
     const scanAmount = document.getElementById("scanAmount");
@@ -306,7 +340,6 @@ $recentPayments = [];
 
     function resetScanCard() {
         pendingPayment = null;
-        scanPaymentCard.classList.add("d-none");
         scanResultText.classList.add("d-none");
         scanResultText.textContent = "";
         scanResultText.className = "scan-result-note d-none";
@@ -315,7 +348,6 @@ $recentPayments = [];
     }
 
     function showScanMessage(message, tone = "note") {
-        scanPaymentCard.classList.add("d-none");
         scanResultEmpty.classList.add("d-none");
         scanResultText.classList.remove("d-none");
         scanResultText.className = tone === "error" ? "scan-result-error" : "scan-result-note";
@@ -324,13 +356,10 @@ $recentPayments = [];
 
     function showPaymentCard(data) {
         pendingPayment = data;
-        scanResultEmpty.classList.add("d-none");
-        scanResultText.classList.add("d-none");
         scanMerchantName.textContent = data.merchant || "--";
         scanItemDesc.textContent = data.desc || data.description || "--";
-        scanAmount.textContent = "₱" + parseFloat(data.price).toFixed(2);
         scanAmount.textContent = "PHP " + parseFloat(data.amount || data.price || 0).toFixed(2);
-        scanPaymentCard.classList.remove("d-none");
+        scanConfirmModal.show();
     }
 
     function parseQrPayload(rawValue) {
@@ -431,17 +460,12 @@ $recentPayments = [];
     }
 
     async function payNow(payment) {
-        const merchant = payment.merchant || "Merchant";
         const amount = payment.amount || payment.price || 0;
         const desc = payment.desc || payment.description || "purchase";
         const merchantWalletId = parseInt(payment.merchant_wallet_id || 0, 10);
 
         if (!payment.token && !merchantWalletId) {
             alert("This QR code is missing merchant wallet details. Ask the merchant to generate a new QR.");
-            return;
-        }
-
-        if (!confirm("Pay PHP " + parseFloat(amount).toFixed(2) + " to " + merchant + " for " + desc + "?")) {
             return;
         }
 
@@ -494,6 +518,15 @@ $recentPayments = [];
     });
 
     resumeScannerBtn.addEventListener("click", function() {
+        lastDetectedPayload = "";
+        scanningPaused = false;
+        resetScanCard();
+        setCameraStatus("Camera Active", "active");
+    });
+
+    // Cancel button, the X, or clicking outside the modal all end up here -
+    // Pay Now never dismisses the modal itself, so this only fires on cancel.
+    scanConfirmModalEl.addEventListener("hidden.bs.modal", function() {
         lastDetectedPayload = "";
         scanningPaused = false;
         resetScanCard();

@@ -22,10 +22,13 @@ $currentPage = "dashboard";
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Admin Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
@@ -46,7 +49,7 @@ $currentPage = "dashboard";
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Admin Dashboard</h1>
@@ -56,7 +59,7 @@ $currentPage = "dashboard";
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -156,9 +159,9 @@ $currentPage = "dashboard";
             <section class="row g-3 mb-5">
 
                 <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="mini-metric-card">
+                    <a href="<?= ADMIN_URL ?>/users.php?exclude_admin=1" class="mini-metric-card">
                         <div class="mini-icon-wrap">
-                            <img src="<?= ICONS_URL ?>/users.png" alt="">
+                            <i class="fa-solid fa-users"></i>
                         </div>
                         <div class="mini-metric-info">
                             <span>Total Users</span>
@@ -166,13 +169,13 @@ $currentPage = "dashboard";
                                 "total_users"
                             ]; ?></h3>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="mini-metric-card">
+                    <a href="<?= ADMIN_URL ?>/users.php?role=student" class="mini-metric-card">
                         <div class="mini-icon-wrap">
-                            <img src="<?= ICONS_URL ?>/students.png" alt="">
+                            <i class="fa-solid fa-user-graduate"></i>
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Students</span>
@@ -180,13 +183,13 @@ $currentPage = "dashboard";
                                 "active_students"
                             ]; ?></h3>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="mini-metric-card">
+                    <a href="<?= ADMIN_URL ?>/users.php?role=merchant" class="mini-metric-card">
                         <div class="mini-icon-wrap">
-                            <img src="<?= ICONS_URL ?>/merchants.png" alt="">
+                            <i class="fa-solid fa-store"></i>
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Merchants</span>
@@ -194,13 +197,13 @@ $currentPage = "dashboard";
                                 "active_merchants"
                             ]; ?></h3>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <div class="col-12 col-sm-6 col-xl-3">
-                    <div class="mini-metric-card">
+                    <a href="<?= ADMIN_URL ?>/visitors.php" class="mini-metric-card">
                         <div class="mini-icon-wrap">
-                            <img src="<?= ICONS_URL ?>/visitors.png" alt="">
+                            <i class="fa-solid fa-person-walking"></i>
                         </div>
                         <div class="mini-metric-info">
                             <span>Active Visitors</span>
@@ -208,7 +211,7 @@ $currentPage = "dashboard";
                                 "active_visitors"
                             ]; ?></h3>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
             </section>

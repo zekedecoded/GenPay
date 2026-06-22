@@ -14,11 +14,14 @@ $currentPage = 'settings';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Settings | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/settings.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -37,7 +40,7 @@ $currentPage = 'settings';
         <main class="admin-main settings-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>System Settings</h1>
@@ -47,7 +50,7 @@ $currentPage = 'settings';
                 <div class="admin-user">
                     <span><?= gjc_e($currentUser['name']) ?></span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -56,7 +59,7 @@ $currentPage = 'settings';
 
                 <div class="settings-panel-header">
                     <h3>
-                        <img src="<?= ICONS_URL ?>/settings.png" alt="">
+                        <i class="fa-solid fa-gear"></i>
                         System Configuration
                     </h3>
                 </div>
@@ -146,7 +149,7 @@ $currentPage = 'settings';
 
                 <div class="settings-panel-header">
                     <h3>
-                        <img src="<?= ICONS_URL ?>/info.png" alt="">
+                        <i class="fa-solid fa-circle-info"></i>
                         System Information
                     </h3>
                 </div>

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
@@ -23,11 +23,14 @@ $currentPage = 'transactions';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Transactions | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/transactions.css?v=2">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -45,7 +48,7 @@ $currentPage = 'transactions';
         <main class="admin-main transactions-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Transactions</h1>
@@ -55,7 +58,7 @@ $currentPage = 'transactions';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -64,7 +67,7 @@ $currentPage = 'transactions';
 
                 <div class="transaction-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/transactions.png" alt="">
+                        <i class="fa-solid fa-receipt"></i>
                     </div>
                     <span>Total Transactions</span>
                     <h2><?php echo (int) $stats['total_transactions']; ?></h2>
@@ -73,7 +76,7 @@ $currentPage = 'transactions';
 
                 <div class="transaction-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/volume.png" alt="">
+                        <i class="fa-solid fa-chart-line"></i>
                     </div>
                     <span>Today's Volume</span>
                     <h2><?php echo gjc_money($stats['todays_volume']); ?></h2>
@@ -82,7 +85,7 @@ $currentPage = 'transactions';
 
                 <div class="transaction-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/pending-topups.png" alt="">
+                        <i class="fa-solid fa-hourglass-half"></i>
                     </div>
                     <span>Pending Transactions</span>
                     <h2><?php echo (int) $stats['pending_transactions']; ?></h2>
@@ -91,7 +94,7 @@ $currentPage = 'transactions';
 
                 <div class="transaction-stat-card">
                     <div class="stat-icon-wrap">
-                        <img src="<?= ICONS_URL ?>/check.png" alt="">
+                        <i class="fa-solid fa-circle-check"></i>
                     </div>
                     <span>Completed Today</span>
                     <h2><?php echo (int) $stats['completed_today']; ?></h2>

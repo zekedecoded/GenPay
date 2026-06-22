@@ -5,8 +5,11 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['finance']);
 
+$roleFilter    = trim((string) ($_GET['role'] ?? ''));
+$excludeAdmin  = !empty($_GET['exclude_admin']);
+
 $query = "
-    SELECT 
+    SELECT
         u.userID,
         u.first_name,
         u.last_name,
@@ -16,10 +19,24 @@ $query = "
     FROM users u
     LEFT JOIN role r ON u.roleID = r.roleID
     LEFT JOIN wallet w ON u.userID = w.userID
-    ORDER BY u.userID DESC
 ";
+$conditions = [];
+$params = [];
+if ($roleFilter !== '') {
+    $conditions[] = 'LOWER(COALESCE(r.role_name, "")) = ?';
+    $params[] = strtolower($roleFilter);
+}
+if ($excludeAdmin) {
+    $conditions[] = 'LOWER(COALESCE(r.role_name, "")) != ?';
+    $params[] = 'finance';
+}
+if ($conditions) {
+    $query .= ' WHERE ' . implode(' AND ', $conditions);
+}
+$query .= ' ORDER BY u.userID DESC';
+
 $stmt = $db->prepare($query);
-$stmt->execute();
+$stmt->execute($params);
 $dbUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $users = [];
@@ -46,11 +63,14 @@ $currentPage = 'users';
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <title>Users Management | GenPay</title>
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/users.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
@@ -69,7 +89,7 @@ $currentPage = 'users';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()">Menu</button>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Users Management</h1>
@@ -79,7 +99,7 @@ $currentPage = 'users';
                 <div class="admin-user">
                     <span>Admin</span>
                     <div class="avatar">
-                        <img src="<?= ICONS_URL ?>/admin.png" alt="Admin">
+                        <i class="fa-solid fa-user-tie"></i>
                     </div>
                 </div>
             </header>
@@ -93,7 +113,7 @@ $currentPage = 'users';
                     </div>
 
                     <button type="button" class="add-user-btn" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <span>+</span> Add User
+                        <i class="fa-solid fa-user-plus"></i> Add User
                     </button>
                 </div>
 
@@ -107,12 +127,10 @@ $currentPage = 'users';
                     <div class="premium-field">
                         <label>Role</label>
                         <select name="role">
-                            <option value="">All Roles</option>
-                            <option value="finance">Finance</option>
-                            <option value="user">User</option>
-                            <option value="merchant">Merchant</option>
-                            <option value="parent">Parent</option>
-                            <option value="visitor">Visitor</option>
+                            <option value="" <?= $roleFilter === '' ? 'selected' : '' ?>>All Roles</option>
+                            <option value="student" <?= $roleFilter === 'student' ? 'selected' : '' ?>>Student</option>
+                            <option value="merchant" <?= $roleFilter === 'merchant' ? 'selected' : '' ?>>Merchant</option>
+                            <option value="finance" <?= $roleFilter === 'finance' ? 'selected' : '' ?>>Finance</option>
                         </select>
                     </div>
 
@@ -237,7 +255,7 @@ $currentPage = 'users';
 
                 <div class="modal-header add-user-modal-header">
                     <h5 class="modal-title">
-                        <span class="modal-title-icon">+</span>
+                        <span class="modal-title-icon"><i class="fa-solid fa-user-plus"></i></span>
                         Create New User
                     </h5>
 

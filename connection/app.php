@@ -72,6 +72,35 @@ function gjc_table_columns(PDO $db, string $table): array
     return $cache[$table] = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 }
 
+/**
+ * Cross-checks a product name against the admin-managed restricted_products
+ * blacklist. Shared by inventory add/edit and the student cart scanner so
+ * both enforcement points use the exact same nutritional-compliance rule.
+ */
+function gjc_check_restricted(PDO $db, string $productName): ?string
+{
+    if (!gjc_table_exists($db, 'restricted_products')) {
+        return null;
+    }
+
+    $restrictions = $db->query(
+        "SELECT product_name, match_type, reason FROM restricted_products WHERE is_active = 1"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $nameLower = strtolower($productName);
+    foreach ($restrictions as $r) {
+        $rpLower = strtolower($r['product_name']);
+        $hit = ($r['match_type'] === 'exact')
+            ? ($nameLower === $rpLower)
+            : (strpos($nameLower, $rpLower) !== false);
+        if ($hit) {
+            return $r['reason'];
+        }
+    }
+
+    return null;
+}
+
 function gjc_column(PDO $db, string $table, array $candidates): ?string
 {
     $columns = gjc_table_columns($db, $table);
@@ -457,6 +486,216 @@ function gjc_ensure_merchant_qr_orders_schema(PDO $db): void
     }
 }
 
+/**
+ * Makes merchant_inventory.sku safe to use as a scan key for the student
+ * cart: a SKU must be unique within a single merchant's catalog (NULL skus
+ * are exempt, so optional SKUs still work). Attempts the index once; if
+ * older duplicate data blocks it, the ALTER is skipped silently — app-layer
+ * checks in merchant/api/inventory.php still prevent new collisions either way.
+ */
+function gjc_ensure_inventory_sku_index(PDO $db): void
+{
+    if (!gjc_table_exists($db, "merchant_inventory")) {
+        return;
+    }
+
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) FROM information_schema.STATISTICS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'merchant_inventory' AND INDEX_NAME = 'uq_merchant_sku'"
+    );
+    $stmt->execute();
+    if ((int) $stmt->fetchColumn() > 0) {
+        return;
+    }
+
+    try {
+        $db->exec(
+            "ALTER TABLE merchant_inventory ADD UNIQUE KEY uq_merchant_sku (merchant_user_id, sku)"
+        );
+    } catch (\Throwable $e) {
+        // Existing duplicate SKUs from before this rule existed — leave the
+        // index off for now; app-layer validation still blocks new clashes.
+    }
+}
+
+/**
+ * Re-reads every line of the student's session cart against
+ * merchant_inventory right now, drops any item that became
+ * unavailable/restricted/out-of-stock since it was scanned (reporting why),
+ * and returns a ready-to-render/ready-to-charge snapshot. Shared by the
+ * cart UI (student/api/cart.php) and checkout (student/api/checkout.php) so
+ * both always agree on what the cart actually contains.
+ */
+function gjc_cart_snapshot(PDO $db): array
+{
+    $cart = $_SESSION['cart'] ?? ['merchant_user_id' => null, 'items' => []];
+    $itemIds = array_keys($cart['items'] ?? []);
+
+    if (empty($itemIds)) {
+        $_SESSION['cart'] = ['merchant_user_id' => null, 'items' => []];
+        return [
+            'merchant_user_id' => null,
+            'merchant_label' => null,
+            'lines' => [],
+            'total' => 0.0,
+            'dropped' => [],
+        ];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+    $stmt = $db->prepare(
+        "SELECT id, sku, product_name, price, stock_qty, is_available, is_restricted, restriction_note, merchant_user_id
+           FROM merchant_inventory
+          WHERE id IN ({$placeholders})"
+    );
+    $stmt->execute($itemIds);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $rowsById = [];
+    foreach ($rows as $row) {
+        $rowsById[(int) $row['id']] = $row;
+    }
+
+    $lines = [];
+    $dropped = [];
+    $total = 0.0;
+    $merchantUserId = $cart['merchant_user_id'] ?? null;
+
+    foreach ($cart['items'] as $itemId => $qty) {
+        $row = $rowsById[(int) $itemId] ?? null;
+
+        if (!$row) {
+            $dropped[] = ['name' => "Item #{$itemId}", 'reason' => 'This product no longer exists.'];
+            unset($_SESSION['cart']['items'][$itemId]);
+            continue;
+        }
+        if ((int) $row['is_restricted'] === 1) {
+            $dropped[] = ['name' => $row['product_name'], 'reason' => $row['restriction_note'] ?: 'This item now violates campus health guidelines.'];
+            unset($_SESSION['cart']['items'][$itemId]);
+            continue;
+        }
+        if ((int) $row['is_available'] !== 1) {
+            $dropped[] = ['name' => $row['product_name'], 'reason' => 'The merchant marked this item unavailable.'];
+            unset($_SESSION['cart']['items'][$itemId]);
+            continue;
+        }
+
+        $qty = min((int) $qty, (int) $row['stock_qty']);
+        if ($qty <= 0) {
+            $dropped[] = ['name' => $row['product_name'], 'reason' => 'Out of stock.'];
+            unset($_SESSION['cart']['items'][$itemId]);
+            continue;
+        }
+        $_SESSION['cart']['items'][$itemId] = $qty;
+
+        $lineTotal = round((float) $row['price'] * $qty, 2);
+        $total += $lineTotal;
+        $lines[] = [
+            'id' => (int) $row['id'],
+            'sku' => $row['sku'],
+            'name' => $row['product_name'],
+            'price' => round((float) $row['price'], 2),
+            'qty' => $qty,
+            'stock_qty' => (int) $row['stock_qty'],
+            'line_total' => $lineTotal,
+        ];
+    }
+
+    if (empty($_SESSION['cart']['items'])) {
+        $_SESSION['cart']['merchant_user_id'] = null;
+        $merchantUserId = null;
+    }
+
+    return [
+        'merchant_user_id' => $merchantUserId,
+        'merchant_label' => $merchantUserId ? gjc_merchant_display_name($db, $merchantUserId) : null,
+        'lines' => $lines,
+        'total' => round($total, 2),
+        'dropped' => $dropped,
+    ];
+}
+
+/**
+ * Resolves a merchant's public display name (stall name, falling back to
+ * their account name) from their user id. Shared by the cart snapshot and
+ * the Shop Cart order endpoints so every screen shows the same label.
+ */
+function gjc_merchant_display_name(PDO $db, int $merchantUserId): ?string
+{
+    $stmt = $db->prepare(
+        "SELECT m.stall_name, u.first_name, u.last_name
+           FROM users u
+           LEFT JOIN merchant m ON m.userID = u.userID
+          WHERE u.userID = ?
+          LIMIT 1"
+    );
+    $stmt->execute([$merchantUserId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return null;
+    }
+
+    return $row['stall_name'] ?: trim($row['first_name'] . ' ' . $row['last_name']);
+}
+
+/**
+ * Widens transactions.transaction_type to include 'refund' (used when a
+ * merchant issues a Return). Existing rows/values are untouched — this only
+ * adds a new label to the ENUM, mirroring the pattern already used for
+ * systemic_audit_trail.action_type in connection/audit_logger.php.
+ */
+function gjc_ensure_transaction_refund_type(PDO $db): void
+{
+    try {
+        $column = $db->query("SHOW COLUMNS FROM transactions LIKE 'transaction_type'")->fetch(PDO::FETCH_ASSOC);
+        $type = (string) ($column['Type'] ?? '');
+        if ($column && strpos($type, "'refund'") === false) {
+            $db->exec(
+                "ALTER TABLE transactions
+                 MODIFY transaction_type ENUM(
+                    'cash_in',
+                    'payment',
+                    'voucher_payment',
+                    'merchant_settle',
+                    'voucher_create',
+                    'voucher_expire',
+                    'cap_increase',
+                    'refund'
+                 ) NOT NULL"
+            );
+        }
+    } catch (\Throwable $e) {
+        // Leave the ENUM as-is; the insert below will surface the failure clearly.
+    }
+}
+
+/**
+ * Pending Shop Cart orders — a student submits a cart (no money moves yet),
+ * the merchant sees it immediately in the Live Order Queue, and the student
+ * later pays by scanning the merchant's static Wallet QR at the counter.
+ */
+function gjc_ensure_cart_orders_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS cart_orders (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            reference_no VARCHAR(30) NOT NULL UNIQUE,
+            student_user_id INT UNSIGNED NOT NULL,
+            student_wallet_id INT UNSIGNED NOT NULL,
+            merchant_user_id INT UNSIGNED NOT NULL,
+            merchant_wallet_id INT UNSIGNED NOT NULL,
+            description TEXT NULL,
+            items_json TEXT NOT NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            paid_at DATETIME NULL,
+            paid_ref VARCHAR(40) NULL,
+            INDEX idx_cart_orders_student (student_user_id, status),
+            INDEX idx_cart_orders_merchant (merchant_user_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+}
+
 function gjc_student_wallet(PDO $db, int $userId): array
 {
     if ($userId && gjc_table_exists($db, "student_wallets")) {
@@ -573,6 +812,12 @@ function gjc_reference(string $prefix): string
         date("Ymd") .
         "-" .
         strtoupper(bin2hex(random_bytes(3)));
+}
+
+/** Fixed bookable times for stall application Step 2 meetings - one applicant per slot. */
+function gjc_meeting_time_slots(): array
+{
+    return ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00'];
 }
 
 function gjc_transaction_type_options(): array
@@ -1155,9 +1400,19 @@ function gjc_admin_dashboard_data(PDO $db): array
             ->fetchColumn();
     }
 
-    $totalUsers = gjc_table_exists($db, "users")
-        ? (int) $db->query("SELECT COUNT(*) FROM users")->fetchColumn()
-        : 0;
+    $totalUsers = 0;
+    if (gjc_table_exists($db, "users")) {
+        $totalUsers = gjc_table_exists($db, "role")
+            ? (int) $db->query(
+                "SELECT COUNT(*)
+                   FROM users u
+                   LEFT JOIN role r ON u.roleID = r.roleID
+                  WHERE LOWER(COALESCE(r.role_name, '')) != 'finance'"
+            )->fetchColumn()
+            : (int) $db->query(
+                "SELECT COUNT(*) FROM users WHERE roleID NOT IN (3, 4)"
+            )->fetchColumn();
+    }
 
     return [
         "system_financials" => [
@@ -1222,9 +1477,9 @@ function gjc_require_sub_role(array $allowedSubRoles): void
 
 function gjc_token_display(float $phpAmount): string
 {
-    // Cosmetic display: ₱10 = 1 Token
+    // Cosmetic display: ₱10 = 1 GenCoin
     $tokens = $phpAmount / 10.0;
-    return number_format($tokens, 1) . " T";
+    return number_format($tokens, 1) . " GC";
 }
 
 function gjc_p2p_daily_sent(PDO $db, int $userId): float

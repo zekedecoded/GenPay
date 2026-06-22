@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
@@ -48,12 +48,15 @@ $stageColors = [
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="/general_de_jesus_edupay/assets/icons/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Merchant Onboarding | GenPay Admin</title>
     <meta name="description" content="Multi-stage merchant vendor application pipeline for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -120,25 +123,26 @@ $stageColors = [
             <div class="brand-text"><h4>GenPay</h4><span>Admin Portal</span></div>
         </div>
         <nav class="sidebar-menu">
-            <a href="<?= DASHBOARD_URL ?>"><img src="<?= ICONS_URL ?>/dashboard.png" class="nav-icon" alt=""><span class="nav-text">Dashboard</span></a>
-            <a href="<?= ADMIN_URL ?>/users.php"><img src="<?= ICONS_URL ?>/users.png" class="nav-icon" alt=""><span class="nav-text">Users</span></a>
-            <a href="<?= ADMIN_URL ?>/leases.php"><img src="<?= ICONS_URL ?>/encashments.png" class="nav-icon" alt=""><span class="nav-text">Leases &amp; Rent</span></a>
-            <a href="<?= ADMIN_URL ?>/transactions.php"><img src="<?= ICONS_URL ?>/transactions.png" class="nav-icon" alt=""><span class="nav-text">Transactions</span></a>
+            <a href="<?= DASHBOARD_URL ?>"><i class="fa-solid fa-gauge-high nav-icon"></i><span class="nav-text">Dashboard</span></a>
+            <a href="<?= ADMIN_URL ?>/users.php"><i class="fa-solid fa-users nav-icon"></i><span class="nav-text">Users</span></a>
+            <a href="<?= ADMIN_URL ?>/leases.php"><i class="fa-solid fa-file-signature nav-icon"></i><span class="nav-text">Leases &amp; Rent</span></a>
+            <a href="<?= ADMIN_URL ?>/transactions.php"><i class="fa-solid fa-receipt nav-icon"></i><span class="nav-text">Transactions</span></a>
         </nav>
-        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn"><img src="<?= ICONS_URL ?>/logout.png" class="logout-icon" alt=""><span>Logout</span></a>
+        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn" onclick="openLogoutModal(event);"><i class="fa-solid fa-arrow-right-from-bracket logout-icon"></i><span>Logout</span></a>
     </aside>
+    <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
     <?php } ?>
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')">&#9776;</button>
+            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Merchant Onboarding</h1>
                 <p>Multi-stage vendor application pipeline with compliance and executive review.</p>
             </div>
             <div class="admin-user">
                 <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="avatar"><img src="<?= ICONS_URL ?>/admin.png" alt="Admin"></div>
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
 
@@ -162,7 +166,7 @@ $stageColors = [
 
         <div class="d-flex justify-content-end mb-3">
             <button class="view-btn" data-bs-toggle="modal" data-bs-target="#newAppModal" id="btn-new-application">
-                + Register Application
+                <i class="fa-solid fa-store"></i> Register Application
             </button>
         </div>
 

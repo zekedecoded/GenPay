@@ -7,29 +7,12 @@ require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
+gjc_ensure_inventory_sku_index($db);
 
 $action         = trim((string) ($_POST['action'] ?? ''));
 $merchantUserId = gjc_user_id();
 $ownerMerchId   = gjc_merchant_owner_id($db, $merchantUserId);
 $isMerchAdmin   = gjc_is_merchant_admin() || (gjc_current_role() === 'merchant' && !gjc_is_merchant_staff());
-
-// ── Helper: check against restricted_products ──────────────────────────────
-function gjc_check_restricted(PDO $db, string $productName): ?string {
-    if (!gjc_table_exists($db, 'restricted_products')) return null;
-    $restrictions = $db->query(
-        "SELECT product_name, match_type, reason FROM restricted_products WHERE is_active = 1"
-    )->fetchAll(PDO::FETCH_ASSOC);
-
-    $nameLower = strtolower($productName);
-    foreach ($restrictions as $r) {
-        $rpLower = strtolower($r['product_name']);
-        $hit = ($r['match_type'] === 'exact')
-            ? ($nameLower === $rpLower)
-            : (strpos($nameLower, $rpLower) !== false);
-        if ($hit) return $r['reason'];
-    }
-    return null;
-}
 
 try {
     switch ($action) {
@@ -51,6 +34,17 @@ try {
             if (!$productName || $price < 0) {
                 echo json_encode(['success' => false, 'message' => 'Product name and valid price are required.']);
                 exit;
+            }
+
+            if ($sku !== '') {
+                $dupe = $db->prepare(
+                    "SELECT id FROM merchant_inventory WHERE merchant_user_id = ? AND LOWER(sku) = LOWER(?)"
+                );
+                $dupe->execute([$merchantUserId, $sku]);
+                if ($dupe->fetchColumn()) {
+                    echo json_encode(['success' => false, 'message' => "SKU \"{$sku}\" is already used by another product. Each SKU must be unique since it doubles as the scan barcode."]);
+                    exit;
+                }
             }
 
             // Restriction check
@@ -141,6 +135,17 @@ try {
             if (!$oldItem) {
                 echo json_encode(['success' => false, 'message' => 'Item not found in your inventory.']);
                 exit;
+            }
+
+            if ($sku !== '') {
+                $dupe = $db->prepare(
+                    "SELECT id FROM merchant_inventory WHERE merchant_user_id = ? AND LOWER(sku) = LOWER(?) AND id != ?"
+                );
+                $dupe->execute([$merchantUserId, $sku, $itemId]);
+                if ($dupe->fetchColumn()) {
+                    echo json_encode(['success' => false, 'message' => "SKU \"{$sku}\" is already used by another product. Each SKU must be unique since it doubles as the scan barcode."]);
+                    exit;
+                }
             }
 
             $restrictionReason = gjc_check_restricted($db, $productName);

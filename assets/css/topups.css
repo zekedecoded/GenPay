@@ -45,10 +45,9 @@
   z-index: 2;
 }
 
-.stat-icon-wrap img {
-  width: 27px;
-  height: 27px;
-  object-fit: contain;
+.stat-icon-wrap i {
+  font-size: 23px;
+  color: #fff;
 }
 
 .topup-stat-card span,

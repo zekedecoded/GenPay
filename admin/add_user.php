@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/audit_logger.php';
 
 gjc_require_role(['finance']);
 
@@ -60,6 +61,22 @@ if ($userId > 0) {
         gjc_merchant_wallet($db, $userId);
     }
 }
+
+logAudit(
+    $db,
+    gjc_user_id(),
+    gjc_current_role(),
+    'USER_ACCOUNT',
+    'users',
+    null,
+    [
+        'event' => 'created',
+        'user_id' => $userId,
+        'name' => trim($firstName . ' ' . $lastName),
+        'email' => $email,
+        'role' => $role,
+    ]
+);
 
 header('Location: ' . ADMIN_URL . '/users.php?created=1');
 exit;

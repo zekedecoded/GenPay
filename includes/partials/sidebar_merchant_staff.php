@@ -15,24 +15,22 @@ $currentPage = $currentPage ?? '';
     </div>
     <nav class="merchant-menu">
         <a href="<?= DASHBOARD_URL ?>" class="<?= $currentPage === 'dashboard' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/dashboard.png" class="merchant-nav-icon" alt="">
+            <i class="fa-solid fa-gauge-high merchant-nav-icon"></i>
             <span class="merchant-nav-text">Dashboard</span>
         </a>
         <a href="<?= MERCHANT_URL ?>/pos.php" class="<?= $currentPage === 'pos' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/payment.png" class="merchant-nav-icon" alt="">
+            <i class="fa-solid fa-cash-register merchant-nav-icon"></i>
             <span class="merchant-nav-text">POS / Transactions</span>
         </a>
         <a href="<?= MERCHANT_URL ?>/inventory.php" class="<?= $currentPage === 'inventory' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/analytics.png" class="merchant-nav-icon" alt="">
+            <i class="fa-solid fa-boxes-stacked merchant-nav-icon"></i>
             <span class="merchant-nav-text">Inventory Stock</span>
         </a>
-        <a href="<?= MERCHANT_URL ?>/qrcode.php" class="<?= $currentPage === 'qrcode' ? 'active' : '' ?>">
-            <img src="<?= ICONS_URL ?>/qr.png" class="merchant-nav-icon" alt="">
-            <span class="merchant-nav-text">Generate QR</span>
-        </a>
     </nav>
-    <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout">
-        <img src="<?= ICONS_URL ?>/logout.png" class="merchant-logout-icon" alt="">
+    <a href="<?= BASE_URL ?>/logout.php" class="merchant-logout"
+       onclick="openLogoutModal(event);">
+        <i class="fa-solid fa-arrow-right-from-bracket merchant-logout-icon"></i>
         <span>Logout</span>
     </a>
 </aside>
+<?php require __DIR__ . '/logout_modal.php'; ?>
