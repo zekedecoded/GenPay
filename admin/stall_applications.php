@@ -27,6 +27,7 @@ require_once __DIR__ . '/../connection/StallManager.php';
 gjc_require_role(['finance']);
 gjc_ensure_stall_application_workflow_schema($db);
 gjc_ensure_archived_rejections_schema($db);
+gjc_ensure_meeting_scheduling_schema($db);
 $currentUser = gjc_current_user($db);
 $currentPage = 'stall_applications';
 $adminId     = gjc_user_id();
@@ -170,6 +171,10 @@ const STEP_LABELS = [
                 </select>
             </div>
 
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#meetingSettingsModal" onclick="loadMeetingSettings()">
+                <i class="fa-solid fa-calendar-days"></i> Meeting Auto-Schedule
+            </button>
+
             <button type="button" class="btn btn-outline-secondary btn-sm app-toolbar-archived" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
                 Archived Rejections <span class="badge bg-danger ms-1"><?= $archivedCount ?></span>
             </button>
@@ -287,6 +292,47 @@ const STEP_LABELS = [
             </div>
             <div class="modal-body">
                 <div id="archivedList" class="d-flex flex-column gap-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Meeting Auto-Schedule Settings Modal -->
+<div class="modal fade" id="meetingSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Meeting Auto-Schedule Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    When an application is accepted at Step 1, the system automatically books the next open
+                    weekday slot (skipping the dates below) and emails the applicant. If no slot is free,
+                    the application stays on Step 2 for manual scheduling.
+                </p>
+
+                <h6 class="fw-semibold mt-3">Default Meeting Location</h6>
+                <div class="input-group input-group-sm mb-2" style="max-width:480px">
+                    <input type="text" class="form-control" id="defaultLocationInput" placeholder="e.g. GJC Finance Office">
+                    <button type="button" class="btn btn-success" onclick="saveDefaultLocation()">Save</button>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-semibold">Holiday Calendar</h6>
+                <div class="row g-2 mb-3">
+                    <div class="col-auto">
+                        <input type="date" class="form-control form-control-sm" id="newHolidayDate">
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control form-control-sm" id="newHolidayName" placeholder="Holiday name (e.g. Independence Day)">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-sm btn-success" onclick="addHoliday()">Add</button>
+                    </div>
+                </div>
+                <div id="holidayList" class="d-flex flex-column gap-1" style="max-height:280px;overflow-y:auto"></div>
             </div>
         </div>
     </div>
@@ -624,6 +670,57 @@ function reactivate(id) {
     fetch(ARCHIVE_API_URL, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
         toast(res.message, res.success ? 'success' : 'error');
         if (res.success) { loadArchived(); setTimeout(() => location.reload(), 1200); }
+    });
+}
+
+// ── Meeting auto-schedule settings (default location + holiday calendar) ──
+function loadMeetingSettings() {
+    post({ action: 'get_meeting_settings' }).then(res => {
+        if (res.success) document.getElementById('defaultLocationInput').value = res.default_location;
+    });
+    loadHolidays();
+}
+
+function saveDefaultLocation() {
+    const location = document.getElementById('defaultLocationInput').value.trim();
+    if (!location) { toast('Please enter a default location.', 'error'); return; }
+    post({ action: 'save_meeting_settings', default_location: location }).then(res => {
+        toast(res.message, res.success ? 'success' : 'error');
+    });
+}
+
+function loadHolidays() {
+    const list = document.getElementById('holidayList');
+    list.innerHTML = '<div class="text-muted small">Loading&hellip;</div>';
+    post({ action: 'list_holidays' }).then(res => {
+        if (!res.success || !res.holidays.length) { list.innerHTML = '<div class="text-muted small">No holidays added yet.</div>'; return; }
+        list.innerHTML = res.holidays.map(h => `
+            <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1">
+                <span class="small"><strong>${esc(h.holiday_date)}</strong> &middot; ${esc(h.name)}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteHoliday(${h.id})"><i class="fa-solid fa-trash"></i></button>
+            </div>`).join('');
+    });
+}
+
+function addHoliday() {
+    const date = document.getElementById('newHolidayDate').value;
+    const name = document.getElementById('newHolidayName').value.trim();
+    if (!date || !name) { toast('Please enter a date and a holiday name.', 'error'); return; }
+    post({ action: 'add_holiday', holiday_date: date, name }).then(res => {
+        toast(res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+            document.getElementById('newHolidayDate').value = '';
+            document.getElementById('newHolidayName').value = '';
+            loadHolidays();
+        }
+    });
+}
+
+function deleteHoliday(id) {
+    if (!confirm('Remove this holiday from the calendar?')) return;
+    post({ action: 'delete_holiday', id }).then(res => {
+        toast(res.message, res.success ? 'success' : 'error');
+        if (res.success) loadHolidays();
     });
 }
 

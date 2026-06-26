@@ -6,12 +6,15 @@
 //
 //  Pipeline: review -> meeting -> down_payment -> approval -> active
 //  Actions:
-//    accept_review     Step 1 -> Step 2   (docs accepted)
-//    decline           Step 1 or 2 only   (archives to archived_rejections)
-//    get_booked_slots  (lookup)           (fixed meeting slots already taken on a date)
-//    save_meeting      Step 2 -> Step 3   (saves meeting details)
-//    save_down_payment Step 3 -> Step 4 (saves down payment record)
-//    award_stall       Step 4 -> active   (assigns stall, creates merchant)
+//    accept_review        Step 1 -> Step 2/3 (docs accepted; auto-schedules the
+//                          meeting if a slot is free, else falls back to Step 2)
+//    decline              Step 1 or 2 only   (archives to archived_rejections)
+//    get_booked_slots     (lookup)           (fixed meeting slots already taken on a date)
+//    save_meeting         Step 2 -> Step 3   (manual scheduling backup)
+//    save_down_payment    Step 3 -> Step 4   (saves down payment record)
+//    award_stall          Step 4 -> active   (assigns stall, creates merchant)
+//    list_holidays / add_holiday / delete_holiday   (auto-scheduler holiday calendar)
+//    get_meeting_settings / save_meeting_settings   (auto-scheduler default location)
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -27,6 +30,7 @@ gjc_require_role(['finance']);
 gjc_ensure_stall_application_workflow_schema($db);
 gjc_ensure_archived_rejections_schema($db);
 gjc_ensure_first_login_schema($db);
+gjc_ensure_meeting_scheduling_schema($db);
 
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();
@@ -55,6 +59,62 @@ function stall_app_fetch(PDO $db, int $appId): ?array
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+/**
+ * Shared Step 2 -> Step 3 finalization: saves the meeting, advances the
+ * pipeline, and emails the applicant. Used by both the manual "Accept &
+ * Next" form and the automatic scheduler triggered right after Step 1.
+ */
+function stall_app_finalize_meeting(
+    PDO $db,
+    array $app,
+    int $appId,
+    DateTime $dt,
+    string $place,
+    string $notes,
+    int $adminId
+): array {
+    $scheduledAt = $dt->format('Y-m-d H:i:s');
+
+    $db->prepare(
+        "UPDATE stall_applications
+            SET status = 'down_payment', current_step = 3,
+                meetup_scheduled_at = ?, meetup_location = ?, meetup_notes = ?,
+                meetup_scheduled_by = ?, meetup_scheduled_email_sent_at = NOW()
+          WHERE id = ?"
+    )->execute([$scheduledAt, $place, $notes ?: null, $adminId, $appId]);
+
+    $mailSent = false;
+    $mailError = '';
+    try {
+        $mail = gjc_mailer();
+        $mail->addAddress($app['email'], $app['proprietor_name']);
+        $mail->Subject = 'GenPay - Stall Application Meeting';
+        $prettyDate = $dt->format('F j, Y');
+        $prettyTime = $dt->format('g:i A');
+        $mail->Body = '
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
+                <h2 style="color:#064420;margin-top:0">Meeting Scheduled</h2>
+                <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
+                <p style="color:#374151;line-height:1.7">Your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong> has passed the document review stage.</p>
+                <div style="background:#fff;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0">
+                    <p style="margin:0 0 8px;color:#15803d;font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
+                    <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($prettyDate) . '</p>
+                    <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($prettyTime) . '</p>
+                    <p style="margin:4px 0 0;color:#111827"><strong>Location:</strong> ' . htmlspecialchars($place) . '</p>
+                </div>
+                ' . ($notes !== '' ? '<p style="color:#374151;line-height:1.7"><strong>Notes:</strong> ' . nl2br(htmlspecialchars($notes)) . '</p>' : '') . '
+                <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+            </div>';
+        $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour stall application has passed review.\n\nMeeting schedule:\nDate: {$prettyDate}\nTime: {$prettyTime}\nLocation: {$place}" . ($notes !== '' ? "\nNotes: {$notes}" : '') . "\n\nGenPay Team";
+        $mail->send();
+        $mailSent = true;
+    } catch (Throwable $mailEx) {
+        $mailError = $mailEx->getMessage();
+    }
+
+    return ['mailSent' => $mailSent, 'mailError' => $mailError, 'scheduledAt' => $scheduledAt];
+}
+
 try {
     switch ($action) {
 
@@ -73,9 +133,28 @@ try {
                   WHERE id = ?"
             )->execute([$adminId, $appId]);
 
+            // Try to auto-book the next free non-holiday weekday slot so finance
+            // staff don't have to schedule every meeting by hand. If nothing is
+            // free in the lookahead window, the app stays on Step 2 and the
+            // existing manual scheduling form below acts as the backup.
+            $slot = gjc_find_next_meeting_slot($db);
+            if ($slot !== null) {
+                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $slot['date'] . ' ' . $slot['time'] . ':00');
+                $place = gjc_meeting_default_location($db);
+                $app = stall_app_fetch($db, $appId);
+                $result = stall_app_finalize_meeting($db, $app, $appId, $dt, $place, '', $adminId);
+
+                $prettyWhen = $dt->format('F j, Y \a\t g:i A');
+                stall_app_json([
+                    'success' => true,
+                    'message' => "Documents accepted. Meeting auto-scheduled for {$prettyWhen} at {$place}." . ($result['mailSent'] ? ' Email sent.' : ' Note: email failed - ' . $result['mailError']),
+                    'status' => 'down_payment', 'current_step' => 3,
+                ]);
+            }
+
             stall_app_json([
                 'success' => true,
-                'message' => 'Documents accepted. Moved to Step 2 - Meeting.',
+                'message' => 'Documents accepted. Moved to Step 2 - Meeting. No open auto-schedule slot was found - please schedule the meeting manually.',
                 'status' => 'meeting', 'current_step' => 2,
             ]);
         }
@@ -191,48 +270,65 @@ try {
                 stall_app_json(['success' => false, 'message' => 'That time slot was just booked by another applicant. Please pick a different one.']);
             }
 
-            $db->prepare(
-                "UPDATE stall_applications
-                    SET status = 'down_payment', current_step = 3,
-                        meetup_scheduled_at = ?, meetup_location = ?, meetup_notes = ?,
-                        meetup_scheduled_by = ?, meetup_scheduled_email_sent_at = NOW()
-                  WHERE id = ?"
-            )->execute([$scheduledAt, $place, $notes ?: null, $adminId, $appId]);
-
-            $mailSent = false;
-            $mailError = '';
-            try {
-                $mail = gjc_mailer();
-                $mail->addAddress($app['email'], $app['proprietor_name']);
-                $mail->Subject = 'GenPay - Stall Application Meeting';
-                $prettyDate = $dt->format('F j, Y');
-                $prettyTime = $dt->format('g:i A');
-                $mail->Body = '
-                    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                        <h2 style="color:#064420;margin-top:0">Meeting Scheduled</h2>
-                        <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
-                        <p style="color:#374151;line-height:1.7">Your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong> has passed the document review stage.</p>
-                        <div style="background:#fff;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0">
-                            <p style="margin:0 0 8px;color:#15803d;font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
-                            <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($prettyDate) . '</p>
-                            <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($prettyTime) . '</p>
-                            <p style="margin:4px 0 0;color:#111827"><strong>Location:</strong> ' . htmlspecialchars($place) . '</p>
-                        </div>
-                        ' . ($notes !== '' ? '<p style="color:#374151;line-height:1.7"><strong>Notes:</strong> ' . nl2br(htmlspecialchars($notes)) . '</p>' : '') . '
-                        <p style="font-size:12px;color:#6b7280">GenPay Team</p>
-                    </div>';
-                $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour stall application has passed review.\n\nMeeting schedule:\nDate: {$prettyDate}\nTime: {$prettyTime}\nLocation: {$place}" . ($notes !== '' ? "\nNotes: {$notes}" : '') . "\n\nGenPay Team";
-                $mail->send();
-                $mailSent = true;
-            } catch (Throwable $mailEx) {
-                $mailError = $mailEx->getMessage();
-            }
+            $result = stall_app_finalize_meeting($db, $app, $appId, $dt, $place, $notes, $adminId);
 
             stall_app_json([
                 'success' => true,
-                'message' => 'Meeting saved. Moved to Step 3 - Down Payment.' . ($mailSent ? ' Email sent.' : ' Note: email failed - ' . $mailError),
+                'message' => 'Meeting saved. Moved to Step 3 - Down Payment.' . ($result['mailSent'] ? ' Email sent.' : ' Note: email failed - ' . $result['mailError']),
                 'status' => 'down_payment', 'current_step' => 3,
             ]);
+        }
+
+        // ── Holiday calendar — list / add / delete (used by the auto-scheduler) ─
+        case 'list_holidays': {
+            $rows = $db->query(
+                "SELECT id, holiday_date, name FROM meeting_holidays ORDER BY holiday_date ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            stall_app_json(['success' => true, 'holidays' => $rows]);
+        }
+
+        case 'add_holiday': {
+            $date = trim((string) ($_POST['holiday_date'] ?? ''));
+            $name = trim((string) ($_POST['name'] ?? ''));
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) {
+                stall_app_json(['success' => false, 'message' => 'Invalid date.']);
+            }
+            if ($name === '') {
+                stall_app_json(['success' => false, 'message' => 'A holiday name is required.']);
+            }
+
+            try {
+                $db->prepare(
+                    "INSERT INTO meeting_holidays (holiday_date, name, created_by) VALUES (?, ?, ?)"
+                )->execute([$date, $name, $adminId]);
+            } catch (Throwable $e) {
+                stall_app_json(['success' => false, 'message' => 'That date is already on the holiday calendar.']);
+            }
+
+            stall_app_json(['success' => true, 'message' => 'Holiday added.']);
+        }
+
+        case 'delete_holiday': {
+            $id = (int) ($_POST['id'] ?? 0);
+            $db->prepare("DELETE FROM meeting_holidays WHERE id = ?")->execute([$id]);
+            stall_app_json(['success' => true, 'message' => 'Holiday removed.']);
+        }
+
+        // ── Meeting settings — default location used by the auto-scheduler ─
+        case 'get_meeting_settings': {
+            stall_app_json(['success' => true, 'default_location' => gjc_meeting_default_location($db)]);
+        }
+
+        case 'save_meeting_settings': {
+            $location = trim((string) ($_POST['default_location'] ?? ''));
+            if ($location === '') {
+                stall_app_json(['success' => false, 'message' => 'A default location is required.']);
+            }
+            $db->prepare(
+                "UPDATE meeting_settings SET default_location = ?, updated_by = ?, updated_at = NOW() WHERE id = 1"
+            )->execute([$location, $adminId]);
+            stall_app_json(['success' => true, 'message' => 'Default meeting location saved.']);
         }
 
         // ── Step 3: Down Payment — save & advance ──────────────

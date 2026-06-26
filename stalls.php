@@ -1,32 +1,34 @@
 <?php
-require_once __DIR__ . '/connection/config.php';
-require_once __DIR__ . '/connection/pdo.php';
-require_once __DIR__ . '/connection/StallManager.php';
+require_once __DIR__ . "/connection/config.php";
+require_once __DIR__ . "/connection/pdo.php";
+require_once __DIR__ . "/connection/StallManager.php";
 
 $stallMgr = new StallManager($db);
-$stallMgr->flushExpiredPending();   // App-level expiry flush - runs before render
-$stalls   = $stallMgr->allStalls();
+$stallMgr->flushExpiredPending(); // App-level expiry flush - runs before render
+$stalls = $stallMgr->allStalls();
 
 // Build a 5×2 grid: [rowLabel][colNumber] => stall
 $grid = [];
 foreach ($stalls as $s) {
-    $grid[$s['row_label']][$s['col_number']] = $s;
+    $grid[$s["row_label"]][$s["col_number"]] = $s;
 }
 ksort($grid);
 
 // Status helpers
-function statusClass(string $status): string {
-    return match($status) {
-        'occupied'            => 'stall--occupied',
-        'pending_application' => 'stall--pending',
-        default               => 'stall--vacant',
+function statusClass(string $status): string
+{
+    return match ($status) {
+        "occupied" => "stall--occupied",
+        "pending_application" => "stall--pending",
+        default => "stall--vacant",
     };
 }
-function statusLabel(string $status): string {
-    return match($status) {
-        'occupied'            => 'Occupied',
-        'pending_application' => 'Pending',
-        default               => 'Vacant',
+function statusLabel(string $status): string
+{
+    return match ($status) {
+        "occupied" => "Occupied",
+        "pending_application" => "Pending",
+        default => "Vacant",
     };
 }
 ?>
@@ -406,7 +408,7 @@ function statusLabel(string $status): string {
     <div class="hero-tag">
         Now Leasing &middot; Live Occupancy
     </div>
-    <h1>GJC Campus <span>Stall Directory</span></h1>
+    <h1>General De Jesus College <span>Stall Directory</span></h1>
     <p>See what's open below. Apply once and we'll assign your stall during review &mdash; no need to pick one here.</p>
     <a href="<?= BASE_URL ?>/apply" class="btn-apply-now">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -427,53 +429,83 @@ function statusLabel(string $status): string {
         <p class="section-title">Row <?= htmlspecialchars($rowLabel) ?></p>
         <div class="stall-row" role="list">
             <?php for ($col = 1; $col <= 5; $col++):
+
                 $stall = $cols[$col] ?? null;
-                if (!$stall) continue;
-                $cls   = statusClass($stall['status']);
-                $lbl   = statusLabel($stall['status']);
-            ?>
+                if (!$stall) {
+                    continue;
+                }
+                $cls = statusClass($stall["status"]);
+                $lbl = statusLabel($stall["status"]);
+                ?>
             <?php
-                // Rental rate stays out of the public payload entirely - not just
-                // unrendered - so it never appears in view-source/devtools either.
-                $publicStall = $stall;
-                unset($publicStall['monthly_rate']);
+            // Rental rate stays out of the public payload entirely - not just
+            // unrendered - so it never appears in view-source/devtools either.
+            $publicStall = $stall;
+            unset($publicStall["monthly_rate"]);
             ?>
-            <div class="stall <?= $cls ?><?= ($stall['status'] === 'occupied' && $stall['merchant_logo']) ? ' stall--has-logo' : '' ?>"
-                 id="stall-<?= htmlspecialchars($stall['stall_id']) ?>"
+            <div class="stall <?= $cls,
+                $stall["status"] === "occupied" && $stall["merchant_logo"]
+                    ? " stall--has-logo"
+                    : "" ?>"
+                 id="stall-<?= htmlspecialchars($stall["stall_id"]) ?>"
                  role="listitem"
-                 data-stall='<?= htmlspecialchars(json_encode($publicStall), ENT_QUOTES) ?>'
-                 <?php if ($stall['status'] === 'occupied' && $stall['merchant_logo']): ?>
-                 style="background-image:url('<?= htmlspecialchars(BASE_URL . '/' . $stall['merchant_logo']) ?>')"
+                 data-stall='<?= htmlspecialchars(
+                     json_encode($publicStall),
+                     ENT_QUOTES,
+                 ) ?>'
+                 <?php if (
+                     $stall["status"] === "occupied" &&
+                     $stall["merchant_logo"]
+                 ): ?>
+                 style="background-image:url('<?= htmlspecialchars(
+                     BASE_URL . "/" . $stall["merchant_logo"],
+                 ) ?>')"
                  <?php endif; ?>
-                 <?php if ($stall['status'] === 'vacant'): ?>
+                 <?php if ($stall["status"] === "vacant"): ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Vacant, view details"
-                 <?php elseif ($stall['status'] === 'occupied'): ?>
+                 aria-label="<?= htmlspecialchars(
+                     $stall["label"],
+                 ) ?> - Vacant, view details"
+                 <?php elseif ($stall["status"] === "occupied"): ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Operated by <?= htmlspecialchars($stall['merchant_stall_name']) ?>"
+                 aria-label="<?= htmlspecialchars(
+                     $stall["label"],
+                 ) ?> - Operated by <?= htmlspecialchars(
+     $stall["merchant_stall_name"],
+ ) ?>"
                  <?php else: ?>
                  onclick="openModal(this)"
                  tabindex="0"
                  onkeydown="if(event.key==='Enter')openModal(this)"
-                 aria-label="<?= htmlspecialchars($stall['label']) ?> - Pending application"
+                 aria-label="<?= htmlspecialchars(
+                     $stall["label"],
+                 ) ?> - Pending application"
                  <?php endif; ?>
             >
-                <?php if ($stall['status'] === 'occupied'): ?>
+                <?php if ($stall["status"] === "occupied"): ?>
                     <!-- A tenant logo + company name implies occupancy; no "Occupied" text needed.
                          The logo is the card's background image, and the stall ID sits on
                          top inside a circular badge, like a sticker. -->
-                    <div class="stall-id-badge stall-id-badge--circle"><?= htmlspecialchars($stall['stall_id']) ?></div>
-                    <div class="stall-name"><?= htmlspecialchars($stall['merchant_stall_name']) ?></div>
+                    <div class="stall-id-badge stall-id-badge--circle"><?= htmlspecialchars(
+                        $stall["stall_id"],
+                    ) ?></div>
+                    <div class="stall-name"><?= htmlspecialchars(
+                        $stall["merchant_stall_name"],
+                    ) ?></div>
                 <?php else: ?>
-                    <div class="stall-id-badge"><?= htmlspecialchars($stall['stall_id']) ?></div>
+                    <div class="stall-id-badge"><?= htmlspecialchars(
+                        $stall["stall_id"],
+                    ) ?></div>
                     <div class="stall-status-badge"><?= $lbl ?></div>
-                    <?php if ($stall['status'] === 'pending_application'): ?>
+                    <?php if ($stall["status"] === "pending_application"): ?>
                     <div class="stall-timer"
-                         data-expires="<?= htmlspecialchars($stall['pending_expires_at'] ?? '') ?>">
+                         data-expires="<?= htmlspecialchars(
+                             $stall["pending_expires_at"] ?? "",
+                         ) ?>">
                          --:--
                     </div>
                     <?php else: ?>
@@ -481,7 +513,8 @@ function statusLabel(string $status): string {
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-            <?php endfor; ?>
+            <?php
+            endfor; ?>
         </div>
     <?php endforeach; ?>
 </div>
@@ -539,7 +572,9 @@ function statusLabel(string $status): string {
 </div>
 
 <footer>
-    &copy; <?= date('Y') ?> General de Jesus College &mdash; GenPay Stall Management
+    &copy; <?= date(
+        "Y",
+    ) ?> General de Jesus College &mdash; GenPay Stall Management
 </footer>
 
 <script>

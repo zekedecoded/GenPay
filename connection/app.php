@@ -181,7 +181,26 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
         }
     }
 
+    // One-time rename from the earlier "gender" column to "sex".
+    if (in_array("gender", $columns, true) && !in_array("sex", $columns, true)) {
+        try {
+            $db->exec("ALTER TABLE stall_applications CHANGE gender sex ENUM('male','female') NOT NULL DEFAULT 'male'");
+            $columns = array_diff($columns, ["gender"]);
+            $columns[] = "sex";
+        } catch (Throwable $ignored) {
+        }
+    }
+
     $adds = [
+        "first_name" => "VARCHAR(60) NOT NULL DEFAULT '' AFTER business_name",
+        "middle_name" => "VARCHAR(60) NULL DEFAULT NULL AFTER first_name",
+        "last_name" => "VARCHAR(60) NOT NULL DEFAULT '' AFTER middle_name",
+        "suffix" => "VARCHAR(20) NULL DEFAULT NULL AFTER last_name",
+        "sex" => "ENUM('male','female') NOT NULL DEFAULT 'male' AFTER suffix",
+        "street" => "VARCHAR(150) NOT NULL DEFAULT '' AFTER sex",
+        "barangay" => "VARCHAR(100) NOT NULL DEFAULT '' AFTER street",
+        "city" => "VARCHAR(100) NOT NULL DEFAULT '' AFTER barangay",
+        "province" => "VARCHAR(100) NOT NULL DEFAULT '' AFTER city",
         "meetup_scheduled_at" => "DATETIME NULL",
         "meetup_location" => "VARCHAR(255) NULL",
         "meetup_notes" => "TEXT NULL",
@@ -818,6 +837,91 @@ function gjc_reference(string $prefix): string
 function gjc_meeting_time_slots(): array
 {
     return ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00'];
+}
+
+/**
+ * Holiday calendar (admin-managed) and default meeting location, used by the
+ * auto-scheduler so it never books a weekend/holiday and always has a place
+ * to put on the meeting email when no admin is filling the form by hand.
+ */
+function gjc_ensure_meeting_scheduling_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS meeting_holidays (
+            id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            holiday_date DATE NOT NULL,
+            name         VARCHAR(150) NOT NULL,
+            created_by   INT UNSIGNED NULL,
+            created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_mh_date (holiday_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS meeting_settings (
+            id               TINYINT UNSIGNED NOT NULL,
+            default_location VARCHAR(255) NOT NULL DEFAULT 'GJC Finance Office',
+            updated_by       INT UNSIGNED NULL,
+            updated_at       DATETIME NULL,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
+    $db->exec("INSERT IGNORE INTO meeting_settings (id, default_location) VALUES (1, 'GJC Finance Office')");
+}
+
+/** Holiday dates the auto-scheduler must skip, as a Y-m-d => name map. */
+function gjc_meeting_holiday_dates(PDO $db): array
+{
+    $rows = $db->query("SELECT holiday_date, name FROM meeting_holidays ORDER BY holiday_date ASC")
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
+    return $rows;
+}
+
+function gjc_meeting_default_location(PDO $db): string
+{
+    $location = $db->query("SELECT default_location FROM meeting_settings WHERE id = 1")->fetchColumn();
+    return $location !== false && $location !== '' ? $location : 'GJC Finance Office';
+}
+
+/**
+ * Finds the earliest open meeting slot strictly after today, skipping
+ * weekends, admin-defined holidays, and times already booked by another
+ * applicant. Returns ['date' => 'Y-m-d', 'time' => 'H:i'] or null if nothing
+ * is free within the lookahead window (manual scheduling remains available
+ * as a backup in that case).
+ */
+function gjc_find_next_meeting_slot(PDO $db, int $lookaheadDays = 180): ?array
+{
+    $holidays = gjc_meeting_holiday_dates($db);
+    $slots = gjc_meeting_time_slots();
+    $bookedStmt = $db->prepare(
+        "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
+           FROM stall_applications
+          WHERE meetup_scheduled_at IS NOT NULL
+            AND DATE(meetup_scheduled_at) = ?"
+    );
+
+    $cursor = new DateTimeImmutable('tomorrow');
+    for ($i = 0; $i < $lookaheadDays; $i++) {
+        $dateStr = $cursor->format('Y-m-d');
+        $dayOfWeek = (int) $cursor->format('N'); // 6 = Saturday, 7 = Sunday
+
+        if ($dayOfWeek < 6 && !isset($holidays[$dateStr])) {
+            $bookedStmt->execute([$dateStr]);
+            $booked = array_flip($bookedStmt->fetchAll(PDO::FETCH_COLUMN));
+
+            foreach ($slots as $slot) {
+                if (!isset($booked[$slot])) {
+                    return ['date' => $dateStr, 'time' => $slot];
+                }
+            }
+        }
+
+        $cursor = $cursor->modify('+1 day');
+    }
+
+    return null;
 }
 
 function gjc_transaction_type_options(): array

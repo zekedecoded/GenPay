@@ -56,7 +56,7 @@ $error = $message ?: $error;
 
                 <div class="input-group-box">
                     <input type="text" name="email" required placeholder=" ">
-                    <label>Student ID or Email</label>
+                    <label>Email or Student ID</label>
                 </div>
 
                 <div class="input-group-box">
