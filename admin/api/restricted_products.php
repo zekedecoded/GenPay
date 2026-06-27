@@ -83,6 +83,25 @@ try {
             break;
         }
 
+        case 'delete_restriction': {
+            $id = (int) ($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['success' => false, 'message' => 'Invalid ID.']);
+                exit;
+            }
+            $prevStmt = $db->prepare("SELECT product_name FROM restricted_products WHERE id = ?");
+            $prevStmt->execute([$id]);
+            $prevName = (string) $prevStmt->fetchColumn();
+
+            $db->prepare("DELETE FROM restricted_products WHERE id = ?")->execute([$id]);
+
+            logAudit($db, $adminId, gjc_current_role(), 'PRODUCT_RESTRICTION', 'restricted_products',
+                ['id' => $id, 'product_name' => $prevName], ['event' => 'deleted', 'id' => $id]);
+
+            echo json_encode(['success' => true, 'message' => 'Restriction removed.']);
+            break;
+        }
+
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action.']);
     }

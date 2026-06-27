@@ -19,40 +19,46 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once __DIR__ . '/../connection/config.php';
-require_once __DIR__ . '/../connection/pdo.php';
-require_once __DIR__ . '/../connection/app.php';
-require_once __DIR__ . '/../connection/StallManager.php';
+require_once __DIR__ . "/../connection/config.php";
+require_once __DIR__ . "/../connection/pdo.php";
+require_once __DIR__ . "/../connection/app.php";
+require_once __DIR__ . "/../connection/StallManager.php";
 
-gjc_require_role(['finance']);
+gjc_require_role(["finance"]);
 gjc_ensure_stall_application_workflow_schema($db);
 gjc_ensure_archived_rejections_schema($db);
 gjc_ensure_meeting_scheduling_schema($db);
 $currentUser = gjc_current_user($db);
-$currentPage = 'stall_applications';
-$adminId     = gjc_user_id();
+$currentPage = "stall_applications";
+$adminId = gjc_user_id();
 
 // Only submitted, not-yet-awarded applications - awarded ones are merchant
 // accounts now and live under Users, not here.
-$apps = $db->query(
-    "SELECT sa.*, s.label AS stall_label
+$apps = $db
+    ->query(
+        "SELECT sa.*, s.label AS stall_label
      FROM stall_applications sa
      LEFT JOIN stalls s ON s.stall_id = sa.stall_id
      WHERE sa.status NOT IN ('active', 'expired')
-     ORDER BY sa.current_step ASC, sa.created_at ASC"
-)->fetchAll(PDO::FETCH_ASSOC);
+     ORDER BY sa.current_step ASC, sa.created_at ASC",
+    )
+    ->fetchAll(PDO::FETCH_ASSOC);
 
 // Vacant stalls available for assignment at Step 4
 $stallMgr = new StallManager($db);
-$vacantStalls = array_values(array_filter($stallMgr->allStalls(), fn ($s) => $s['status'] === 'vacant'));
+$vacantStalls = array_values(
+    array_filter($stallMgr->allStalls(), fn($s) => $s["status"] === "vacant"),
+);
 
-$archivedCount = (int) $db->query("SELECT COUNT(*) FROM archived_rejections WHERE reactivated = 0")->fetchColumn();
+$archivedCount = (int) $db
+    ->query("SELECT COUNT(*) FROM archived_rejections WHERE reactivated = 0")
+    ->fetchColumn();
 
 const STEP_LABELS = [
-    1 => 'Review Requirements',
-    2 => 'Meeting',
-    3 => 'Down Payment',
-    4 => 'Approval / Award',
+    1 => "Review Requirements",
+    2 => "Meeting",
+    3 => "Down Payment",
+    4 => "Approval / Award",
 ];
 ?>
 <!DOCTYPE html>
@@ -135,7 +141,7 @@ const STEP_LABELS = [
 </head>
 <body>
 <div class="admin-layout">
-    <?php require_once __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
+    <?php require_once __DIR__ . "/../includes/partials/sidebar_admin.php"; ?>
 
     <main class="admin-main">
         <header class="topbar">
@@ -146,7 +152,7 @@ const STEP_LABELS = [
             </div>
 
             <div class="admin-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
+                <span><?= gjc_e($currentUser["name"]) ?></span>
                 <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
@@ -171,10 +177,6 @@ const STEP_LABELS = [
                 </select>
             </div>
 
-            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#meetingSettingsModal" onclick="loadMeetingSettings()">
-                <i class="fa-solid fa-calendar-days"></i> Meeting Auto-Schedule
-            </button>
-
             <button type="button" class="btn btn-outline-secondary btn-sm app-toolbar-archived" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
                 Archived Rejections <span class="badge bg-danger ms-1"><?= $archivedCount ?></span>
             </button>
@@ -191,8 +193,15 @@ const STEP_LABELS = [
             <?php foreach (STEP_LABELS as $stepNum => $stepLabel): ?>
             <div class="col-6 col-md">
                 <button type="button" class="step-filter-card" data-step="<?= $stepNum ?>">
-                    <span class="sfc-count"><?= count(array_filter($apps, fn ($a) => (int) $a['current_step'] === $stepNum)) ?></span>
-                    <span class="sfc-label"><?= htmlspecialchars($stepLabel) ?></span>
+                    <span class="sfc-count"><?= count(
+                        array_filter(
+                            $apps,
+                            fn($a) => (int) $a["current_step"] === $stepNum,
+                        ),
+                    ) ?></span>
+                    <span class="sfc-label"><?= htmlspecialchars(
+                        $stepLabel,
+                    ) ?></span>
                 </button>
             </div>
             <?php endforeach; ?>
@@ -213,23 +222,50 @@ const STEP_LABELS = [
                             <th>Proprietor</th>
                             <th>Contact</th>
                             <th>Current Step</th>
-                            <th>Submitted</th>
+                            <th>Date Submitted</th>
                         </tr>
                     </thead>
                     <tbody id="appTableBody">
                         <?php foreach ($apps as $app): ?>
-                        <tr class="app-row" data-app-id="<?= (int) $app['id'] ?>"
-                            data-step="<?= (int) $app['current_step'] ?>"
-                            data-search="<?= htmlspecialchars(strtolower($app['business_name'] . ' ' . $app['proprietor_name'] . ' ' . $app['email'])) ?>"
-                            data-bs-toggle="collapse" data-bs-target="#detail-<?= (int) $app['id'] ?>" aria-expanded="false">
+                        <tr class="app-row" data-app-id="<?= (int) $app[
+                            "id"
+                        ] ?>"
+                            data-step="<?= (int) $app["current_step"] ?>"
+                            data-search="<?= htmlspecialchars(
+                                strtolower(
+                                    $app["business_name"] .
+                                        " " .
+                                        $app["proprietor_name"] .
+                                        " " .
+                                        $app["email"],
+                                ),
+                            ) ?>"
+                            data-bs-toggle="collapse" data-bs-target="#detail-<?= (int) $app[
+                                "id"
+                            ] ?>" aria-expanded="false">
                             <td><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></td>
-                            <td class="fw-semibold"><?= htmlspecialchars($app['business_name']) ?></td>
-                            <td><?= htmlspecialchars($app['proprietor_name']) ?></td>
-                            <td class="small text-muted"><?= htmlspecialchars($app['contact_number']) ?><br><?= htmlspecialchars($app['email']) ?></td>
-                            <td><span class="badge bg-danger step-badge">Step <?= (int) $app['current_step'] ?> &middot; <?= STEP_LABELS[(int) $app['current_step']] ?></span></td>
-                            <td class="small text-muted"><?= date('M j, Y', strtotime($app['created_at'])) ?></td>
+                            <td class="fw-semibold"><?= htmlspecialchars(
+                                $app["business_name"],
+                            ) ?></td>
+                            <td><?= htmlspecialchars(
+                                $app["proprietor_name"],
+                            ) ?></td>
+                            <td class="small text-muted"><?= htmlspecialchars(
+                                $app["contact_number"],
+                            ) ?><br><?= htmlspecialchars($app["email"]) ?></td>
+                            <td><span class="badge bg-danger step-badge">Step <?= (int) $app[
+                                "current_step"
+                            ] ?> &middot; <?= STEP_LABELS[
+     (int) $app["current_step"]
+ ] ?></span></td>
+                            <td class="small text-muted"><?= date(
+                                "M j, Y",
+                                strtotime($app["created_at"]),
+                            ) ?></td>
                         </tr>
-                        <tr class="collapse app-detail-row" id="detail-<?= (int) $app['id'] ?>" data-app-id="<?= (int) $app['id'] ?>">
+                        <tr class="collapse app-detail-row" id="detail-<?= (int) $app[
+                            "id"
+                        ] ?>" data-app-id="<?= (int) $app["id"] ?>">
                             <td colspan="6">
                                 <div class="app-detail-inner bg-light border-top">
                                     <div class="stepper mb-4"></div>
@@ -256,6 +292,28 @@ const STEP_LABELS = [
             </div>
             <div class="modal-body p-0">
                 <iframe id="docFrame" src="about:blank" title="Document preview"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Award Stall Confirm Modal -->
+<div class="modal fade" id="awardConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Stall Award</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">You are about to award <strong id="awardStallLabel"></strong> and create a merchant account for:</p>
+                <p class="fw-semibold mb-0" id="awardApplicantLabel"></p>
+                <p class="small text-muted" id="awardBusinessLabel"></p>
+                <p class="small text-muted mt-2 mb-0">Login credentials will be emailed to the applicant. This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="awardConfirmBtn">Approve &amp; Award</button>
             </div>
         </div>
     </div>
@@ -297,56 +355,27 @@ const STEP_LABELS = [
     </div>
 </div>
 
-<!-- Meeting Auto-Schedule Settings Modal -->
-<div class="modal fade" id="meetingSettingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Meeting Auto-Schedule Settings</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small">
-                    When an application is accepted at Step 1, the system automatically books the next open
-                    weekday slot (skipping the dates below) and emails the applicant. If no slot is free,
-                    the application stays on Step 2 for manual scheduling.
-                </p>
-
-                <h6 class="fw-semibold mt-3">Default Meeting Location</h6>
-                <div class="input-group input-group-sm mb-2" style="max-width:480px">
-                    <input type="text" class="form-control" id="defaultLocationInput" placeholder="e.g. GJC Finance Office">
-                    <button type="button" class="btn btn-success" onclick="saveDefaultLocation()">Save</button>
-                </div>
-
-                <hr>
-
-                <h6 class="fw-semibold">Holiday Calendar</h6>
-                <div class="row g-2 mb-3">
-                    <div class="col-auto">
-                        <input type="date" class="form-control form-control-sm" id="newHolidayDate">
-                    </div>
-                    <div class="col">
-                        <input type="text" class="form-control form-control-sm" id="newHolidayName" placeholder="Holiday name (e.g. Independence Day)">
-                    </div>
-                    <div class="col-auto">
-                        <button type="button" class="btn btn-sm btn-success" onclick="addHoliday()">Add</button>
-                    </div>
-                </div>
-                <div id="holidayList" class="d-flex flex-column gap-1" style="max-height:280px;overflow-y:auto"></div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Toast container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastWrap"></div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
-const APPS = <?= json_encode(array_values($apps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?>;
-const VACANT_STALLS = <?= json_encode($vacantStalls, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const APPS = <?= json_encode(
+    array_values($apps),
+    JSON_HEX_TAG |
+        JSON_HEX_AMP |
+        JSON_HEX_APOS |
+        JSON_HEX_QUOT |
+        JSON_INVALID_UTF8_SUBSTITUTE,
+) ?>;
+const VACANT_STALLS = <?= json_encode(
+    $vacantStalls,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+) ?>;
 const MEETING_TIME_SLOTS = <?= json_encode(gjc_meeting_time_slots()) ?>;
 const STEP_LABELS = <?= json_encode(STEP_LABELS) ?>;
+let DP_DEFAULT_AMOUNT = <?= (float) gjc_down_payment_default_amount($db) ?>;
 const DOC_URL  = '<?= ADMIN_URL ?>/doc?f=';
 const API_URL  = '<?= ADMIN_URL ?>/api/stall_applications';
 const ARCHIVE_API_URL = '<?= ADMIN_URL ?>/api/archived_rejections';
@@ -475,11 +504,16 @@ function renderPanel(app) {
     }
 
     if (app.status === 'down_payment') {
+        const dpDefault = DP_DEFAULT_AMOUNT > 0 ? DP_DEFAULT_AMOUNT.toFixed(2) : '';
         return `
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Amount</label>
-                    <input type="number" min="0" step="0.01" class="form-control" id="dpAmount-${app.id}" placeholder="0.00">
+                    <div class="input-group">
+                        <input type="number" min="0" step="0.01" class="form-control" id="dpAmount-${app.id}" placeholder="0.00" value="${esc(dpDefault)}">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" title="Set as default for future applications" onclick="setDpDefault(${app.id})"><i class="fa-solid fa-bookmark"></i></button>
+                    </div>
+                    ${DP_DEFAULT_AMOUNT > 0 ? `<div class="form-text">Default: &#8369;${parseFloat(DP_DEFAULT_AMOUNT).toLocaleString('en-PH', {minimumFractionDigits:2})}</div>` : ''}
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Reference</label>
@@ -544,7 +578,16 @@ function mergeAndRender(id, patch) {
 function acceptReview(id) {
     post({ action: 'accept_review', app_id: id }).then(res => {
         toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) mergeAndRender(id, { status: res.status, current_step: res.current_step });
+        if (res.success) {
+            mergeAndRender(id, { status: res.status, current_step: res.current_step });
+            if (res.proposed_slot) {
+                const slot = res.proposed_slot;
+                const dateInput = document.getElementById(`meetDate-${id}`);
+                const locInput  = document.getElementById(`meetLoc-${id}`);
+                if (dateInput) { dateInput.value = slot.date; refreshMeetingSlots(id, slot.time); }
+                if (locInput)  locInput.value = slot.location;
+            }
+        }
     });
 }
 
@@ -561,7 +604,7 @@ function slotLabel(slot) {
 
 // Refetch which fixed slots are already booked on the chosen date, then
 // rebuild the dropdown so a taken slot can't be picked twice.
-function refreshMeetingSlots(id) {
+function refreshMeetingSlots(id, preselectTime = null) {
     const dateInput = document.getElementById(`meetDate-${id}`);
     const select = document.getElementById(`meetTime-${id}`);
     const date = dateInput.value;
@@ -587,9 +630,11 @@ function refreshMeetingSlots(id) {
         }).join('');
         select.innerHTML = `<option value="">Select a time</option>${options}`;
         select.disabled = false;
+        if (preselectTime) select.value = preselectTime;
     });
 }
 
+// ── Down payment preview / confirm before sending ──
 function saveMeeting(id) {
     const date = document.getElementById(`meetDate-${id}`).value;
     const time = document.getElementById(`meetTime-${id}`).value;
@@ -619,15 +664,28 @@ function saveDownPayment(id) {
         });
 }
 
+let awardTargetId = null;
+
 function awardStall(id) {
     const stallId = document.getElementById(`awardStall-${id}`).value;
     if (!stallId) { toast('Please select a stall to award.', 'error'); return; }
-    if (!confirm(`Award Stall ${stallId} and create the merchant account?`)) return;
+    const app = findApp(id);
+    awardTargetId = id;
+    document.getElementById('awardStallLabel').textContent = `Stall ${stallId}`;
+    document.getElementById('awardApplicantLabel').textContent = app.proprietor_name;
+    document.getElementById('awardBusinessLabel').textContent = app.business_name;
+    new bootstrap.Modal(document.getElementById('awardConfirmModal')).show();
+}
+
+document.getElementById('awardConfirmBtn').addEventListener('click', function () {
+    const id = awardTargetId;
+    const stallId = document.getElementById(`awardStall-${id}`).value;
+    bootstrap.Modal.getInstance(document.getElementById('awardConfirmModal')).hide();
     post({ action: 'award_stall', app_id: id, stall_id: stallId }).then(res => {
         toast(res.message, res.success ? 'success' : 'error');
         if (res.success) mergeAndRender(id, { status: res.status, current_step: res.current_step, stall_id: stallId });
     });
-}
+});
 
 function openDecline(id) {
     declineTargetId = id;
@@ -673,54 +731,18 @@ function reactivate(id) {
     });
 }
 
-// ── Meeting auto-schedule settings (default location + holiday calendar) ──
-function loadMeetingSettings() {
-    post({ action: 'get_meeting_settings' }).then(res => {
-        if (res.success) document.getElementById('defaultLocationInput').value = res.default_location;
-    });
-    loadHolidays();
-}
-
-function saveDefaultLocation() {
-    const location = document.getElementById('defaultLocationInput').value.trim();
-    if (!location) { toast('Please enter a default location.', 'error'); return; }
-    post({ action: 'save_meeting_settings', default_location: location }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-    });
-}
-
-function loadHolidays() {
-    const list = document.getElementById('holidayList');
-    list.innerHTML = '<div class="text-muted small">Loading&hellip;</div>';
-    post({ action: 'list_holidays' }).then(res => {
-        if (!res.success || !res.holidays.length) { list.innerHTML = '<div class="text-muted small">No holidays added yet.</div>'; return; }
-        list.innerHTML = res.holidays.map(h => `
-            <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1">
-                <span class="small"><strong>${esc(h.holiday_date)}</strong> &middot; ${esc(h.name)}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteHoliday(${h.id})"><i class="fa-solid fa-trash"></i></button>
-            </div>`).join('');
-    });
-}
-
-function addHoliday() {
-    const date = document.getElementById('newHolidayDate').value;
-    const name = document.getElementById('newHolidayName').value.trim();
-    if (!date || !name) { toast('Please enter a date and a holiday name.', 'error'); return; }
-    post({ action: 'add_holiday', holiday_date: date, name }).then(res => {
+// ── Down payment default amount (inline, set from the Step 3 panel) ──
+function setDpDefault(id) {
+    const amount = parseFloat(document.getElementById(`dpAmount-${id}`).value) || 0;
+    if (amount <= 0) { toast('Enter an amount first to set as default.', 'error'); return; }
+    post({ action: 'save_down_payment_settings', default_amount: amount }).then(res => {
         toast(res.message, res.success ? 'success' : 'error');
         if (res.success) {
-            document.getElementById('newHolidayDate').value = '';
-            document.getElementById('newHolidayName').value = '';
-            loadHolidays();
+            DP_DEFAULT_AMOUNT = amount;
+            // Re-render only this row's panel so the "Default:" hint updates.
+            const app = findApp(id);
+            if (app) renderRow(app);
         }
-    });
-}
-
-function deleteHoliday(id) {
-    if (!confirm('Remove this holiday from the calendar?')) return;
-    post({ action: 'delete_holiday', id }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) loadHolidays();
     });
 }
 

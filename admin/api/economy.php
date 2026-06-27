@@ -41,8 +41,9 @@ try {
 
             $walletId = (int)($body['student_wallet_id'] ?? 0);
             $amount   = (float)($body['amount'] ?? 0);
+            $notes    = trim((string)($body['notes'] ?? ''));
 
-            $result = $engine->cashIn($walletId, $amount, $userId);
+            $result = $engine->cashInWithFee($walletId, $amount, 'finance', $userId, 0, $notes);
             echo json_encode(array_merge(['success' => true], $result));
             break;
 
@@ -116,6 +117,32 @@ try {
                     number_format($drift, 2));
 
             echo json_encode($snapshot);
+            break;
+
+        case 'lookup_student':
+            $schoolId = trim($body['school_id'] ?? '');
+            if (!$schoolId) throw new InvalidArgumentException('Student ID is required.');
+
+            $stmt = $db->prepare(
+                "SELECT u.userID, u.first_name, u.last_name, sw.id AS wallet_id
+                   FROM users u
+                   JOIN student_info si ON si.userID = u.userID
+                   LEFT JOIN student_wallets sw ON sw.user_id = u.userID
+                  WHERE si.studentID = ? AND u.roleID = 1
+                  LIMIT 1"
+            );
+            $stmt->execute([$schoolId]);
+            $student = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$student) throw new RuntimeException('Student not found. Check the ID and try again.');
+            if (!$student['wallet_id']) throw new RuntimeException('This student does not have a wallet yet.');
+
+            echo json_encode([
+                'success'   => true,
+                'name'      => trim($student['first_name'] . ' ' . $student['last_name']),
+                'user_id'   => (int) $student['userID'],
+                'wallet_id' => (int) $student['wallet_id'],
+            ]);
             break;
 
         default:

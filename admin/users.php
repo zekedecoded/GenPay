@@ -5,6 +5,8 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['finance']);
 
+gjc_backfill_student_ids($db);
+
 $roleFilter    = trim((string) ($_GET['role'] ?? ''));
 $excludeAdmin  = !empty($_GET['exclude_admin']);
 
@@ -15,10 +17,12 @@ $query = "
         u.last_name,
         u.email,
         r.role_name as role,
-        COALESCE(w.balance, 0) as balance
+        COALESCE(w.balance, 0) as balance,
+        si.studentID as student_id
     FROM users u
     LEFT JOIN role r ON u.roleID = r.roleID
     LEFT JOIN wallet w ON u.userID = w.userID
+    LEFT JOIN student_info si ON si.userID = u.userID
 ";
 $conditions = [];
 $params = [];
@@ -42,17 +46,25 @@ $dbUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $users = [];
 foreach ($dbUsers as $u) {
     $roleName = ($u['role'] === 'finance') ? 'Finance' : ucfirst($u['role'] ?? 'User');
-    $schoolIdPrefix = 'GJC';
-    if ($u['role'] === 'merchant' || $u['role'] === 'merchant_admin' || $u['role'] === 'merchant_staff') $schoolIdPrefix = 'MER';
-    if ($u['role'] === 'finance') $schoolIdPrefix = 'FIN';
-    
+    $role = strtolower($u['role'] ?? '');
+
+    if ($role === 'student') {
+        $displayId = $u['student_id'] ?? ('GJC' . date('Y') . '-????');
+    } elseif (in_array($role, ['merchant', 'merchant_admin', 'merchant_staff'], true)) {
+        $displayId = 'MER-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT);
+    } elseif ($role === 'finance') {
+        $displayId = 'FIN-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT);
+    } else {
+        $displayId = 'GJC-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT);
+    }
+
     $users[] = [
-        "name" => trim($u['first_name'] . ' ' . $u['last_name']),
-        "role" => $roleName,
-        "school_id" => $schoolIdPrefix . '-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT),
-        "email" => $u['email'],
-        "balance" => $u['balance'],
-        "status" => "Active"
+        "name"      => trim($u['first_name'] . ' ' . $u['last_name']),
+        "role"      => $roleName,
+        "school_id" => $displayId,
+        "email"     => $u['email'],
+        "balance"   => $u['balance'],
+        "status"    => "Active",
     ];
 }
 
@@ -300,11 +312,12 @@ $currentPage = 'users';
                                 </select>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="add-user-label">
-                                    School ID <span>(Students)</span>
-                                </label>
-                                <input type="text" name="school_id" class="add-user-input" placeholder="2024-XXXXX">
+                            <div class="col-md-6" id="student-id-field" style="display:none">
+                                <label class="add-user-label">Student ID</label>
+                                <div style="padding:10px 14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;font-size:13px;color:#15803d;font-weight:600">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
+                                    Auto-generated as <strong>GJC<?= date('Y') ?>-XXXX</strong>
+                                </div>
                             </div>
 
                             <div class="col-12">
@@ -334,15 +347,24 @@ $currentPage = 'users';
     </div>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="<?= JS_URL ?>/admin_datatables.js"></script>
+    <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <script>
     function toggleSidebar() {
         document.getElementById("sidebar").classList.toggle("collapsed");
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const roleSelect = document.querySelector('[name="role"]');
+        const studentIdField = document.getElementById('student-id-field');
+        if (roleSelect && studentIdField) {
+            function toggleStudentId() {
+                studentIdField.style.display = roleSelect.value === 'student' ? '' : 'none';
+            }
+            roleSelect.addEventListener('change', toggleStudentId);
+            toggleStudentId();
+        }
+    });
     </script>
 
 </body>

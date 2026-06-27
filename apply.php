@@ -289,6 +289,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 }
+
+try {
+    $activeRestrictions = $db->query(
+        "SELECT product_name, category, reason, match_type
+         FROM restricted_products
+         WHERE is_active = 1
+         ORDER BY category ASC, product_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (\Throwable $e) {
+    $activeRestrictions = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -888,7 +899,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <p><strong>1. Eligibility.</strong> Applicants must be of legal age (18+) and must not have any outstanding financial obligations to GJC. Applications from individuals with existing violations of school policy may be rejected at the institution's discretion.</p>
                         <p><strong>2. Application Review.</strong> All submitted applications are subject to review by the GJC administration. Submission of this form does not guarantee approval. The school reserves the right to approve, reject, or defer any application without prior notice.</p>
                         <p><strong>3. Document Accuracy.</strong> All uploaded documents must be authentic, current, and valid. Submission of falsified or expired documents is grounds for immediate rejection and may result in legal action.</p>
-                        <p><strong>4. Nutritional Compliance.</strong> Approved vendors must comply with GJC's nutritional policy. Products flagged under the Restricted Products list (including high-sugar beverages, energy drinks, and items of low nutritional value) are prohibited from being sold on campus.</p>
+                        <p><strong>4. Prohibited Products.</strong> Approved vendors must comply with GJC's product restriction policy administered through the GenPay platform. Selling, displaying, or offering any product on the list below is grounds for stall suspension or lease termination. This list is maintained live by the administration and is binding as of the date of your application.</p>
+                        <?php if (!empty($activeRestrictions)): ?>
+                        <ul style="margin:0 0 10px;padding-left:22px">
+                            <?php foreach ($activeRestrictions as $r): ?>
+                            <li><strong><?= htmlspecialchars($r['product_name']) ?></strong> (<?= htmlspecialchars(ucfirst($r['category'])) ?>) — <?= htmlspecialchars($r['reason']) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <?php else: ?>
+                        <p>No products are currently on the restricted list. Vendors are advised to verify this section before operating, as the administration may update it at any time.</p>
+                        <?php endif; ?>
                         <p><strong>5. Lease Obligations.</strong> Approved vendors will be required to sign a formal lease agreement and pay the applicable monthly rental rate. Failure to pay rent on time may result in stall suspension or termination of the lease.</p>
                         <p><strong>6. Operational Standards.</strong> Vendors must maintain cleanliness, observe proper waste disposal, and adhere to campus operating hours. Any violation of operational standards may result in temporary closure or lease termination.</p>
                         <p><strong>7. Data Privacy.</strong> Personal information and documents submitted through this form are collected solely for the purpose of processing your application. Your data will be handled in accordance with the Data Privacy Act of 2012 (RA 10173) and will not be shared with third parties without your consent.</p>

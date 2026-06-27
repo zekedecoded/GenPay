@@ -74,7 +74,7 @@ try {
             break;
         }
 
-        case 'deactivate_staff': {
+        case 'toggle_staff_status': {
             $userId = (int) ($_POST['user_id'] ?? 0);
             if (!$userId) {
                 echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
@@ -83,19 +83,21 @@ try {
 
             // Verify this staff belongs to the current merchant admin
             $verify = $db->prepare(
-                "SELECT userID FROM users WHERE userID = ? AND merchant_owner_id = ? AND roleID = 6"
+                "SELECT userID, status FROM users WHERE userID = ? AND merchant_owner_id = ? AND roleID = 6"
             );
             $verify->execute([$userId, $merchantUserId]);
-            if (!$verify->fetch()) {
+            $staffRow = $verify->fetch();
+            if (!$staffRow) {
                 echo json_encode(['success' => false, 'message' => 'Staff member not found or not under your management.']);
                 exit;
             }
 
-            // Deactivate by prepending 'DEACTIVATED_' to the email to block login
+            $currentStatus = $staffRow['status'];
+            $newStatus     = $currentStatus === 'Active' ? 'Inactive' : 'Active';
+
             $db->prepare(
-                "UPDATE users SET email = CONCAT('DEACTIVATED_', userID, '_', email)
-                  WHERE userID = ? AND merchant_owner_id = ?"
-            )->execute([$userId, $merchantUserId]);
+                "UPDATE users SET status = ? WHERE userID = ? AND merchant_owner_id = ?"
+            )->execute([$newStatus, $userId, $merchantUserId]);
 
             logAudit(
                 $db,
@@ -103,11 +105,11 @@ try {
                 gjc_current_role(),
                 'USER_ACCOUNT',
                 'users',
-                ['user_id' => $userId, 'status' => 'active'],
-                ['event' => 'deactivated', 'user_id' => $userId, 'deactivated_by' => $merchantUserId]
+                ['user_id' => $userId, 'status' => $currentStatus],
+                ['event' => $newStatus === 'Active' ? 'reactivated' : 'deactivated', 'user_id' => $userId, 'changed_by' => $merchantUserId, 'new_status' => $newStatus]
             );
 
-            echo json_encode(['success' => true, 'message' => 'Staff account deactivated.']);
+            echo json_encode(['success' => true, 'new_status' => $newStatus, 'message' => "Staff account set to {$newStatus}."]);
             break;
         }
 

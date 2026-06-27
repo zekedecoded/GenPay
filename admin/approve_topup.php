@@ -34,17 +34,25 @@ if (!$topupId || !$studentWalletId || !$amount || $amount <= 0) {
 
 try {
     $engine = new CirculationEngine($db);
-    $result = $engine->cashIn($studentWalletId, $amount, $sessionUserId);
+    $result = $engine->cashInWithFee($studentWalletId, $amount, 'finance', $sessionUserId);
 
-    
     $db->prepare(
         "UPDATE topup_requests
-            SET status       = 'approved',
-                approved_by  = ?,
-                approved_at  = NOW(),
-                reference_no = ?
+            SET status          = 'approved',
+                approved_by     = ?,
+                approved_at     = NOW(),
+                reference_no    = ?,
+                top_up_source   = 'finance',
+                fee_amount      = ?,
+                credited_amount = ?
           WHERE id = ?"
-    )->execute([$sessionUserId, $result['reference'], $topupId]);
+    )->execute([
+        $sessionUserId,
+        $result['reference'],
+        $result['fee_amount'],
+        $result['credited_amount'],
+        $topupId,
+    ]);
 
     logAudit(
         $db,
@@ -54,20 +62,26 @@ try {
         'topup_requests',
         ['id' => $topupId, 'status' => 'pending'],
         [
-            'id' => $topupId,
-            'status' => 'approved',
-            'approved_by' => $sessionUserId,
-            'student_wallet_id' => $studentWalletId,
-            'amount' => $amount,
-            'reference_no' => $result['reference'],
+            'id'               => $topupId,
+            'status'           => 'approved',
+            'approved_by'      => $sessionUserId,
+            'student_wallet_id'=> $studentWalletId,
+            'cash_amount'      => $amount,
+            'fee_amount'       => $result['fee_amount'],
+            'credited_amount'  => $result['credited_amount'],
+            'reference_no'     => $result['reference'],
         ]
     );
 
     echo json_encode([
-        'success'   => true,
-        'message'   => "₱" . number_format($amount, 2) . " loaded successfully.",
-        'reference' => $result['reference'],
-        'vault_remaining' => $result['vault_after'],
+        'success'          => true,
+        'message'          => "₱" . number_format($result['credited_amount'], 2) .
+                              " credited (₱" . number_format($amount, 2) .
+                              " cash — 2% service fee: ₱" . number_format($result['fee_amount'], 2) . ").",
+        'reference'        => $result['reference'],
+        'credited_amount'  => $result['credited_amount'],
+        'fee_amount'       => $result['fee_amount'],
+        'vault_remaining'  => $result['vault_after'],
     ]);
 
 } catch (RuntimeException $e) {

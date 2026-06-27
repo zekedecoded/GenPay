@@ -1,30 +1,33 @@
 <?php
 session_start();
-require_once __DIR__ . '/../connection/config.php';
-require_once __DIR__ . '/../connection/pdo.php';
-require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . "/../connection/config.php";
+require_once __DIR__ . "/../connection/pdo.php";
+require_once __DIR__ . "/../connection/app.php";
 
-gjc_require_role(['merchant']);
-if (!gjc_is_merchant_admin() && (gjc_current_role() !== 'merchant' || gjc_is_merchant_staff())) {
-    header('Location: ' . DASHBOARD_URL);
-    exit;
+gjc_require_role(["merchant"]);
+if (
+    !gjc_is_merchant_admin() &&
+    (gjc_current_role() !== "merchant" || gjc_is_merchant_staff())
+) {
+    header("Location: " . DASHBOARD_URL);
+    exit();
 }
 
-$currentUser    = gjc_current_user($db);
-$merchantUserId = $currentUser['id'];
+$currentUser = gjc_current_user($db);
+$merchantUserId = $currentUser["id"];
 
 // Fetch staff accounts created by this merchant admin
 $staffList = [];
 $stmt = $db->prepare(
-    "SELECT userID, first_name, last_name, email, contact_number, sub_role, created_at
+    "SELECT userID, first_name, last_name, email, contact_number, sub_role, created_at, status
        FROM users
       WHERE merchant_owner_id = ? AND roleID = 6
-      ORDER BY created_at DESC"
+      ORDER BY created_at DESC",
 );
 $stmt->execute([$merchantUserId]);
 $staffList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$currentPage = 'staff';
+$currentPage = "staff";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,45 +45,76 @@ $currentPage = 'staff';
 </head>
 <body>
 <div class="merchant-layout">
-    <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
+    <?php require __DIR__ .
+        "/../includes/partials/" .
+        (gjc_is_merchant_staff()
+            ? "sidebar_merchant_staff.php"
+            : "sidebar_merchant_admin.php"); ?>
 
     <main class="merchant-main">
         <header class="merchant-topbar">
             <button class="merchant-menu-btn" onclick="document.getElementById('merchantSidebar').classList.toggle('collapsed')">&#9776;</button>
-            <div><h1>Staff Management</h1><p>Create and manage cashier staff accounts for your stall.</p></div>
+            <div><h1>Staff Management</h1><p>Create and manage staff accounts for your stall.</p></div>
             <div class="merchant-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
+                <span><?= gjc_e($currentUser["name"]) ?></span>
                 <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
             </div>
         </header>
 
         <section class="merchant-premium-panel">
             <div class="merchant-panel-header d-flex justify-content-between align-items-center">
-                <div><h3>Cashier Accounts</h3><p><?= count($staffList) ?> staff member(s) registered.</p></div>
-                <button class="merchant-view-btn" data-bs-toggle="modal" data-bs-target="#staffModal">+ Add Cashier</button>
+                <div>
+                    <h3>Staff Accounts</h3>
+                    <p><?= count($staffList) ?> staff member(s) registered.</p>
+                </div>
+                <button class="merchant-view-btn" data-bs-toggle="modal" data-bs-target="#staffModal">+ Add Staff</button>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-sm btn-success active" id="filter-Active" onclick="setStatusFilter('Active')">Active Only</button>
+                <button class="btn btn-sm btn-outline-secondary" id="filter-Inactive" onclick="setStatusFilter('Inactive')">Inactive</button>
+                <button class="btn btn-sm btn-outline-secondary" id="filter-All" onclick="setStatusFilter('All')">Show All</button>
             </div>
 
             <div class="table-responsive">
-                <table class="table merchant-premium-table align-middle">
+                <table class="table merchant-premium-table align-middle" id="staffTable">
                     <thead>
-                        <tr><th>Name</th><th>Email</th><th>Contact</th><th>Role</th><th>Since</th><th>Actions</th></tr>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Contact</th>
+                            <th>Position</th>
+                            <th>Date Hired</th>
+                            <th style="cursor:pointer" onclick="sortByStatus()" title="Sort by status">
+                                Status <i class="fa-solid fa-sort ms-1" id="statusSortIcon"></i>
+                            </th>
+                            <th>Active</th>
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="staffTableBody">
                     <?php if (empty($staffList)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-5">No cashier accounts yet. Add your first staff member.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5">No staff accounts yet. Add your first staff member.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($staffList as $s): ?>
-                        <tr>
-                            <td><strong><?= gjc_e($s['first_name'] . ' ' . $s['last_name']) ?></strong></td>
-                            <td><?= gjc_e($s['email']) ?></td>
-                            <td><?= gjc_e($s['contact_number']) ?></td>
+                        <?php $isActive = ($s['status'] ?? 'Active') === 'Active'; ?>
+                        <tr data-status="<?= $isActive ? 'Active' : 'Inactive' ?>">
+                            <td><strong><?= gjc_e($s["first_name"] . " " . $s["last_name"]) ?></strong></td>
+                            <td><?= gjc_e($s["email"]) ?></td>
+                            <td><?= gjc_e($s["contact_number"]) ?></td>
                             <td><span class="merchant-type-pill">Merchant Staff</span></td>
-                            <td><?= date('M d, Y', strtotime($s['created_at'])) ?></td>
+                            <td><?= date("M d, Y", strtotime($s["created_at"])) ?></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-danger"
-                                    onclick="deactivateStaff(<?= (int)$s['userID'] ?>, '<?= gjc_e($s['first_name']) ?>')">
-                                    Deactivate
-                                </button>
+                                <span class="badge <?= $isActive ? 'bg-success' : 'bg-secondary' ?> status-badge">
+                                    <?= $isActive ? 'Active' : 'Inactive' ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        <?= $isActive ? 'checked' : '' ?>
+                                        onchange="toggleStaffStatus(<?= (int) $s['userID'] ?>, this)">
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -95,7 +129,7 @@ $currentPage = 'staff';
 <div class="modal fade" id="staffModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content custom-modal">
-            <div class="modal-header"><h5 class="modal-title">Create Cashier Account</h5></div>
+            <div class="modal-header"><h5 class="modal-title">Create Staff Account</h5></div>
             <div class="modal-body">
                 <form id="staffForm">
                     <input type="hidden" name="action" value="create_staff">
@@ -136,6 +170,7 @@ $currentPage = 'staff';
 <script>
 const STAFF_API = '<?= MERCHANT_URL ?>/api/staff.php';
 
+// ── Create staff ──────────────────────────────────────────────────────────────
 document.getElementById('staffForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const btn = document.getElementById('staffSubmitBtn');
@@ -152,14 +187,77 @@ document.getElementById('staffForm').addEventListener('submit', async function(e
     }
 });
 
-async function deactivateStaff(userId, name) {
-    if (!confirm(`Deactivate ${name}'s account? They will no longer be able to log in.`)) return;
+// ── Toggle staff Active / Inactive ───────────────────────────────────────────
+async function toggleStaffStatus(userId, checkbox) {
+    checkbox.disabled = true;
     const f = new FormData();
-    f.append('action', 'deactivate_staff'); f.append('user_id', userId);
-    const r = await fetch(STAFF_API, { method:'POST', body:f });
-    const d = await r.json();
-    if (d.success) location.reload(); else alert(d.message);
+    f.append('action', 'toggle_staff_status');
+    f.append('user_id', userId);
+    try {
+        const r = await fetch(STAFF_API, { method:'POST', body:f });
+        const d = await r.json();
+        if (d.success) {
+            const row = checkbox.closest('tr');
+            const isActive = d.new_status === 'Active';
+            row.dataset.status = d.new_status;
+            const badge = row.querySelector('.status-badge');
+            badge.className = 'badge status-badge ' + (isActive ? 'bg-success' : 'bg-secondary');
+            badge.textContent = d.new_status;
+            checkbox.checked = isActive;
+            applyStatusFilter();
+        } else {
+            checkbox.checked = !checkbox.checked;
+            alert(d.message);
+        }
+    } catch {
+        checkbox.checked = !checkbox.checked;
+        alert('Network error. Please try again.');
+    }
+    checkbox.disabled = false;
 }
+
+// ── Status filter ─────────────────────────────────────────────────────────────
+let currentFilter = 'Active';
+
+function setStatusFilter(value) {
+    currentFilter = value;
+    ['Active','Inactive','All'].forEach(v => {
+        const btn = document.getElementById('filter-' + v);
+        if (!btn) return;
+        const isActive = v === value;
+        btn.className = 'btn btn-sm ' + (isActive
+            ? (v === 'Active' ? 'btn-success active' : v === 'Inactive' ? 'btn-secondary active' : 'btn-dark active')
+            : 'btn-outline-secondary');
+    });
+    applyStatusFilter();
+}
+
+function applyStatusFilter() {
+    document.querySelectorAll('#staffTableBody tr[data-status]').forEach(row => {
+        const show = currentFilter === 'All' || row.dataset.status === currentFilter;
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// ── Sort by status ────────────────────────────────────────────────────────────
+let statusSortAsc = true;
+
+function sortByStatus() {
+    const tbody = document.getElementById('staffTableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr[data-status]'));
+    rows.sort((a, b) => {
+        const av = a.dataset.status === 'Active' ? 0 : 1;
+        const bv = b.dataset.status === 'Active' ? 0 : 1;
+        return statusSortAsc ? av - bv : bv - av;
+    });
+    statusSortAsc = !statusSortAsc;
+    const icon = document.getElementById('statusSortIcon');
+    if (icon) icon.className = 'fa-solid ms-1 ' + (statusSortAsc ? 'fa-sort-down' : 'fa-sort-up');
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Default: show Active only on page load
+document.addEventListener('DOMContentLoaded', () => setStatusFilter('Active'));
 </script>
 </body>
 </html>

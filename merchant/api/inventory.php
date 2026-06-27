@@ -193,6 +193,44 @@ try {
             break;
         }
 
+        case 'delete_product': {
+            if (!$isMerchAdmin) {
+                echo json_encode(['success' => false, 'message' => 'Only Merchant Admin can delete products.']);
+                exit;
+            }
+            $itemId = (int) ($_POST['item_id'] ?? 0);
+            if (!$itemId) {
+                echo json_encode(['success' => false, 'message' => 'Item ID required.']);
+                exit;
+            }
+
+            // Verify ownership before deleting (mirrors edit_product)
+            $own = $db->prepare("SELECT * FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
+            $own->execute([$itemId, $merchantUserId]);
+            $oldItem = $own->fetch(PDO::FETCH_ASSOC);
+            if (!$oldItem) {
+                echo json_encode(['success' => false, 'message' => 'Item not found in your inventory.']);
+                exit;
+            }
+
+            $del = $db->prepare("DELETE FROM merchant_inventory WHERE id = ? AND merchant_user_id = ?");
+            $del->execute([$itemId, $merchantUserId]);
+
+            // Audit as a menu mutation: old = item, new = null (removed)
+            logAudit(
+                $db,
+                $merchantUserId,
+                gjc_current_role(),
+                'MENU_MUTATION',
+                'menu_items',
+                $oldItem,
+                null
+            );
+
+            echo json_encode(['success' => true, 'message' => 'Product deleted.']);
+            break;
+        }
+
         case 'update_stock': {
             $itemId   = (int) ($_POST['item_id'] ?? 0);
             $stockQty = (int) ($_POST['stock_qty'] ?? 0);

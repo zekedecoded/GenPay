@@ -57,6 +57,12 @@ $userId = (int) $db->lastInsertId();
 if ($userId > 0) {
     if ($roleId === 1) {
         gjc_student_wallet($db, $userId);
+        $autoStudentId = gjc_generate_student_id($db);
+        gjc_ensure_student_info_record($db, $userId, $autoStudentId);
+        // Keep users.school_id in sync
+        if (in_array('school_id', gjc_table_columns($db, 'users'), true)) {
+            $db->prepare("UPDATE users SET school_id = ? WHERE userID = ?")->execute([$autoStudentId, $userId]);
+        }
     } elseif ($roleId === 2) {
         gjc_merchant_wallet($db, $userId);
     }

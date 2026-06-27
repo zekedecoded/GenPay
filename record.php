@@ -43,6 +43,10 @@ class Record
                 $validPassword = password_verify($password, $storedPassword) || hash_equals($storedPassword, $password);
 
                 if ($validPassword) {
+                    if (!empty($user['status']) && $user['status'] === 'Inactive') {
+                        return 'Access Denied: Your account has been deactivated. Please contact your merchant admin.';
+                    }
+
                     $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
                     $roleId = (int) ($user['roleID'] ?? 0);
 

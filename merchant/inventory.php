@@ -36,6 +36,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <title>Inventory | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -85,7 +86,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
             <?php endif; ?>
 
             <div class="table-responsive">
-                <table class="table merchant-premium-table align-middle">
+                <table class="table merchant-premium-table align-middle js-datatable" id="inventoryTable" data-page-length="10" data-empty-message="No products found.">
                     <thead>
                         <tr>
                             <th>SKU</th>
@@ -156,6 +157,11 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                     <button class="btn btn-sm btn-outline-secondary"
                                         onclick="editProduct(<?= htmlspecialchars(json_encode($item), ENT_QUOTES) ?>)">
                                         Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                        onclick='askDeleteProduct(<?= (int) $item['id'] ?>, <?= htmlspecialchars(json_encode($item['product_name']), ENT_QUOTES) ?>)'
+                                        title="Delete product">
+                                        <i class="fa-solid fa-trash-can"></i>
                                     </button>
                                     <?php endif; ?>
                                 </div>
@@ -286,7 +292,32 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     </div>
 </div>
 
+<!-- Delete Product Confirm Modal (Merchant Admin only) -->
+<?php if ($isMerchAdmin): ?>
+<div class="modal fade" id="deleteProductModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="fa-solid fa-trash-can me-2"></i>Delete Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Permanently remove this product from your catalog?</p>
+                <p class="fw-bold fs-5 mb-3" id="deleteProductName">--</p>
+                <p class="text-muted small mb-3"><i class="fa-solid fa-circle-info me-1"></i>Past sales records are not affected. Students will no longer be able to scan or buy this item.</p>
+                <div id="deleteProductMsg" class="mb-3"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger" style="flex:1" id="confirmDeleteBtn"><i class="fa-solid fa-trash-can me-1"></i>Delete</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 <script>
 const INV_API = '<?= MERCHANT_URL ?>/api/inventory.php';
 
@@ -370,6 +401,40 @@ document.getElementById('productForm').addEventListener('submit', async function
     } else {
         msg.innerHTML = `<div class="alert alert-danger">${d.message}</div>`;
         btn.disabled = false; btn.textContent = 'Save Product';
+    }
+});
+
+// ── Delete product ────────────────────────────────────────────────────────────
+let deleteItemId = null;
+
+function askDeleteProduct(id, name) {
+    deleteItemId = id;
+    document.getElementById('deleteProductName').textContent = name;
+    document.getElementById('deleteProductMsg').innerHTML = '';
+    new bootstrap.Modal(document.getElementById('deleteProductModal')).show();
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function () {
+    if (!deleteItemId) return;
+    const btn = this;
+    btn.disabled = true; btn.textContent = 'Deleting...';
+    const f = new FormData();
+    f.append('action', 'delete_product');
+    f.append('item_id', deleteItemId);
+    try {
+        const r = await fetch(INV_API, { method: 'POST', body: f });
+        const d = await r.json();
+        const msg = document.getElementById('deleteProductMsg');
+        if (d.success) {
+            msg.innerHTML = '<div class="alert alert-success mb-0">Product deleted. Reloading...</div>';
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            msg.innerHTML = `<div class="alert alert-danger mb-0">${d.message}</div>`;
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can me-1"></i>Delete';
+        }
+    } catch {
+        document.getElementById('deleteProductMsg').innerHTML = '<div class="alert alert-danger mb-0">Network error. Please try again.</div>';
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can me-1"></i>Delete';
     }
 });
 <?php endif; ?>

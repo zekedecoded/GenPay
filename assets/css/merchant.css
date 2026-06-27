@@ -296,6 +296,39 @@ body {
   color: white;
 }
 
+/* POS topbar: Load Wallet action + user, pinned to the right */
+.merchant-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.merchant-topbar-actions .merchant-user {
+  margin-left: 0;
+}
+
+.merchant-loadwallet-btn {
+  padding: 8px 16px;
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.merchant-loadwallet-btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
 .merchant-metric-card {
   min-height: 158px;
   padding: 22px;
@@ -2117,6 +2150,21 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 12px;
+  }
+
+  /* Keep the POS action cluster content-width (don't let it grab flex:1) */
+  .merchant-topbar > div.merchant-topbar-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    gap: 8px;
+  }
+
+  .merchant-loadwallet-btn {
+    padding: 8px 11px;
+  }
+
+  .merchant-loadwallet-label {
+    display: none;
   }
 
   .merchant-avatar {

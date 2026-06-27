@@ -10,16 +10,22 @@ $pendingRequests = (int) $db->query("SELECT COUNT(*) FROM topup_requests WHERE s
 $loadedToday = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM topup_requests WHERE status = 'approved' AND DATE(approved_at) = CURDATE()")->fetchColumn();
 $requestQueue = $pendingRequests;
 
+gjc_backfill_student_ids($db);
+
 $pendingTopups = $db->query(
-    "SELECT * FROM topup_requests
-      WHERE status = 'pending'
-      ORDER BY created_at ASC
+    "SELECT t.*, si.studentID
+       FROM topup_requests t
+       LEFT JOIN student_info si ON si.userID = t.user_id
+      WHERE t.status = 'pending'
+      ORDER BY t.created_at ASC
       LIMIT 20"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $topupHistory = $db->query(
-    "SELECT * FROM topup_requests
-      ORDER BY created_at DESC
+    "SELECT t.*, si.studentID
+       FROM topup_requests t
+       LEFT JOIN student_info si ON si.userID = t.user_id
+      ORDER BY t.created_at DESC
       LIMIT 20"
 )->fetchAll(PDO::FETCH_ASSOC);
 
@@ -111,9 +117,9 @@ $currentPage = 'topups';
                         <p>Approve, reject, or view details of incoming top-up requests.</p>
                     </div>
 
-                    <a href="#pending-topups" class="create-topup-btn">
-                        <i class="fa-solid fa-plus"></i> Create Top-up
-                    </a>
+                    <button type="button" class="create-topup-btn" onclick="openSendGenCoin()">
+                        <i class="fa-solid fa-paper-plane"></i> Send GenCoin
+                    </button>
                 </div>
 
                 <div class="table-responsive">
@@ -143,7 +149,7 @@ $currentPage = 'topups';
                                         <strong><?php echo gjc_e($topupName); ?></strong>
                                     </div>
                                 </td>
-                                <td><?php echo 'GJC-' . str_pad((string) $topup['user_id'], 5, '0', STR_PAD_LEFT); ?></td>
+                                <td><?php echo gjc_e($topup['studentID'] ?? ('GJC' . date('Y') . '-????')); ?></td>
                                 <td class="amount-text"><?php echo gjc_money($topup["amount"]); ?></td>
                                 <td><span class="method-pill"><?php echo gjc_e($topup["payment_method"]); ?></span></td>
                                 <td><?php echo gjc_e(date('M d, h:i A', strtotime($topup["created_at"]))); ?></td>
@@ -214,11 +220,198 @@ $currentPage = 'topups';
 
     </div>
 
+    <!-- Send GenCoin Modal -->
+    <div class="modal fade" id="sendGenCoinModal" tabindex="-1" aria-labelledby="sendGenCoinModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+            <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
+
+                <!-- Header -->
+                <div class="modal-header border-0 pb-0" style="background:#f0fdf4;padding:20px 24px 12px">
+                    <div style="flex:1">
+                        <h5 class="modal-title fw-bold" id="sendGenCoinModalLabel" style="color:#15803d;font-size:18px">
+                            <i class="fa-solid fa-coins me-2"></i>Send GenCoin
+                        </h5>
+                        <!-- Step indicator -->
+                        <div style="display:flex;gap:6px;margin-top:10px;align-items:center" id="sgc-steps">
+                            <div class="sgc-step-dot sgc-step-dot--active" data-step="1"></div>
+                            <div class="sgc-step-line"></div>
+                            <div class="sgc-step-dot" data-step="2"></div>
+                            <div class="sgc-step-line"></div>
+                            <div class="sgc-step-dot" data-step="3"></div>
+                            <span id="sgc-step-label" style="margin-left:8px;font-size:12px;color:#6b7280;font-weight:600">Step 1 of 3</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="margin-top:-16px"></button>
+                </div>
+
+                <div class="modal-body" style="padding:20px 24px 24px;background:#f0fdf4">
+
+                    <!-- STEP 1: Student ID -->
+                    <div id="sgc-step-1">
+                        <p style="font-size:13px;color:#374151;margin-bottom:16px">Enter the Student ID of the recipient.</p>
+                        <div style="position:relative">
+                            <input type="text" id="sgc-school-id" class="form-control"
+                                   placeholder="e.g. 2024-00123" autocomplete="off"
+                                   style="border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;border:1.5px solid #d1fae5">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none"></i>
+                        </div>
+                        <div id="sgc-lookup-result" style="margin-top:10px;min-height:36px"></div>
+                        <div style="display:flex;justify-content:flex-end;margin-top:16px">
+                            <button type="button" id="sgc-next-1" class="btn btn-success" disabled
+                                    style="border-radius:12px;padding:10px 28px;font-weight:600"
+                                    onclick="sgcGoStep(2)">
+                                Next <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Amount + Message -->
+                    <div id="sgc-step-2" style="display:none">
+                        <!-- Recipient pill -->
+                        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+                            <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#15803d;font-size:15px" id="sgc-recipient-avatar"></div>
+                            <div>
+                                <div style="font-weight:700;font-size:14px;color:#111" id="sgc-recipient-name-2"></div>
+                                <div style="font-size:11px;color:#6b7280" id="sgc-recipient-id-2"></div>
+                            </div>
+                        </div>
+
+                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (GenCoins)</label>
+                        <div style="position:relative;margin-bottom:6px">
+                            <input type="number" id="sgc-gencoins" class="form-control" min="1" step="1"
+                                   placeholder="e.g. 5"
+                                   style="border-radius:12px;padding:12px 70px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
+                            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:#9ca3af">GC</span>
+                        </div>
+                        <div id="sgc-peso-equiv" style="font-size:12px;color:#15803d;font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
+                        <!-- Fee breakdown preview (step 2) -->
+                        <div id="sgc-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid #d1fae5;margin-bottom:14px">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                                <span style="color:#6b7280">Cash value</span>
+                                <span id="sgc-fp-cash" style="font-weight:600;color:#111"></span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                                <span style="color:#ef4444">Service fee (2%)</span>
+                                <span id="sgc-fp-fee" style="font-weight:600;color:#ef4444"></span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;border-top:1px solid #d1fae5;padding-top:6px;margin-top:2px">
+                                <span style="color:#15803d;font-weight:700">Credited to wallet</span>
+                                <span id="sgc-fp-credited" style="font-weight:800;color:#15803d"></span>
+                            </div>
+                        </div>
+
+                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Message <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+                        <textarea id="sgc-message" class="form-control" rows="2" maxlength="120"
+                                  placeholder="e.g. For school supplies"
+                                  style="border-radius:12px;font-size:13px;border:1.5px solid #d1fae5;resize:none"></textarea>
+
+                        <div style="display:flex;justify-content:space-between;margin-top:20px">
+                            <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px"
+                                    onclick="sgcGoStep(1)">
+                                <i class="fa-solid fa-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="button" id="sgc-next-2" class="btn btn-success" disabled
+                                    style="border-radius:12px;padding:10px 28px;font-weight:600"
+                                    onclick="sgcGoStep(3)">
+                                Next <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Preview + Confirm -->
+                    <div id="sgc-step-3" style="display:none">
+                        <p style="font-size:13px;color:#374151;margin-bottom:14px;font-weight:600">Review the details before sending.</p>
+
+                        <!-- Preview card -->
+                        <div style="background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:18px">
+                            <div style="text-align:center;margin-bottom:16px">
+                                <div style="font-size:32px;font-weight:800;color:#15803d" id="sgc-prev-coins"></div>
+                                <div style="font-size:13px;color:#6b7280" id="sgc-prev-peso"></div>
+                            </div>
+                            <hr style="margin:12px 0;border-color:#f0fdf4">
+                            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:#6b7280">To</span>
+                                    <strong id="sgc-prev-name"></strong>
+                                </div>
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:#6b7280">Student ID</span>
+                                    <span id="sgc-prev-id" style="font-family:monospace"></span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between" id="sgc-prev-msg-row">
+                                    <span style="color:#6b7280">Message</span>
+                                    <span id="sgc-prev-msg" style="max-width:180px;text-align:right;color:#374151"></span>
+                                </div>
+                            </div>
+                            <!-- Fee breakdown in preview -->
+                            <div style="border-top:1px dashed #d1fae5;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:#6b7280">Cash value</span>
+                                    <span id="sgc-prev-cash" style="font-weight:600"></span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:#ef4444">Service fee (2%)</span>
+                                    <span id="sgc-prev-fee" style="font-weight:600;color:#ef4444"></span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px">
+                                    <span style="color:#15803d;font-weight:700">Credited to wallet</span>
+                                    <span id="sgc-prev-credited" style="font-weight:800;color:#15803d"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Confirmation checkbox -->
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #d1fae5">
+                            <input type="checkbox" id="sgc-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:#16a34a;cursor:pointer">
+                            <span style="font-size:13px;color:#374151;line-height:1.5">
+                                I confirm that I want to send <strong id="sgc-confirm-coins"></strong> to <strong id="sgc-confirm-name"></strong>. This action cannot be undone.
+                            </span>
+                        </label>
+
+                        <div id="sgc-send-error" style="margin-top:10px;font-size:13px;color:#ef4444;min-height:18px"></div>
+
+                        <div style="display:flex;justify-content:space-between;margin-top:16px">
+                            <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px"
+                                    onclick="sgcGoStep(2)">
+                                <i class="fa-solid fa-arrow-left me-1"></i> Back
+                            </button>
+                            <button type="button" id="sgc-send-btn" class="btn btn-success" disabled
+                                    style="border-radius:12px;padding:10px 28px;font-weight:700;font-size:15px"
+                                    onclick="sgcSend()">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Send
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SUCCESS STATE -->
+                    <div id="sgc-success" style="display:none;text-align:center;padding:16px 0">
+                        <div style="width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                            <i class="fa-solid fa-circle-check" style="font-size:32px;color:#16a34a"></i>
+                        </div>
+                        <div style="font-size:18px;font-weight:700;color:#15803d;margin-bottom:4px">Sent!</div>
+                        <div style="font-size:13px;color:#6b7280" id="sgc-success-msg"></div>
+                        <div style="margin-top:10px;display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px">
+                            <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
+                            <span id="sgc-success-ref" style="font-size:13px;font-weight:700;color:#15803d;font-family:monospace;letter-spacing:.5px"></span>
+                        </div>
+                        <button type="button" class="btn btn-success mt-4 d-block mx-auto" style="border-radius:12px;padding:10px 32px;font-weight:600"
+                                data-bs-dismiss="modal">Done</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .sgc-step-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s}
+    .sgc-step-dot--active{background:#16a34a}
+    .sgc-step-dot--done{background:#86efac}
+    .sgc-step-line{flex:1;height:2px;background:#d1fae5;max-width:40px}
+    </style>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="<?= JS_URL ?>/admin_datatables.js"></script>
+    <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <script>
     function toggleSidebar() {
@@ -226,9 +419,10 @@ $currentPage = 'topups';
     }
 
     async function approveTopup(topupId, studentWalletId, amount) {
-        if (!confirm("Approve this top-up request?")) {
-            return;
-        }
+        const fee      = Math.round(amount * 0.02 * 100) / 100;
+        const credited = Math.round((amount - fee) * 100) / 100;
+        const msg      = `Approve this top-up?\n\nCash received:    ₱${amount.toFixed(2)}\nService fee (2%): ₱${fee.toFixed(2)}\nCredited to wallet: ₱${credited.toFixed(2)}`;
+        if (!confirm(msg)) return;
 
         const form = new FormData();
         form.append("topup_id", topupId);
@@ -245,6 +439,203 @@ $currentPage = 'topups';
             window.location.reload();
         }
     }
+
+    // ── Send GenCoin ────────────────────────────────────────────────────────
+    const SGC_API = '<?= ADMIN_URL ?>/api/economy.php';
+    let sgcWalletId = null, sgcStudentName = '', sgcSchoolId = '';
+
+    function openSendGenCoin() {
+        sgcReset();
+        new bootstrap.Modal(document.getElementById('sendGenCoinModal')).show();
+    }
+
+    function sgcReset() {
+        sgcWalletId = null; sgcStudentName = ''; sgcSchoolId = '';
+        document.getElementById('sgc-school-id').value = '';
+        document.getElementById('sgc-lookup-result').innerHTML = '';
+        document.getElementById('sgc-next-1').disabled = true;
+        document.getElementById('sgc-gencoins').value = '';
+        document.getElementById('sgc-peso-equiv').textContent = '';
+        document.getElementById('sgc-message').value = '';
+        document.getElementById('sgc-next-2').disabled = true;
+        document.getElementById('sgc-confirm-check').checked = false;
+        document.getElementById('sgc-send-btn').disabled = true;
+        document.getElementById('sgc-send-btn').innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send';
+        document.getElementById('sgc-send-error').textContent = '';
+        ['sgc-step-1','sgc-step-2','sgc-step-3','sgc-success'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+        document.getElementById('sgc-step-1').style.display = '';
+        sgcUpdateStepUI(1);
+    }
+
+    function sgcUpdateStepUI(step) {
+        document.getElementById('sgc-step-label').textContent = `Step ${step} of 3`;
+        document.querySelectorAll('.sgc-step-dot').forEach(dot => {
+            const s = parseInt(dot.dataset.step);
+            dot.classList.toggle('sgc-step-dot--active', s === step);
+            dot.classList.toggle('sgc-step-dot--done', s < step);
+        });
+    }
+
+    function sgcGoStep(step) {
+        ['sgc-step-1','sgc-step-2','sgc-step-3'].forEach((id, i) => {
+            document.getElementById(id).style.display = (i + 1 === step) ? '' : 'none';
+        });
+        sgcUpdateStepUI(step);
+        if (step === 3) sgcBuildPreview();
+    }
+
+    function sgcCalcFee(peso) {
+        const fee      = Math.round(peso * 0.02 * 100) / 100;
+        const credited = Math.round((peso - fee) * 100) / 100;
+        return { fee, credited };
+    }
+
+    function sgcFmt(n) {
+        return '₱' + n.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    function sgcBuildPreview() {
+        const gc      = parseInt(document.getElementById('sgc-gencoins').value, 10) || 0;
+        const peso    = gc * 10;
+        const { fee, credited } = sgcCalcFee(peso);
+        const msg     = document.getElementById('sgc-message').value.trim();
+
+        document.getElementById('sgc-prev-coins').textContent   = gc + ' GenCoins';
+        document.getElementById('sgc-prev-peso').textContent    = '= ' + sgcFmt(peso) + ' cash';
+        document.getElementById('sgc-prev-name').textContent    = sgcStudentName;
+        document.getElementById('sgc-prev-id').textContent      = sgcSchoolId;
+        document.getElementById('sgc-prev-msg').textContent     = msg || '—';
+        document.getElementById('sgc-prev-cash').textContent    = sgcFmt(peso);
+        document.getElementById('sgc-prev-fee').textContent     = '− ' + sgcFmt(fee);
+        document.getElementById('sgc-prev-credited').textContent= sgcFmt(credited);
+        document.getElementById('sgc-confirm-coins').textContent= sgcFmt(credited) + ' (₱' + credited.toFixed(2) + ')';
+        document.getElementById('sgc-confirm-name').textContent = sgcStudentName;
+
+        document.getElementById('sgc-confirm-check').checked = false;
+        document.getElementById('sgc-send-btn').disabled = true;
+    }
+
+    // Student ID lookup on Enter or blur
+    async function sgcLookup() {
+        const schoolId = document.getElementById('sgc-school-id').value.trim();
+        const resultEl = document.getElementById('sgc-lookup-result');
+        const nextBtn  = document.getElementById('sgc-next-1');
+        if (!schoolId) return;
+
+        resultEl.innerHTML = '<span style="font-size:12px;color:#6b7280">Looking up…</span>';
+        nextBtn.disabled = true;
+        sgcWalletId = null;
+
+        try {
+            const res  = await fetch(SGC_API, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({action:'lookup_student', school_id: schoolId}),
+            });
+            const data = await res.json();
+            if (data.success) {
+                sgcWalletId    = data.wallet_id;
+                sgcStudentName = data.name;
+                sgcSchoolId    = schoolId;
+                resultEl.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:8px;background:#dcfce7;border-radius:10px;padding:8px 12px">
+                        <i class="fa-solid fa-circle-check" style="color:#16a34a"></i>
+                        <div>
+                            <strong style="font-size:13px;color:#15803d">${data.name}</strong>
+                            <div style="font-size:11px;color:#6b7280">${schoolId}</div>
+                        </div>
+                    </div>`;
+                nextBtn.disabled = false;
+                // prefill step 2 recipient pill
+                document.getElementById('sgc-recipient-avatar').textContent = data.name.charAt(0).toUpperCase();
+                document.getElementById('sgc-recipient-name-2').textContent = data.name;
+                document.getElementById('sgc-recipient-id-2').textContent   = schoolId;
+            } else {
+                resultEl.innerHTML = `<div style="font-size:12px;color:#ef4444;padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'Student not found.'}</div>`;
+            }
+        } catch {
+            resultEl.innerHTML = `<div style="font-size:12px;color:#ef4444">Network error. Try again.</div>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const schoolInput = document.getElementById('sgc-school-id');
+        schoolInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sgcLookup(); }});
+        schoolInput.addEventListener('blur', sgcLookup);
+
+        document.getElementById('sgc-gencoins').addEventListener('input', function () {
+            const gc      = parseInt(this.value, 10);
+            const next    = document.getElementById('sgc-next-2');
+            const preview = document.getElementById('sgc-fee-preview');
+            if (gc > 0) {
+                const peso             = gc * 10;
+                const { fee, credited} = sgcCalcFee(peso);
+                document.getElementById('sgc-peso-equiv').textContent  = '≈ ' + sgcFmt(peso) + ' cash value (1 GC = ₱10)';
+                document.getElementById('sgc-fp-cash').textContent    = sgcFmt(peso);
+                document.getElementById('sgc-fp-fee').textContent     = '− ' + sgcFmt(fee);
+                document.getElementById('sgc-fp-credited').textContent= sgcFmt(credited);
+                preview.style.display = '';
+                next.disabled = false;
+            } else {
+                document.getElementById('sgc-peso-equiv').textContent = '';
+                preview.style.display = 'none';
+                next.disabled = true;
+            }
+        });
+
+        document.getElementById('sgc-confirm-check').addEventListener('change', function () {
+            document.getElementById('sgc-send-btn').disabled = !this.checked;
+        });
+
+        document.getElementById('sendGenCoinModal').addEventListener('hidden.bs.modal', sgcReset);
+    });
+
+    async function sgcSend() {
+        const sendBtn  = document.getElementById('sgc-send-btn');
+        const errorEl  = document.getElementById('sgc-send-error');
+        const gc       = parseInt(document.getElementById('sgc-gencoins').value, 10);
+        const msg      = document.getElementById('sgc-message').value.trim();
+        const amount   = gc * 10;
+        const { fee, credited } = sgcCalcFee(amount);
+
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…';
+        errorEl.textContent = '';
+
+        try {
+            const res  = await fetch(SGC_API, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    action: 'topup',
+                    student_wallet_id: sgcWalletId,
+                    amount: amount,
+                    notes: msg || null,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                const actualCredited = data.credited_amount ?? credited;
+                const actualFee      = data.fee_amount      ?? fee;
+                document.getElementById('sgc-step-3').style.display = 'none';
+                document.getElementById('sgc-success').style.display = '';
+                document.getElementById('sgc-step-label').textContent = 'Complete';
+                document.getElementById('sgc-success-msg').textContent =
+                    sgcFmt(actualCredited) + ' credited to ' + sgcStudentName +
+                    ' (' + sgcFmt(amount) + ' cash − ' + sgcFmt(actualFee) + ' service fee).';
+                document.getElementById('sgc-success-ref').textContent = data.reference || '—';
+            } else {
+                errorEl.textContent = data.error || 'Failed to send. Please try again.';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send';
+            }
+        } catch {
+            errorEl.textContent = 'Network error. Please try again.';
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send';
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     async function rejectTopup(topupId) {
         if (!confirm("Reject this top-up request?")) {

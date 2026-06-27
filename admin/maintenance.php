@@ -254,8 +254,26 @@ function maintenance_insert_merchant_record(PDO $db, int $userId, string $busine
     return (int) $db->lastInsertId();
 }
 
+function maintenance_ensure_restricted_products_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS restricted_products (
+            id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            product_name VARCHAR(120) NOT NULL,
+            category    VARCHAR(60)  NOT NULL DEFAULT 'general',
+            reason      VARCHAR(255) NOT NULL,
+            match_type  ENUM('exact','contains') NOT NULL DEFAULT 'contains',
+            is_active   TINYINT(1)   NOT NULL DEFAULT 1,
+            flagged_by  INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+}
+
 maintenance_ensure_student_registry($db);
 maintenance_ensure_merchant_bypass_schema($db);
+maintenance_ensure_restricted_products_schema($db);
 
 $previewRows = $_SESSION['bulk_student_import_rows'] ?? [];
 $previewFileName = (string) ($_SESSION['bulk_student_import_filename'] ?? '');
@@ -263,6 +281,10 @@ $importError = '';
 $importSummary = null;
 $merchantError = '';
 $merchantSuccess = null;
+
+$restrictedProducts = $db->query(
+    "SELECT * FROM restricted_products ORDER BY is_active DESC, category ASC, product_name ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['student_import_action'] ?? '');
@@ -531,224 +553,290 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        /* ── Layout ─────────────────────────────────────────────────────────── */
         .maintenance-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 20px;
-        }
-
-        .maintenance-placeholder {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            min-height: 320px;
-            padding: 24px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, .06);
-        }
-
-        .maintenance-placeholder h3 {
-            color: #064420;
-            font-size: 18px;
-            font-weight: 900;
-            margin: 0;
-        }
-
-        .maintenance-placeholder .section-tag {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            background: #fef3c7;
-            color: #92400e;
-            font-size: 11px;
-            font-weight: 900;
-            padding: 5px 10px;
-            margin-bottom: 14px;
-            text-transform: uppercase;
-        }
-
-        .maintenance-empty-space {
-            margin-top: 22px;
-            min-height: 210px;
-            border: 2px dashed #d1d5db;
-            border-radius: 12px;
-            background: #f8fafc;
-        }
-
-        .maintenance-help {
-            margin: 8px 0 18px;
-            color: #64748b;
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 1.5;
-        }
-
-        .student-import-form,
-        .merchant-bypass-form {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            background: #f8fafc;
-        }
-
-        .student-import-form label,
-        .merchant-bypass-form label {
-            display: block;
-            color: #064420;
-            font-size: 12px;
-            font-weight: 900;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        .student-import-form input[type="file"],
-        .merchant-bypass-form input,
-        .merchant-bypass-form textarea {
-            width: 100%;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            background: #fff;
-            padding: 10px;
-            font-weight: 700;
-        }
-
-        .merchant-bypass-form textarea {
-            min-height: 94px;
-            resize: vertical;
-        }
-
-        .maintenance-form-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 14px;
         }
 
-        .maintenance-form-grid .full {
-            grid-column: 1 / -1;
+        .maintenance-placeholder {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
         }
 
+        .maintenance-placeholder .section-tag {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            margin-bottom: 8px;
+        }
+
+        .maintenance-placeholder h3 {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0 0 4px;
+        }
+
+        .maintenance-help {
+            margin: 4px 0 14px;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        /* ── Form elements ───────────────────────────────────────────────────── */
+        .student-import-form label,
+        .merchant-bypass-form label {
+            display: block;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .student-import-form input[type="file"] {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        .merchant-bypass-form input,
+        .merchant-bypass-form textarea {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s;
+        }
+        .merchant-bypass-form input:focus,
+        .merchant-bypass-form textarea:focus { border-color: #6b7280; }
+
+        .merchant-bypass-form textarea { min-height: 80px; resize: vertical; }
+
+        .maintenance-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .maintenance-form-grid .full { grid-column: 1 / -1; }
+
+        /* ── Buttons ─────────────────────────────────────────────────────────── */
         .maintenance-btn-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 14px;
+            gap: 8px;
+            margin-top: 12px;
         }
 
         .maintenance-btn {
             border: 0;
-            border-radius: 10px;
-            padding: 10px 16px;
+            border-radius: 8px;
+            padding: 8px 16px;
             font-size: 13px;
-            font-weight: 900;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
         }
+        .maintenance-btn:hover { opacity: .88; }
+        .maintenance-btn.primary { background: #166534; color: #fff; }
+        .maintenance-btn.warning { background: #d97706; color: #fff; }
+        .maintenance-btn.muted   { background: #f1f5f9; color: #374151; border: 1px solid #e5e7eb; }
 
-        .maintenance-btn.primary {
-            background: #0b5c2c;
-            color: #fff;
-        }
-
-        .maintenance-btn.warning {
-            background: #e6bc2f;
-            color: #064420;
-        }
-
-        .maintenance-btn.muted {
-            border: 1px solid #d1d5db;
-            background: #fff;
-            color: #475569;
-        }
-
+        /* ── Alerts ──────────────────────────────────────────────────────────── */
         .maintenance-alert {
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin: 16px 0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 12px 0;
             font-size: 13px;
-            font-weight: 800;
+            font-weight: 500;
+            line-height: 1.5;
         }
+        .maintenance-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .maintenance-alert.error   { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
 
-        .maintenance-alert.success {
-            background: #ecfdf5;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-        }
-
-        .maintenance-alert.error {
-            background: #fff1f2;
-            border: 1px solid #fecdd3;
-            color: #9f1239;
-        }
-
+        /* ── Import summary ──────────────────────────────────────────────────── */
         .import-summary-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 12px;
+            gap: 8px;
+            margin-top: 10px;
         }
-
         .import-summary-card {
-            border-radius: 10px;
-            background: #fff;
-            border: 1px solid #d1fae5;
-            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
         }
-
         .import-summary-card span {
             display: block;
-            color: #64748b;
+            color: #6b7280;
             font-size: 10px;
-            font-weight: 900;
+            font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: .3px;
         }
+        .import-summary-card strong { color: #111827; font-size: 18px; font-weight: 700; }
 
-        .import-summary-card strong {
-            color: #064420;
-            font-size: 20px;
-            font-weight: 900;
-        }
-
+        /* ── Student preview table ───────────────────────────────────────────── */
         .student-preview {
-            margin-top: 18px;
+            margin-top: 14px;
             border: 1px solid #e5e7eb;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
         }
-
         .student-preview-head {
             display: flex;
             justify-content: space-between;
-            gap: 12px;
-            padding: 12px 14px;
-            background: #fffbeb;
-            border-bottom: 1px solid #fde68a;
-            color: #713f12;
-            font-size: 13px;
-            font-weight: 900;
-        }
-
-        .student-preview table {
-            margin: 0;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #fafafa;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
             font-size: 12px;
+            font-weight: 600;
         }
+        .student-preview table { margin: 0; font-size: 12px; }
+        .student-preview th { color: #6b7280; font-size: 10px; font-weight: 600; text-transform: uppercase; }
 
-        .student-preview th {
-            color: #475569;
-            font-size: 10px;
-            font-weight: 900;
-            text-transform: uppercase;
-        }
-
+        /* ── Responsive ──────────────────────────────────────────────────────── */
         @media (max-width: 900px) {
-            .maintenance-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .import-summary-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .maintenance-form-grid {
-                grid-template-columns: 1fr;
-            }
+            .maintenance-grid          { grid-template-columns: 1fr; }
+            .import-summary-grid       { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .maintenance-form-grid     { grid-template-columns: 1fr; }
         }
+
+        /* ── Prohibited Products ───────────────────────────────────────────── */
+        .rp-section { margin-top: 14px; }
+        .rp-section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+        }
+        .rp-section-title { display: flex; align-items: center; gap: 8px; }
+        .rp-section-title h3 { margin: 0; font-size: 15px; font-weight: 700; color: #111827; }
+        .rp-count-badge {
+            background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 99px; letter-spacing: .4px;
+        }
+        .rp-add-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: #dc2626; color: #fff; border: none; border-radius: 10px;
+            padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: background .15s;
+        }
+        .rp-add-btn:hover { background: #b91c1c; }
+
+        .rp-empty {
+            text-align: center; padding: 48px 24px;
+            background: #fff; border-radius: 16px;
+            border: 2px dashed #fecaca; color: #9ca3af;
+        }
+        .rp-empty i { font-size: 40px; color: #fca5a5; margin-bottom: 12px; }
+        .rp-empty p { font-size: 14px; margin: 0; }
+
+        .rp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 16px;
+        }
+
+        .rp-card {
+            border-radius: 16px; overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,.08);
+            display: flex; flex-direction: column;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .rp-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+
+        .rp-card--active .rp-card-top {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: #fff;
+        }
+        .rp-card--inactive .rp-card-top {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            color: #fff;
+        }
+
+        .rp-card-top {
+            padding: 20px 16px 16px; text-align: center; position: relative;
+        }
+        .rp-status-ribbon {
+            position: absolute; top: 10px; right: 10px;
+            font-size: 9px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+            background: rgba(255,255,255,.22); padding: 3px 8px; border-radius: 99px;
+        }
+        .rp-card-icon-wrap {
+            width: 64px; height: 64px; background: rgba(255,255,255,.18);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 10px; font-size: 28px;
+        }
+        .rp-card-name {
+            font-size: 15px; font-weight: 800; margin: 0 0 2px; line-height: 1.3;
+            word-break: break-word;
+        }
+        .rp-card-category {
+            font-size: 11px; opacity: .8; text-transform: capitalize; font-weight: 600;
+        }
+
+        .rp-card-body {
+            background: #fff; padding: 12px 14px; flex: 1;
+        }
+        .rp-card-reason {
+            font-size: 12px; color: #4b5563; line-height: 1.5; margin: 0 0 10px;
+        }
+        .rp-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+        .rp-tag {
+            font-size: 10px; font-weight: 700; padding: 2px 8px;
+            border-radius: 99px; text-transform: uppercase; letter-spacing: .4px;
+        }
+        .rp-tag--match-exact { background: #fef3c7; color: #92400e; }
+        .rp-tag--match-contains { background: #e0e7ff; color: #3730a3; }
+
+        .rp-card-footer {
+            background: #f9fafb; border-top: 1px solid #f3f4f6;
+            padding: 10px 12px;
+            display: flex; gap: 6px; align-items: center;
+        }
+        .rp-toggle-btn {
+            flex: 1; padding: 6px 10px; font-size: 11px; font-weight: 700;
+            border-radius: 8px; border: none; cursor: pointer; transition: background .15s;
+        }
+        .rp-toggle-btn--ban { background: #dcfce7; color: #15803d; }
+        .rp-toggle-btn--ban:hover { background: #bbf7d0; }
+        .rp-toggle-btn--lift { background: #fee2e2; color: #b91c1c; }
+        .rp-toggle-btn--lift:hover { background: #fecaca; }
+        .rp-remove-btn {
+            width: 30px; height: 30px; border: none; border-radius: 8px;
+            background: #f1f5f9; color: #94a3b8; cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; justify-content: center; transition: all .15s;
+        }
+        .rp-remove-btn:hover { background: #fee2e2; color: #dc2626; }
+
+        /* Flag modal */
+        .rp-modal-field { margin-bottom: 14px; }
+        .rp-modal-label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 5px; }
+        .rp-modal-input {
+            width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
+            border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s;
+        }
+        .rp-modal-input:focus { border-color: #dc2626; }
+        .rp-modal-alert { font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-top: 10px; }
+
     </style>
 </head>
 <body>
@@ -879,12 +967,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     Manually create a merchant account and set credentials directly. No email will be sent and the merchant will not be forced to change the password.
                 </p>
 
-                <?php if ($merchantError !== ''): ?>
-                <div class="maintenance-alert error">
-                    <?= maintenance_e($merchantError) ?>
-                </div>
-                <?php endif; ?>
-
                 <?php if ($merchantSuccess): ?>
                 <div class="maintenance-alert success">
                     Merchant account created for
@@ -895,52 +977,224 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 </div>
                 <?php endif; ?>
 
-                <form class="merchant-bypass-form" method="POST" autocomplete="off">
-                    <input type="hidden" name="merchant_bypass_action" value="create">
-                    <div class="maintenance-form-grid">
-                        <div>
-                            <label for="merchant_first_name">First Name</label>
-                            <input type="text" id="merchant_first_name" name="merchant_first_name" required>
-                        </div>
-                        <div>
-                            <label for="merchant_last_name">Last Name</label>
-                            <input type="text" id="merchant_last_name" name="merchant_last_name" required>
-                        </div>
-                        <div>
-                            <label for="merchant_email">Email</label>
-                            <input type="email" id="merchant_email" name="merchant_email" required>
-                        </div>
-                        <div>
-                            <label for="merchant_phone">Phone</label>
-                            <input type="text" id="merchant_phone" name="merchant_phone" required>
-                        </div>
-                        <div>
-                            <label for="merchant_username">Username</label>
-                            <input type="text" id="merchant_username" name="merchant_username" minlength="3" maxlength="80" required>
-                        </div>
-                        <div>
-                            <label for="merchant_business_name">Business Name</label>
-                            <input type="text" id="merchant_business_name" name="merchant_business_name" required>
-                        </div>
-                        <div>
-                            <label for="merchant_password">Password</label>
-                            <input type="password" id="merchant_password" name="merchant_password" minlength="6" required>
-                        </div>
-                        <div>
-                            <label for="merchant_confirm_password">Confirm Password</label>
-                            <input type="password" id="merchant_confirm_password" name="merchant_confirm_password" minlength="6" required>
-                        </div>
-                        <div class="full">
-                            <label for="merchant_notes">Notes</label>
-                            <textarea id="merchant_notes" name="merchant_notes" placeholder="Internal notes only"></textarea>
-                        </div>
-                    </div>
-                    <div class="maintenance-btn-row">
-                        <button class="maintenance-btn primary" type="submit">Create Merchant</button>
-                    </div>
-                </form>
+                <div class="maintenance-btn-row">
+                    <button class="maintenance-btn primary" data-bs-toggle="modal" data-bs-target="#addMerchantModal">
+                        <i class="fa-solid fa-store" style="margin-right:6px"></i>Add Merchant
+                    </button>
+                </div>
             </div>
         </section>
+
+        <!-- Add Merchant Modal -->
+        <div class="modal fade" id="addMerchantModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0" style="padding:20px 24px 0">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="font-size:17px">
+                                <i class="fa-solid fa-store me-2" style="color:#16a34a"></i>Add Merchant
+                            </h5>
+                            <p style="font-size:12px;color:#6b7280;margin:3px 0 0">Credentials are set directly — no verification email is sent.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:16px 24px 24px">
+                        <?php if ($merchantError !== ''): ?>
+                        <div class="maintenance-alert error mb-3">
+                            <?= maintenance_e($merchantError) ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <form class="merchant-bypass-form" method="POST" autocomplete="off">
+                            <input type="hidden" name="merchant_bypass_action" value="create">
+                            <div class="maintenance-form-grid">
+                                <div>
+                                    <label for="merchant_first_name">First Name *</label>
+                                    <input type="text" id="merchant_first_name" name="merchant_first_name" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_last_name">Last Name *</label>
+                                    <input type="text" id="merchant_last_name" name="merchant_last_name" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_email">Email *</label>
+                                    <input type="email" id="merchant_email" name="merchant_email" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_phone">Phone *</label>
+                                    <input type="text" id="merchant_phone" name="merchant_phone" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_username">Username *</label>
+                                    <input type="text" id="merchant_username" name="merchant_username" minlength="3" maxlength="80" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_business_name">Business Name *</label>
+                                    <input type="text" id="merchant_business_name" name="merchant_business_name" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_password">Password *</label>
+                                    <input type="password" id="merchant_password" name="merchant_password" minlength="6" required>
+                                </div>
+                                <div>
+                                    <label for="merchant_confirm_password">Confirm Password *</label>
+                                    <input type="password" id="merchant_confirm_password" name="merchant_confirm_password" minlength="6" required>
+                                </div>
+                                <div class="full">
+                                    <label for="merchant_notes">Notes</label>
+                                    <textarea id="merchant_notes" name="merchant_notes" placeholder="Internal notes only"></textarea>
+                                </div>
+                            </div>
+                            <div class="maintenance-btn-row mt-2">
+                                <button class="maintenance-btn primary" type="submit">Create Merchant</button>
+                                <button type="button" class="maintenance-btn muted" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section C: Prohibited Products -->
+        <section class="rp-section">
+            <div class="rp-section-header">
+                <div class="rp-section-title">
+                    <i class="fa-solid fa-ban" style="font-size:16px;color:#dc2626"></i>
+                    <h3>Prohibited Products</h3>
+                    <span class="rp-count-badge" id="rp-count">
+                        <?= count($restrictedProducts) ?> item<?= count($restrictedProducts) !== 1 ? 's' : '' ?>
+                    </span>
+                </div>
+                <button class="rp-add-btn" data-bs-toggle="modal" data-bs-target="#flagProductModal">
+                    <i class="fa-solid fa-plus"></i> Flag Product
+                </button>
+            </div>
+
+            <?php
+            $categoryIcons = [
+                'beverage'   => 'fa-mug-hot',
+                'drink'      => 'fa-bottle-water',
+                'snack'      => 'fa-cookie-bite',
+                'food'       => 'fa-burger',
+                'alcohol'    => 'fa-wine-glass',
+                'tobacco'    => 'fa-smoking',
+                'supplement' => 'fa-pills',
+                'medicine'   => 'fa-capsules',
+                'candy'      => 'fa-candy-cane',
+                'drug'       => 'fa-syringe',
+                'general'    => 'fa-ban',
+            ];
+            ?>
+
+            <?php if (empty($restrictedProducts)): ?>
+            <div class="rp-empty">
+                <i class="fa-solid fa-circle-check" style="color:#86efac"></i>
+                <p><strong>No prohibited products flagged.</strong><br>All product categories are currently allowed.</p>
+            </div>
+            <?php else: ?>
+            <div class="rp-grid" id="rp-grid">
+                <?php foreach ($restrictedProducts as $rp): ?>
+                <?php
+                    $catKey  = strtolower(trim($rp['category']));
+                    $icon    = $categoryIcons[$catKey] ?? 'fa-ban';
+                    $active  = (int) $rp['is_active'];
+                    $cardCls = $active ? 'rp-card--active' : 'rp-card--inactive';
+                ?>
+                <div class="rp-card <?= $cardCls ?>" id="rp-card-<?= (int)$rp['id'] ?>">
+                    <div class="rp-card-top">
+                        <span class="rp-status-ribbon"><?= $active ? 'BANNED' : 'LIFTED' ?></span>
+                        <div class="rp-card-icon-wrap">
+                            <i class="fa-solid <?= maintenance_e($icon) ?>"></i>
+                        </div>
+                        <div class="rp-card-name"><?= maintenance_e($rp['product_name']) ?></div>
+                        <div class="rp-card-category"><?= maintenance_e($rp['category']) ?></div>
+                    </div>
+                    <div class="rp-card-body">
+                        <p class="rp-card-reason"><?= maintenance_e($rp['reason']) ?></p>
+                        <div class="rp-card-tags">
+                            <span class="rp-tag rp-tag--match-<?= maintenance_e($rp['match_type']) ?>">
+                                <?= $rp['match_type'] === 'exact' ? 'Exact match' : 'Contains' ?>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="rp-card-footer">
+                        <?php if ($active): ?>
+                        <button class="rp-toggle-btn rp-toggle-btn--ban"
+                                onclick="rpToggle(<?= (int)$rp['id'] ?>, 0)">
+                            <i class="fa-solid fa-lock-open me-1"></i>Lift Ban
+                        </button>
+                        <?php else: ?>
+                        <button class="rp-toggle-btn rp-toggle-btn--lift"
+                                onclick="rpToggle(<?= (int)$rp['id'] ?>, 1)">
+                            <i class="fa-solid fa-ban me-1"></i>Reinstate
+                        </button>
+                        <?php endif; ?>
+                        <button class="rp-remove-btn" title="Remove permanently"
+                                onclick="rpRemove(<?= (int)$rp['id'] ?>, '<?= addslashes($rp['product_name']) ?>')">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </section>
+
+        <!-- Flag Product Modal -->
+        <div class="modal fade" id="flagProductModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:460px">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0 pb-0" style="padding:20px 24px 10px">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="color:#dc2626">
+                                <i class="fa-solid fa-ban me-2"></i>Flag Prohibited Product
+                            </h5>
+                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">Flagged products will be blocked from being sold on the platform.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:16px 24px 24px">
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Product Name *</label>
+                            <input type="text" id="rp-name" class="rp-modal-input" placeholder="e.g. Energy Drink">
+                        </div>
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Category</label>
+                            <select id="rp-category" class="rp-modal-input">
+                                <option value="general">General</option>
+                                <option value="beverage">Beverage</option>
+                                <option value="snack">Snack</option>
+                                <option value="food">Food</option>
+                                <option value="alcohol">Alcohol</option>
+                                <option value="tobacco">Tobacco</option>
+                                <option value="supplement">Supplement</option>
+                                <option value="medicine">Medicine</option>
+                                <option value="candy">Candy</option>
+                            </select>
+                        </div>
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Match Type</label>
+                            <select id="rp-match-type" class="rp-modal-input">
+                                <option value="contains">Contains — block anything with this word</option>
+                                <option value="exact">Exact — block only exact name</option>
+                            </select>
+                        </div>
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Reason *</label>
+                            <input type="text" id="rp-reason" class="rp-modal-input"
+                                   placeholder="e.g. High sugar content — DepEd health guidelines">
+                        </div>
+                        <div id="rp-modal-alert"></div>
+                        <button type="button" id="rp-flag-btn" class="rp-add-btn w-100 justify-content-center mt-2"
+                                style="border-radius:10px;padding:11px"
+                                onclick="rpFlagProduct()">
+                            <i class="fa-solid fa-ban me-1"></i> Flag This Product
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -949,6 +1203,182 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
 }
+
+<?php if ($merchantError !== ''): ?>
+document.addEventListener('DOMContentLoaded', function () {
+    new bootstrap.Modal(document.getElementById('addMerchantModal')).show();
+});
+<?php endif; ?>
+
+// ── Prohibited Products ─────────────────────────────────────────────────────
+const RP_API = '<?= ADMIN_URL ?>/api/restricted_products.php';
+
+const RP_ICONS = {
+    beverage:'fa-mug-hot', drink:'fa-bottle-water', snack:'fa-cookie-bite',
+    food:'fa-burger', alcohol:'fa-wine-glass', tobacco:'fa-smoking',
+    supplement:'fa-pills', medicine:'fa-capsules', candy:'fa-candy-cane',
+    general:'fa-ban'
+};
+
+function rpIcon(cat) {
+    return RP_ICONS[cat.toLowerCase()] || 'fa-ban';
+}
+
+async function rpToggle(id, newActive) {
+    const card = document.getElementById('rp-card-' + id);
+    if (!card) return;
+    const f = new FormData();
+    f.append('action', 'toggle_restriction');
+    f.append('id', id);
+    f.append('is_active', newActive);
+    try {
+        const res  = await fetch(RP_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            // Swap card classes and re-render ribbon + footer button
+            card.classList.toggle('rp-card--active',   newActive === 1);
+            card.classList.toggle('rp-card--inactive', newActive === 0);
+            card.querySelector('.rp-status-ribbon').textContent = newActive ? 'BANNED' : 'LIFTED';
+            const footer = card.querySelector('.rp-card-footer');
+            const btn    = footer.querySelector('.rp-toggle-btn');
+            if (newActive) {
+                btn.className = 'rp-toggle-btn rp-toggle-btn--ban';
+                btn.innerHTML = '<i class="fa-solid fa-lock-open me-1"></i>Lift Ban';
+                btn.setAttribute('onclick', `rpToggle(${id}, 0)`);
+            } else {
+                btn.className = 'rp-toggle-btn rp-toggle-btn--lift';
+                btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i>Reinstate';
+                btn.setAttribute('onclick', `rpToggle(${id}, 1)`);
+            }
+        } else {
+            alert(data.message || 'Failed to update.');
+        }
+    } catch { alert('Network error.'); }
+}
+
+async function rpRemove(id, name) {
+    if (!confirm(`Permanently remove "${name}" from the prohibited list?`)) return;
+    const f = new FormData();
+    f.append('action', 'delete_restriction');
+    f.append('id', id);
+    try {
+        const res  = await fetch(RP_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            const card = document.getElementById('rp-card-' + id);
+            if (card) card.remove();
+            rpUpdateCount(-1);
+            if (!document.querySelector('.rp-card')) rpShowEmpty();
+        } else {
+            alert(data.message || 'Failed to remove.');
+        }
+    } catch { alert('Network error.'); }
+}
+
+async function rpFlagProduct() {
+    const name      = document.getElementById('rp-name').value.trim();
+    const category  = document.getElementById('rp-category').value;
+    const matchType = document.getElementById('rp-match-type').value;
+    const reason    = document.getElementById('rp-reason').value.trim();
+    const alertEl   = document.getElementById('rp-modal-alert');
+    const btn       = document.getElementById('rp-flag-btn');
+
+    if (!name || !reason) {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">Product name and reason are required.</div>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Flagging…';
+    alertEl.innerHTML = '';
+
+    const f = new FormData();
+    f.append('action',       'flag_product');
+    f.append('product_name', name);
+    f.append('category',     category);
+    f.append('match_type',   matchType);
+    f.append('reason',       reason);
+
+    try {
+        const res  = await fetch(RP_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check me-1"></i>Product flagged successfully.</div>';
+            document.getElementById('rp-name').value   = '';
+            document.getElementById('rp-reason').value = '';
+            rpInjectCard({ product_name: name, category, match_type: matchType, reason, is_active: 1 });
+            rpUpdateCount(1);
+            rpHideEmpty();
+        } else {
+            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">${data.message || 'Failed.'}</div>`;
+        }
+    } catch {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">Network error.</div>';
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i> Flag This Product';
+}
+
+function rpInjectCard(rp) {
+    let grid = document.getElementById('rp-grid');
+    if (!grid) {
+        const sec = document.querySelector('.rp-section');
+        grid = document.createElement('div');
+        grid.className = 'rp-grid';
+        grid.id = 'rp-grid';
+        sec.appendChild(grid);
+    }
+    const icon     = rpIcon(rp.category);
+    const matchTag = rp.match_type === 'exact'
+        ? '<span class="rp-tag rp-tag--match-exact">Exact match</span>'
+        : '<span class="rp-tag rp-tag--match-contains">Contains</span>';
+
+    const card = document.createElement('div');
+    card.className = 'rp-card rp-card--active';
+    card.id = 'rp-card-new-' + Date.now();
+    card.innerHTML = `
+        <div class="rp-card-top">
+            <span class="rp-status-ribbon">BANNED</span>
+            <div class="rp-card-icon-wrap"><i class="fa-solid ${icon}"></i></div>
+            <div class="rp-card-name">${rp.product_name}</div>
+            <div class="rp-card-category">${rp.category}</div>
+        </div>
+        <div class="rp-card-body">
+            <p class="rp-card-reason">${rp.reason}</p>
+            <div class="rp-card-tags">${matchTag}</div>
+        </div>
+        <div class="rp-card-footer">
+            <span style="font-size:11px;color:#94a3b8;font-style:italic">Reload to manage</span>
+        </div>`;
+    grid.prepend(card);
+}
+
+function rpUpdateCount(delta) {
+    const badge = document.getElementById('rp-count');
+    if (!badge) return;
+    const match = badge.textContent.match(/\d+/);
+    const current = match ? parseInt(match[0]) : 0;
+    const next = Math.max(0, current + delta);
+    badge.textContent = next + ' item' + (next !== 1 ? 's' : '');
+}
+
+function rpShowEmpty() {
+    const grid = document.getElementById('rp-grid');
+    if (grid) grid.remove();
+    const sec = document.querySelector('.rp-section');
+    if (!sec.querySelector('.rp-empty')) {
+        sec.insertAdjacentHTML('beforeend',
+            `<div class="rp-empty"><i class="fa-solid fa-circle-check" style="color:#86efac"></i>
+             <p><strong>No prohibited products flagged.</strong><br>All product categories are currently allowed.</p></div>`
+        );
+    }
+}
+
+function rpHideEmpty() {
+    const empty = document.querySelector('.rp-empty');
+    if (empty) empty.remove();
+}
+
 </script>
 </body>
 </html>

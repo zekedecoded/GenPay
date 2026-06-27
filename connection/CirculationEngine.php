@@ -16,6 +16,10 @@ class CirculationEngine
     const TXN_VOUCHER_EXPIRE  = 'voucher_expire';
     const TXN_CAP_INCREASE    = 'cap_increase';
 
+    // Service-fee rates per top-up source
+    const FEE_SYSTEM_RATE   = 0.02;   // 2 % → stays in vault (both routes)
+    const FEE_MERCHANT_RATE = 0.01;   // 1 % → merchant wallet (merchant route only)
+
     public function __construct(PDO $pdo)
     {
         $this->db = $pdo;
@@ -74,7 +78,121 @@ class CirculationEngine
         }
     }
 
-    
+    /**
+     * Top-up with tiered service fee.
+     *
+     * source = 'finance'  → 2 % system fee, 0 % merchant fee
+     * source = 'merchant' → 2 % system fee, 1 % merchant fee (credited to merchant wallet)
+     *
+     * Circulation stays balanced: vault drains by (credited + merchantFee);
+     * systemFee remains in vault as accumulated revenue.
+     */
+    public function cashInWithFee(
+        int    $studentWalletId,
+        float  $cashAmount,
+        string $source,
+        int    $initiatedBy,
+        int    $merchantWalletId = 0,
+        string $notes            = ''
+    ): array {
+        $this->assertPositive($cashAmount);
+
+        if (!in_array($source, ['finance', 'merchant'], true)) {
+            throw new \InvalidArgumentException("Invalid top-up source: {$source}");
+        }
+
+        $systemFee   = round($cashAmount * self::FEE_SYSTEM_RATE,   2);
+        $merchantFee = ($source === 'merchant')
+                     ? round($cashAmount * self::FEE_MERCHANT_RATE, 2)
+                     : 0.0;
+        // Assign any rounding remainder to credited amount
+        $credited    = round($cashAmount - $systemFee - $merchantFee, 2);
+        // Vault pays out: student credit + merchant cut
+        $vaultDrain  = $credited + $merchantFee;
+
+        $this->db->beginTransaction();
+        try {
+            $settings = $this->lockSettings();
+
+            if ($settings['cashier_vault_points'] < $vaultDrain) {
+                throw new \RuntimeException(
+                    "VAULT_INSUFFICIENT: Vault has ₱" .
+                    number_format($settings['cashier_vault_points'], 2) .
+                    " — cannot load ₱" . number_format($cashAmount, 2) .
+                    " (needs ₱" . number_format($vaultDrain, 2) . " after fees)."
+                );
+            }
+
+            // 1. Vault drains by (credited + merchantFee); systemFee stays in vault
+            $this->db->prepare(
+                "UPDATE system_settings
+                    SET cashier_vault_points = cashier_vault_points - ?
+                  WHERE id = 1"
+            )->execute([$vaultDrain]);
+
+            // 2. Credit student wallet
+            $this->db->prepare(
+                "UPDATE student_wallets SET balance = balance + ? WHERE id = ?"
+            )->execute([$credited, $studentWalletId]);
+
+            // 3. Credit merchant wallet (1 % cut on merchant route)
+            if ($merchantFee > 0 && $merchantWalletId > 0) {
+                $this->db->prepare(
+                    "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?"
+                )->execute([$merchantFee, $merchantWalletId]);
+            }
+
+            $vaultAfter = $settings['cashier_vault_points'] - $vaultDrain;
+
+            $this->validateCirculation($settings['total_circulation_cap']);
+
+            $feeNote = "Top-up via {$source}. Cash: ₱{$cashAmount}, "
+                     . "System fee (2%): ₱{$systemFee}"
+                     . ($merchantFee > 0 ? ", Merchant fee (1%): ₱{$merchantFee}" : "")
+                     . ", Credited: ₱{$credited}."
+                     . ($notes !== '' ? " Note: {$notes}" : '');
+
+            $ref = $this->logTransaction(
+                self::TXN_CASH_IN,
+                $initiatedBy,
+                $credited,
+                $settings['cashier_vault_points'],
+                $vaultAfter,
+                studentWalletId:  $studentWalletId,
+                merchantWalletId: $merchantFee > 0 ? $merchantWalletId : null,
+                notes:            $feeNote,
+                topUpSource:      $source,
+                baseAmount:       $cashAmount,
+                feeAmount:        $systemFee + $merchantFee,
+                creditedAmount:   $credited
+            );
+
+            $this->logFeeRevenue(
+                $ref, $source, $cashAmount,
+                $systemFee, $merchantFee,
+                $merchantFee > 0 ? $merchantWalletId : null,
+                $initiatedBy
+            );
+
+            $this->db->commit();
+            return [
+                'success'         => true,
+                'reference'       => $ref,
+                'vault_after'     => $vaultAfter,
+                'cash_amount'     => $cashAmount,
+                'system_fee'      => $systemFee,
+                'merchant_fee'    => $merchantFee,
+                'fee_amount'      => $systemFee + $merchantFee,
+                'credited_amount' => $credited,
+            ];
+
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+
     public function studentPay(
         int $studentWalletId,
         int $merchantWalletId,
@@ -552,17 +670,22 @@ class CirculationEngine
 
     
     private function logTransaction(
-        string $type,
-        int    $initiatedBy,
-        float  $amount,
-        float  $vaultBefore,
-        float  $vaultAfter,
-        int    $studentWalletId  = null,
-        int    $merchantWalletId = null,
-        int    $voucherId        = null,
-        string $notes            = null
+        string  $type,
+        int     $initiatedBy,
+        float   $amount,
+        float   $vaultBefore,
+        float   $vaultAfter,
+        int     $studentWalletId  = null,
+        int     $merchantWalletId = null,
+        int     $voucherId        = null,
+        string  $notes            = null,
+        // Fee-related optional fields (populated only for cashInWithFee calls)
+        string  $topUpSource      = null,
+        float   $baseAmount       = null,
+        float   $feeAmount        = null,
+        float   $creditedAmount   = null
     ): string {
-        
+
         $total = (float) $this->db->query(
             "SELECT
                 (SELECT cashier_vault_points FROM system_settings WHERE id = 1)
@@ -588,6 +711,23 @@ class CirculationEngine
             $vaultBefore, $vaultAfter, $total, $notes,
         ]);
 
+        // Persist fee fields if the migration has already added the columns
+        if ($topUpSource !== null) {
+            try {
+                $txnId = (int) $this->db->lastInsertId();
+                $this->db->prepare(
+                    "UPDATE transactions
+                        SET top_up_source   = ?,
+                            base_amount     = ?,
+                            fee_amount      = ?,
+                            credited_amount = ?
+                      WHERE id = ?"
+                )->execute([$topUpSource, $baseAmount, $feeAmount, $creditedAmount, $txnId]);
+            } catch (\Throwable $ignored) {
+                // Migration hasn't run yet — non-fatal, notes column already has the info
+            }
+        }
+
         logAudit(
             $this->db,
             $initiatedBy,
@@ -610,6 +750,30 @@ class CirculationEngine
         );
 
         return $ref;
+    }
+
+    private function logFeeRevenue(
+        string $ref,
+        string $source,
+        float  $cashAmount,
+        float  $systemFee,
+        float  $merchantFee,
+        ?int   $merchantWalletId,
+        int    $processedBy
+    ): void {
+        try {
+            $this->db->prepare(
+                "INSERT INTO fee_revenue_log
+                    (transaction_ref, top_up_source, cash_amount,
+                     system_fee, merchant_fee, merchant_wallet_id, processed_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $ref, $source, $cashAmount,
+                $systemFee, $merchantFee, $merchantWalletId, $processedBy,
+            ]);
+        } catch (\Throwable $ignored) {
+            // Table hasn't been created yet — will self-heal on next page load
+        }
     }
 
     private function generateVoucherCode(): string

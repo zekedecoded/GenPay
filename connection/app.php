@@ -368,6 +368,27 @@ function gjc_require_role(array $roles): void
         exit();
     }
 
+    // If the account was deactivated after this session was created, force logout immediately.
+    $userId = gjc_user_id();
+    if ($userId) {
+        global $db;
+        if ($db instanceof PDO && gjc_table_exists($db, 'users')) {
+            if (in_array('status', gjc_table_columns($db, 'users'), true)) {
+                $idCol = gjc_column($db, 'users', ['id', 'userID']);
+                if ($idCol) {
+                    $chk = $db->prepare("SELECT status FROM users WHERE {$idCol} = ? LIMIT 1");
+                    $chk->execute([$userId]);
+                    if ($chk->fetchColumn() === 'Inactive') {
+                        session_unset();
+                        session_destroy();
+                        header("Location: " . BASE_URL . "/login.php?reason=deactivated");
+                        exit();
+                    }
+                }
+            }
+        }
+    }
+
     $script = str_replace("\\", "/", $_SERVER["SCRIPT_NAME"] ?? "");
     if (!empty($_SESSION["force_change"]) && !str_ends_with($script, "/change_password.php")) {
         header("Location: " . BASE_URL . "/change_password.php");
@@ -459,6 +480,104 @@ function gjc_ensure_operational_tables(PDO $db): void
                 "ALTER TABLE encashment_requests ADD COLUMN {$column} {$definition}",
             );
         }
+    }
+
+    gjc_ensure_fee_schema($db);
+}
+
+function gjc_ensure_fee_schema(PDO $db): void
+{
+    // Fee columns on transactions
+    foreach ([
+        'top_up_source  VARCHAR(20) NULL',
+        'base_amount    DECIMAL(15,2) NULL',
+        'fee_amount     DECIMAL(15,2) NULL',
+        'credited_amount DECIMAL(15,2) NULL',
+    ] as $col) {
+        try { $db->exec("ALTER TABLE transactions ADD COLUMN $col"); }
+        catch (\PDOException $e) { /* already exists */ }
+    }
+
+    // Fee columns on topup_requests
+    foreach ([
+        'top_up_source   VARCHAR(20) NULL',
+        'fee_amount      DECIMAL(15,2) NULL',
+        'credited_amount DECIMAL(15,2) NULL',
+    ] as $col) {
+        try { $db->exec("ALTER TABLE topup_requests ADD COLUMN $col"); }
+        catch (\PDOException $e) { /* already exists */ }
+    }
+
+    // Fee revenue ledger
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS fee_revenue_log (
+            id                 INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            transaction_ref    VARCHAR(40)  NOT NULL,
+            top_up_source      VARCHAR(20)  NOT NULL,
+            cash_amount        DECIMAL(15,2) NOT NULL,
+            system_fee         DECIMAL(15,2) NOT NULL,
+            merchant_fee       DECIMAL(15,2) NOT NULL DEFAULT 0,
+            merchant_wallet_id INT UNSIGNED NULL,
+            processed_by       INT UNSIGNED NOT NULL,
+            created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_fee_ref    (transaction_ref),
+            INDEX idx_fee_source (top_up_source),
+            INDEX idx_fee_date   (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+}
+
+function gjc_generate_student_id(PDO $db): string
+{
+    $year = date('Y');
+    $stmt = $db->query(
+        "SELECT MAX(CAST(SUBSTRING_INDEX(studentID, '-', -1) AS UNSIGNED))
+           FROM student_info
+          WHERE studentID REGEXP '^GJC[0-9]{4}-[0-9]+$'"
+    );
+    $max = (int) $stmt->fetchColumn();
+    return sprintf('GJC%s-%04d', $year, $max + 1);
+}
+
+function gjc_ensure_student_info_record(PDO $db, int $userId, string $studentId): void
+{
+    $existing = $db->prepare("SELECT stud_infoID FROM student_info WHERE userID = ? LIMIT 1");
+    $existing->execute([$userId]);
+    if ($existing->fetchColumn()) {
+        $db->prepare("UPDATE student_info SET studentID = ? WHERE userID = ?")->execute([$studentId, $userId]);
+        return;
+    }
+
+    // Resolve a valid courseID — use the first existing one, or create a placeholder.
+    $courseId = (int) $db->query("SELECT courseID FROM course ORDER BY courseID ASC LIMIT 1")->fetchColumn();
+    if ($courseId === 0) {
+        $db->exec("INSERT INTO course (course_code, course_name) VALUES ('GENERAL', 'General')");
+        $courseId = (int) $db->lastInsertId();
+    }
+
+    $db->prepare("INSERT INTO student_info (userID, studentID, yr_lvl, courseID) VALUES (?, ?, '1', ?)")
+       ->execute([$userId, $studentId, $courseId]);
+}
+
+function gjc_backfill_student_ids(PDO $db): void
+{
+    if (!gjc_table_exists($db, 'student_info') || !gjc_table_exists($db, 'users')) {
+        return;
+    }
+    $stmt = $db->query(
+        "SELECT u.userID
+           FROM users u
+           LEFT JOIN student_info si ON si.userID = u.userID
+          WHERE u.roleID = 1
+            AND (si.stud_infoID IS NULL
+              OR si.studentID = ''
+              OR si.studentID NOT REGEXP '^GJC[0-9]{4}-[0-9]+$')
+          ORDER BY u.userID ASC"
+    );
+    $missing = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($missing as $userId) {
+        $newId = gjc_generate_student_id($db);
+        gjc_ensure_student_info_record($db, (int) $userId, $newId);
     }
 }
 
@@ -860,14 +979,22 @@ function gjc_ensure_meeting_scheduling_schema(PDO $db): void
 
     $db->exec(
         "CREATE TABLE IF NOT EXISTS meeting_settings (
-            id               TINYINT UNSIGNED NOT NULL,
-            default_location VARCHAR(255) NOT NULL DEFAULT 'GJC Finance Office',
-            updated_by       INT UNSIGNED NULL,
-            updated_at       DATETIME NULL,
+            id                           TINYINT UNSIGNED NOT NULL,
+            default_location             VARCHAR(255) NOT NULL DEFAULT 'GJC Finance Office',
+            down_payment_default_amount  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            updated_by                   INT UNSIGNED NULL,
+            updated_at                   DATETIME NULL,
             PRIMARY KEY (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
     );
     $db->exec("INSERT IGNORE INTO meeting_settings (id, default_location) VALUES (1, 'GJC Finance Office')");
+
+    // One-time: add the down_payment_default_amount column to existing installs.
+    try {
+        $db->exec("ALTER TABLE meeting_settings ADD COLUMN down_payment_default_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+    } catch (\Throwable $ignored) {
+    }
+
 }
 
 /** Holiday dates the auto-scheduler must skip, as a Y-m-d => name map. */
@@ -882,6 +1009,40 @@ function gjc_meeting_default_location(PDO $db): string
 {
     $location = $db->query("SELECT default_location FROM meeting_settings WHERE id = 1")->fetchColumn();
     return $location !== false && $location !== '' ? $location : 'GJC Finance Office';
+}
+
+function gjc_down_payment_default_amount(PDO $db): float
+{
+    $amount = $db->query("SELECT down_payment_default_amount FROM meeting_settings WHERE id = 1")->fetchColumn();
+    return $amount !== false ? (float) $amount : 0.0;
+}
+
+function gjc_wallet_user_stats(PDO $db): array
+{
+    $days = 30;
+    $row  = $db->prepare(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN last_txn >= DATE_SUB(NOW(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS active_count
+         FROM (
+             SELECT u.userID, MAX(t.created_at) AS last_txn
+             FROM users u
+             LEFT JOIN student_wallets sw ON sw.user_id = u.userID
+             LEFT JOIN transactions t ON t.student_wallet_id = sw.id
+             WHERE u.roleID = 1
+             GROUP BY u.userID
+         ) sub"
+    );
+    $row->execute([$days]);
+    $data           = $row->fetch(PDO::FETCH_ASSOC);
+    $total          = (int) ($data['total']        ?? 0);
+    $active         = (int) ($data['active_count'] ?? 0);
+    return [
+        'total'    => $total,
+        'active'   => $active,
+        'inactive' => $total - $active,
+        'days'     => $days,
+    ];
 }
 
 /**

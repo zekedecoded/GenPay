@@ -113,25 +113,7 @@ $stageColors = [
 </head>
 <body>
 <div class="admin-layout">
-    <?php
-    if (defined('DASHBOARD_URL')) {
-        require_once __DIR__ . '/../includes/partials/sidebar_admin.php';
-    } else { ?>
-    <aside class="admin-sidebar" id="sidebar">
-        <div class="brand-box">
-            <div class="brand-logo"><img src="<?= ICONS_URL ?>/edupay.png" alt="Logo"></div>
-            <div class="brand-text"><h4>GenPay</h4><span>Admin Portal</span></div>
-        </div>
-        <nav class="sidebar-menu">
-            <a href="<?= DASHBOARD_URL ?>"><i class="fa-solid fa-gauge-high nav-icon"></i><span class="nav-text">Dashboard</span></a>
-            <a href="<?= ADMIN_URL ?>/users.php"><i class="fa-solid fa-users nav-icon"></i><span class="nav-text">Users</span></a>
-            <a href="<?= ADMIN_URL ?>/leases.php"><i class="fa-solid fa-file-signature nav-icon"></i><span class="nav-text">Leases &amp; Rent</span></a>
-            <a href="<?= ADMIN_URL ?>/transactions.php"><i class="fa-solid fa-receipt nav-icon"></i><span class="nav-text">Transactions</span></a>
-        </nav>
-        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn" onclick="openLogoutModal(event);"><i class="fa-solid fa-arrow-right-from-bracket logout-icon"></i><span>Logout</span></a>
-    </aside>
-    <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-    <?php } ?>
+    <?php require_once __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
     <main class="admin-main">
         <header class="topbar">

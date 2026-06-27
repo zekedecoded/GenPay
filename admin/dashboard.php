@@ -553,10 +553,7 @@ $currentPage = "dashboard";
     <?php endif; ?>
     </script>
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="<?= JS_URL ?>/admin_datatables.js"></script>
+    <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
     <script src="<?= JS_URL ?>/dashboard_chart.js"></script>
     <?php if ($isSuperAdmin): ?>
     <script src="<?= JS_URL ?>/admin_stall_directory.js"></script>

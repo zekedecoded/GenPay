@@ -30,31 +30,13 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <meta name="description" content="Nutritional compliance product blacklist management for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="admin-layout">
-    <?php
-    if (defined('DASHBOARD_URL')) {
-        require_once __DIR__ . '/../includes/partials/sidebar_admin.php';
-    } else { ?>
-    <aside class="admin-sidebar" id="sidebar">
-        <div class="brand-box">
-            <div class="brand-logo"><img src="<?= ICONS_URL ?>/edupay.png" alt="Logo"></div>
-            <div class="brand-text"><h4>GenPay</h4><span>Admin Portal</span></div>
-        </div>
-        <nav class="sidebar-menu">
-            <a href="<?= DASHBOARD_URL ?>"><i class="fa-solid fa-gauge-high nav-icon"></i><span class="nav-text">Dashboard</span></a>
-            <a href="<?= ADMIN_URL ?>/users.php"><i class="fa-solid fa-users nav-icon"></i><span class="nav-text">Users</span></a>
-            <a href="<?= ADMIN_URL ?>/leases.php"><i class="fa-solid fa-file-signature nav-icon"></i><span class="nav-text">Leases &amp; Rent</span></a>
-            <a href="<?= ADMIN_URL ?>/restricted_products.php" class="active"><i class="fa-solid fa-ban nav-icon"></i><span class="nav-text">Restricted Products</span></a>
-            <a href="<?= ADMIN_URL ?>/transactions.php"><i class="fa-solid fa-receipt nav-icon"></i><span class="nav-text">Transactions</span></a>
-        </nav>
-        <a href="<?= BASE_URL ?>/logout.php" class="logout-btn" onclick="openLogoutModal(event);"><i class="fa-solid fa-arrow-right-from-bracket logout-icon"></i><span>Logout</span></a>
-    </aside>
-    <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-    <?php } ?>
+    <?php require_once __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
     <main class="admin-main">
         <header class="topbar">
@@ -121,7 +103,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
                 </button>
             </div>
             <div class="table-responsive">
-                <table class="table premium-table align-middle">
+                <table class="table premium-table align-middle js-datatable" id="restrictedProductsTable" data-page-length="10" data-empty-message="No restricted products flagged yet.">
                     <thead>
                         <tr>
                             <th>Product / Keyword</th>
@@ -218,6 +200,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
 </div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 <script>
 document.getElementById('restrictForm').addEventListener('submit', async function(e) {
     e.preventDefault();

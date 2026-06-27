@@ -6,15 +6,13 @@
 //
 //  Pipeline: review -> meeting -> down_payment -> approval -> active
 //  Actions:
-//    accept_review        Step 1 -> Step 2/3 (docs accepted; auto-schedules the
-//                          meeting if a slot is free, else falls back to Step 2)
+//    accept_review        Step 1 -> Step 2   (docs accepted; proposes next free slot)
 //    decline              Step 1 or 2 only   (archives to archived_rejections)
 //    get_booked_slots     (lookup)           (fixed meeting slots already taken on a date)
-//    save_meeting         Step 2 -> Step 3   (manual scheduling backup)
-//    save_down_payment    Step 3 -> Step 4   (saves down payment record)
+//    save_meeting         Step 2 -> Step 3   (saves meeting, emails applicant)
+//    save_down_payment    Step 3 -> Step 4   (saves down payment record, emails applicant)
 //    award_stall          Step 4 -> active   (assigns stall, creates merchant)
-//    list_holidays / add_holiday / delete_holiday   (auto-scheduler holiday calendar)
-//    get_meeting_settings / save_meeting_settings   (auto-scheduler default location)
+//    get_down_payment_settings / save_down_payment_settings   (default down payment amount)
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -133,28 +131,25 @@ try {
                   WHERE id = ?"
             )->execute([$adminId, $appId]);
 
-            // Try to auto-book the next free non-holiday weekday slot so finance
-            // staff don't have to schedule every meeting by hand. If nothing is
-            // free in the lookahead window, the app stays on Step 2 and the
-            // existing manual scheduling form below acts as the backup.
+            // Find the next free slot and propose it to the finance staff.
+            // The email is NOT sent here — the frontend shows a preview modal
+            // and the staff confirms before save_meeting fires the email.
             $slot = gjc_find_next_meeting_slot($db);
             if ($slot !== null) {
-                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $slot['date'] . ' ' . $slot['time'] . ':00');
                 $place = gjc_meeting_default_location($db);
-                $app = stall_app_fetch($db, $appId);
-                $result = stall_app_finalize_meeting($db, $app, $appId, $dt, $place, '', $adminId);
-
+                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $slot['date'] . ' ' . $slot['time'] . ':00');
                 $prettyWhen = $dt->format('F j, Y \a\t g:i A');
                 stall_app_json([
-                    'success' => true,
-                    'message' => "Documents accepted. Meeting auto-scheduled for {$prettyWhen} at {$place}." . ($result['mailSent'] ? ' Email sent.' : ' Note: email failed - ' . $result['mailError']),
-                    'status' => 'down_payment', 'current_step' => 3,
+                    'success'       => true,
+                    'message'       => "Documents accepted. A meeting slot has been proposed for {$prettyWhen} — please review and confirm before the email is sent.",
+                    'status'        => 'meeting', 'current_step' => 2,
+                    'proposed_slot' => ['date' => $slot['date'], 'time' => $slot['time'], 'location' => $place],
                 ]);
             }
 
             stall_app_json([
                 'success' => true,
-                'message' => 'Documents accepted. Moved to Step 2 - Meeting. No open auto-schedule slot was found - please schedule the meeting manually.',
+                'message' => 'Documents accepted. Moved to Step 2 - Meeting. No open auto-schedule slot was found — please schedule the meeting manually.',
                 'status' => 'meeting', 'current_step' => 2,
             ]);
         }
@@ -279,56 +274,20 @@ try {
             ]);
         }
 
-        // ── Holiday calendar — list / add / delete (used by the auto-scheduler) ─
-        case 'list_holidays': {
-            $rows = $db->query(
-                "SELECT id, holiday_date, name FROM meeting_holidays ORDER BY holiday_date ASC"
-            )->fetchAll(PDO::FETCH_ASSOC);
-            stall_app_json(['success' => true, 'holidays' => $rows]);
+        // ── Down payment default amount settings ─────────────────────────
+        case 'get_down_payment_settings': {
+            stall_app_json(['success' => true, 'default_amount' => gjc_down_payment_default_amount($db)]);
         }
 
-        case 'add_holiday': {
-            $date = trim((string) ($_POST['holiday_date'] ?? ''));
-            $name = trim((string) ($_POST['name'] ?? ''));
-            $d = DateTime::createFromFormat('Y-m-d', $date);
-            if (!$d || $d->format('Y-m-d') !== $date) {
-                stall_app_json(['success' => false, 'message' => 'Invalid date.']);
-            }
-            if ($name === '') {
-                stall_app_json(['success' => false, 'message' => 'A holiday name is required.']);
-            }
-
-            try {
-                $db->prepare(
-                    "INSERT INTO meeting_holidays (holiday_date, name, created_by) VALUES (?, ?, ?)"
-                )->execute([$date, $name, $adminId]);
-            } catch (Throwable $e) {
-                stall_app_json(['success' => false, 'message' => 'That date is already on the holiday calendar.']);
-            }
-
-            stall_app_json(['success' => true, 'message' => 'Holiday added.']);
-        }
-
-        case 'delete_holiday': {
-            $id = (int) ($_POST['id'] ?? 0);
-            $db->prepare("DELETE FROM meeting_holidays WHERE id = ?")->execute([$id]);
-            stall_app_json(['success' => true, 'message' => 'Holiday removed.']);
-        }
-
-        // ── Meeting settings — default location used by the auto-scheduler ─
-        case 'get_meeting_settings': {
-            stall_app_json(['success' => true, 'default_location' => gjc_meeting_default_location($db)]);
-        }
-
-        case 'save_meeting_settings': {
-            $location = trim((string) ($_POST['default_location'] ?? ''));
-            if ($location === '') {
-                stall_app_json(['success' => false, 'message' => 'A default location is required.']);
+        case 'save_down_payment_settings': {
+            $amount = (float) ($_POST['default_amount'] ?? 0);
+            if ($amount < 0) {
+                stall_app_json(['success' => false, 'message' => 'Amount cannot be negative.']);
             }
             $db->prepare(
-                "UPDATE meeting_settings SET default_location = ?, updated_by = ?, updated_at = NOW() WHERE id = 1"
-            )->execute([$location, $adminId]);
-            stall_app_json(['success' => true, 'message' => 'Default meeting location saved.']);
+                "UPDATE meeting_settings SET down_payment_default_amount = ?, updated_by = ?, updated_at = NOW() WHERE id = 1"
+            )->execute([$amount, $adminId]);
+            stall_app_json(['success' => true, 'message' => 'Default down payment amount saved.']);
         }
 
         // ── Step 3: Down Payment — save & advance ──────────────
@@ -354,9 +313,40 @@ try {
                   WHERE id = ?"
             )->execute([$amount, $ref ?: null, $notes ?: null, $adminId, $appId]);
 
+            $mailSent = false;
+            $mailError = '';
+            try {
+                $mail = gjc_mailer();
+                $mail->addAddress($app['email'], $app['proprietor_name']);
+                $mail->Subject = 'GenPay - Down Payment Received';
+                $prettyAmount = '₱' . number_format($amount, 2);
+                $mail->Body = '
+                    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
+                        <h2 style="color:#064420;margin-top:0">Down Payment Received</h2>
+                        <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
+                        <p style="color:#374151;line-height:1.7">We have received your down payment for your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong>.</p>
+                        <div style="background:#fff;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0">
+                            <p style="margin:0 0 8px;color:#15803d;font-weight:700;text-transform:uppercase;font-size:12px">Payment Details</p>
+                            <p style="margin:0;color:#111827"><strong>Amount:</strong> ' . htmlspecialchars($prettyAmount) . '</p>
+                            ' . ($ref !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Reference:</strong> ' . htmlspecialchars($ref) . '</p>' : '') . '
+                            ' . ($notes !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Notes:</strong> ' . htmlspecialchars($notes) . '</p>' : '') . '
+                        </div>
+                        <p style="color:#374151;line-height:1.7">Your application will now proceed to the final approval stage. We will be in touch shortly.</p>
+                        <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+                    </div>';
+                $mail->AltBody = "Dear {$app['proprietor_name']},\n\nWe have received your down payment of {$prettyAmount} for {$app['business_name']}."
+                    . ($ref !== '' ? "\nReference: {$ref}" : '')
+                    . ($notes !== '' ? "\nNotes: {$notes}" : '')
+                    . "\n\nYour application will now proceed to the final approval stage.\n\nGenPay Team";
+                $mail->send();
+                $mailSent = true;
+            } catch (Throwable $mailEx) {
+                $mailError = $mailEx->getMessage();
+            }
+
             stall_app_json([
                 'success' => true,
-                'message' => 'Down payment recorded. Moved to Step 4 - Approval / Award.',
+                'message' => 'Down payment recorded. Moved to Step 4 - Approval / Award.' . ($mailSent ? ' Email sent.' : ' Note: email failed - ' . $mailError),
                 'status' => 'approval', 'current_step' => 4,
             ]);
         }
