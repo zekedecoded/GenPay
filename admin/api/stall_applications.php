@@ -132,13 +132,21 @@ try {
             )->execute([$adminId, $appId]);
 
             // Find the next free slot and propose it to the finance staff.
-            // The email is NOT sent here — the frontend shows a preview modal
-            // and the staff confirms before save_meeting fires the email.
+            // The proposed slot is saved to the DB immediately so it survives
+            // a page refresh. The email is NOT sent here — that only fires
+            // when the admin confirms by clicking "Accept & Next".
             $slot = gjc_find_next_meeting_slot($db);
             if ($slot !== null) {
                 $place = gjc_meeting_default_location($db);
-                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $slot['date'] . ' ' . $slot['time'] . ':00');
+                $proposedAt = $slot['date'] . ' ' . $slot['time'] . ':00';
+                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $proposedAt);
                 $prettyWhen = $dt->format('F j, Y \a\t g:i A');
+                // Persist the proposal so the form survives a page refresh.
+                $db->prepare(
+                    "UPDATE stall_applications
+                        SET meetup_scheduled_at = ?, meetup_location = ?
+                      WHERE id = ?"
+                )->execute([$proposedAt, $place, $appId]);
                 stall_app_json([
                     'success'       => true,
                     'message'       => "Documents accepted. A meeting slot has been proposed for {$prettyWhen} — please review and confirm before the email is sent.",
@@ -224,6 +232,7 @@ try {
                 "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
                    FROM stall_applications
                   WHERE meetup_scheduled_at IS NOT NULL
+                    AND meetup_scheduled_email_sent_at IS NOT NULL
                     AND DATE(meetup_scheduled_at) = ?"
             );
             $stmt->execute([$date]);

@@ -476,25 +476,28 @@ function renderPanel(app) {
     }
 
     if (app.status === 'meeting') {
+        const savedDate  = app.meetup_scheduled_at ? String(app.meetup_scheduled_at).slice(0, 10) : '';
+        const savedLoc   = esc(app.meetup_location  || '');
+        const savedNotes = esc(app.meetup_notes     || '');
         return `
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Date</label>
-                    <input type="date" class="form-control" id="meetDate-${app.id}" min="${todayStr()}" onchange="refreshMeetingSlots(${app.id})">
+                    <input type="date" class="form-control" id="meetDate-${app.id}" min="${todayStr()}" value="${savedDate}" onchange="refreshMeetingSlots(${app.id})">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Time</label>
                     <select class="form-select" id="meetTime-${app.id}" disabled>
-                        <option value="">Pick a date first</option>
+                        <option value="">${savedDate ? 'Loading…' : 'Pick a date first'}</option>
                     </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Location</label>
-                    <input type="text" class="form-control" id="meetLoc-${app.id}" placeholder="e.g. GJC Finance Office">
+                    <input type="text" class="form-control" id="meetLoc-${app.id}" placeholder="e.g. GJC Finance Office" value="${savedLoc}">
                 </div>
                 <div class="col-12">
                     <label class="form-label small fw-semibold">Notes</label>
-                    <textarea class="form-control" id="meetNotes-${app.id}" rows="2" placeholder="Optional instructions for the applicant"></textarea>
+                    <textarea class="form-control" id="meetNotes-${app.id}" rows="2" placeholder="Optional instructions for the applicant">${savedNotes}</textarea>
                 </div>
             </div>
             <div class="d-flex gap-2">
@@ -528,14 +531,30 @@ function renderPanel(app) {
     }
 
     if (app.status === 'approval') {
-        const options = VACANT_STALLS.map(s => `<option value="${esc(s.stall_id)}">${esc(s.stall_id)} - ${esc(s.label)} (${money(s.monthly_rate)}/mo)</option>`).join('');
+        const preferred = (app.preferred_stall_id || '').trim();
+        const preferredVacant = preferred && VACANT_STALLS.some(s => s.stall_id === preferred);
+        const options = VACANT_STALLS.map(s => {
+            const sel = s.stall_id === preferred ? ' selected' : '';
+            return `<option value="${esc(s.stall_id)}"${sel}>${esc(s.stall_id)} - ${esc(s.label)} (${money(s.monthly_rate)}/mo)</option>`;
+        }).join('');
         const disabled = VACANT_STALLS.length === 0 ? 'disabled' : '';
+
+        let preferredNote = '';
+        if (preferred) {
+            if (preferredVacant) {
+                preferredNote = `<div class="small text-success mt-1"><i class="fa-solid fa-circle-check me-1"></i>Applicant's preferred stall <strong>${esc(preferred)}</strong> is available and pre-selected.</div>`;
+            } else {
+                preferredNote = `<div class="small text-warning mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Applicant preferred <strong>${esc(preferred)}</strong> but it is no longer vacant. Please assign a different stall.</div>`;
+            }
+        }
+
         return `
             <div class="mb-3" style="max-width:420px">
                 <label class="form-label small fw-semibold">Assign Stall <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardStall-${app.id}" ${disabled}>
                     ${options || '<option value="">No vacant stalls available</option>'}
                 </select>
+                ${preferredNote}
             </div>
             <button type="button" class="btn btn-success" onclick="awardStall(${app.id})" ${disabled}>Approve &amp; Award</button>`;
     }
@@ -548,6 +567,13 @@ function renderRow(app) {
     if (!detail) return;
     detail.querySelector('.stepper').innerHTML = renderStepper(app);
     detail.querySelector('.step-panel').innerHTML = renderPanel(app);
+
+    // If the meeting form has a pre-saved date, load booked slots immediately
+    // so the time dropdown is ready when the admin opens the row.
+    if (app.status === 'meeting' && app.meetup_scheduled_at) {
+        const savedTime = String(app.meetup_scheduled_at).slice(11, 16);
+        refreshMeetingSlots(app.id, savedTime);
+    }
 
     const row = document.querySelector(`.app-row[data-app-id="${app.id}"]`);
     if (row) {
@@ -579,14 +605,14 @@ function acceptReview(id) {
     post({ action: 'accept_review', app_id: id }).then(res => {
         toast(res.message, res.success ? 'success' : 'error');
         if (res.success) {
-            mergeAndRender(id, { status: res.status, current_step: res.current_step });
+            const patch = { status: res.status, current_step: res.current_step };
             if (res.proposed_slot) {
-                const slot = res.proposed_slot;
-                const dateInput = document.getElementById(`meetDate-${id}`);
-                const locInput  = document.getElementById(`meetLoc-${id}`);
-                if (dateInput) { dateInput.value = slot.date; refreshMeetingSlots(id, slot.time); }
-                if (locInput)  locInput.value = slot.location;
+                // Mirror the DB-persisted proposal into the in-memory app so
+                // renderPanel pre-fills correctly and survives re-renders.
+                patch.meetup_scheduled_at = res.proposed_slot.date + ' ' + res.proposed_slot.time + ':00';
+                patch.meetup_location     = res.proposed_slot.location;
             }
+            mergeAndRender(id, patch);
         }
     });
 }

@@ -61,6 +61,7 @@ class Record
                         4 => 'super_admin',
                         5 => 'merchant_admin',
                         6 => 'merchant_staff',
+                        7 => 'parent',
                         default => 'student',
                     };
 
@@ -71,7 +72,7 @@ class Record
 
                     $_SESSION['sub_role']         = $subRole;
                     $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
-                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant'][$roleId] ?? 'user';
+                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant', 7 => 'parent'][$roleId] ?? 'user';
 
                     $mustChangePassword =
                         !empty($user['force_password_change']) ||

@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 gjc_require_role(['merchant']);
 gjc_ensure_merchant_qr_orders_schema($db);
 gjc_ensure_cart_orders_schema($db);
+gjc_ensure_parent_schema($db);
 
 $action         = trim((string) ($_POST['action'] ?? ''));
 $merchantUserId = gjc_user_id();
@@ -467,6 +468,28 @@ try {
 
         $refNo = gjc_reference('POS');
 
+        // ── Parent wallet controls ──────────────────────────────────────────────
+        $wcStmt = $db->prepare("SELECT is_frozen, daily_spend_limit FROM student_wallets WHERE id = ?");
+        $wcStmt->execute([$walletId]);
+        $wc = $wcStmt->fetch(PDO::FETCH_ASSOC);
+        if ($wc && (int) $wc['is_frozen'] === 1) {
+            echo json_encode(['success' => false, 'message' => 'This wallet is frozen by a parent or guardian.']);
+            exit;
+        }
+        if ($wc && (float) $wc['daily_spend_limit'] > 0) {
+            $spentStmt = $db->prepare(
+                "SELECT COALESCE(SUM(amount),0) FROM transactions
+                  WHERE student_wallet_id = ? AND transaction_type = 'payment'
+                    AND DATE(created_at) = CURDATE() AND status = 'completed'"
+            );
+            $spentStmt->execute([$walletId]);
+            $todaySpent = (float) $spentStmt->fetchColumn();
+            if ($todaySpent + $totalAmt > (float) $wc['daily_spend_limit']) {
+                echo json_encode(['success' => false, 'message' => 'Daily spending limit of ₱' . number_format($wc['daily_spend_limit'], 2) . ' has been reached.']);
+                exit;
+            }
+        }
+
         // ── BEGIN TRANSACTION ───────────────────────────────────────────────────
         $db->beginTransaction();
         try {
@@ -527,6 +550,7 @@ try {
             ]);
 
             $db->commit();
+            gjc_check_parent_balance_alert($db, $walletId);
             logAudit(
                 $db,
                 $merchantUserId,
@@ -544,7 +568,6 @@ try {
                     'status' => 'completed',
                 ]
             );
-            // ── COMMIT ─────────────────────────────────────────────────────────
 
             echo json_encode([
                 'success'   => true,

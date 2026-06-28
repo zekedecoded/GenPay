@@ -1,32 +1,32 @@
 <?php
 
+require_once __DIR__ . "/../connection/CirculationEngine.php";
+require_once __DIR__ . "/../connection/MintingGuard.php";
 
-require_once __DIR__ . '/../connection/CirculationEngine.php';
-require_once __DIR__ . '/../connection/MintingGuard.php';
-
-$engine  = new CirculationEngine($db);
-$guard   = new MintingGuard($db);
-$snap    = $engine->getCirculationSnapshot();
+$engine = new CirculationEngine($db);
+$guard = new MintingGuard($db);
+$snap = $engine->getCirculationSnapshot();
 $monthly = $guard->getMonthlyMintingReport();
 
-$cap         = max((float)($snap['cap'] ?? 1), 0.01);
-$vault       = (float)($snap['vault']                  ?? 0);
-$students    = (float)($snap['student_wallets_total']  ?? 0);
-$merchants   = (float)($snap['merchant_wallets_total'] ?? 0);
-$vouchers    = (float)($snap['active_vouchers_total']  ?? 0);
-$circulation = (float)($snap['total_in_circulation']   ?? 0);
-$drift       = abs((float)($snap['circulation_drift']  ?? 0));
-$isBalanced  = $drift < 0.01;
+$cap = max((float) ($snap["cap"] ?? 1), 0.01);
+$vault = (float) ($snap["vault"] ?? 0);
+$students = (float) ($snap["student_wallets_total"] ?? 0);
+$merchants = (float) ($snap["merchant_wallets_total"] ?? 0);
+$vouchers = (float) ($snap["active_vouchers_total"] ?? 0);
+$circulation = (float) ($snap["total_in_circulation"] ?? 0);
+$drift = abs((float) ($snap["circulation_drift"] ?? 0));
+$isBalanced = $drift < 0.01;
 
 $walletStats = gjc_wallet_user_stats($db);
+$merchantWalletStats = gjc_merchant_wallet_user_stats($db);
 
-$vaultPct    = round(($vault    / $cap) * 100, 1);
-$studPct     = round(($students / $cap) * 100, 1);
-$merchPct    = round(($merchants/ $cap) * 100, 1);
-$vchPct      = round(($vouchers / $cap) * 100, 1);
-$mintUsedPct = (float)$monthly['soft_limit_used_pct'];
-$minted      = (float)$monthly['minted_this_month'];
-$limitHit    = (bool)$monthly['soft_limit_exceeded'];
+$vaultPct = round(($vault / $cap) * 100, 1);
+$studPct = round(($students / $cap) * 100, 1);
+$merchPct = round(($merchants / $cap) * 100, 1);
+$vchPct = round(($vouchers / $cap) * 100, 1);
+$mintUsedPct = (float) $monthly["soft_limit_used_pct"];
+$minted = (float) $monthly["minted_this_month"];
+$limitHit = (bool) $monthly["soft_limit_exceeded"];
 ?>
 
 <section class="ce-section" id="circulation-health">
@@ -36,7 +36,9 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <i class="fa-solid fa-coins ce-label-icon"></i>
             GenCoin Economy
         </span>
-        <div class="ce-balance-badge <?= $isBalanced ? 'ce-badge-ok' : 'ce-badge-err' ?>">
+        <div class="ce-balance-badge <?= $isBalanced
+            ? "ce-badge-ok"
+            : "ce-badge-err" ?>">
             <?= $isBalanced
                 ? '<span class="ce-dot ce-dot-green"></span> Economy Balanced'
                 : '<span class="ce-dot ce-dot-red ce-pulse"></span> Drift Detected' ?>
@@ -47,7 +49,9 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
     <div class="ce-alert-danger">
         <i class="fa-solid fa-triangle-exclamation" style="font-size:20px;opacity:.7"></i>
         <div>
-            <strong>Balance Mismatch Detected — <?= gjc_money($drift) ?> Unaccounted</strong><br>
+            <strong>Balance Mismatch Detected — <?= gjc_money(
+                $drift,
+            ) ?> Unaccounted</strong><br>
             <small>Please stop all transactions and contact your system administrator to resolve this.</small>
         </div>
     </div>
@@ -61,7 +65,10 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 <div class="ce-ledger-amount"><?= gjc_money($cap) ?></div>
                 <p class="ce-ledger-sub">The maximum amount of money allowed in the system at any time</p>
                 <p class="ce-ledger-sub" style="margin-top:2px;font-weight:700;">
-                    &asymp; <?= number_format($cap / 10, 1) ?> GenCoins &middot; Fixed rate: &#8369;10 = 1 GenCoin
+                    &asymp; <?= number_format(
+                        $cap / 10,
+                        1,
+                    ) ?> GenCoins &middot; Fixed rate: &#8369;10 = 1 GenCoin
                 </p>
             </div>
 
@@ -73,7 +80,11 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <?php else: ?>
             <div class="ce-reconcile ce-reconcile--err">
                 <i class="fa-solid fa-triangle-exclamation"></i>
-                <span>Total recorded money (<strong><?= gjc_money($circulation) ?></strong>) doesn't match what's in the accounts — <strong><?= gjc_money($drift) ?></strong> is unaccounted for.</span>
+                <span>Total recorded money (<strong><?= gjc_money(
+                    $circulation,
+                ) ?></strong>) doesn't match what's in the accounts — <strong><?= gjc_money(
+    $drift,
+) ?></strong> is unaccounted for.</span>
             </div>
             <?php endif; ?>
         </div>
@@ -118,14 +129,18 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 <i class="fa-solid fa-user-graduate ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info" style="flex:1;min-width:0;">
-                <span class="ce-pool-label">Total Wallet Users</span>
-                <div class="ce-pool-amt"><?= number_format($walletStats['total']) ?></div>
+                <span class="ce-pool-label">Total Student Wallet Users</span>
+                <div class="ce-pool-amt"><?= number_format(
+                    $walletStats["total"],
+                ) ?></div>
 
-                <?php
-                $activePct = $walletStats['total'] > 0
-                    ? round(($walletStats['active'] / $walletStats['total']) * 100)
-                    : 0;
-                ?>
+                <?php $activePct =
+                    $walletStats["total"] > 0
+                        ? round(
+                            ($walletStats["active"] / $walletStats["total"]) *
+                                100,
+                        )
+                        : 0; ?>
                 <div class="ce-wu-bar-wrap">
                     <div class="ce-wu-bar">
                         <div class="ce-wu-bar-fill" style="width:<?= $activePct ?>%"></div>
@@ -136,11 +151,11 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 <div class="ce-wu-badges">
                     <span class="ce-wu-badge ce-wu-badge--active">
                         <span class="ce-wu-dot ce-wu-dot--active"></span>
-                        <?= number_format($walletStats['active']) ?> Active
+                        <?= number_format($walletStats["active"]) ?> Active
                     </span>
                     <span class="ce-wu-badge ce-wu-badge--inactive">
                         <span class="ce-wu-dot ce-wu-dot--inactive"></span>
-                        <?= number_format($walletStats['inactive']) ?> Inactive
+                        <?= number_format($walletStats["inactive"]) ?> Inactive
                     </span>
                 </div>
 
@@ -148,14 +163,47 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             </div>
         </div>
 
-        <div class="ce-pool-card ce-pool-merchants">
+        <div class="ce-pool-card ce-pool-merchants ce-pool-card--wallet">
             <div class="ce-pool-icon-wrap">
                 <i class="fa-solid fa-store ce-pool-icon"></i>
             </div>
-            <div class="ce-pool-info">
-                <span class="ce-pool-label">Merchant Wallets</span>
-                <div class="ce-pool-amt"><?= gjc_money($merchants) ?></div>
-                <small class="ce-pool-share">Pending encashment</small>
+            <div class="ce-pool-info" style="flex:1;min-width:0;">
+                <span class="ce-pool-label">Total Merchant Wallet Users</span>
+                <div class="ce-pool-amt"><?= number_format(
+                    $merchantWalletStats["total"],
+                ) ?></div>
+
+                <?php $mActivePct =
+                    $merchantWalletStats["total"] > 0
+                        ? round(
+                            ($merchantWalletStats["active"] /
+                                $merchantWalletStats["total"]) *
+                                100,
+                        )
+                        : 0; ?>
+                <div class="ce-wu-bar-wrap">
+                    <div class="ce-wu-bar">
+                        <div class="ce-wu-bar-fill ce-wu-bar-fill--merchant" style="width:<?= $mActivePct ?>%"></div>
+                    </div>
+                    <span class="ce-wu-pct ce-wu-pct--merchant"><?= $mActivePct ?>%</span>
+                </div>
+
+                <div class="ce-wu-badges">
+                    <span class="ce-wu-badge ce-wu-badge--merchant-active">
+                        <span class="ce-wu-dot ce-wu-dot--merchant"></span>
+                        <?= number_format(
+                            $merchantWalletStats["active"],
+                        ) ?> Active
+                    </span>
+                    <span class="ce-wu-badge ce-wu-badge--inactive">
+                        <span class="ce-wu-dot ce-wu-dot--inactive"></span>
+                        <?= number_format(
+                            $merchantWalletStats["inactive"],
+                        ) ?> Inactive
+                    </span>
+                </div>
+
+                <small class="ce-pool-share">No sales in 30 days = inactive</small>
             </div>
         </div>
 
@@ -174,22 +222,26 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 
     <div class="ce-bottom-grid">
 
-        
-        <div class="ce-mint-info-panel <?= $limitHit ? 'ce-limit-hit' : '' ?>">
+
+        <div class="ce-mint-info-panel <?= $limitHit ? "ce-limit-hit" : "" ?>">
             <div class="ce-mint-info-header">
                 <div class="ce-mint-info-icon"><i class="fa-solid fa-chart-pie"></i></div>
                 <div>
                     <div class="ce-mint-info-title">Monthly Top-Up Budget</div>
                     <div class="ce-mint-info-sub">
                         <?= $limitHit
-                            ? 'Monthly limit reached — PIN required to continue'
-                            : 'Within the ' . gjc_money(MintingGuard::SOFT_LIMIT) . ' monthly limit' ?>
+                            ? "Monthly limit reached — PIN required to continue"
+                            : "Within the " .
+                                gjc_money(MintingGuard::SOFT_LIMIT) .
+                                " monthly limit" ?>
                     </div>
                 </div>
             </div>
             <div class="ce-mint-track-wrap">
                 <div class="ce-mint-track">
-                    <div class="ce-mint-track-fill <?= $limitHit ? 'ce-track-warn' : 'ce-track-ok' ?>"
+                    <div class="ce-mint-track-fill <?= $limitHit
+                        ? "ce-track-warn"
+                        : "ce-track-ok" ?>"
                          style="width:<?= min(100, $mintUsedPct) ?>%">
                     </div>
                 </div>
@@ -198,7 +250,9 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             <div class="ce-mint-stats">
                 <div class="ce-mint-stat-item ce-mint-stat-primary">
                     <span>Budget remaining this month</span>
-                    <strong><?= gjc_money(max(0, (float)$monthly['remaining_soft_limit'])) ?></strong>
+                    <strong><?= gjc_money(
+                        max(0, (float) $monthly["remaining_soft_limit"]),
+                    ) ?></strong>
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Added this month</span>
@@ -206,17 +260,19 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Times money was added</span>
-                    <strong><?= $monthly['mint_events'] ?></strong>
+                    <strong><?= $monthly["mint_events"] ?></strong>
                 </div>
                 <div class="ce-mint-stat-item">
                     <span>Maximum allowed limit</span>
-                    <strong><?= gjc_money((float)$monthly['hard_limit']) ?></strong>
+                    <strong><?= gjc_money(
+                        (float) $monthly["hard_limit"],
+                    ) ?></strong>
                 </div>
             </div>
         </div>
 
-        
-        <?php if (($_SESSION['sub_role'] ?? '') === 'super_admin'): ?>
+
+        <?php if (($_SESSION["sub_role"] ?? "") === "super_admin"): ?>
         <div class="ce-mint-form-panel">
             <div class="ce-mint-form-header">
                 <span class="ce-mint-badge">Admin</span>
@@ -240,7 +296,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
                     </div>
                 </div>
                 <div class="ce-field" id="ce-pin-wrap"
-                     style="display:<?= $limitHit ? 'block' : 'none' ?>">
+                     style="display:<?= $limitHit ? "block" : "none" ?>">
                     <label class="ce-label" for="ce-pin">
                         Security PIN
                         <span class="ce-pin-badge">Required when monthly limit is exceeded</span>
@@ -256,7 +312,7 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
             </form>
         </div>
         <?php else: ?>
-        
+
         <div class="ce-flow-guide">
             <div class="ce-flow-guide-title">How Money Moves</div>
             <div class="ce-flow-steps">
@@ -302,7 +358,8 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
          (ledger panel + section badge) - the footer only adds the timestamp. -->
     <div class="ce-footer">
         <i class="fa-solid fa-clock-rotate-left" style="opacity:.6"></i>
-        <span>Last updated: <strong><?= $snap['as_of'] ?? 'N/A' ?></strong></span>
+        <span>Last updated: <strong><?= $snap["as_of"] ??
+            "N/A" ?></strong></span>
     </div>
 
 </section>
@@ -319,6 +376,10 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 .ce-wu-dot{display:inline-block;width:6px;height:6px;border-radius:50%}
 .ce-wu-dot--active{background:#22c55e}
 .ce-wu-dot--inactive{background:#94a3b8}
+.ce-wu-bar-fill--merchant{background:#f59e0b}
+.ce-wu-pct--merchant{color:#d97706}
+.ce-wu-badge--merchant-active{background:rgba(245,158,11,.15);color:#b45309}
+.ce-wu-dot--merchant{background:#f59e0b}
 </style>
 
 <script>
@@ -384,4 +445,3 @@ $limitHit    = (bool)$monthly['soft_limit_exceeded'];
 
 })();
 </script>
-

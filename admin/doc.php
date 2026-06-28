@@ -56,6 +56,23 @@ if (ob_get_length()) {
     ob_end_clean();
 }
 
+// For images, wrap in an HTML page so the browser scales them to fit the
+// iframe instead of rendering at native (potentially huge) resolution.
+if (in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+    $dataUrl = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($absPath));
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: private, max-age=3600');
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#1e1e1e;display:flex;align-items:center;justify-content:center}
+  img{max-width:100%;max-height:100vh;object-fit:contain;display:block}
+</style></head><body>
+<img src="' . $dataUrl . '" alt="' . htmlspecialchars(basename($absPath)) . '">
+</body></html>';
+    exit;
+}
+
 $size = filesize($absPath);
 
 header('Content-Type: '  . $mime);

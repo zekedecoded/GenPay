@@ -26,6 +26,7 @@ function gjc_role_name($role): string
             4 => 'finance',
             5 => 'merchant',
             6 => 'merchant',
+            7 => 'parent',
         ][(int) $role] ?? 'guest';
     }
 
@@ -213,6 +214,7 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
         "down_payment_recorded_at" => "DATETIME NULL",
         "merchant_user_id" => "INT UNSIGNED NULL",
         "temp_password_plain" => "VARCHAR(100) NULL",
+        "preferred_stall_id" => "VARCHAR(10) NULL DEFAULT NULL",
     ];
 
     foreach ($adds as $column => $definition) {
@@ -1045,6 +1047,32 @@ function gjc_wallet_user_stats(PDO $db): array
     ];
 }
 
+function gjc_merchant_wallet_user_stats(PDO $db): array
+{
+    $days = 30;
+    $row  = $db->prepare(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN last_txn >= DATE_SUB(NOW(), INTERVAL ? DAY) THEN 1 ELSE 0 END) AS active_count
+         FROM (
+             SELECT mw.id, MAX(t.created_at) AS last_txn
+             FROM merchant_wallets mw
+             LEFT JOIN transactions t ON t.merchant_wallet_id = mw.id
+             GROUP BY mw.id
+         ) sub"
+    );
+    $row->execute([$days]);
+    $data   = $row->fetch(PDO::FETCH_ASSOC);
+    $total  = (int) ($data['total']        ?? 0);
+    $active = (int) ($data['active_count'] ?? 0);
+    return [
+        'total'    => $total,
+        'active'   => $active,
+        'inactive' => $total - $active,
+        'days'     => $days,
+    ];
+}
+
 /**
  * Finds the earliest open meeting slot strictly after today, skipping
  * weekends, admin-defined holidays, and times already booked by another
@@ -1060,6 +1088,7 @@ function gjc_find_next_meeting_slot(PDO $db, int $lookaheadDays = 180): ?array
         "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
            FROM stall_applications
           WHERE meetup_scheduled_at IS NOT NULL
+            AND meetup_scheduled_email_sent_at IS NOT NULL
             AND DATE(meetup_scheduled_at) = ?"
     );
 
@@ -1776,6 +1805,108 @@ function gjc_ensure_new_tables(PDO $db): void
         if (!gjc_table_exists($db, $table)) {
             // Tables created by migration_v2.sql — just silently skip if missing
             return;
+        }
+    }
+}
+
+// ─── Parent Account Module ────────────────────────────────────────────────────
+
+function gjc_ensure_parent_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS parents (
+            id                    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id               INT UNSIGNED NOT NULL UNIQUE,
+            low_balance_threshold DECIMAL(10,2) NOT NULL DEFAULT 50.00,
+            created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS parent_student_links (
+            id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            parent_id       INT UNSIGNED NOT NULL,
+            student_user_id INT UNSIGNED NOT NULL,
+            linked_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_link (parent_id, student_user_id),
+            INDEX idx_parent  (parent_id),
+            INDEX idx_student (student_user_id)
+        ) ENGINE=InnoDB"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS parent_alerts (
+            id                INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            parent_id         INT UNSIGNED NOT NULL,
+            student_user_id   INT UNSIGNED NOT NULL,
+            student_wallet_id INT UNSIGNED NOT NULL,
+            balance_at_alert  DECIMAL(10,2) NOT NULL,
+            threshold         DECIMAL(10,2) NOT NULL,
+            is_read           TINYINT(1) NOT NULL DEFAULT 0,
+            created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_parent_unread (parent_id, is_read)
+        ) ENGINE=InnoDB"
+    );
+
+    // Add spending-control columns to student_wallets if absent
+    if (gjc_table_exists($db, 'student_wallets')) {
+        $cols = gjc_table_columns($db, 'student_wallets');
+        $walletAdds = [
+            'daily_spend_limit' => 'DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER balance',
+            'is_frozen'         => 'TINYINT(1) NOT NULL DEFAULT 0 AFTER daily_spend_limit',
+        ];
+        foreach ($walletAdds as $col => $def) {
+            if (!in_array($col, $cols, true)) {
+                try {
+                    $db->exec("ALTER TABLE student_wallets ADD COLUMN {$col} {$def}");
+                } catch (\Throwable $ignored) {}
+            }
+        }
+    }
+}
+
+function gjc_check_parent_balance_alert(PDO $db, int $walletId): void
+{
+    if (!gjc_table_exists($db, 'parents') || !gjc_table_exists($db, 'parent_student_links') || !gjc_table_exists($db, 'parent_alerts')) {
+        return;
+    }
+
+    $wStmt = $db->prepare("SELECT user_id, balance FROM student_wallets WHERE id = ?");
+    $wStmt->execute([$walletId]);
+    $wallet = $wStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$wallet) return;
+
+    $pStmt = $db->prepare(
+        "SELECT p.id AS parent_id, p.low_balance_threshold
+           FROM parents p
+           JOIN parent_student_links psl ON psl.parent_id = p.id
+          WHERE psl.student_user_id = ?
+            AND p.low_balance_threshold > 0
+            AND p.low_balance_threshold >= ?"
+    );
+    $pStmt->execute([$wallet['user_id'], $wallet['balance']]);
+    $parents = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($parents as $parent) {
+        // Throttle: one unread alert per parent-student pair per day
+        $chk = $db->prepare(
+            "SELECT COUNT(*) FROM parent_alerts
+              WHERE parent_id = ? AND student_user_id = ?
+                AND DATE(created_at) = CURDATE() AND is_read = 0"
+        );
+        $chk->execute([$parent['parent_id'], $wallet['user_id']]);
+        if ((int) $chk->fetchColumn() === 0) {
+            $db->prepare(
+                "INSERT INTO parent_alerts
+                    (parent_id, student_user_id, student_wallet_id, balance_at_alert, threshold)
+                 VALUES (?, ?, ?, ?, ?)"
+            )->execute([
+                $parent['parent_id'],
+                $wallet['user_id'],
+                $walletId,
+                $wallet['balance'],
+                $parent['low_balance_threshold'],
+            ]);
         }
     }
 }

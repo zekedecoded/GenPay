@@ -36,6 +36,10 @@ switch ($subRole) {
         require_once MERCHANT_PATH . '/dashboard.php';
         break;
 
+    case 'parent':
+        require_once PARENT_PATH . '/dashboard.php';
+        break;
+
     case 'student':
     default:
         require_once STUDENT_PATH . '/dashboard.php';

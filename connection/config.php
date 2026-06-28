@@ -28,6 +28,7 @@ define('ICONS_URL',      BASE_URL . '/assets/icons');
 define('ADMIN_URL',      BASE_URL . '/admin');
 define('MERCHANT_URL',   BASE_URL . '/merchant');
 define('STUDENT_URL',    BASE_URL . '/student');
+define('PARENT_URL',     BASE_URL . '/parent');
 define('INCLUDES_URL',   BASE_URL . '/includes');
 define('CONNECTION_URL', BASE_URL . '/connection');
 
@@ -43,6 +44,7 @@ define('ICONS_PATH',      BASE_PATH . '/assets/icons');
 define('ADMIN_PATH',      BASE_PATH . '/admin');
 define('MERCHANT_PATH',   BASE_PATH . '/merchant');
 define('STUDENT_PATH',    BASE_PATH . '/student');
+define('PARENT_PATH',     BASE_PATH . '/parent');
 define('INCLUDES_PATH',   BASE_PATH . '/includes');
 define('CONNECTION_PATH', BASE_PATH . '/connection');
 

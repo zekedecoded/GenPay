@@ -13,57 +13,35 @@ $currentPage = $currentPage ?? ""; ?>
         </div>
     </div>
     <nav class="sidebar-menu">
-        <a href="<?= DASHBOARD_URL ?>" class="<?= $currentPage === "dashboard"
-    ? "active"
-    : "" ?>">
+        <a href="<?= DASHBOARD_URL ?>" class="<?= $currentPage === 'dashboard' ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge-high nav-icon"></i>
             <span class="nav-text">Dashboard</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/users.php" class="<?= $currentPage === "users"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/users.php" class="<?= $currentPage === 'users' ? 'active' : '' ?>">
             <i class="fa-solid fa-users nav-icon"></i>
             <span class="nav-text">Users</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/leases.php" class="<?= $currentPage ===
-"leases"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/leases.php" class="<?= $currentPage === 'leases' ? 'active' : '' ?>">
             <i class="fa-solid fa-file-signature nav-icon"></i>
             <span class="nav-text">Leases &amp; Rent</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/topups.php" class="<?= $currentPage ===
-"topups"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/topups.php" class="<?= $currentPage === 'topups' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-bill-transfer nav-icon"></i>
             <span class="nav-text">Top-up Log</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/encashments.php" class="<?= $currentPage ===
-"encashments"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/encashments.php" class="<?= $currentPage === 'encashments' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-check-dollar nav-icon"></i>
             <span class="nav-text">Encashments</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/transactions.php" class="<?= $currentPage ===
-"transactions"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/transactions.php" class="<?= $currentPage === 'transactions' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt nav-icon"></i>
             <span class="nav-text">Transactions</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/economy.php" class="<?= $currentPage ===
-"economy"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/economy.php" class="<?= $currentPage === 'economy' ? 'active' : '' ?>">
             <i class="fa-solid fa-coins nav-icon"></i>
             <span class="nav-text">Economy</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/visitors.php" class="<?= $currentPage ===
-"visitors"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/visitors.php" class="<?= $currentPage === 'visitors' ? 'active' : '' ?>">
             <i class="fa-solid fa-person-walking nav-icon"></i>
             <span class="nav-text">Visitors</span>
         </a>
@@ -71,33 +49,25 @@ $currentPage = $currentPage ?? ""; ?>
             <i class="fa-solid fa-store nav-icon"></i>
             <span class="nav-text">Stall Applications</span>
             <?php
-            // Badge: count pending stall applications
             try {
                 $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='review'")->fetchColumn();
                 if ($__pendingCount > 0): ?>
-                <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:800;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
+                <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
             <?php endif;
             } catch (Throwable $__e) {}
             ?>
         </a>
-        <a href="<?= ADMIN_URL ?>/audit_log.php" class="<?= $currentPage === "audit_log"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/audit_log.php" class="<?= $currentPage === 'audit_log' ? 'active' : '' ?>">
             <i class="fa-solid fa-clipboard-list nav-icon"></i>
             <span class="nav-text">Audit Log</span>
         </a>
         <?php if (function_exists('gjc_current_role') && gjc_current_role() === 'finance'): ?>
-        <a href="<?= ADMIN_URL ?>/maintenance.php" class="<?= $currentPage === "maintenance"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/maintenance.php" class="<?= $currentPage === 'maintenance' ? 'active' : '' ?>">
             <i class="fa-solid fa-screwdriver-wrench nav-icon"></i>
             <span class="nav-text">Maintenance</span>
         </a>
         <?php endif; ?>
-        <a href="<?= ADMIN_URL ?>/settings.php" class="<?= $currentPage ===
-"settings"
-    ? "active"
-    : "" ?>">
+        <a href="<?= ADMIN_URL ?>/settings.php" class="<?= $currentPage === 'settings' ? 'active' : '' ?>">
             <i class="fa-solid fa-gear nav-icon"></i>
             <span class="nav-text">Settings</span>
         </a>

@@ -551,6 +551,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         /* ── Layout ─────────────────────────────────────────────────────────── */
@@ -749,57 +750,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         .rp-empty i { font-size: 40px; color: #fca5a5; margin-bottom: 12px; }
         .rp-empty p { font-size: 14px; margin: 0; }
 
-        .rp-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-            gap: 16px;
-        }
-
-        .rp-card {
-            border-radius: 16px; overflow: hidden;
-            box-shadow: 0 2px 12px rgba(0,0,0,.08);
-            display: flex; flex-direction: column;
-            transition: transform .15s, box-shadow .15s;
-        }
-        .rp-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
-
-        .rp-card--active .rp-card-top {
-            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-            color: #fff;
-        }
-        .rp-card--inactive .rp-card-top {
-            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
-            color: #fff;
-        }
-
-        .rp-card-top {
-            padding: 20px 16px 16px; text-align: center; position: relative;
-        }
-        .rp-status-ribbon {
-            position: absolute; top: 10px; right: 10px;
-            font-size: 9px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
-            background: rgba(255,255,255,.22); padding: 3px 8px; border-radius: 99px;
-        }
-        .rp-card-icon-wrap {
-            width: 64px; height: 64px; background: rgba(255,255,255,.18);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 10px; font-size: 28px;
-        }
-        .rp-card-name {
-            font-size: 15px; font-weight: 800; margin: 0 0 2px; line-height: 1.3;
-            word-break: break-word;
-        }
-        .rp-card-category {
-            font-size: 11px; opacity: .8; text-transform: capitalize; font-weight: 600;
-        }
-
-        .rp-card-body {
-            background: #fff; padding: 12px 14px; flex: 1;
-        }
-        .rp-card-reason {
-            font-size: 12px; color: #4b5563; line-height: 1.5; margin: 0 0 10px;
-        }
-        .rp-card-tags { display: flex; gap: 5px; flex-wrap: wrap; }
         .rp-tag {
             font-size: 10px; font-weight: 700; padding: 2px 8px;
             border-radius: 99px; text-transform: uppercase; letter-spacing: .4px;
@@ -807,13 +757,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         .rp-tag--match-exact { background: #fef3c7; color: #92400e; }
         .rp-tag--match-contains { background: #e0e7ff; color: #3730a3; }
 
-        .rp-card-footer {
-            background: #f9fafb; border-top: 1px solid #f3f4f6;
-            padding: 10px 12px;
-            display: flex; gap: 6px; align-items: center;
+        .rp-status-badge {
+            display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .8px;
+            text-transform: uppercase; padding: 3px 10px; border-radius: 99px;
         }
+        .rp-status--banned { background: #fee2e2; color: #b91c1c; }
+        .rp-status--lifted { background: #f1f5f9; color: #64748b; }
+
+        .rp-table { font-size: 13px; border-collapse: separate; border-spacing: 0; }
+        .rp-table thead th {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .5px; color: #6b7280; border-bottom: 2px solid #f3f4f6;
+            padding: 10px 12px; white-space: nowrap;
+        }
+        .rp-table tbody tr { transition: background .12s; }
+        .rp-table tbody tr:hover { background: #fafafa; }
+        .rp-table tbody td { padding: 12px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+
         .rp-toggle-btn {
-            flex: 1; padding: 6px 10px; font-size: 11px; font-weight: 700;
+            padding: 5px 12px; font-size: 11px; font-weight: 700;
             border-radius: 8px; border: none; cursor: pointer; transition: background .15s;
         }
         .rp-toggle-btn--ban { background: #dcfce7; color: #15803d; }
@@ -821,9 +783,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         .rp-toggle-btn--lift { background: #fee2e2; color: #b91c1c; }
         .rp-toggle-btn--lift:hover { background: #fecaca; }
         .rp-remove-btn {
-            width: 30px; height: 30px; border: none; border-radius: 8px;
+            width: 28px; height: 28px; border: none; border-radius: 8px;
             background: #f1f5f9; color: #94a3b8; cursor: pointer; font-size: 12px;
-            display: flex; align-items: center; justify-content: center; transition: all .15s;
+            display: inline-flex; align-items: center; justify-content: center; transition: all .15s;
+            vertical-align: middle;
         }
         .rp-remove-btn:hover { background: #fee2e2; color: #dc2626; }
 
@@ -1086,58 +1049,57 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             ];
             ?>
 
-            <?php if (empty($restrictedProducts)): ?>
-            <div class="rp-empty">
-                <i class="fa-solid fa-circle-check" style="color:#86efac"></i>
-                <p><strong>No prohibited products flagged.</strong><br>All product categories are currently allowed.</p>
-            </div>
-            <?php else: ?>
-            <div class="rp-grid" id="rp-grid">
-                <?php foreach ($restrictedProducts as $rp): ?>
-                <?php
-                    $catKey  = strtolower(trim($rp['category']));
-                    $icon    = $categoryIcons[$catKey] ?? 'fa-ban';
-                    $active  = (int) $rp['is_active'];
-                    $cardCls = $active ? 'rp-card--active' : 'rp-card--inactive';
-                ?>
-                <div class="rp-card <?= $cardCls ?>" id="rp-card-<?= (int)$rp['id'] ?>">
-                    <div class="rp-card-top">
-                        <span class="rp-status-ribbon"><?= $active ? 'BANNED' : 'LIFTED' ?></span>
-                        <div class="rp-card-icon-wrap">
-                            <i class="fa-solid <?= maintenance_e($icon) ?>"></i>
-                        </div>
-                        <div class="rp-card-name"><?= maintenance_e($rp['product_name']) ?></div>
-                        <div class="rp-card-category"><?= maintenance_e($rp['category']) ?></div>
-                    </div>
-                    <div class="rp-card-body">
-                        <p class="rp-card-reason"><?= maintenance_e($rp['reason']) ?></p>
-                        <div class="rp-card-tags">
+            <div class="table-responsive">
+                <table class="table rp-table align-middle js-datatable" id="rp-datatable" data-page-length="10" data-empty-message="No prohibited products flagged. All product categories are currently allowed.">
+                    <thead>
+                        <tr>
+                            <th>Product / Keyword</th>
+                            <th>Category</th>
+                            <th>Match Type</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th data-orderable="false">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rp-tbody">
+                    <?php foreach ($restrictedProducts as $rp): ?>
+                    <?php $active = (int) $rp['is_active']; ?>
+                    <tr id="rp-card-<?= (int)$rp['id'] ?>">
+                        <td><strong><?= maintenance_e($rp['product_name']) ?></strong></td>
+                        <td style="text-transform:capitalize"><?= maintenance_e($rp['category']) ?></td>
+                        <td>
                             <span class="rp-tag rp-tag--match-<?= maintenance_e($rp['match_type']) ?>">
                                 <?= $rp['match_type'] === 'exact' ? 'Exact match' : 'Contains' ?>
                             </span>
-                        </div>
-                    </div>
-                    <div class="rp-card-footer">
-                        <?php if ($active): ?>
-                        <button class="rp-toggle-btn rp-toggle-btn--ban"
-                                onclick="rpToggle(<?= (int)$rp['id'] ?>, 0)">
-                            <i class="fa-solid fa-lock-open me-1"></i>Lift Ban
-                        </button>
-                        <?php else: ?>
-                        <button class="rp-toggle-btn rp-toggle-btn--lift"
-                                onclick="rpToggle(<?= (int)$rp['id'] ?>, 1)">
-                            <i class="fa-solid fa-ban me-1"></i>Reinstate
-                        </button>
-                        <?php endif; ?>
-                        <button class="rp-remove-btn" title="Remove permanently"
-                                onclick="rpRemove(<?= (int)$rp['id'] ?>, '<?= addslashes($rp['product_name']) ?>')">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+                        </td>
+                        <td style="max-width:260px;font-size:13px"><?= maintenance_e($rp['reason']) ?></td>
+                        <td>
+                            <span class="rp-status-badge <?= $active ? 'rp-status--banned' : 'rp-status--lifted' ?>">
+                                <?= $active ? 'BANNED' : 'LIFTED' ?>
+                            </span>
+                        </td>
+                        <td>
+                            <?php if ($active): ?>
+                            <button class="rp-toggle-btn rp-toggle-btn--ban"
+                                    onclick="rpToggle(<?= (int)$rp['id'] ?>, 0)">
+                                <i class="fa-solid fa-lock-open me-1"></i>Lift Ban
+                            </button>
+                            <?php else: ?>
+                            <button class="rp-toggle-btn rp-toggle-btn--lift"
+                                    onclick="rpToggle(<?= (int)$rp['id'] ?>, 1)">
+                                <i class="fa-solid fa-ban me-1"></i>Reinstate
+                            </button>
+                            <?php endif; ?>
+                            <button class="rp-remove-btn ms-1" title="Remove permanently"
+                                    onclick="rpRemove(<?= (int)$rp['id'] ?>, '<?= addslashes($rp['product_name']) ?>')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-            <?php endif; ?>
         </section>
 
         <!-- Flag Product Modal -->
@@ -1199,6 +1161,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 </div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 <script>
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('collapsed');
@@ -1225,8 +1188,8 @@ function rpIcon(cat) {
 }
 
 async function rpToggle(id, newActive) {
-    const card = document.getElementById('rp-card-' + id);
-    if (!card) return;
+    const row = document.getElementById('rp-card-' + id);
+    if (!row) return;
     const f = new FormData();
     f.append('action', 'toggle_restriction');
     f.append('id', id);
@@ -1235,12 +1198,10 @@ async function rpToggle(id, newActive) {
         const res  = await fetch(RP_API, { method: 'POST', body: f });
         const data = await res.json();
         if (data.success) {
-            // Swap card classes and re-render ribbon + footer button
-            card.classList.toggle('rp-card--active',   newActive === 1);
-            card.classList.toggle('rp-card--inactive', newActive === 0);
-            card.querySelector('.rp-status-ribbon').textContent = newActive ? 'BANNED' : 'LIFTED';
-            const footer = card.querySelector('.rp-card-footer');
-            const btn    = footer.querySelector('.rp-toggle-btn');
+            const badge = row.querySelector('.rp-status-badge');
+            badge.className = 'rp-status-badge ' + (newActive ? 'rp-status--banned' : 'rp-status--lifted');
+            badge.textContent = newActive ? 'BANNED' : 'LIFTED';
+            const btn = row.querySelector('.rp-toggle-btn');
             if (newActive) {
                 btn.className = 'rp-toggle-btn rp-toggle-btn--ban';
                 btn.innerHTML = '<i class="fa-solid fa-lock-open me-1"></i>Lift Ban';
@@ -1265,10 +1226,11 @@ async function rpRemove(id, name) {
         const res  = await fetch(RP_API, { method: 'POST', body: f });
         const data = await res.json();
         if (data.success) {
-            const card = document.getElementById('rp-card-' + id);
-            if (card) card.remove();
+            const row = document.getElementById('rp-card-' + id);
+            if (row) {
+                $('#rp-datatable').DataTable().row(row).remove().draw();
+            }
             rpUpdateCount(-1);
-            if (!document.querySelector('.rp-card')) rpShowEmpty();
         } else {
             alert(data.message || 'Failed to remove.');
         }
@@ -1308,7 +1270,6 @@ async function rpFlagProduct() {
             document.getElementById('rp-reason').value = '';
             rpInjectCard({ product_name: name, category, match_type: matchType, reason, is_active: 1 });
             rpUpdateCount(1);
-            rpHideEmpty();
         } else {
             alertEl.innerHTML = `<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">${data.message || 'Failed.'}</div>`;
         }
@@ -1320,37 +1281,19 @@ async function rpFlagProduct() {
 }
 
 function rpInjectCard(rp) {
-    let grid = document.getElementById('rp-grid');
-    if (!grid) {
-        const sec = document.querySelector('.rp-section');
-        grid = document.createElement('div');
-        grid.className = 'rp-grid';
-        grid.id = 'rp-grid';
-        sec.appendChild(grid);
-    }
-    const icon     = rpIcon(rp.category);
     const matchTag = rp.match_type === 'exact'
         ? '<span class="rp-tag rp-tag--match-exact">Exact match</span>'
         : '<span class="rp-tag rp-tag--match-contains">Contains</span>';
 
-    const card = document.createElement('div');
-    card.className = 'rp-card rp-card--active';
-    card.id = 'rp-card-new-' + Date.now();
-    card.innerHTML = `
-        <div class="rp-card-top">
-            <span class="rp-status-ribbon">BANNED</span>
-            <div class="rp-card-icon-wrap"><i class="fa-solid ${icon}"></i></div>
-            <div class="rp-card-name">${rp.product_name}</div>
-            <div class="rp-card-category">${rp.category}</div>
-        </div>
-        <div class="rp-card-body">
-            <p class="rp-card-reason">${rp.reason}</p>
-            <div class="rp-card-tags">${matchTag}</div>
-        </div>
-        <div class="rp-card-footer">
-            <span style="font-size:11px;color:#94a3b8;font-style:italic">Reload to manage</span>
-        </div>`;
-    grid.prepend(card);
+    const $row = $('<tr>');
+    $row.append($('<td>').html('<strong>' + $('<span>').text(rp.product_name).html() + '</strong>'));
+    $row.append($('<td style="text-transform:capitalize">').text(rp.category));
+    $row.append($('<td>').html(matchTag));
+    $row.append($('<td style="max-width:260px;font-size:13px">').text(rp.reason));
+    $row.append($('<td>').html('<span class="rp-status-badge rp-status--banned">BANNED</span>'));
+    $row.append($('<td>').html('<span style="font-size:11px;color:#94a3b8;font-style:italic">Reload to manage</span>'));
+
+    $('#rp-datatable').DataTable().row.add($row[0]).draw();
 }
 
 function rpUpdateCount(delta) {
@@ -1362,22 +1305,6 @@ function rpUpdateCount(delta) {
     badge.textContent = next + ' item' + (next !== 1 ? 's' : '');
 }
 
-function rpShowEmpty() {
-    const grid = document.getElementById('rp-grid');
-    if (grid) grid.remove();
-    const sec = document.querySelector('.rp-section');
-    if (!sec.querySelector('.rp-empty')) {
-        sec.insertAdjacentHTML('beforeend',
-            `<div class="rp-empty"><i class="fa-solid fa-circle-check" style="color:#86efac"></i>
-             <p><strong>No prohibited products flagged.</strong><br>All product categories are currently allowed.</p></div>`
-        );
-    }
-}
-
-function rpHideEmpty() {
-    const empty = document.querySelector('.rp-empty');
-    if (empty) empty.remove();
-}
 
 </script>
 </body>

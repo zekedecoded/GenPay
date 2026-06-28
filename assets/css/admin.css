@@ -44,21 +44,14 @@ body {
 }
 
 .admin-sidebar {
-  width: 280px;
+  width: 228px;
   height: 100vh;
-  padding: 24px 18px;
+  padding: 22px 14px 20px;
   position: fixed;
   left: 0;
   top: 0;
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(217, 169, 40, 0.14),
-      transparent 30%
-    ),
-    linear-gradient(180deg, var(--emerald-800), var(--emerald-950));
-  box-shadow: 14px 0 40px rgba(3, 32, 20, 0.22);
-  transition: 0.3s ease;
+  background: #0d1f14;
+  transition: width 0.25s ease;
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -66,14 +59,14 @@ body {
 }
 
 .admin-sidebar.collapsed {
-  width: 92px;
+  width: 58px;
 }
 
 .brand-box {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 34px;
+  gap: 10px;
+  margin-bottom: 24px;
   color: white;
   white-space: nowrap;
   overflow: hidden;
@@ -81,17 +74,16 @@ body {
 }
 
 .brand-logo {
-  min-width: 70px;
-  width: 70px;
-  height: 70px;
+  min-width: 30px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
   display: grid;
   place-items: center;
-  box-shadow: 0 12px 28px rgba(217, 169, 40, 0.25);
   overflow: hidden;
-  padding: 4px;
-  border: 2px solid var(--gold);
+  padding: 2px;
+  flex-shrink: 0;
 }
 
 .brand-logo img {
@@ -106,135 +98,147 @@ body {
 
 .brand-box h4 {
   margin: 0;
-  font-weight: 850;
-  font-size: 21px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .brand-box span {
-  font-size: 13px;
-  opacity: 0.82;
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .admin-sidebar.collapsed .brand-text,
 .admin-sidebar.collapsed .nav-text,
 .admin-sidebar.collapsed .logout-btn span {
-  opacity: 0;
-  width: 0;
   display: none;
 }
 
 .sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 1px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
 }
 
 .sidebar-menu::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
+  width: 0;
 }
 
 .sidebar-menu a {
-  height: 50px;
-  color: rgba(255, 255, 255, 0.88);
+  height: 36px;
+  color: rgba(255, 255, 255, 0.38);
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 0 15px;
-  border-radius: 16px;
-  font-weight: 750;
-  transition: 0.25s ease;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: color 0.15s ease;
   white-space: nowrap;
   overflow: hidden;
+  box-shadow: inset 2px 0 0 transparent;
 }
 
 .nav-icon {
-  width: 24px;
-  min-width: 24px;
-  font-size: 18px;
+  width: 15px;
+  min-width: 15px;
+  font-size: 12px;
   text-align: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.sidebar-menu a:hover,
+.sidebar-menu a:hover {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .sidebar-menu a.active {
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
-  color: var(--emerald-950);
-  box-shadow: 0 12px 26px rgba(217, 169, 40, 0.22);
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 2px 0 0 var(--gold);
 }
 
 .admin-sidebar.collapsed .sidebar-menu a {
   justify-content: center;
   padding: 0;
   gap: 0;
+  box-shadow: none;
+}
+
+.admin-sidebar.collapsed .sidebar-menu a.active {
+  color: var(--gold);
 }
 
 .admin-sidebar.collapsed .nav-icon {
-  width: 26px;
-  min-width: 26px;
-  font-size: 19px;
+  width: 18px;
+  min-width: 18px;
+  font-size: 14px;
 }
 
 .logout-btn {
-  position: static;
-  margin-top: 16px;
-  height: 50px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
+  margin-top: 20px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.25);
   text-decoration: none;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
-  font-weight: 800;
-  border: 1px solid rgba(217, 169, 40, 0.22);
-  transition: 0.25s;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: none;
+  transition: color 0.15s;
   overflow: hidden;
   flex-shrink: 0;
 }
 
 .logout-icon {
-  width: 22px;
-  min-width: 22px;
-  font-size: 17px;
+  width: 15px;
+  min-width: 15px;
+  font-size: 12px;
   text-align: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .logout-btn:hover {
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
-  color: var(--emerald-950);
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
 }
 
 .admin-sidebar.collapsed .logout-btn {
+  justify-content: center;
   padding: 0;
 }
 
 .admin-main {
-  margin-left: 280px;
-  width: calc(100% - 280px);
+  margin-left: 228px;
+  width: calc(100% - 228px);
   padding: 28px;
-  transition: 0.3s ease;
+  transition: margin-left 0.25s ease, width 0.25s ease;
 }
 
 .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 92px;
-  width: calc(100% - 92px);
+  margin-left: 58px;
+  width: calc(100% - 58px);
 }
 
 .topbar {
@@ -706,7 +710,7 @@ a.mini-metric-card:focus-visible {
 
 @media (max-width: 992px) {
   .admin-sidebar {
-    width: 92px;
+    width: 58px;
   }
 
   .admin-sidebar .brand-text,
@@ -716,8 +720,8 @@ a.mini-metric-card:focus-visible {
   }
 
   .admin-main {
-    margin-left: 92px;
-    width: calc(100% - 92px);
+    margin-left: 58px;
+    width: calc(100% - 58px);
     padding: 18px;
   }
 
@@ -737,8 +741,8 @@ a.mini-metric-card:focus-visible {
   }
 
   .admin-sidebar {
-    width: 92px;
-    padding: 22px 14px;
+    width: 58px;
+    padding: 18px 8px;
   }
 
   .admin-sidebar .brand-text,
@@ -752,32 +756,36 @@ a.mini-metric-card:focus-visible {
   }
 
   .brand-logo {
-    width: 50px;
-    min-width: 50px;
-    height: 50px;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
   }
 
   .sidebar-menu a {
     justify-content: center;
     padding: 0;
     gap: 0;
+    box-shadow: none;
+  }
+
+  .sidebar-menu a.active {
+    color: var(--gold);
   }
 
   .nav-icon {
-    width: 26px;
-    min-width: 26px;
-    font-size: 19px;
+    width: 18px;
+    min-width: 18px;
+    font-size: 14px;
   }
 
   .logout-btn {
-    left: 21px;
-    right: 21px;
+    justify-content: center;
     padding: 0;
   }
 
   .admin-main {
-    margin-left: 92px;
-    width: calc(100% - 92px);
+    margin-left: 58px;
+    width: calc(100% - 58px);
     padding: 18px;
   }
 
@@ -844,50 +852,41 @@ a.mini-metric-card:focus-visible {
 
 @media (max-width: 576px) {
   .admin-sidebar {
-    width: 76px;
-    padding: 18px 10px;
+    width: 52px;
+    padding: 16px 6px;
   }
 
   .admin-main {
-    margin-left: 76px;
-    width: calc(100% - 76px);
+    margin-left: 52px;
+    width: calc(100% - 52px);
     padding: 14px;
   }
 
   .brand-logo {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    border-radius: 50%;
-  }
-
-  .brand-logo img {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
   }
 
   .sidebar-menu a {
-    height: 46px;
-    border-radius: 14px;
+    height: 34px;
+    border-radius: 4px;
   }
 
   .nav-icon {
-    width: 23px;
-    min-width: 23px;
-    font-size: 16px;
+    width: 16px;
+    min-width: 16px;
+    font-size: 12px;
   }
 
   .logout-btn {
-    height: 46px;
-    left: 15px;
-    right: 15px;
-    border-radius: 14px;
+    height: 34px;
   }
 
   .logout-icon {
-    width: 20px;
-    min-width: 20px;
-    font-size: 15px;
+    width: 14px;
+    min-width: 14px;
+    font-size: 12px;
   }
 
   .topbar {

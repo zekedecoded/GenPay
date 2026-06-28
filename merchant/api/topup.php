@@ -62,12 +62,11 @@ try {
             if ($cashAmount <= 0)      throw new \InvalidArgumentException('Cash amount must be greater than zero.');
 
             $engine = new CirculationEngine($db);
-            $result = $engine->cashInWithFee(
+            $result = $engine->merchantSendToStudent(
+                $merchantWalletId,
                 $studentWalletId,
                 $cashAmount,
-                'merchant',
-                $initiatedBy,
-                $merchantWalletId
+                $initiatedBy
             );
 
             logAudit(

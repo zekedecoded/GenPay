@@ -105,6 +105,8 @@ $memberSince = $createdAt !== '' ? date('F Y', strtotime($createdAt)) : 'N/A';
 $accountStatus = ucfirst((string) ($rawUser['status'] ?? 'Active'));
 $transactionsStatus = $wallet['id'] > 0 ? 'Enabled' : 'Wallet Pending';
 $spendingLimit = 'No Limit';
+$profileImg = (string) ($rawUser['profile_img'] ?? '');
+$profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '/')) : '';
 ?>
 
 <!DOCTYPE html>
@@ -197,8 +199,13 @@ $spendingLimit = 'No Limit';
 
                 <div class="student-user">
                     <span><?php echo gjc_e($studentName); ?></span>
-                    <div class="student-avatar">
-                        <?php echo gjc_e($studentInitial); ?>
+                    <div class="student-avatar" id="topbarAvatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
+                        <?php if ($profilePhotoUrl): ?>
+                            <img id="topbarAvatarImg" src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
+                                 style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+                        <?php else: ?>
+                            <?php echo gjc_e($studentInitial); ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </header>
@@ -218,14 +225,27 @@ $spendingLimit = 'No Limit';
             <section class="profile-hero-card mb-4">
 
                 <div class="profile-hero-left">
-                    <div class="profile-avatar-large">
-                        <?php echo gjc_e($studentInitial); ?>
+                    <div class="profile-avatar-wrap" style="position:relative;flex-shrink:0;">
+                        <div class="profile-avatar-large" id="avatarCircle" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
+                            <?php if ($profilePhotoUrl): ?>
+                                <img id="avatarImg" src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt="Profile Photo"
+                                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+                            <?php else: ?>
+                                <span id="avatarInitial"><?php echo gjc_e($studentInitial); ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <label for="photoInput" title="Change photo"
+                               style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:#0b5c2c;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.25);">
+                            <i class="fa-solid fa-camera"></i>
+                        </label>
+                        <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
                     </div>
 
                     <div>
                         <span>Student Account</span>
                         <h2><?php echo gjc_e($studentName); ?></h2>
                         <p><?php echo gjc_e($email); ?> &middot; ID: <?php echo gjc_e($studentID); ?></p>
+                        <div id="photoMsg" style="font-size:12px;margin-top:4px;"></div>
                     </div>
                 </div>
 
@@ -361,7 +381,72 @@ $spendingLimit = 'No Limit';
     }
 
     document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
-    </script>
+
+    /* ── Profile photo upload ─────────────────────────────────── */
+    const PHOTO_API = '<?= BASE_URL ?>/api/profile_photo.php';
+
+    document.getElementById('photoInput').addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        const msg = document.getElementById('photoMsg');
+        msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+        msg.style.color = '#64748b';
+
+        const fd = new FormData();
+        fd.append('action', 'upload');
+        fd.append('photo', file);
+
+        try {
+            const res  = await fetch(PHOTO_API, {method: 'POST', body: fd, credentials: 'same-origin'});
+            const data = await res.json();
+            if (data.success) {
+                const circle = document.getElementById('avatarCircle');
+                circle.style.padding  = '0';
+                circle.style.overflow = 'hidden';
+                let img = document.getElementById('avatarImg');
+                const initial = document.getElementById('avatarInitial');
+                if (initial) initial.remove();
+                if (!img) {
+                    img = document.createElement('img');
+                    img.id = 'avatarImg';
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                    img.alt = 'Profile Photo';
+                    circle.appendChild(img);
+                }
+                img.src = data.photo_url;
+
+                // Also sync topbar avatar
+                const topbar = document.getElementById('topbarAvatar');
+                if (topbar) {
+                    topbar.style.padding  = '0';
+                    topbar.style.overflow = 'hidden';
+                    let tImg = document.getElementById('topbarAvatarImg');
+                    if (!tImg) {
+                        topbar.textContent = '';
+                        tImg = document.createElement('img');
+                        tImg.id = 'topbarAvatarImg';
+                        tImg.alt = '';
+                        tImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                        topbar.appendChild(tImg);
+                    }
+                    tImg.src = data.photo_url;
+                }
+
+                msg.innerHTML = '<i class="fa-solid fa-check" style="color:#15803d"></i> Photo updated.';
+                msg.style.color = '#15803d';
+                setTimeout(() => { msg.innerHTML = ''; }, 3000);
+            } else {
+                msg.innerHTML = data.error || 'Upload failed.';
+                msg.style.color = '#b91c1c';
+            }
+        } catch(err) {
+            msg.innerHTML = 'Network error. Please try again.';
+            msg.style.color = '#b91c1c';
+        }
+        this.value = '';
+    });
+</script>
 
 </body>
 

@@ -17,7 +17,6 @@ $query = "
         u.last_name,
         u.email,
         r.role_name as role,
-        COALESCE(w.balance, 0) as balance,
         si.studentID as student_id
     FROM users u
     LEFT JOIN role r ON u.roleID = r.roleID
@@ -63,7 +62,6 @@ foreach ($dbUsers as $u) {
         "role"      => $roleName,
         "school_id" => $displayId,
         "email"     => $u['email'],
-        "balance"   => $u['balance'],
         "status"    => "Active",
     ];
 }
@@ -182,7 +180,6 @@ $currentPage = 'users';
                                 <th>Role</th>
                                 <th>School ID</th>
                                 <th>Email</th>
-                                <th>Balance</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -212,10 +209,6 @@ $currentPage = 'users';
                                 <td><?php echo $u['school_id']; ?></td>
 
                                 <td><?php echo $u['email']; ?></td>
-
-                                <td class="balance-text">
-                                    ₱<?php echo number_format($u['balance'], 2); ?>
-                                </td>
 
                                 <td>
                                     <?php

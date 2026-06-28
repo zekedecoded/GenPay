@@ -16,7 +16,7 @@ $lastName = trim((string) ($_POST['last_name'] ?? ''));
 $email = trim((string) ($_POST['email'] ?? ''));
 $password = (string) ($_POST['password'] ?? '');
 $role = strtolower((string) ($_POST['role'] ?? 'student'));
-$roleId = ['student' => 1, 'merchant' => 2, 'admin' => 4, 'finance' => 4, 'parent' => 1, 'visitor' => 1][$role] ?? 1;
+$roleId = ['student' => 1, 'merchant' => 2, 'admin' => 4, 'finance' => 4, 'parent' => 7, 'visitor' => 1][$role] ?? 1;
 
 if ($firstName === '' || $lastName === '' || $email === '' || $password === '') {
     header('Location: ' . ADMIN_URL . '/users.php?error=missing_fields');
@@ -35,6 +35,7 @@ foreach ([
     'password' => password_hash($password, PASSWORD_DEFAULT),
     'roleID' => $roleId,
     'phone' => trim((string) ($_POST['phone'] ?? '')),
+    'contact_number' => (int) preg_replace('/\D/', '', ($_POST['phone'] ?? '')),
     'school_id' => trim((string) ($_POST['school_id'] ?? '')),
 ] as $column => $value) {
     if (in_array($column, $columns, true)) {
@@ -65,6 +66,9 @@ if ($userId > 0) {
         }
     } elseif ($roleId === 2) {
         gjc_merchant_wallet($db, $userId);
+    } elseif ($roleId === 7) {
+        gjc_ensure_parent_schema($db);
+        $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$userId]);
     }
 }
 

@@ -250,6 +250,112 @@ class CirculationEngine
     }
 
     
+    /**
+     * Merchant sends GenCoins from their own wallet to a student.
+     * Deducts cashAmount from merchant, credits credited (97%) to student,
+     * returns merchantFee (1%) to merchant, and adds systemFee (2%) to vault.
+     */
+    public function merchantSendToStudent(
+        int    $merchantWalletId,
+        int    $studentWalletId,
+        float  $cashAmount,
+        int    $initiatedBy,
+        string $notes = ''
+    ): array {
+        $this->assertPositive($cashAmount);
+
+        $systemFee   = round($cashAmount * self::FEE_SYSTEM_RATE,   2);
+        $merchantFee = round($cashAmount * self::FEE_MERCHANT_RATE, 2);
+        $credited    = round($cashAmount - $systemFee - $merchantFee, 2);
+
+        $this->db->beginTransaction();
+        try {
+            $settings = $this->lockSettings();
+
+            // Lock and verify merchant balance
+            $mStmt = $this->db->prepare(
+                "SELECT balance FROM merchant_wallets WHERE id = ? FOR UPDATE"
+            );
+            $mStmt->execute([$merchantWalletId]);
+            $mRow = $mStmt->fetch();
+
+            if (!$mRow || (float)$mRow['balance'] < $cashAmount) {
+                throw new \RuntimeException(sprintf(
+                    "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — cannot send ₱%s.",
+                    number_format((float)($mRow['balance'] ?? 0), 2),
+                    number_format($cashAmount, 2)
+                ));
+            }
+
+            // 1. Debit merchant wallet by full amount
+            $this->db->prepare(
+                "UPDATE merchant_wallets SET balance = balance - ? WHERE id = ?"
+            )->execute([$cashAmount, $merchantWalletId]);
+
+            // 2. Credit student wallet
+            $this->db->prepare(
+                "UPDATE student_wallets SET balance = balance + ? WHERE id = ?"
+            )->execute([$credited, $studentWalletId]);
+
+            // 3. Return 1% cut to merchant
+            $this->db->prepare(
+                "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?"
+            )->execute([$merchantFee, $merchantWalletId]);
+
+            // 4. System fee (2%) goes to vault as revenue
+            $this->db->prepare(
+                "UPDATE system_settings SET cashier_vault_points = cashier_vault_points + ? WHERE id = 1"
+            )->execute([$systemFee]);
+
+            $vaultAfter = $settings['cashier_vault_points'] + $systemFee;
+
+            $this->validateCirculation($settings['total_circulation_cap']);
+
+            $feeNote = "Merchant send to student. Sent: ₱{$cashAmount}, "
+                     . "System fee (2%): ₱{$systemFee}, "
+                     . "Merchant cut (1%): ₱{$merchantFee}, "
+                     . "Credited: ₱{$credited}."
+                     . ($notes !== '' ? " Note: {$notes}" : '');
+
+            $ref = $this->logTransaction(
+                self::TXN_CASH_IN,
+                $initiatedBy,
+                $credited,
+                $settings['cashier_vault_points'],
+                $vaultAfter,
+                studentWalletId:  $studentWalletId,
+                merchantWalletId: $merchantWalletId,
+                notes:            $feeNote,
+                topUpSource:      'merchant',
+                baseAmount:       $cashAmount,
+                feeAmount:        $systemFee + $merchantFee,
+                creditedAmount:   $credited
+            );
+
+            $this->logFeeRevenue(
+                $ref, 'merchant', $cashAmount,
+                $systemFee, $merchantFee,
+                $merchantWalletId,
+                $initiatedBy
+            );
+
+            $this->db->commit();
+            return [
+                'success'         => true,
+                'reference'       => $ref,
+                'cash_amount'     => $cashAmount,
+                'system_fee'      => $systemFee,
+                'merchant_fee'    => $merchantFee,
+                'fee_amount'      => $systemFee + $merchantFee,
+                'credited_amount' => $credited,
+            ];
+
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function merchantSettle(int $merchantWalletId, float $amount, int $initiatedBy): array
     {
         $this->assertPositive($amount);

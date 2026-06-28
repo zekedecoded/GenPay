@@ -1,0 +1,450 @@
+<?php
+require_once __DIR__ . '/../connection/config.php';
+require_once __DIR__ . '/../connection/pdo.php';
+require_once __DIR__ . '/../connection/app.php';
+
+gjc_require_role(['parent']);
+gjc_ensure_parent_schema($db);
+
+$parentUserId    = gjc_user_id();
+$currentUser     = gjc_current_user($db);
+$profileImg      = (string) ($currentUser['raw']['profile_img'] ?? '');
+$profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '/')) : '';
+
+// Fetch or create parents record
+$pStmt = $db->prepare("SELECT * FROM parents WHERE user_id = ?");
+$pStmt->execute([$parentUserId]);
+$parentRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+if (!$parentRow) {
+    $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$parentUserId]);
+    $pStmt->execute([$parentUserId]);
+    $parentRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+}
+$parentId         = (int) $parentRow['id'];
+$alertThreshold   = (float) $parentRow['low_balance_threshold'];
+
+// Fetch linked students
+$linkedStmt = $db->prepare(
+    "SELECT u.userID, u.first_name, u.last_name,
+            si.studentID,
+            sw.id AS wallet_id, sw.balance, sw.is_frozen, sw.daily_spend_limit
+       FROM parent_student_links psl
+       JOIN users u ON u.userID = psl.student_user_id
+       LEFT JOIN student_info si ON si.userID = u.userID
+       LEFT JOIN student_wallets sw ON sw.user_id = u.userID
+      WHERE psl.parent_id = ?
+      ORDER BY u.last_name, u.first_name"
+);
+$linkedStmt->execute([$parentId]);
+$linkedStudents = $linkedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Alerts are fetched client-side via AJAX (parent/api/alerts.php)
+
+// Handle link errors/success from redirect
+$linkError   = $_GET['link_error'] ?? '';
+$linkSuccess = $_GET['link_success'] ?? '';
+
+$currentPage = 'dashboard';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= ICONS_URL ?>/gp_logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard | GenPay</title>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .parent-card {
+            background: #fff;
+            border-radius: 14px;
+            border: 1.5px solid #e2e8f0;
+            padding: 20px 24px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        }
+        .parent-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .parent-card-header h5 {
+            font-weight: 700;
+            font-size: 15px;
+            color: #0d1f14;
+            margin: 0;
+        }
+        .student-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .student-row:last-child { border-bottom: none; }
+        .student-avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #064420, #0b5c2c);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 17px; flex-shrink: 0;
+        }
+        .student-info { flex: 1; min-width: 0; }
+        .student-info strong { display: block; font-size: 14px; font-weight: 700; color: #1e293b; }
+        .student-info small { color: #64748b; font-size: 12px; }
+        .balance-chip {
+            font-size: 15px; font-weight: 700;
+            padding: 4px 12px; border-radius: 20px;
+            white-space: nowrap;
+        }
+        .balance-chip.ok  { background: #f0fdf4; color: #15803d; }
+        .balance-chip.low { background: #fff7ed; color: #c2410c; }
+        .frozen-badge {
+            background: #fef2f2; color: #b91c1c;
+            border: 1px solid #fca5a5;
+            font-size: 11px; font-weight: 700;
+            padding: 2px 8px; border-radius: 12px;
+        }
+        .student-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .btn-view { background: #f0fdf4; color: #15803d; border: 1.5px solid #86efac; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
+        .btn-view:hover { background: #dcfce7; color: #15803d; }
+        .btn-controls { background: #f8fafc; color: #334155; border: 1.5px solid #cbd5e1; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
+        .btn-controls:hover { background: #e2e8f0; color: #1e293b; }
+        .alert-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .alert-row:last-child { border-bottom: none; }
+        .alert-icon { width: 32px; height: 32px; border-radius: 50%; background: #fff7ed; color: #c2410c; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+        .alert-icon.read { background: #f1f5f9; color: #94a3b8; }
+        .alert-text { flex: 1; font-size: 13px; }
+        .alert-text strong { display: block; color: #1e293b; font-weight: 600; }
+        .alert-text small { color: #64748b; }
+        .link-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+        .link-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 14px; flex: 1; min-width: 160px; outline: none; }
+        .link-form input:focus { border-color: #0b5c2c; box-shadow: 0 0 0 3px rgba(11,92,44,.1); }
+        .link-form .btn-link { background: linear-gradient(135deg, #064420, #0b5c2c); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .link-form .btn-link:hover { filter: brightness(1.12); }
+        .threshold-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
+        .threshold-form label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+        .threshold-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 14px; width: 130px; }
+        .threshold-form .btn-save { background: #0b5c2c; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .alert-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 12px; margin-left: 6px; }
+        .empty-state { text-align: center; padding: 32px 16px; color: #94a3b8; }
+        .empty-state i { font-size: 36px; margin-bottom: 10px; }
+        .flash-msg { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+        .flash-msg.success { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+        .flash-msg.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    </style>
+</head>
+<body>
+<div class="student-layout">
+
+    <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
+
+    <main class="student-main">
+
+        <header class="student-topbar">
+            <button class="student-menu-btn" onclick="toggleParentSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div>
+                <h1>Parent Dashboard</h1>
+                <p>Monitor your child's GenPay wallet and set spending controls.</p>
+            </div>
+            <div class="student-user">
+                <span><?= htmlspecialchars($currentUser['name']) ?></span>
+                <div class="student-avatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
+                    <?php if ($profilePhotoUrl): ?>
+                        <img src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
+                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+                    <?php else: ?>
+                        <?= strtoupper(substr($currentUser['name'], 0, 1)) ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </header>
+
+        <div style="padding: 24px 28px; max-width: 900px;">
+
+            <?php if ($linkSuccess): ?>
+            <div class="flash-msg success"><i class="fa-solid fa-circle-check me-1"></i> <?= htmlspecialchars($linkSuccess) ?></div>
+            <?php elseif ($linkError): ?>
+            <div class="flash-msg error"><i class="fa-solid fa-circle-xmark me-1"></i> <?= htmlspecialchars($linkError) ?></div>
+            <?php endif; ?>
+
+            <!-- Link a Student -->
+            <div class="parent-card">
+                <div class="parent-card-header">
+                    <h5><i class="fa-solid fa-link me-2" style="color:#0b5c2c"></i>Link a Student</h5>
+                </div>
+                <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Enter your child's school-issued student ID (e.g. <code>GJC2026-0001</code>) to link their wallet to your account.</p>
+                <form class="link-form" id="linkForm">
+                    <input type="text" id="linkSchoolId" placeholder="Student School ID" maxlength="30" autocomplete="off">
+                    <button type="submit" class="btn-link"><i class="fa-solid fa-link me-1"></i>Link Student</button>
+                </form>
+                <div id="linkMsg" style="margin-top:8px;font-size:13px;"></div>
+            </div>
+
+            <!-- Linked Students -->
+            <div class="parent-card">
+                <div class="parent-card-header">
+                    <h5><i class="fa-solid fa-user-graduate me-2" style="color:#0b5c2c"></i>Linked Students</h5>
+                </div>
+                <?php if (empty($linkedStudents)): ?>
+                <div class="empty-state">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <p>No students linked yet.<br>Use the form above to link your child's account.</p>
+                </div>
+                <?php else: ?>
+                <?php foreach ($linkedStudents as $s):
+                    $balLow = (float)$s['balance'] < $alertThreshold && $alertThreshold > 0;
+                    $balChipClass = $balLow ? 'low' : 'ok';
+                ?>
+                <div class="student-row">
+                    <div class="student-avatar"><?= strtoupper(substr($s['first_name'], 0, 1)) ?></div>
+                    <div class="student-info">
+                        <strong><?= htmlspecialchars(trim($s['first_name'] . ' ' . $s['last_name'])) ?></strong>
+                        <small><?= htmlspecialchars($s['studentID'] ?? 'N/A') ?></small>
+                    </div>
+                    <span class="balance-chip <?= $balChipClass ?>">&#8369;<?= number_format((float)$s['balance'], 2) ?></span>
+                    <?php if ($s['is_frozen']): ?>
+                    <span class="frozen-badge"><i class="fa-solid fa-lock me-1"></i>Frozen</span>
+                    <?php endif; ?>
+                    <div class="student-actions">
+                        <a href="<?= PARENT_URL ?>/student.php?uid=<?= (int)$s['userID'] ?>" class="btn-view"><i class="fa-solid fa-eye me-1"></i>Ledger</a>
+                        <a href="<?= PARENT_URL ?>/controls.php?uid=<?= (int)$s['userID'] ?>" class="btn-controls"><i class="fa-solid fa-sliders me-1"></i>Controls</a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Low Balance Alerts (AJAX) -->
+            <div class="parent-card">
+                <div class="parent-card-header">
+                    <h5>
+                        <i class="fa-solid fa-bell me-2" style="color:#c2410c"></i>Low Balance Alerts
+                        <span class="alert-badge" id="alertBadge" style="display:none;"></span>
+                    </h5>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <button id="markReadBtn" onclick="markAlertsRead()" style="display:none;background:none;border:none;font-size:12px;color:#0b5c2c;font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
+                        <button onclick="fetchAlerts()" title="Refresh alerts" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px 4px;font-size:13px;line-height:1;" id="refreshBtn">
+                            <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Threshold setting -->
+                <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+                    <p style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;">Alert Settings</p>
+                    <form class="threshold-form" id="thresholdForm">
+                        <div>
+                            <label>Alert me when balance drops below (₱)</label>
+                            <input type="number" id="thresholdInput" min="0" step="1" value="<?= number_format($alertThreshold, 2, '.', '') ?>" placeholder="50.00">
+                        </div>
+                        <button type="submit" class="btn-save">Save</button>
+                        <span id="thresholdMsg" style="font-size:12px;color:#15803d;align-self:center;"></span>
+                    </form>
+                </div>
+
+                <div id="alertsContainer">
+                    <div style="text-align:center;padding:20px 0;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#cbd5e1;"></i>
+                        <p style="margin-top:8px;color:#94a3b8;font-size:13px;">Loading alerts...</p>
+                    </div>
+                </div>
+                <p id="alertsTimestamp" style="font-size:11px;color:#cbd5e1;text-align:right;margin:8px 0 0;"></p>
+            </div>
+
+        </div>
+
+    </main>
+</div>
+
+<script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<script>
+const ALERTS_API  = '<?= PARENT_URL ?>/api/alerts.php';
+const CONTROLS_API = '<?= PARENT_URL ?>/api/controls.php';
+const LINK_API    = '<?= PARENT_URL ?>/api/link.php';
+
+function toggleParentSidebar() {
+    document.getElementById('parentSidebar').classList.toggle('collapsed');
+}
+
+/* ── Link student ───────────────────────────────────────────── */
+document.getElementById('linkForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const sid = document.getElementById('linkSchoolId').value.trim();
+    const msg = document.getElementById('linkMsg');
+    if (!sid) { msg.innerHTML = '<span style="color:#b91c1c">Please enter a school ID.</span>'; return; }
+    msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Linking...';
+    try {
+        const res = await fetch(LINK_API, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'link_student', school_id: sid})
+        });
+        const data = await res.json();
+        if (data.success) {
+            msg.innerHTML = '<span style="color:#15803d"><i class="fa-solid fa-check me-1"></i>' + data.message + '</span>';
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            msg.innerHTML = '<span style="color:#b91c1c">' + (data.error || 'Failed.') + '</span>';
+        }
+    } catch(err) {
+        msg.innerHTML = '<span style="color:#b91c1c">Request failed.</span>';
+    }
+});
+
+/* ── Alert threshold ────────────────────────────────────────── */
+document.getElementById('thresholdForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const val  = parseFloat(document.getElementById('thresholdInput').value) || 0;
+    const msg  = document.getElementById('thresholdMsg');
+    try {
+        const res  = await fetch(CONTROLS_API, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'set_alert_threshold', amount: val})
+        });
+        const data = await res.json();
+        msg.textContent  = data.success ? 'Saved!' : (data.error || 'Error');
+        msg.style.color  = data.success ? '#15803d' : '#b91c1c';
+        setTimeout(() => { msg.textContent = ''; }, 2500);
+    } catch(err) { msg.textContent = 'Error'; }
+});
+
+/* ── AJAX Alerts ────────────────────────────────────────────── */
+function fmtDate(str) {
+    const d = new Date(str.replace(' ', 'T'));
+    return d.toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'})
+        + ' ' + d.toLocaleTimeString('en-PH', {hour:'numeric', minute:'2-digit'});
+}
+
+let _prevUnread = 0;
+
+function showToast(msg) {
+    let t = document.getElementById('alertToast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'alertToast';
+        t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;max-width:300px;';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+}
+
+function renderAlerts(data) {
+    const badge     = document.getElementById('alertBadge');
+    const markBtn   = document.getElementById('markReadBtn');
+    const container = document.getElementById('alertsContainer');
+    const ts        = document.getElementById('alertsTimestamp');
+
+    const count = parseInt(data.unread_count) || 0;
+
+    if (count > 0) {
+        badge.textContent   = count;
+        badge.style.display = 'inline';
+        markBtn.style.display = 'inline';
+        if (count > _prevUnread && _prevUnread !== -1) {
+            const diff = count - _prevUnread;
+            showToast(`${diff} new low-balance alert${diff > 1 ? 's' : ''}`);
+        }
+    } else {
+        badge.style.display   = 'none';
+        markBtn.style.display = 'none';
+    }
+    _prevUnread = count;
+
+    const now = new Date();
+    ts.textContent = 'Updated ' + now.toLocaleTimeString('en-PH', {hour:'numeric', minute:'2-digit', second:'2-digit'});
+
+    if (!data.alerts || data.alerts.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:24px 16px;color:#94a3b8;">
+                <i class="fa-solid fa-bell-slash" style="font-size:28px;margin-bottom:8px;display:block;"></i>
+                <span style="font-size:13px;">No alerts yet. Alerts appear when a linked student's balance drops below your threshold.</span>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = data.alerts.map(a => {
+        const name   = ((a.first_name || '') + ' ' + (a.last_name || '')).trim();
+        const unread = parseInt(a.is_read) === 0;
+        return `
+        <div class="alert-row" style="${unread ? 'background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:4px;' : ''}">
+            <div class="alert-icon${unread ? '' : ' read'}">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="alert-text">
+                <strong>${name}'s balance dropped to &#8369;${parseFloat(a.balance_at_alert).toFixed(2)}</strong>
+                <small>${fmtDate(a.created_at)} &bull; Threshold: &#8369;${parseFloat(a.threshold).toFixed(2)}
+                    ${unread ? '<span style="margin-left:6px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;">NEW</span>' : ''}
+                </small>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function setRefreshSpinning(on) {
+    const icon = document.getElementById('refreshIcon');
+    if (!icon) return;
+    if (on) icon.classList.add('fa-spin');
+    else    icon.classList.remove('fa-spin');
+}
+
+async function fetchAlerts() {
+    setRefreshSpinning(true);
+    try {
+        const res = await fetch(ALERTS_API, {credentials: 'same-origin'});
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data.success) {
+            renderAlerts(data);
+        } else {
+            document.getElementById('alertsContainer').innerHTML =
+                `<div style="text-align:center;padding:20px;color:#b91c1c;font-size:13px;"><i class="fa-solid fa-circle-xmark me-1"></i>${data.error || 'Could not load alerts.'}</div>`;
+        }
+    } catch(err) {
+        const container = document.getElementById('alertsContainer');
+        if (container.querySelector('.fa-spinner')) {
+            container.innerHTML =
+                `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;"><i class="fa-solid fa-wifi me-1"></i>Could not reach alerts service. Will retry shortly.</div>`;
+        }
+    } finally {
+        setRefreshSpinning(false);
+    }
+}
+
+async function markAlertsRead() {
+    try {
+        const res = await fetch(ALERTS_API, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'same-origin',
+            body: JSON.stringify({action: 'mark_read'})
+        });
+        const data = await res.json();
+        if (data.success) {
+            _prevUnread = -1;
+            fetchAlerts();
+        }
+    } catch(err) {}
+}
+
+/* Load on page open, then poll every 30 s */
+document.addEventListener('DOMContentLoaded', () => {
+    _prevUnread = -1;
+    fetchAlerts();
+    setInterval(fetchAlerts, 30000);
+});
+</script>
+</body>
+</html>
