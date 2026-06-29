@@ -24,7 +24,7 @@ $balance = $wallet['balance'];
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -48,7 +48,7 @@ $balance = $wallet['balance'];
         }
         .cart-line-qty span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
         .cart-line-price { font-weight: 800; font-size: 13.5px; color: #064420; min-width: 72px; text-align: right; }
-        .cart-line-remove { color: #ef4444; background: none; border: none; font-size: 16px; cursor: pointer; }
+        .cart-line-remove { color: var(--gjc-alert); background: none; border: none; font-size: 16px; cursor: pointer; }
         .cart-empty { text-align: center; padding: 36px 16px; color: #9ca3af; font-size: 13px; }
         .cart-total-row {
             display: flex; justify-content: space-between; align-items: center;
@@ -61,7 +61,7 @@ $balance = $wallet['balance'];
         }
         .pending-order-badge {
             display: inline-block; padding: 5px 14px; border-radius: 20px;
-            background: #fff4cc; color: #92660a; font-size: 12px; font-weight: 800;
+            background: var(--gjc-warning-bg); color: #92660a; font-size: 12px; font-weight: 800;
             text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;
         }
         .pending-order-note { font-size: 12.5px; color: #6b7280; text-align: center; margin: 10px 0 0; }

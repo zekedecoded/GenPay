@@ -44,14 +44,14 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=3">
 </head>
 
 <body>
@@ -228,7 +228,7 @@ $currentPage = 'topups';
                 <!-- Header -->
                 <div class="modal-header border-0 pb-0" style="background:#f0fdf4;padding:20px 24px 12px">
                     <div style="flex:1">
-                        <h5 class="modal-title fw-bold" id="sendGenCoinModalLabel" style="color:#15803d;font-size:18px">
+                        <h5 class="modal-title fw-bold" id="sendGenCoinModalLabel" style="color:var(--gjc-green-600);font-size:18px">
                             <i class="fa-solid fa-coins me-2"></i>Send GenCoin
                         </h5>
                         <!-- Step indicator -->
@@ -269,7 +269,7 @@ $currentPage = 'topups';
                     <div id="sgc-step-2" style="display:none">
                         <!-- Recipient pill -->
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-                            <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#15803d;font-size:15px" id="sgc-recipient-avatar"></div>
+                            <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="sgc-recipient-avatar"></div>
                             <div>
                                 <div style="font-weight:700;font-size:14px;color:#111" id="sgc-recipient-name-2"></div>
                                 <div style="font-size:11px;color:#6b7280" id="sgc-recipient-id-2"></div>
@@ -283,7 +283,7 @@ $currentPage = 'topups';
                                    style="border-radius:12px;padding:12px 70px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
                             <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:#9ca3af">GC</span>
                         </div>
-                        <div id="sgc-peso-equiv" style="font-size:12px;color:#15803d;font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
+                        <div id="sgc-peso-equiv" style="font-size:12px;color:var(--gjc-green-600);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
                         <!-- Fee breakdown preview (step 2) -->
                         <div id="sgc-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid #d1fae5;margin-bottom:14px">
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -291,12 +291,12 @@ $currentPage = 'topups';
                                 <span id="sgc-fp-cash" style="font-weight:600;color:#111"></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                <span style="color:#ef4444">Service fee (2%)</span>
-                                <span id="sgc-fp-fee" style="font-weight:600;color:#ef4444"></span>
+                                <span style="color:var(--gjc-alert)">Service fee (2%)</span>
+                                <span id="sgc-fp-fee" style="font-weight:600;color:var(--gjc-alert)"></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;border-top:1px solid #d1fae5;padding-top:6px;margin-top:2px">
-                                <span style="color:#15803d;font-weight:700">Credited to wallet</span>
-                                <span id="sgc-fp-credited" style="font-weight:800;color:#15803d"></span>
+                                <span style="color:var(--gjc-green-600);font-weight:700">Credited to wallet</span>
+                                <span id="sgc-fp-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
                             </div>
                         </div>
 
@@ -325,7 +325,7 @@ $currentPage = 'topups';
                         <!-- Preview card -->
                         <div style="background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:18px">
                             <div style="text-align:center;margin-bottom:16px">
-                                <div style="font-size:32px;font-weight:800;color:#15803d" id="sgc-prev-coins"></div>
+                                <div style="font-size:32px;font-weight:800;color:var(--gjc-green-600)" id="sgc-prev-coins"></div>
                                 <div style="font-size:13px;color:#6b7280" id="sgc-prev-peso"></div>
                             </div>
                             <hr style="margin:12px 0;border-color:#f0fdf4">
@@ -350,25 +350,25 @@ $currentPage = 'topups';
                                     <span id="sgc-prev-cash" style="font-weight:600"></span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#ef4444">Service fee (2%)</span>
-                                    <span id="sgc-prev-fee" style="font-weight:600;color:#ef4444"></span>
+                                    <span style="color:var(--gjc-alert)">Service fee (2%)</span>
+                                    <span id="sgc-prev-fee" style="font-weight:600;color:var(--gjc-alert)"></span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between;font-size:13px">
-                                    <span style="color:#15803d;font-weight:700">Credited to wallet</span>
-                                    <span id="sgc-prev-credited" style="font-weight:800;color:#15803d"></span>
+                                    <span style="color:var(--gjc-green-600);font-weight:700">Credited to wallet</span>
+                                    <span id="sgc-prev-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Confirmation checkbox -->
                         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #d1fae5">
-                            <input type="checkbox" id="sgc-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:#16a34a;cursor:pointer">
+                            <input type="checkbox" id="sgc-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:var(--gjc-success);cursor:pointer">
                             <span style="font-size:13px;color:#374151;line-height:1.5">
                                 I confirm that I want to send <strong id="sgc-confirm-coins"></strong> to <strong id="sgc-confirm-name"></strong>. This action cannot be undone.
                             </span>
                         </label>
 
-                        <div id="sgc-send-error" style="margin-top:10px;font-size:13px;color:#ef4444;min-height:18px"></div>
+                        <div id="sgc-send-error" style="margin-top:10px;font-size:13px;color:var(--gjc-alert);min-height:18px"></div>
 
                         <div style="display:flex;justify-content:space-between;margin-top:16px">
                             <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px"
@@ -385,14 +385,14 @@ $currentPage = 'topups';
 
                     <!-- SUCCESS STATE -->
                     <div id="sgc-success" style="display:none;text-align:center;padding:16px 0">
-                        <div style="width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-                            <i class="fa-solid fa-circle-check" style="font-size:32px;color:#16a34a"></i>
+                        <div style="width:64px;height:64px;background:var(--gjc-success-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                            <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--gjc-success)"></i>
                         </div>
-                        <div style="font-size:18px;font-weight:700;color:#15803d;margin-bottom:4px">Sent!</div>
+                        <div style="font-size:18px;font-weight:700;color:var(--gjc-green-600);margin-bottom:4px">Sent!</div>
                         <div style="font-size:13px;color:#6b7280" id="sgc-success-msg"></div>
                         <div style="margin-top:10px;display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px">
                             <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
-                            <span id="sgc-success-ref" style="font-size:13px;font-weight:700;color:#15803d;font-family:monospace;letter-spacing:.5px"></span>
+                            <span id="sgc-success-ref" style="font-size:13px;font-weight:700;color:var(--gjc-green-600);font-family:monospace;letter-spacing:.5px"></span>
                         </div>
                         <button type="button" class="btn btn-success mt-4 d-block mx-auto" style="border-radius:12px;padding:10px 32px;font-weight:600"
                                 data-bs-dismiss="modal">Done</button>
@@ -405,8 +405,8 @@ $currentPage = 'topups';
 
     <style>
     .sgc-step-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s}
-    .sgc-step-dot--active{background:#16a34a}
-    .sgc-step-dot--done{background:#86efac}
+    .sgc-step-dot--active{background:var(--gjc-success)}
+    .sgc-step-dot--done{background:var(--gjc-success-border)}
     .sgc-step-line{flex:1;height:2px;background:#d1fae5;max-width:40px}
     </style>
 
@@ -539,10 +539,10 @@ $currentPage = 'topups';
                 sgcStudentName = data.name;
                 sgcSchoolId    = schoolId;
                 resultEl.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:8px;background:#dcfce7;border-radius:10px;padding:8px 12px">
-                        <i class="fa-solid fa-circle-check" style="color:#16a34a"></i>
+                    <div style="display:flex;align-items:center;gap:8px;background:var(--gjc-success-bg);border-radius:10px;padding:8px 12px">
+                        <i class="fa-solid fa-circle-check" style="color:var(--gjc-success)"></i>
                         <div>
-                            <strong style="font-size:13px;color:#15803d">${data.name}</strong>
+                            <strong style="font-size:13px;color:var(--gjc-green-600)">${data.name}</strong>
                             <div style="font-size:11px;color:#6b7280">${schoolId}</div>
                         </div>
                     </div>`;
@@ -552,10 +552,10 @@ $currentPage = 'topups';
                 document.getElementById('sgc-recipient-name-2').textContent = data.name;
                 document.getElementById('sgc-recipient-id-2').textContent   = schoolId;
             } else {
-                resultEl.innerHTML = `<div style="font-size:12px;color:#ef4444;padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'Student not found.'}</div>`;
+                resultEl.innerHTML = `<div style="font-size:12px;color:var(--gjc-alert);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'Student not found.'}</div>`;
             }
         } catch {
-            resultEl.innerHTML = `<div style="font-size:12px;color:#ef4444">Network error. Try again.</div>`;
+            resultEl.innerHTML = `<div style="font-size:12px;color:var(--gjc-alert)">Network error. Try again.</div>`;
         }
     }
 

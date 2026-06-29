@@ -24,7 +24,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
     <title>Transfer Tokens | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -81,7 +81,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
                         <span>Remaining: <?= gjc_money($dailyRemaining) ?></span>
                     </div>
                     <div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden">
-                        <div style="height:100%;width:<?= $dailyPct ?>%;background:<?= $dailyPct >= 90 ? '#ef4444' : '#10b981' ?>;border-radius:4px;transition:width .5s"></div>
+                        <div style="height:100%;width:<?= $dailyPct ?>%;background:<?= $dailyPct >= 90 ? 'var(--gjc-alert)' : '#10b981' ?>;border-radius:4px;transition:width .5s"></div>
                     </div>
                     <small style="color:#64748b;font-size:11px"><?= $dailyPct ?>% of daily limit used</small>
                 </div>
@@ -165,7 +165,7 @@ document.getElementById('recipientStudentId').addEventListener('blur', async fun
             preview.style.color = '#10b981';
         } else {
             preview.textContent = ' Student not found';
-            preview.style.color = '#ef4444';
+            preview.style.color = 'var(--gjc-alert)';
         }
     } catch(e) {}
 });

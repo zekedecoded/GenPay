@@ -118,7 +118,7 @@ function gjc_lease_qs(array $overrides = []): string
     <title>Leases &amp; Rent | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
@@ -167,10 +167,10 @@ function gjc_lease_qs(array $overrides = []): string
             </div>
             <div class="col-12 col-md-6 col-xl-3">
                 <a href="?<?= gjc_lease_qs(['status' => '', 'overdue' => '1', 'page' => '']) ?>" class="text-decoration-none">
-                    <div class="metric-card" style="border-left:4px solid #ef4444;">
+                    <div class="metric-card" style="border-left:4px solid var(--gjc-alert);">
                         <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                         <span>Overdue Payments</span>
-                        <h2 style="color:#ef4444"><?= $overdueLeases ?></h2>
+                        <h2 style="color:var(--gjc-alert)"><?= $overdueLeases ?></h2>
                         <p>Past due date today</p>
                     </div>
                 </a>
@@ -284,7 +284,7 @@ function gjc_lease_qs(array $overrides = []): string
                             </td>
                             <td>
                                 <?php if ($isOverdue): ?>
-                                    <span style="color:#ef4444;font-weight:700;">
+                                    <span style="color:var(--gjc-alert);font-weight:700;">
                                         <?= gjc_e($l['next_due_date'] ?? '') ?>
                                     </span>
                                 <?php else: ?>

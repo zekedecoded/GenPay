@@ -7,20 +7,13 @@
   margin-bottom: 24px !important;
 }
 
+/* Appearance (bg, radius, shadow, border, ::after) is unified in gjc-clear.css */
 .transactions-page .transaction-stat-card {
   min-height: 165px !important;
   padding: 24px !important;
-  border-radius: 8px !important;
   position: relative !important;
   overflow: hidden !important;
-  background: #064420 !important;
   color: white !important;
-  box-shadow: 0 10px 24px rgba(5, 37, 21, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-}
-
-.transactions-page .transaction-stat-card::after {
-  display: none;
 }
 
 .transactions-page .stat-icon-wrap {
@@ -74,7 +67,7 @@
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(6, 68, 32, 0.08);
   border-radius: 28px;
-  box-shadow: 0 18px 45px rgba(3, 32, 20, 0.08);
+  box-shadow: var(--gjc-shadow-xl);
   padding: 26px;
   margin-bottom: 24px;
 }
@@ -91,7 +84,7 @@
 .transactions-panel-header h3,
 .transactions-table-header h3 {
   margin: 0;
-  color: #102018;
+  color: var(--gjc-ink);
   font-size: 22px;
   font-weight: 850;
 }
@@ -99,7 +92,7 @@
 .transactions-panel-header p,
 .transactions-table-header p {
   margin: 5px 0 0;
-  color: #66756c;
+  color: var(--gjc-muted);
   font-size: 14px;
 }
 
@@ -123,7 +116,7 @@
 .transactions-page .premium-field label {
   display: block;
   margin-bottom: 6px;
-  color: #064420;
+  color: var(--gjc-green-800);
   font-size: 12px;
   font-weight: 850;
   text-transform: uppercase;
@@ -145,7 +138,7 @@
   min-width: 120px;
   border: none;
   border-radius: 18px;
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: white;
   font-weight: 900;
 }
@@ -160,7 +153,7 @@
 
 .transactions-table thead th {
   background: transparent;
-  color: #064420;
+  color: var(--gjc-green-800);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -176,7 +169,7 @@
 .transactions-table tbody td {
   padding: 18px 16px;
   border: none;
-  color: #1f2f25;
+  color: var(--gjc-ink);
   font-size: 14px;
   font-weight: 650;
 }
@@ -191,7 +184,7 @@
 
 .reference-text,
 .transaction-amount {
-  color: #064420 !important;
+  color: var(--gjc-green-800) !important;
   font-weight: 900 !important;
 }
 
@@ -205,7 +198,7 @@
   width: 42px;
   height: 42px;
   border-radius: 8px;
-  background: #064420;
+  background: var(--gjc-green-800);
   color: white;
   display: grid;
   place-items: center;
@@ -226,19 +219,19 @@
 }
 
 .type-pill {
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
 }
 
 .transaction-status.completed {
-  background: #dff3e6;
-  color: #064420;
+  background: var(--gjc-success-bg);
+  color: var(--gjc-green-800);
 }
 
 .transaction-status.pending,
 .transaction-status.processing {
-  background: #fff4cc;
-  color: #7a5a00;
+  background: var(--gjc-gold-100);
+  color: var(--gjc-warning);
 }
 
 .transaction-status.rejected {
@@ -250,8 +243,8 @@
   min-height: 36px;
   padding: 0 13px;
   border-radius: 13px;
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
   text-decoration: none;
   font-size: 13px;
   font-weight: 850;
@@ -260,7 +253,7 @@
 }
 
 .details-btn:hover {
-  background: #064420;
+  background: var(--gjc-green-800);
   color: white;
 }
 

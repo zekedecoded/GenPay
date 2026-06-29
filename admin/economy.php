@@ -20,8 +20,9 @@ $currentPage = 'economy';
     <title>System Economy | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -64,6 +65,34 @@ $currentPage = 'economy';
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("collapsed");
         }
+    </script>
+
+    <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+    <script>
+        (function () {
+            const modal = document.getElementById('walletUsersModal');
+            if (!modal) return;
+            const dt = () => (window.jQuery && jQuery.fn.dataTable.isDataTable('#walletUsersTable'))
+                ? jQuery('#walletUsersTable').DataTable() : null;
+
+            // Filter the table by the pool card that opened the modal:
+            // "" = all, "Student", or "Merchant" (Type is column index 1).
+            modal.addEventListener('show.bs.modal', function (ev) {
+                const card = ev.relatedTarget;
+                const filter = (card && card.dataset.walletFilter) || '';
+                const title = (card && card.dataset.walletTitle) || 'All Wallet Users';
+                const label = document.getElementById('walletUsersModalText');
+                if (label) label.textContent = title;
+                const t = dt();
+                if (t) t.column(1).search(filter).draw();
+            });
+
+            // A DataTable initialised inside a hidden modal mis-measures column widths.
+            modal.addEventListener('shown.bs.modal', function () {
+                const t = dt();
+                if (t) t.columns.adjust();
+            });
+        })();
     </script>
 
 </body>

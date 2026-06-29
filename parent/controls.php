@@ -75,7 +75,7 @@ $currentPage = '';
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .toggle-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 26px; cursor: pointer; transition: .2s; }
         .toggle-slider:before { content:''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-        input:checked + .toggle-slider { background: #b91c1c; }
+        input:checked + .toggle-slider { background: var(--gjc-danger); }
         input:checked + .toggle-slider:before { transform: translateX(22px); }
         .limit-form { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
         .limit-form label { font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 4px; }
@@ -83,7 +83,7 @@ $currentPage = '';
         .limit-form input:focus { border-color: #0b5c2c; outline: none; box-shadow: 0 0 0 3px rgba(11,92,44,.1); }
         .limit-form .btn-save { background: linear-gradient(135deg, #064420, #0b5c2c); color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
         .limit-form .btn-save:hover { filter: brightness(1.12); }
-        .unlink-btn { background: none; border: 1.5px solid #fca5a5; color: #b91c1c; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .unlink-btn { background: none; border: 1.5px solid var(--gjc-danger-border); color: var(--gjc-danger); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .unlink-btn:hover { background: #fef2f2; }
         .status-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
         .stat-pill { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; font-size: 13px; }
@@ -92,8 +92,8 @@ $currentPage = '';
         .back-link { display: inline-flex; align-items: center; gap: 6px; color: #0b5c2c; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
         .back-link:hover { text-decoration: underline; }
         .flash-msg { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
-        .flash-msg.success { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
-        .flash-msg.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .flash-msg.success { background: #f0fdf4; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
+        .flash-msg.error   { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
     </style>
 </head>
 <body>
@@ -150,7 +150,7 @@ $currentPage = '';
 
             <!-- Freeze toggle -->
             <div class="control-card">
-                <h5><i class="fa-solid fa-lock me-2" style="color:#b91c1c"></i>Freeze Wallet</h5>
+                <h5><i class="fa-solid fa-lock me-2" style="color:var(--gjc-danger)"></i>Freeze Wallet</h5>
                 <p>When frozen, the student cannot make any POS purchases or token transfers. Cash top-ups by Finance are still allowed.</p>
                 <div class="control-row">
                     <div class="toggle-wrap">
@@ -195,8 +195,8 @@ $currentPage = '';
             </div>
 
             <!-- Unlink student -->
-            <div class="control-card" style="border-color:#fca5a5;">
-                <h5 style="color:#b91c1c;"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
+            <div class="control-card" style="border-color:var(--gjc-danger-border);">
+                <h5 style="color:var(--gjc-danger);"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
                 <p>Remove your link to this student. You will no longer be able to view their wallet or apply controls. <strong>Existing controls (freeze, daily limit) will remain set</strong> on the wallet until a Finance administrator changes them.</p>
                 <button class="unlink-btn" onclick="unlinkStudent()"><i class="fa-solid fa-trash me-1"></i>Unlink <?= htmlspecialchars($student['first_name']) ?></button>
             </div>

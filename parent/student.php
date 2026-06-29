@@ -89,7 +89,7 @@ foreach ($txns as $t) {
 }
 
 $typeLabels = [
-    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => '#15803d', 'bg' => '#f0fdf4'],
+    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => 'var(--gjc-green-600)', 'bg' => '#f0fdf4'],
     'payment'       => ['label' => 'POS',       'icon' => 'fa-store',          'color' => '#0369a1', 'bg' => '#f0f9ff'],
     'p2p_transfer'  => ['label' => 'Transfer',  'icon' => 'fa-money-bill-transfer', 'color' => '#7c3aed', 'bg' => '#f5f3ff'],
     'voucher_payment' => ['label' => 'Voucher', 'icon' => 'fa-ticket',         'color' => '#b45309', 'bg' => '#fffbeb'],
@@ -126,8 +126,8 @@ $currentPage = '';
         .txn-row td:last-child  { border-radius: 0 10px 10px 0; }
         .txn-row:hover td { background: #f8fafc; }
         .type-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-        .txn-amount.credit { color: #15803d; font-weight: 700; }
-        .txn-amount.debit  { color: #b91c1c; font-weight: 700; }
+        .txn-amount.credit { color: var(--gjc-green-600); font-weight: 700; }
+        .txn-amount.debit  { color: var(--gjc-danger); font-weight: 700; }
         .back-link { display: inline-flex; align-items: center; gap: 6px; color: #0b5c2c; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
         .back-link:hover { text-decoration: underline; }
         .empty-state { text-align: center; padding: 40px 16px; color: #94a3b8; }

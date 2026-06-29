@@ -38,7 +38,7 @@
 
 .settings-panel-header h3 i {
   font-size: 18px;
-  color: #0d7a3e;
+  color: var(--gjc-green-600);
 }
 
 .settings-form {
@@ -58,7 +58,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
-  margin-bottom: 26px;
+  margin-bottom: 24px;
   align-items: start;
 }
 
@@ -101,7 +101,7 @@
 }
 
 .settings-field input:focus {
-  border-color: #064420;
+  border-color: var(--gjc-green-800);
   box-shadow: 0 0 0 4px rgba(6, 68, 32, 0.08);
 }
 
@@ -120,7 +120,7 @@
   min-width: 44px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: #ffffff;
   font-weight: 900;
 }
@@ -202,7 +202,7 @@
 }
 
 .gateway-card input:checked + .switch {
-  background: #064420;
+  background: var(--gjc-green-800);
 }
 
 .gateway-card input:checked + .switch::after {
@@ -213,8 +213,8 @@
   padding: 14px 16px;
   margin-bottom: 22px;
   border-radius: 14px;
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.4;
@@ -225,7 +225,7 @@
   padding: 0 20px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: #ffffff;
   font-size: 14px;
   font-weight: 900;
@@ -279,8 +279,8 @@
   padding: 0 12px;
   border-radius: 10px;
   align-items: center;
-  background: #fff4cc;
-  color: #7a5a00 !important;
+  background: var(--gjc-warning-bg);
+  color: var(--gjc-warning) !important;
   font-size: 12px !important;
 }
 

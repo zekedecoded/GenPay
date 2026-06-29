@@ -81,7 +81,7 @@ $currentPage = 'users';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/users.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
@@ -307,7 +307,7 @@ $currentPage = 'users';
 
                             <div class="col-md-6" id="student-id-field" style="display:none">
                                 <label class="add-user-label">Student ID</label>
-                                <div style="padding:10px 14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;font-size:13px;color:#15803d;font-weight:600">
+                                <div style="padding:10px 14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;font-size:13px;color:var(--gjc-green-600);font-weight:600">
                                     <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
                                     Auto-generated as <strong>GJC<?= date('Y') ?>-XXXX</strong>
                                 </div>

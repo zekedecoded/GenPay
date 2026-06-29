@@ -1074,6 +1074,49 @@ function gjc_merchant_wallet_user_stats(PDO $db): array
 }
 
 /**
+ * Lists every wallet user (students + merchants) with name, type, current
+ * balance, and last-activity date. Powers the Total Wallet Users drill-in
+ * table on the economy page. Mirrors the 30-day "active" rule used by
+ * gjc_wallet_user_stats() / gjc_merchant_wallet_user_stats().
+ */
+function gjc_wallet_users_list(PDO $db): array
+{
+    // Definitions mirror the economy pool cards: a "student wallet user" is any
+    // student-role user (wallet row optional), a "merchant wallet user" is any
+    // merchant_wallets row. This keeps the combined card count == the two pool
+    // cards == this table's row count.
+    $sql = "
+        SELECT
+            COALESCE(CONCAT(u.first_name, ' ', u.last_name), '(unknown)') AS name,
+            'Student' AS type,
+            COALESCE(sw.balance, 0) AS balance,
+            (SELECT MAX(t.created_at) FROM transactions t
+              WHERE t.student_wallet_id = sw.id) AS last_txn
+        FROM users u
+        LEFT JOIN student_wallets sw ON sw.user_id = u.userID
+        WHERE u.roleID = 1
+        UNION ALL
+        SELECT
+            COALESCE(CONCAT(u.first_name, ' ', u.last_name), '(unknown)') AS name,
+            'Merchant' AS type,
+            mw.balance AS balance,
+            (SELECT MAX(t.created_at) FROM transactions t
+              WHERE t.merchant_wallet_id = mw.id) AS last_txn
+        FROM merchant_wallets mw
+        LEFT JOIN users u ON u.userID = mw.user_id
+        ORDER BY name ASC
+    ";
+    $rows = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+    $cutoff = strtotime('-30 days');
+    foreach ($rows as &$r) {
+        $r['active'] = !empty($r['last_txn']) && strtotime($r['last_txn']) >= $cutoff;
+    }
+    unset($r);
+    return $rows;
+}
+
+/**
  * Finds the earliest open meeting slot strictly after today, skipping
  * weekends, admin-defined holidays, and times already booked by another
  * applicant. Returns ['date' => 'Y-m-d', 'time' => 'H:i'] or null if nothing

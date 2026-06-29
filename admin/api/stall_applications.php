@@ -94,8 +94,8 @@ function stall_app_finalize_meeting(
                 <h2 style="color:#064420;margin-top:0">Meeting Scheduled</h2>
                 <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
                 <p style="color:#374151;line-height:1.7">Your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong> has passed the document review stage.</p>
-                <div style="background:#fff;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0">
-                    <p style="margin:0 0 8px;color:#15803d;font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
+                <div style="background:#fff;border:1px solid var(--gjc-success-border);border-radius:10px;padding:16px;margin:16px 0">
+                    <p style="margin:0 0 8px;color:var(--gjc-green-600);font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
                     <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($prettyDate) . '</p>
                     <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($prettyTime) . '</p>
                     <p style="margin:4px 0 0;color:#111827"><strong>Location:</strong> ' . htmlspecialchars($place) . '</p>
@@ -200,11 +200,11 @@ try {
                 $mail->addAddress($app['email'], $app['proprietor_name']);
                 $mail->Subject = 'GenPay - Stall Application Update';
                 $mail->Body = '
-                    <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fff1f2;border-radius:14px">
-                        <h3 style="color:#b91c1c">Dear ' . htmlspecialchars($app['proprietor_name']) . ',</h3>
+                    <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:var(--gjc-danger-bg);border-radius:14px">
+                        <h3 style="color:var(--gjc-danger)">Dear ' . htmlspecialchars($app['proprietor_name']) . ',</h3>
                         <p style="color:#374151;line-height:1.7">After review, your stall application has not been approved at this time.</p>
-                        <div style="background:#fff;border:1px solid #fca5a5;border-radius:10px;padding:14px;margin:14px 0">
-                            <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
+                        <div style="background:#fff;border:1px solid var(--gjc-danger-border);border-radius:10px;padding:14px;margin:14px 0">
+                            <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:var(--gjc-danger);text-transform:uppercase">Reason</p>
                             <p style="margin:0;color:#374151">' . htmlspecialchars($reason) . '</p>
                         </div>
                         <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
@@ -334,8 +334,8 @@ try {
                         <h2 style="color:#064420;margin-top:0">Down Payment Received</h2>
                         <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
                         <p style="color:#374151;line-height:1.7">We have received your down payment for your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong>.</p>
-                        <div style="background:#fff;border:1px solid #86efac;border-radius:10px;padding:16px;margin:16px 0">
-                            <p style="margin:0 0 8px;color:#15803d;font-weight:700;text-transform:uppercase;font-size:12px">Payment Details</p>
+                        <div style="background:#fff;border:1px solid var(--gjc-success-border);border-radius:10px;padding:16px;margin:16px 0">
+                            <p style="margin:0 0 8px;color:var(--gjc-green-600);font-weight:700;text-transform:uppercase;font-size:12px">Payment Details</p>
                             <p style="margin:0;color:#111827"><strong>Amount:</strong> ' . htmlspecialchars($prettyAmount) . '</p>
                             ' . ($ref !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Reference:</strong> ' . htmlspecialchars($ref) . '</p>' : '') . '
                             ' . ($notes !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Notes:</strong> ' . htmlspecialchars($notes) . '</p>' : '') . '
@@ -499,13 +499,13 @@ try {
                         <h2 style="color:#064420;margin-top:0">Your Merchant Account Is Approved</h2>
                         <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
                         <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>.</p>
-                        <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
-                            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#86efac;text-transform:uppercase">Login Credentials</p>
+                        <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:var(--gjc-success-bg)">
+                            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:var(--gjc-success-border);text-transform:uppercase">Login Credentials</p>
                             <p style="margin:0"><strong>Email:</strong> ' . htmlspecialchars($app['email']) . '</p>
                             <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . htmlspecialchars($tempPassword) . '</p>
                         </div>
-                        <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
-                        <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:#15803d">' . BASE_URL . '/login</a></p>
+                        <p style="color:var(--gjc-danger);font-weight:700">You must change this password on first login before accessing your dashboard.</p>
+                        <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:var(--gjc-green-600)">' . BASE_URL . '/login</a></p>
                     </div>';
                 $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour merchant account is approved for Stall {$stallId}.\n\nEmail: {$app['email']}\nTemporary Password: {$tempPassword}\n\nLog in at " . BASE_URL . "/login. You must change your password on first login.\n\nGenPay Team";
                 $mail->send();

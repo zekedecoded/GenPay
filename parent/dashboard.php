@@ -103,17 +103,17 @@ $currentPage = 'dashboard';
             padding: 4px 12px; border-radius: 20px;
             white-space: nowrap;
         }
-        .balance-chip.ok  { background: #f0fdf4; color: #15803d; }
+        .balance-chip.ok  { background: #f0fdf4; color: var(--gjc-green-600); }
         .balance-chip.low { background: #fff7ed; color: #c2410c; }
         .frozen-badge {
-            background: #fef2f2; color: #b91c1c;
-            border: 1px solid #fca5a5;
+            background: #fef2f2; color: var(--gjc-danger);
+            border: 1px solid var(--gjc-danger-border);
             font-size: 11px; font-weight: 700;
             padding: 2px 8px; border-radius: 12px;
         }
         .student-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .btn-view { background: #f0fdf4; color: #15803d; border: 1.5px solid #86efac; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
-        .btn-view:hover { background: #dcfce7; color: #15803d; }
+        .btn-view { background: #f0fdf4; color: var(--gjc-green-600); border: 1.5px solid var(--gjc-success-border); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
+        .btn-view:hover { background: var(--gjc-success-bg); color: var(--gjc-green-600); }
         .btn-controls { background: #f8fafc; color: #334155; border: 1.5px solid #cbd5e1; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
         .btn-controls:hover { background: #e2e8f0; color: #1e293b; }
         .alert-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
@@ -132,12 +132,12 @@ $currentPage = 'dashboard';
         .threshold-form label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
         .threshold-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 14px; width: 130px; }
         .threshold-form .btn-save { background: #0b5c2c; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .alert-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 12px; margin-left: 6px; }
+        .alert-badge { background: var(--gjc-alert); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 12px; margin-left: 6px; }
         .empty-state { text-align: center; padding: 32px 16px; color: #94a3b8; }
         .empty-state i { font-size: 36px; margin-bottom: 10px; }
         .flash-msg { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
-        .flash-msg.success { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
-        .flash-msg.error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .flash-msg.success { background: #f0fdf4; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
+        .flash-msg.error   { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
     </style>
 </head>
 <body>
@@ -247,7 +247,7 @@ $currentPage = 'dashboard';
                             <input type="number" id="thresholdInput" min="0" step="1" value="<?= number_format($alertThreshold, 2, '.', '') ?>" placeholder="50.00">
                         </div>
                         <button type="submit" class="btn-save">Save</button>
-                        <span id="thresholdMsg" style="font-size:12px;color:#15803d;align-self:center;"></span>
+                        <span id="thresholdMsg" style="font-size:12px;color:var(--gjc-green-600);align-self:center;"></span>
                     </form>
                 </div>
 
@@ -280,7 +280,7 @@ document.getElementById('linkForm').addEventListener('submit', async function(e)
     e.preventDefault();
     const sid = document.getElementById('linkSchoolId').value.trim();
     const msg = document.getElementById('linkMsg');
-    if (!sid) { msg.innerHTML = '<span style="color:#b91c1c">Please enter a school ID.</span>'; return; }
+    if (!sid) { msg.innerHTML = '<span style="color:var(--gjc-danger)">Please enter a school ID.</span>'; return; }
     msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Linking...';
     try {
         const res = await fetch(LINK_API, {
@@ -290,13 +290,13 @@ document.getElementById('linkForm').addEventListener('submit', async function(e)
         });
         const data = await res.json();
         if (data.success) {
-            msg.innerHTML = '<span style="color:#15803d"><i class="fa-solid fa-check me-1"></i>' + data.message + '</span>';
+            msg.innerHTML = '<span style="color:var(--gjc-green-600)"><i class="fa-solid fa-check me-1"></i>' + data.message + '</span>';
             setTimeout(() => location.reload(), 1000);
         } else {
-            msg.innerHTML = '<span style="color:#b91c1c">' + (data.error || 'Failed.') + '</span>';
+            msg.innerHTML = '<span style="color:var(--gjc-danger)">' + (data.error || 'Failed.') + '</span>';
         }
     } catch(err) {
-        msg.innerHTML = '<span style="color:#b91c1c">Request failed.</span>';
+        msg.innerHTML = '<span style="color:var(--gjc-danger)">Request failed.</span>';
     }
 });
 
@@ -313,7 +313,7 @@ document.getElementById('thresholdForm').addEventListener('submit', async functi
         });
         const data = await res.json();
         msg.textContent  = data.success ? 'Saved!' : (data.error || 'Error');
-        msg.style.color  = data.success ? '#15803d' : '#b91c1c';
+        msg.style.color  = data.success ? 'var(--gjc-green-600)' : 'var(--gjc-danger)';
         setTimeout(() => { msg.textContent = ''; }, 2500);
     } catch(err) { msg.textContent = 'Error'; }
 });
@@ -410,7 +410,7 @@ async function fetchAlerts() {
             renderAlerts(data);
         } else {
             document.getElementById('alertsContainer').innerHTML =
-                `<div style="text-align:center;padding:20px;color:#b91c1c;font-size:13px;"><i class="fa-solid fa-circle-xmark me-1"></i>${data.error || 'Could not load alerts.'}</div>`;
+                `<div style="text-align:center;padding:20px;color:var(--gjc-danger);font-size:13px;"><i class="fa-solid fa-circle-xmark me-1"></i>${data.error || 'Could not load alerts.'}</div>`;
         }
     } catch(err) {
         const container = document.getElementById('alertsContainer');

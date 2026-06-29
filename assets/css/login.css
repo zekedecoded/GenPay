@@ -1,9 +1,9 @@
-@import url("gjc-clear.css?v=1");
+@import url("gjc-clear.css?v=3");
 
 /* ===== GLOBAL ===== */
 body {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat;
+  font-family: "Inter", sans-serif;
+  background: linear-gradient(rgba(15, 61, 46, 0.85), rgba(15, 61, 46, 0.85)), url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat !important;
   margin: 0;
   min-height: 100vh;
 }
@@ -59,7 +59,7 @@ body {
 .sub-text {
   color: #cfcfcf;
   font-size: 13px;
-  margin-bottom: 25px;
+  margin-bottom: 24px;
   text-align: center;
 }
 
@@ -70,7 +70,7 @@ body {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   overflow: hidden;
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
 .slider {
@@ -94,7 +94,7 @@ body {
 }
 
 .role.active {
-  color: #1b5e20;
+  color: var(--gjc-green-800);
   font-weight: 600;
 }
 
@@ -184,7 +184,7 @@ body {
   margin-top: 20px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(90deg, #1b5e20, #2e7d32);
+  background: linear-gradient(90deg, var(--gjc-green-800), var(--gjc-green-700));
   color: #fff;
   font-weight: 600;
   letter-spacing: 1px;
@@ -220,14 +220,14 @@ body {
 }
 
 .eye.is-visible {
-  background: #dff3e6;
+  background: var(--gjc-success-bg);
 }
 
 @media (max-width: 576px) {
   body {
     background:
       linear-gradient(rgba(15, 61, 46, 0.78), rgba(15, 61, 46, 0.78)),
-      url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat fixed;
+      url('../images/GenSimeon-Bldg.jpg') center/cover no-repeat fixed !important;
   }
 
   .login-wrapper {
@@ -346,7 +346,7 @@ body {
 
 /* BUTTON */
 .btn-close-modal {
-  background: linear-gradient(90deg, #1b5e20, #2e7d32);
+  background: linear-gradient(90deg, var(--gjc-green-800), var(--gjc-green-700));
   border: none;
   padding: 10px 20px;
   border-radius: 10px;
@@ -463,7 +463,7 @@ body {
 /* button polish */
 .form-card .login-btn {
   margin-top: 10px;
-  background: linear-gradient(90deg, #2e7d32, #43a047);
+  background: linear-gradient(90deg, var(--gjc-green-700), var(--gjc-green-600));
 }
 
 .modal-title {

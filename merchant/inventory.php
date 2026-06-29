@@ -37,7 +37,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=16">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=18">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -133,7 +133,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                 <?php if ($item['is_available'] && !$item['is_restricted']): ?>
                                     <span class="merchant-type-pill">Available</span>
                                 <?php elseif ($item['is_restricted']): ?>
-                                    <span style="color:#ef4444;font-weight:700;font-size:12px">Blocked</span>
+                                    <span style="color:var(--gjc-alert);font-weight:700;font-size:12px">Blocked</span>
                                 <?php else: ?>
                                     <span style="color:#9ca3af;font-size:12px">Unavailable</span>
                                 <?php endif; ?>

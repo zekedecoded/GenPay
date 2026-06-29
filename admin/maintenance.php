@@ -188,20 +188,19 @@ function maintenance_insert_merchant_user(PDO $db, array $data): int
     $payload = [
         'last_name' => $data['last_name'],
         'first_name' => $data['first_name'],
-        'middle_name' => '',
-        'suffix' => '',
+        'middle_name' => $data['middle_name'] ?? '',
+        'suffix' => $data['suffix'] ?? '',
         'contact_number' => maintenance_phone_digits((string) $data['phone']),
         'phone' => $data['phone'],
         'email' => $data['email'],
-        'username' => $data['username'],
-        'roleID' => 5,
+        'roleID' => 2,
         'sub_role' => 'merchant_admin',
-        'password' => password_hash((string) $data['password'], PASSWORD_DEFAULT),
+        'password' => password_hash((string) $data['temp_password'], PASSWORD_BCRYPT),
         'profile_img' => '',
-        'force_password_change' => 0,
-        'is_first_login' => 0,
-        'password_changed' => 1,
-        'temp_password' => null,
+        'force_password_change' => 1,
+        'is_first_login' => 1,
+        'password_changed' => 0,
+        'temp_password' => $data['temp_password'],
     ];
 
     $insert = [];
@@ -220,7 +219,7 @@ function maintenance_insert_merchant_user(PDO $db, array $data): int
     return (int) $db->lastInsertId();
 }
 
-function maintenance_insert_merchant_record(PDO $db, int $userId, string $businessName, string $notes): int
+function maintenance_insert_merchant_record(PDO $db, int $userId, string $businessName, string $notes, ?string $stallId = null): int
 {
     if (!gjc_table_exists($db, 'merchant')) {
         return 0;
@@ -230,6 +229,7 @@ function maintenance_insert_merchant_record(PDO $db, int $userId, string $busine
     $payload = [
         'userID' => $userId,
         'stall_name' => $businessName,
+        'stall_id' => ($stallId !== null && $stallId !== '') ? $stallId : null,
         'operational_status' => 'active',
         'notes' => $notes !== '' ? $notes : null,
     ];
@@ -250,6 +250,65 @@ function maintenance_insert_merchant_record(PDO $db, int $userId, string $busine
     $sql = 'INSERT INTO merchant (' . implode(', ', $insert) . ') VALUES (' . implode(', ', array_fill(0, count($insert), '?')) . ')';
     $stmt = $db->prepare($sql);
     $stmt->execute($values);
+
+    return (int) $db->lastInsertId();
+}
+
+function maintenance_temp_password(int $length = 10): string
+{
+    // Ambiguous characters (0/O, 1/l/I) left out so the password is easy to read aloud.
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    $max = strlen($alphabet) - 1;
+    $out = '';
+    for ($i = 0; $i < $length; $i++) {
+        $out .= $alphabet[random_int(0, $max)];
+    }
+    return $out;
+}
+
+/**
+ * Records an admin-created merchant as an already-approved stall application, so
+ * it matches a merchant onboarded through the public form + approval. This is the
+ * only home for fields like sex / proprietor_name (no column on users/merchant).
+ */
+function maintenance_insert_approved_application(PDO $db, array $data, int $userId, int $adminId): int
+{
+    if (!gjc_table_exists($db, 'stall_applications')) {
+        return 0;
+    }
+
+    $proprietorName = trim(implode(' ', array_filter(
+        [$data['first_name'], $data['middle_name'], $data['last_name'], $data['suffix']],
+        fn($part) => $part !== ''
+    )));
+    $stallId = $data['stall_id'] !== '' ? $data['stall_id'] : null;
+
+    // Address + document columns are left to their '' defaults (not collected here).
+    $stmt = $db->prepare(
+        "INSERT INTO stall_applications
+            (business_name, proprietor_name, first_name, middle_name, last_name, suffix, sex,
+             contact_number, email, preferred_stall_id, stall_id,
+             profile_picture, business_permit, sanitary_permit, gjc_requirements, clearance,
+             terms_accepted, status, current_step, reviewed_by, reviewed_at,
+             merchant_user_id, temp_password_plain)
+         VALUES (?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?,  '', '', '', '', '',  1, 'active', 5, ?, NOW(),  ?, ?)"
+    );
+    $stmt->execute([
+        $data['business_name'],
+        $proprietorName,
+        $data['first_name'],
+        $data['middle_name'] !== '' ? $data['middle_name'] : null,
+        $data['last_name'],
+        $data['suffix'] !== '' ? $data['suffix'] : null,
+        $data['sex'],
+        $data['phone'],
+        $data['email'],
+        $stallId,
+        $stallId,
+        $adminId,
+        $userId,
+        $data['temp_password'],
+    ]);
 
     return (int) $db->lastInsertId();
 }
@@ -443,30 +502,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         if ($merchantAction === 'create') {
             $merchantData = [
                 'first_name' => trim((string) ($_POST['merchant_first_name'] ?? '')),
+                'middle_name' => trim((string) ($_POST['merchant_middle_name'] ?? '')),
                 'last_name' => trim((string) ($_POST['merchant_last_name'] ?? '')),
+                'suffix' => trim((string) ($_POST['merchant_suffix'] ?? '')),
+                'sex' => strtolower(trim((string) ($_POST['merchant_sex'] ?? ''))),
                 'email' => strtolower(trim((string) ($_POST['merchant_email'] ?? ''))),
                 'phone' => trim((string) ($_POST['merchant_phone'] ?? '')),
-                'username' => strtolower(trim((string) ($_POST['merchant_username'] ?? ''))),
-                'password' => (string) ($_POST['merchant_password'] ?? ''),
-                'confirm_password' => (string) ($_POST['merchant_confirm_password'] ?? ''),
                 'business_name' => trim((string) ($_POST['merchant_business_name'] ?? '')),
+                'stall_id' => trim((string) ($_POST['merchant_stall_id'] ?? '')),
                 'notes' => trim((string) ($_POST['merchant_notes'] ?? '')),
+                'temp_password' => maintenance_temp_password(),
             ];
 
-            if ($merchantData['first_name'] === '' || $merchantData['last_name'] === '' || $merchantData['email'] === '' || $merchantData['phone'] === '' || $merchantData['username'] === '' || $merchantData['password'] === '' || $merchantData['business_name'] === '') {
-                throw new RuntimeException('All merchant fields except Notes are required.');
+            if ($merchantData['first_name'] === '' || $merchantData['last_name'] === '' || $merchantData['email'] === '' || $merchantData['phone'] === '' || $merchantData['business_name'] === '') {
+                throw new RuntimeException('First name, last name, email, phone, and business name are required.');
             }
             if (!filter_var($merchantData['email'], FILTER_VALIDATE_EMAIL)) {
                 throw new RuntimeException('Please enter a valid merchant email address.');
             }
-            if ($merchantData['password'] !== $merchantData['confirm_password']) {
-                throw new RuntimeException('Password and Confirm Password do not match.');
-            }
-            if (strlen($merchantData['password']) < 6) {
-                throw new RuntimeException('Password must be at least 6 characters.');
-            }
-            if (!preg_match('/^[a-z0-9._-]{3,80}$/', $merchantData['username'])) {
-                throw new RuntimeException('Username must be 3-80 characters using letters, numbers, dots, underscores, or hyphens.');
+            if (!in_array($merchantData['sex'], ['male', 'female'], true)) {
+                throw new RuntimeException('Please select the proprietor\'s sex.');
             }
 
             maintenance_ensure_merchant_bypass_schema($db);
@@ -477,17 +532,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 throw new RuntimeException('A user with this email already exists.');
             }
 
-            $usernameCheck = $db->prepare("SELECT userID FROM users WHERE LOWER(username) = LOWER(?) LIMIT 1");
-            $usernameCheck->execute([$merchantData['username']]);
-            if ($usernameCheck->fetchColumn()) {
-                throw new RuntimeException('A user with this username already exists.');
-            }
-
             $db->beginTransaction();
             try {
                 $newMerchantUserId = maintenance_insert_merchant_user($db, $merchantData);
-                $newMerchantId = maintenance_insert_merchant_record($db, $newMerchantUserId, $merchantData['business_name'], $merchantData['notes']);
+                $newMerchantId = maintenance_insert_merchant_record(
+                    $db,
+                    $newMerchantUserId,
+                    $merchantData['business_name'],
+                    $merchantData['notes'],
+                    $merchantData['stall_id'] !== '' ? $merchantData['stall_id'] : null
+                );
                 gjc_merchant_wallet($db, $newMerchantUserId);
+
+                if ($merchantData['stall_id'] !== '') {
+                    $occupyStall = $db->prepare(
+                        "UPDATE stalls
+                            SET status = 'occupied', merchant_id = ?, pending_expires_at = NULL
+                          WHERE stall_id = ? AND status = 'vacant'"
+                    );
+                    // stalls.merchant_id references merchant.merchantID (not the user id).
+                    $occupyStall->execute([$newMerchantId, $merchantData['stall_id']]);
+                    if ($occupyStall->rowCount() === 0) {
+                        throw new RuntimeException('That stall is no longer available — please pick another.');
+                    }
+                }
+
+                maintenance_insert_approved_application($db, $merchantData, $newMerchantUserId, (int) $currentUser['id']);
+
                 $db->commit();
             } catch (Throwable $merchantCreateError) {
                 $db->rollBack();
@@ -506,14 +577,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     'merchant_id' => $newMerchantId,
                     'first_name' => $merchantData['first_name'],
                     'last_name' => $merchantData['last_name'],
+                    'sex' => $merchantData['sex'],
                     'email' => $merchantData['email'],
                     'phone' => $merchantData['phone'],
-                    'username' => $merchantData['username'],
                     'business_name' => $merchantData['business_name'],
+                    'stall_id' => $merchantData['stall_id'] !== '' ? $merchantData['stall_id'] : null,
                     'notes' => $merchantData['notes'],
-                    'roleID' => 5,
+                    'roleID' => 2,
                     'sub_role' => 'merchant_admin',
-                    'forced_password_change' => false,
+                    'forced_password_change' => true,
                     'email_sent' => false,
                 ]
             );
@@ -522,8 +594,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'user_id' => $newMerchantUserId,
                 'merchant_id' => $newMerchantId,
                 'business_name' => $merchantData['business_name'],
-                'username' => $merchantData['username'],
                 'email' => $merchantData['email'],
+                'temp_password' => $merchantData['temp_password'],
             ];
         }
     } catch (Throwable $error) {
@@ -537,6 +609,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 }
+
+$vacantStalls = $db->query(
+    "SELECT stall_id, label, monthly_rate FROM stalls WHERE status = 'vacant' ORDER BY label ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -549,7 +625,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     <title>Maintenance | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -599,10 +675,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         .student-import-form label,
         .merchant-bypass-form label {
             display: block;
-            color: #374151;
+            color: var(--gjc-ink);
             font-size: 12px;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
 
         .student-import-form input[type="file"] {
@@ -615,18 +691,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
 
         .merchant-bypass-form input,
-        .merchant-bypass-form textarea {
+        .merchant-bypass-form textarea,
+        .merchant-bypass-form select {
             width: 100%;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            border: 1px solid var(--gjc-line);
+            border-radius: var(--gjc-radius);
             background: #fff;
-            padding: 8px 10px;
-            font-size: 13px;
+            padding: 10px 14px;
+            font-size: 14px;
+            color: var(--gjc-ink);
             outline: none;
-            transition: border-color .15s;
+            box-sizing: border-box;
+            transition: border-color .15s, box-shadow .15s;
         }
         .merchant-bypass-form input:focus,
-        .merchant-bypass-form textarea:focus { border-color: #6b7280; }
+        .merchant-bypass-form textarea:focus,
+        .merchant-bypass-form select:focus {
+            border-color: var(--gjc-green-700);
+            box-shadow: 0 0 0 3px rgba(17, 106, 56, 0.14);
+        }
+        .merchant-bypass-form select {
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            padding-right: 38px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2366756c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 13px center;
+        }
 
         .merchant-bypass-form textarea { min-height: 80px; resize: vertical; }
 
@@ -636,6 +728,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             gap: 12px;
         }
         .maintenance-form-grid .full { grid-column: 1 / -1; }
+
+        /* Grouped field sections for the merchant form */
+        .mbf-section { margin-bottom: 18px; }
+        .mbf-section-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--gjc-green-700);
+            margin-bottom: 12px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid var(--gjc-line);
+        }
+        .mbf-section-eyebrow i { font-size: 12px; color: var(--gjc-green-600); }
 
         /* ── Buttons ─────────────────────────────────────────────────────────── */
         .maintenance-btn-row {
@@ -655,8 +764,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             transition: opacity .15s;
         }
         .maintenance-btn:hover { opacity: .88; }
-        .maintenance-btn.primary { background: #166534; color: #fff; }
-        .maintenance-btn.warning { background: #d97706; color: #fff; }
+        .maintenance-btn.primary { background: var(--gjc-success); color: #fff; }
+        .maintenance-btn.warning { background: var(--gjc-warning); color: #fff; }
         .maintenance-btn.muted   { background: #f1f5f9; color: #374151; border: 1px solid #e5e7eb; }
 
         /* ── Alerts ──────────────────────────────────────────────────────────── */
@@ -668,8 +777,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             font-weight: 500;
             line-height: 1.5;
         }
-        .maintenance-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-        .maintenance-alert.error   { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+        .maintenance-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--gjc-success); }
+        .maintenance-alert.error   { background: var(--gjc-danger-bg); border: 1px solid var(--gjc-danger-border); color: var(--gjc-danger); }
 
         /* ── Import summary ──────────────────────────────────────────────────── */
         .import-summary-grid {
@@ -731,37 +840,37 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         .rp-section-title { display: flex; align-items: center; gap: 8px; }
         .rp-section-title h3 { margin: 0; font-size: 15px; font-weight: 700; color: #111827; }
         .rp-count-badge {
-            background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700;
+            background: var(--gjc-danger-bg); color: var(--gjc-danger); font-size: 11px; font-weight: 700;
             padding: 3px 10px; border-radius: 99px; letter-spacing: .4px;
         }
         .rp-add-btn {
             display: inline-flex; align-items: center; gap: 7px;
-            background: #dc2626; color: #fff; border: none; border-radius: 10px;
+            background: var(--gjc-alert); color: #fff; border: none; border-radius: 10px;
             padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
             transition: background .15s;
         }
-        .rp-add-btn:hover { background: #b91c1c; }
+        .rp-add-btn:hover { background: var(--gjc-danger); }
 
         .rp-empty {
             text-align: center; padding: 48px 24px;
             background: #fff; border-radius: 16px;
             border: 2px dashed #fecaca; color: #9ca3af;
         }
-        .rp-empty i { font-size: 40px; color: #fca5a5; margin-bottom: 12px; }
+        .rp-empty i { font-size: 40px; color: var(--gjc-danger-border); margin-bottom: 12px; }
         .rp-empty p { font-size: 14px; margin: 0; }
 
         .rp-tag {
             font-size: 10px; font-weight: 700; padding: 2px 8px;
             border-radius: 99px; text-transform: uppercase; letter-spacing: .4px;
         }
-        .rp-tag--match-exact { background: #fef3c7; color: #92400e; }
-        .rp-tag--match-contains { background: #e0e7ff; color: #3730a3; }
+        .rp-tag--match-exact { background: #fef3c7; color: var(--gjc-warning); }
+        .rp-tag--match-contains { background: #e0e7ff; color: var(--gjc-info); }
 
         .rp-status-badge {
             display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .8px;
             text-transform: uppercase; padding: 3px 10px; border-radius: 99px;
         }
-        .rp-status--banned { background: #fee2e2; color: #b91c1c; }
+        .rp-status--banned { background: var(--gjc-danger-bg); color: var(--gjc-danger); }
         .rp-status--lifted { background: #f1f5f9; color: #64748b; }
 
         .rp-table { font-size: 13px; border-collapse: separate; border-spacing: 0; }
@@ -778,9 +887,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             padding: 5px 12px; font-size: 11px; font-weight: 700;
             border-radius: 8px; border: none; cursor: pointer; transition: background .15s;
         }
-        .rp-toggle-btn--ban { background: #dcfce7; color: #15803d; }
+        .rp-toggle-btn--ban { background: var(--gjc-success-bg); color: var(--gjc-green-600); }
         .rp-toggle-btn--ban:hover { background: #bbf7d0; }
-        .rp-toggle-btn--lift { background: #fee2e2; color: #b91c1c; }
+        .rp-toggle-btn--lift { background: var(--gjc-danger-bg); color: var(--gjc-danger); }
         .rp-toggle-btn--lift:hover { background: #fecaca; }
         .rp-remove-btn {
             width: 28px; height: 28px; border: none; border-radius: 8px;
@@ -788,7 +897,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             display: inline-flex; align-items: center; justify-content: center; transition: all .15s;
             vertical-align: middle;
         }
-        .rp-remove-btn:hover { background: #fee2e2; color: #dc2626; }
+        .rp-remove-btn:hover { background: var(--gjc-danger-bg); color: var(--gjc-alert); }
 
         /* Flag modal */
         .rp-modal-field { margin-bottom: 14px; }
@@ -797,7 +906,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
             border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s;
         }
-        .rp-modal-input:focus { border-color: #dc2626; }
+        .rp-modal-input:focus { border-color: var(--gjc-alert); }
         .rp-modal-alert { font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-top: 10px; }
 
     </style>
@@ -950,14 +1059,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
         <!-- Add Merchant Modal -->
         <div class="modal fade" id="addMerchantModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
                 <div class="modal-content" style="border-radius:16px;border:none">
                     <div class="modal-header border-0" style="padding:20px 24px 0">
                         <div>
                             <h5 class="modal-title fw-bold" style="font-size:17px">
-                                <i class="fa-solid fa-store me-2" style="color:#16a34a"></i>Add Merchant
+                                <i class="fa-solid fa-store me-2" style="color:var(--gjc-success)"></i>Add Merchant
                             </h5>
-                            <p style="font-size:12px;color:#6b7280;margin:3px 0 0">Credentials are set directly — no verification email is sent.</p>
+                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">Credentials are set directly — no verification email is sent.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -970,42 +1079,80 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
                         <form class="merchant-bypass-form" method="POST" autocomplete="off">
                             <input type="hidden" name="merchant_bypass_action" value="create">
-                            <div class="maintenance-form-grid">
-                                <div>
-                                    <label for="merchant_first_name">First Name *</label>
-                                    <input type="text" id="merchant_first_name" name="merchant_first_name" required>
+                            <div class="mbf-section">
+                                <div class="mbf-section-eyebrow"><i class="fa-solid fa-user"></i> Proprietor</div>
+                                <div class="maintenance-form-grid">
+                                    <div>
+                                        <label for="merchant_first_name">First Name *</label>
+                                        <input type="text" id="merchant_first_name" name="merchant_first_name" maxlength="60" required>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_middle_name">Middle Name</label>
+                                        <input type="text" id="merchant_middle_name" name="merchant_middle_name" maxlength="60">
+                                    </div>
+                                    <div>
+                                        <label for="merchant_last_name">Last Name *</label>
+                                        <input type="text" id="merchant_last_name" name="merchant_last_name" maxlength="60" required>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_suffix">Suffix</label>
+                                        <input type="text" id="merchant_suffix" name="merchant_suffix" maxlength="20" placeholder="e.g. Jr., Sr., III">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="merchant_last_name">Last Name *</label>
-                                    <input type="text" id="merchant_last_name" name="merchant_last_name" required>
+                            </div>
+
+                            <div class="mbf-section">
+                                <div class="mbf-section-eyebrow"><i class="fa-solid fa-store"></i> Business &amp; contact</div>
+                                <div class="maintenance-form-grid">
+                                    <div class="full">
+                                        <label for="merchant_business_name">Business Name *</label>
+                                        <input type="text" id="merchant_business_name" name="merchant_business_name" required>
+                                    </div>
+                                    <div class="full">
+                                        <label for="merchant_stall_id">Stall</label>
+                                        <select id="merchant_stall_id" name="merchant_stall_id">
+                                            <option value="">No stall — assign later</option>
+                                            <?php foreach ($vacantStalls as $st): ?>
+                                            <option value="<?= maintenance_e($st['stall_id']) ?>"><?= maintenance_e($st['label']) ?> — <?= gjc_money((float) $st['monthly_rate']) ?>/mo</option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_email">Email *</label>
+                                        <input type="email" id="merchant_email" name="merchant_email" required>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_phone">Phone *</label>
+                                        <input type="text" id="merchant_phone" name="merchant_phone" required>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="merchant_email">Email *</label>
-                                    <input type="email" id="merchant_email" name="merchant_email" required>
+                            </div>
+
+                            <div class="mbf-section">
+                                <div class="mbf-section-eyebrow"><i class="fa-solid fa-key"></i> Login credentials</div>
+                                <div class="maintenance-form-grid">
+                                    <div class="full">
+                                        <label for="merchant_username">Username *</label>
+                                        <input type="text" id="merchant_username" name="merchant_username" minlength="3" maxlength="80" required>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_password">Password *</label>
+                                        <input type="password" id="merchant_password" name="merchant_password" minlength="6" required>
+                                    </div>
+                                    <div>
+                                        <label for="merchant_confirm_password">Confirm Password *</label>
+                                        <input type="password" id="merchant_confirm_password" name="merchant_confirm_password" minlength="6" required>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="merchant_phone">Phone *</label>
-                                    <input type="text" id="merchant_phone" name="merchant_phone" required>
-                                </div>
-                                <div>
-                                    <label for="merchant_username">Username *</label>
-                                    <input type="text" id="merchant_username" name="merchant_username" minlength="3" maxlength="80" required>
-                                </div>
-                                <div>
-                                    <label for="merchant_business_name">Business Name *</label>
-                                    <input type="text" id="merchant_business_name" name="merchant_business_name" required>
-                                </div>
-                                <div>
-                                    <label for="merchant_password">Password *</label>
-                                    <input type="password" id="merchant_password" name="merchant_password" minlength="6" required>
-                                </div>
-                                <div>
-                                    <label for="merchant_confirm_password">Confirm Password *</label>
-                                    <input type="password" id="merchant_confirm_password" name="merchant_confirm_password" minlength="6" required>
-                                </div>
-                                <div class="full">
-                                    <label for="merchant_notes">Notes</label>
-                                    <textarea id="merchant_notes" name="merchant_notes" placeholder="Internal notes only"></textarea>
+                            </div>
+
+                            <div class="mbf-section">
+                                <div class="mbf-section-eyebrow"><i class="fa-solid fa-note-sticky"></i> Internal notes</div>
+                                <div class="maintenance-form-grid">
+                                    <div class="full">
+                                        <label for="merchant_notes">Notes</label>
+                                        <textarea id="merchant_notes" name="merchant_notes" placeholder="e.g. onboarding context or special terms — admins only"></textarea>
+                                    </div>
                                 </div>
                             </div>
                             <div class="maintenance-btn-row mt-2">
@@ -1022,7 +1169,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         <section class="rp-section">
             <div class="rp-section-header">
                 <div class="rp-section-title">
-                    <i class="fa-solid fa-ban" style="font-size:16px;color:#dc2626"></i>
+                    <i class="fa-solid fa-ban" style="font-size:16px;color:var(--gjc-alert)"></i>
                     <h3>Prohibited Products</h3>
                     <span class="rp-count-badge" id="rp-count">
                         <?= count($restrictedProducts) ?> item<?= count($restrictedProducts) !== 1 ? 's' : '' ?>
@@ -1108,7 +1255,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 <div class="modal-content" style="border-radius:16px;border:none">
                     <div class="modal-header border-0 pb-0" style="padding:20px 24px 10px">
                         <div>
-                            <h5 class="modal-title fw-bold" style="color:#dc2626">
+                            <h5 class="modal-title fw-bold" style="color:var(--gjc-alert)">
                                 <i class="fa-solid fa-ban me-2"></i>Flag Prohibited Product
                             </h5>
                             <p style="font-size:12px;color:#6b7280;margin:4px 0 0">Flagged products will be blocked from being sold on the platform.</p>
@@ -1246,7 +1393,7 @@ async function rpFlagProduct() {
     const btn       = document.getElementById('rp-flag-btn');
 
     if (!name || !reason) {
-        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">Product name and reason are required.</div>';
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">Product name and reason are required.</div>';
         return;
     }
 
@@ -1265,16 +1412,16 @@ async function rpFlagProduct() {
         const res  = await fetch(RP_API, { method: 'POST', body: f });
         const data = await res.json();
         if (data.success) {
-            alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check me-1"></i>Product flagged successfully.</div>';
+            alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-success-bg);color:var(--gjc-green-600)"><i class="fa-solid fa-circle-check me-1"></i>Product flagged successfully.</div>';
             document.getElementById('rp-name').value   = '';
             document.getElementById('rp-reason').value = '';
             rpInjectCard({ product_name: name, category, match_type: matchType, reason, is_active: 1 });
             rpUpdateCount(1);
         } else {
-            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">${data.message || 'Failed.'}</div>`;
+            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">${data.message || 'Failed.'}</div>`;
         }
     } catch {
-        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:#fee2e2;color:#b91c1c">Network error.</div>';
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">Network error.</div>';
     }
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i> Flag This Product';

@@ -445,7 +445,7 @@ $currentPage = "audit_log";
     <title>Audit Log | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -475,16 +475,16 @@ $currentPage = "audit_log";
             100% { background-color: transparent; }
         }
 
-        .audit-pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; background:#eef2ff; color:#3730a3; white-space:nowrap; }
+        .audit-pill { display:inline-flex; border-radius:999px; padding:4px 10px; font-size:11px; font-weight:700; background:var(--gjc-info-bg); color:var(--gjc-info); white-space:nowrap; }
         .audit-pill.LOGIN { background:#e9f8ef; color:var(--gjc-success); }
         .audit-pill.LOGOUT { background:#f1f5f4; color:var(--gjc-muted); }
-        .audit-pill.PASSWORD_CHANGE { background:var(--gjc-gold-100); color:#7a5a00; }
-        .audit-pill.USER_IMPORT { background:var(--gjc-gold-100); color:#7a5a00; }
+        .audit-pill.PASSWORD_CHANGE { background:var(--gjc-gold-100); color:var(--gjc-warning); }
+        .audit-pill.USER_IMPORT { background:var(--gjc-gold-100); color:var(--gjc-warning); }
         .audit-pill.MERCHANT_CREATE { background:#e9f8ef; color:var(--gjc-success); }
-        .audit-pill.USER_ACCOUNT { background:#dbeafe; color:#1e40af; }
+        .audit-pill.USER_ACCOUNT { background:var(--gjc-info-bg); color:#1e40af; }
         .audit-pill.MERCHANT_ONBOARDING { background:#cffafe; color:#155e75; }
-        .audit-pill.PRODUCT_RESTRICTION { background:#fde8e5; color:var(--gjc-danger); }
-        .audit-pill.LOGIN_FAILED { background:#fde8e5; color:var(--gjc-danger); }
+        .audit-pill.PRODUCT_RESTRICTION { background:var(--gjc-danger-bg); color:var(--gjc-danger); }
+        .audit-pill.LOGIN_FAILED { background:var(--gjc-danger-bg); color:var(--gjc-danger); }
 
         /* Base box-model for .details-btn - this page doesn't load
            transactions.css, only the colours from gjc-clear.css. */
@@ -516,7 +516,7 @@ $currentPage = "audit_log";
         .audit-diff-card { border-radius:var(--gjc-radius); border:1px solid var(--gjc-line); overflow:hidden; min-height:120px; }
         .audit-diff-card h6 { margin:0; padding:11px 14px; font-size:12px; font-weight:700; text-transform:uppercase; display:flex; align-items:center; gap:7px; }
         .audit-diff-card.old { background:#fff; }
-        .audit-diff-card.old h6 { background:#fde8e5; color:var(--gjc-danger); }
+        .audit-diff-card.old h6 { background:var(--gjc-danger-bg); color:var(--gjc-danger); }
         .audit-diff-card.new { background:#fff; }
         .audit-diff-card.new h6 { background:#e9f8ef; color:var(--gjc-success); }
         .audit-detail-list { padding:12px 14px; }

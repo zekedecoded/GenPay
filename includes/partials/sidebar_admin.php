@@ -52,7 +52,7 @@ $currentPage = $currentPage ?? ""; ?>
             try {
                 $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='review'")->fetchColumn();
                 if ($__pendingCount > 0): ?>
-                <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
+                <span style="background:var(--gjc-alert);color:#fff;font-size:10px;font-weight:700;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
             <?php endif;
             } catch (Throwable $__e) {}
             ?>

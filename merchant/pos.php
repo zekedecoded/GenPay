@@ -38,7 +38,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=17">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=18">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         .pos-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; padding:0 0 32px; }
@@ -417,7 +417,7 @@ async function generatePaymentQr() {
 
             <div class="modal-header border-0 pb-0" style="background:#f0fdf4;padding:20px 24px 12px">
                 <div style="flex:1">
-                    <h5 class="modal-title fw-bold" style="color:#15803d;font-size:18px">
+                    <h5 class="modal-title fw-bold" style="color:var(--gjc-green-600);font-size:18px">
                         <i class="fa-solid fa-coins me-2"></i>Send GenCoin
                     </h5>
                     <div style="display:flex;gap:6px;margin-top:10px;align-items:center" id="lw-steps">
@@ -456,7 +456,7 @@ async function generatePaymentQr() {
                 <!-- STEP 2: Cash amount -->
                 <div id="lw-step-2" style="display:none">
                     <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px">
-                        <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#15803d;font-size:15px" id="lw-avatar"></div>
+                        <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="lw-avatar"></div>
                         <div>
                             <div style="font-weight:700;font-size:14px;color:#111" id="lw-name-2"></div>
                             <div style="font-size:11px;color:#6b7280" id="lw-id-2"></div>
@@ -470,7 +470,7 @@ async function generatePaymentQr() {
                                style="border-radius:12px;padding:12px 60px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
                         <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:#9ca3af">GC</span>
                     </div>
-                    <div id="lw-gc-equiv" style="font-size:12px;color:#15803d;font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
+                    <div id="lw-gc-equiv" style="font-size:12px;color:var(--gjc-green-600);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
 
                     <!-- Fee breakdown -->
                     <div id="lw-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:12px 14px;font-size:12px;border:1px solid #d1fae5;margin-bottom:14px">
@@ -479,8 +479,8 @@ async function generatePaymentQr() {
                             <span id="lw-fp-cash" style="font-weight:600;color:#111"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                            <span style="color:#ef4444">Service fee (3%)</span>
-                            <span id="lw-fp-fee" style="font-weight:600;color:#ef4444"></span>
+                            <span style="color:var(--gjc-alert)">Service fee (3%)</span>
+                            <span id="lw-fp-fee" style="font-weight:600;color:var(--gjc-alert)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px;padding-left:12px">
                             <span style="color:#6b7280;font-size:11px">↳ Your cut (1%)</span>
@@ -491,8 +491,8 @@ async function generatePaymentQr() {
                             <span id="lw-fp-sfee" style="font-size:11px;font-weight:600;color:#6b7280"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;border-top:1px solid #d1fae5;padding-top:8px;margin-top:4px">
-                            <span style="color:#15803d;font-weight:700">Credited to student</span>
-                            <span id="lw-fp-credited" style="font-weight:800;color:#15803d"></span>
+                            <span style="color:var(--gjc-green-600);font-weight:700">Credited to student</span>
+                            <span id="lw-fp-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
                         </div>
                     </div>
 
@@ -517,23 +517,23 @@ async function generatePaymentQr() {
                             <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Student ID</span><span id="lw-prev-id" style="font-family:monospace"></span></div>
                         </div>
                         <div style="border-top:1px dashed #d1fae5;margin:12px 0;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
-                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">GenCoins</span><span id="lw-prev-gc-count" style="font-weight:600;color:#15803d"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">GenCoins</span><span id="lw-prev-gc-count" style="font-weight:600;color:var(--gjc-green-600)"></span></div>
                             <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Cash value</span><span id="lw-prev-cash" style="font-weight:600"></span></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:#ef4444">Service fee (3%)</span><span id="lw-prev-fee" style="font-weight:600;color:#ef4444"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gjc-alert)">Service fee (3%)</span><span id="lw-prev-fee" style="font-weight:600;color:var(--gjc-alert)"></span></div>
                             <div style="display:flex;justify-content:space-between;padding-left:10px"><span style="color:#6b7280;font-size:11px">↳ Your cut (1%)</span><span id="lw-prev-mcut" style="font-size:11px;font-weight:600;color:#059669"></span></div>
                             <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid #d1fae5;padding-top:8px;margin-top:2px">
-                                <span style="color:#15803d;font-weight:700">Credited to student</span>
-                                <span id="lw-prev-credited" style="font-weight:800;color:#15803d"></span>
+                                <span style="color:var(--gjc-green-600);font-weight:700">Credited to student</span>
+                                <span id="lw-prev-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
                             </div>
                         </div>
                     </div>
 
                     <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #d1fae5">
-                        <input type="checkbox" id="lw-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:#16a34a;cursor:pointer">
+                        <input type="checkbox" id="lw-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:var(--gjc-success);cursor:pointer">
                         <span style="font-size:13px;color:#374151;line-height:1.5">I confirm I have received the cash and want to load <strong id="lw-confirm-credited"></strong> to <strong id="lw-confirm-name"></strong>'s wallet.</span>
                     </label>
 
-                    <div id="lw-send-error" style="margin-top:10px;font-size:13px;color:#ef4444;min-height:18px"></div>
+                    <div id="lw-send-error" style="margin-top:10px;font-size:13px;color:var(--gjc-alert);min-height:18px"></div>
 
                     <div style="display:flex;justify-content:space-between;margin-top:16px">
                         <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px" onclick="lwGoStep(2)">
@@ -549,14 +549,14 @@ async function generatePaymentQr() {
 
                 <!-- SUCCESS -->
                 <div id="lw-success" style="display:none;text-align:center;padding:16px 0">
-                    <div style="width:64px;height:64px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-                        <i class="fa-solid fa-circle-check" style="font-size:32px;color:#16a34a"></i>
+                    <div style="width:64px;height:64px;background:var(--gjc-success-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                        <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--gjc-success)"></i>
                     </div>
-                    <div style="font-size:18px;font-weight:700;color:#15803d;margin-bottom:4px">Sent!</div>
+                    <div style="font-size:18px;font-weight:700;color:var(--gjc-green-600);margin-bottom:4px">Sent!</div>
                     <div style="font-size:13px;color:#6b7280" id="lw-success-msg"></div>
                     <div style="margin-top:10px;display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px">
                         <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
-                        <span id="lw-success-ref" style="font-size:13px;font-weight:700;color:#15803d;font-family:monospace;letter-spacing:.5px"></span>
+                        <span id="lw-success-ref" style="font-size:13px;font-weight:700;color:var(--gjc-green-600);font-family:monospace;letter-spacing:.5px"></span>
                     </div>
                     <button type="button" class="btn btn-success mt-4 d-block mx-auto" data-bs-dismiss="modal"
                             style="border-radius:12px;padding:10px 32px;font-weight:600">Done</button>
@@ -569,8 +569,8 @@ async function generatePaymentQr() {
 
 <style>
 .lw-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s;flex-shrink:0}
-.lw-dot--active{background:#16a34a}
-.lw-dot--done{background:#86efac}
+.lw-dot--active{background:var(--gjc-success)}
+.lw-dot--done{background:var(--gjc-success-border)}
 </style>
 
 <script>
@@ -668,7 +668,7 @@ async function lwLookup() {
             lwStudentName = data.name;
             lwSchoolId    = schoolId;
             resultEl.innerHTML = `
-                <div style="display:flex;align-items:center;gap:8px;background:#dbeafe;border-radius:10px;padding:8px 12px">
+                <div style="display:flex;align-items:center;gap:8px;background:var(--gjc-info-bg);border-radius:10px;padding:8px 12px">
                     <i class="fa-solid fa-circle-check" style="color:#0ea5e9"></i>
                     <div>
                         <strong style="font-size:13px;color:#0369a1">${data.name}</strong>
@@ -680,10 +680,10 @@ async function lwLookup() {
             document.getElementById('lw-name-2').textContent  = data.name;
             document.getElementById('lw-id-2').textContent    = schoolId;
         } else {
-            resultEl.innerHTML = `<div style="font-size:12px;color:#ef4444;padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error||'Student not found.'}</div>`;
+            resultEl.innerHTML = `<div style="font-size:12px;color:var(--gjc-alert);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error||'Student not found.'}</div>`;
         }
     } catch {
-        resultEl.innerHTML = '<div style="font-size:12px;color:#ef4444">Network error. Try again.</div>';
+        resultEl.innerHTML = '<div style="font-size:12px;color:var(--gjc-alert)">Network error. Try again.</div>';
     }
 }
 

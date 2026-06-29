@@ -31,7 +31,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -74,10 +74,10 @@ if (gjc_table_exists($db, 'restricted_products')) {
                 </div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="metric-card" style="border-left:4px solid #ef4444">
+                <div class="metric-card" style="border-left:4px solid var(--gjc-alert)">
                     <div class="metric-icon"><i class="fa-solid fa-ban"></i></div>
                     <span>Active Blocks</span>
-                    <h2 style="color:#ef4444"><?= $activeCount ?></h2>
+                    <h2 style="color:var(--gjc-alert)"><?= $activeCount ?></h2>
                     <p>Currently enforced</p>
                 </div>
             </div>

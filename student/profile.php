@@ -122,7 +122,7 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=48">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -433,16 +433,16 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
                     tImg.src = data.photo_url;
                 }
 
-                msg.innerHTML = '<i class="fa-solid fa-check" style="color:#15803d"></i> Photo updated.';
-                msg.style.color = '#15803d';
+                msg.innerHTML = '<i class="fa-solid fa-check" style="color:var(--gjc-green-600)"></i> Photo updated.';
+                msg.style.color = 'var(--gjc-green-600)';
                 setTimeout(() => { msg.innerHTML = ''; }, 3000);
             } else {
                 msg.innerHTML = data.error || 'Upload failed.';
-                msg.style.color = '#b91c1c';
+                msg.style.color = 'var(--gjc-danger)';
             }
         } catch(err) {
             msg.innerHTML = 'Network error. Please try again.';
-            msg.style.color = '#b91c1c';
+            msg.style.color = 'var(--gjc-danger)';
         }
         this.value = '';
     });

@@ -4,33 +4,13 @@
   gap: 18px;
 }
 
+/* Appearance (bg, radius, shadow, border, ::after) is unified in gjc-clear.css */
 .encash-stat-card {
   min-height: 170px;
   padding: 24px;
-  border-radius: 28px;
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 255, 255, 0.18),
-      transparent 36%
-    ),
-    linear-gradient(145deg, #064420, #0b5c2c);
   color: white;
-  box-shadow: 0 18px 38px rgba(4, 68, 32, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.encash-stat-card::after {
-  content: "";
-  position: absolute;
-  width: 140px;
-  height: 140px;
-  right: -44px;
-  top: -50px;
-  border-radius: 50%;
-  background: rgba(217, 169, 40, 0.16);
 }
 
 .stat-icon-wrap {
@@ -81,7 +61,7 @@
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(6, 68, 32, 0.08);
   border-radius: 28px;
-  box-shadow: 0 18px 45px rgba(3, 32, 20, 0.08);
+  box-shadow: var(--gjc-shadow-xl);
   padding: 26px;
 }
 
@@ -95,14 +75,14 @@
 
 .encash-panel-header h3 {
   margin: 0;
-  color: #102018;
+  color: var(--gjc-ink);
   font-size: 22px;
   font-weight: 850;
 }
 
 .encash-panel-header p {
   margin: 5px 0 0;
-  color: #66756c;
+  color: var(--gjc-muted);
   font-size: 14px;
 }
 
@@ -120,9 +100,9 @@
 }
 
 .create-encash-btn {
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: white;
-  box-shadow: 0 14px 28px rgba(4, 68, 32, 0.18);
+  box-shadow: var(--gjc-shadow-lg);
 }
 
 .create-encash-btn span {
@@ -143,12 +123,12 @@
 }
 
 .history-link {
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
 }
 
 .history-link:hover {
-  background: #064420;
+  background: var(--gjc-green-800);
   color: white;
 }
 
@@ -160,7 +140,7 @@
 
 .encash-table thead th {
   background: transparent;
-  color: #064420;
+  color: var(--gjc-green-800);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -177,7 +157,7 @@
 .encash-table tbody td {
   padding: 18px 16px;
   border: none;
-  color: #1f2f25;
+  color: var(--gjc-ink);
   font-size: 14px;
   font-weight: 650;
 }
@@ -185,7 +165,7 @@
 .encash-table tbody td:first-child {
   border-radius: 18px 0 0 18px;
   font-weight: 850;
-  color: #064420;
+  color: var(--gjc-green-800);
 }
 
 .encash-table tbody td:last-child {
@@ -202,7 +182,7 @@
   width: 42px;
   height: 42px;
   border-radius: 15px;
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: white;
   display: grid;
   place-items: center;
@@ -211,7 +191,7 @@
 }
 
 .amount-text {
-  color: #064420 !important;
+  color: var(--gjc-green-800) !important;
   font-weight: 900 !important;
 }
 
@@ -229,18 +209,18 @@
 }
 
 .method-pill {
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
 }
 
 .encash-status.released {
-  background: #dff3e6;
-  color: #064420;
+  background: var(--gjc-success-bg);
+  color: var(--gjc-green-800);
 }
 
 .encash-status.processing {
-  background: #fff4cc;
-  color: #7a5a00;
+  background: var(--gjc-gold-100);
+  color: var(--gjc-warning);
 }
 
 .encash-status.rejected {
@@ -272,12 +252,12 @@
 }
 
 .details-btn {
-  background: #eaf5ee;
-  color: #064420;
+  background: var(--gjc-soft);
+  color: var(--gjc-green-800);
 }
 
 .release-btn {
-  background: linear-gradient(135deg, #064420, #0b5c2c);
+  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: white;
 }
 
@@ -288,7 +268,7 @@
 
 .details-btn:hover,
 .reject-btn:hover {
-  background: #064420;
+  background: var(--gjc-green-800);
   color: white;
 }
 

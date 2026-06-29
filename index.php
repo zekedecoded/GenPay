@@ -28,7 +28,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=3">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -166,7 +166,7 @@
         }
         .feature-icon i {
             font-size: 34px;
-            color: #15803d;
+            color: var(--gjc-green-600);
         }
         .feature-card h3 {
             font-size: 22px;

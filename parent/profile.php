@@ -154,8 +154,8 @@ $currentPage = 'profile';
         .btn-primary-save { background: linear-gradient(135deg,#064420,#0b5c2c); color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
         .btn-primary-save:hover { filter: brightness(1.1); }
         .flash { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
-        .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
-        .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .flash.ok  { background: #f0fdf4; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
+        .flash.err { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
         #photoMsg { font-size: 12px; margin-top: 6px; min-height: 16px; }
     </style>
 </head>
@@ -344,11 +344,11 @@ document.getElementById('photoInput').addEventListener('change', async function(
             setTimeout(() => { msg.innerHTML = ''; }, 3000);
         } else {
             msg.innerHTML = data.error || 'Upload failed.';
-            msg.style.color = '#fca5a5';
+            msg.style.color = 'var(--gjc-danger-border)';
         }
     } catch(err) {
         msg.innerHTML = 'Network error. Please try again.';
-        msg.style.color = '#fca5a5';
+        msg.style.color = 'var(--gjc-danger-border)';
     }
     this.value = '';
 });

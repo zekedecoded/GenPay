@@ -2,24 +2,68 @@
    Shared override for admin, student, merchant, login, and public pages. */
 
 :root {
-  --gjc-green-950: #052515;
-  --gjc-green-900: #07351f;
-  --gjc-green-800: #0b4f2a;
-  --gjc-green-700: #116a38;
+  /* Primary green scale — canonical palette across all roles */
+  --gjc-green-950: #032014;
+  --gjc-green-900: #04351f;
+  --gjc-green-800: #064420;
+  --gjc-green-700: #0b5c2c;
+  --gjc-green-600: #137a3f;
+
+  /* Gold scale */
   --gjc-gold-600: #c89b1f;
   --gjc-gold-500: #e0b83a;
   --gjc-gold-100: #fff5cc;
-  --gjc-ink: #17211a;
-  --gjc-muted: #607066;
+
+  /* Text */
+  --gjc-ink: #102018;
+  --gjc-muted: #66756c;
+
+  /* Surface */
   --gjc-line: #dfe8e2;
   --gjc-page: #f4f7f1;
   --gjc-panel: #ffffff;
+  --gjc-soft: #eaf5ee;
+  --gjc-soft-2: #f4faf6;
+  --gjc-sidebar: #0d1f14;
+
+  /* Semantic / status (canonical = GenPay-native soft family) */
   --gjc-danger: #b42318;
+  --gjc-danger-bg: #fde2e2;
+  --gjc-danger-border: #f0b8b2;
   --gjc-success: #126b39;
+  --gjc-success-bg: #dff3e6;
+  --gjc-success-border: #a8dcbc;
+  --gjc-warning: #7a5a00;
+  --gjc-warning-bg: #fff4cc;
+  --gjc-info: #1d4ed8;
+  --gjc-info-bg: #dbeafe;
+  --gjc-alert: #ef4444;
   --gjc-slate: #3f4b45;
+
+  /* Spacing scale (4px base) */
+  --gjc-space-1: 4px;
+  --gjc-space-2: 8px;
+  --gjc-space-3: 12px;
+  --gjc-space-4: 16px;
+  --gjc-space-5: 20px;
+  --gjc-space-6: 24px;
+  --gjc-space-7: 28px;
+  --gjc-space-8: 32px;
+
+  /* Radius scale */
+  --gjc-radius-sm: 4px;
   --gjc-radius: 8px;
+  --gjc-radius-md: 12px;
+  --gjc-radius-lg: 16px;
+  --gjc-radius-xl: 20px;
+  --gjc-radius-2xl: 24px;
+  --gjc-radius-pill: 999px;
+
+  /* Elevation scale (green-tinted drop shadows) */
   --gjc-shadow-sm: 0 1px 2px rgba(5, 37, 21, 0.08);
   --gjc-shadow-md: 0 10px 24px rgba(5, 37, 21, 0.10);
+  --gjc-shadow-lg: 0 14px 28px rgba(4, 68, 32, 0.18);
+  --gjc-shadow-xl: 0 18px 45px rgba(3, 32, 20, 0.08);
 }
 
 * {
@@ -65,7 +109,7 @@ img {
 .admin-sidebar,
 .student-sidebar,
 .merchant-sidebar {
-  background: var(--gjc-green-900) !important;
+  background: var(--gjc-sidebar) !important;
   box-shadow: 4px 0 18px rgba(5, 37, 21, 0.18) !important;
   border-right: 4px solid var(--gjc-gold-500);
 }
@@ -304,7 +348,10 @@ img {
 .topup-hero-card::after,
 .profile-hero-card::after,
 .history-balance-card::after,
-.visitor-stat-card::after {
+.visitor-stat-card::after,
+.topup-stat-card::after,
+.encash-stat-card::after,
+.transaction-stat-card::after {
   display: none !important;
 }
 
@@ -533,7 +580,7 @@ img {
 .modal-cancel-btn {
   background: #fff !important;
   color: var(--gjc-danger) !important;
-  border: 1px solid #f0b8b2 !important;
+  border: 1px solid var(--gjc-danger-border) !important;
   border-radius: var(--gjc-radius) !important;
 }
 
@@ -632,7 +679,7 @@ img {
 .encash-status.released,
 .student-type-pill,
 .merchant-type-pill {
-  background: #e4f6ea !important;
+  background: var(--gjc-success-bg) !important;
   color: var(--gjc-success) !important;
 }
 
@@ -649,7 +696,7 @@ img {
 .topup-status.rejected,
 .encash-status.rejected,
 .scan-status-badge.blocked {
-  background: #fde8e5 !important;
+  background: var(--gjc-danger-bg) !important;
   color: var(--gjc-danger) !important;
 }
 
@@ -670,8 +717,8 @@ img {
 }
 
 .economy-mini-card.economy-ok {
-  background: #f0fbf4 !important;
-  border-color: #a8dcbc !important;
+  background: var(--gjc-success-bg) !important;
+  border-color: var(--gjc-success-border) !important;
 }
 
 .economy-mini-card.economy-alert {
@@ -824,15 +871,15 @@ img {
 
 .error-box,
 .alert-danger {
-  background: #fde8e5 !important;
-  border: 1px solid #f0b8b2 !important;
+  background: var(--gjc-danger-bg) !important;
+  border: 1px solid var(--gjc-danger-border) !important;
   color: var(--gjc-danger) !important;
   border-radius: var(--gjc-radius) !important;
 }
 
 .alert-success {
-  background: #e4f6ea !important;
-  border: 1px solid #a8dcbc !important;
+  background: var(--gjc-success-bg) !important;
+  border: 1px solid var(--gjc-success-border) !important;
   color: var(--gjc-success) !important;
   border-radius: var(--gjc-radius) !important;
 }
@@ -1005,7 +1052,7 @@ footer {
   height: 52px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: #fde8e5;
+  background: var(--gjc-danger-bg);
   color: var(--gjc-danger);
   display: grid;
   place-items: center;

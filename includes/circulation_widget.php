@@ -20,6 +20,13 @@ $isBalanced = $drift < 0.01;
 $walletStats = gjc_wallet_user_stats($db);
 $merchantWalletStats = gjc_merchant_wallet_user_stats($db);
 
+// Combined wallet-user figures for the "Total Wallet Users" card + drill-in table.
+$totalWalletUsers = $walletStats["total"] + $merchantWalletStats["total"];
+$activeWalletUsers = $walletStats["active"] + $merchantWalletStats["active"];
+$inactiveWalletUsers =
+    $walletStats["inactive"] + $merchantWalletStats["inactive"];
+$walletUsersList = gjc_wallet_users_list($db);
+
 $vaultPct = round(($vault / $cap) * 100, 1);
 $studPct = round(($students / $cap) * 100, 1);
 $merchPct = round(($merchants / $cap) * 100, 1);
@@ -124,12 +131,61 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
             </div>
         </div>
 
-        <div class="ce-pool-card ce-pool-students ce-pool-card--wallet">
+        <div class="ce-pool-card ce-pool-users ce-pool-card--clickable"
+             role="button" tabindex="0"
+             data-bs-toggle="modal" data-bs-target="#walletUsersModal"
+             data-wallet-filter="" data-wallet-title="All Wallet Users (<?= number_format(
+                 $totalWalletUsers,
+             ) ?>)"
+             aria-label="View all wallet users in a table">
+            <div class="ce-pool-icon-wrap">
+                <i class="fa-solid fa-users ce-pool-icon"></i>
+            </div>
+            <div class="ce-pool-info" style="flex:1;min-width:0;">
+                <span class="ce-pool-label">Total Wallet Users</span>
+                <div class="ce-pool-amt"><?= number_format(
+                    $totalWalletUsers,
+                ) ?></div>
+
+                <?php $totalActivePct =
+                    $totalWalletUsers > 0
+                        ? round(($activeWalletUsers / $totalWalletUsers) * 100)
+                        : 0; ?>
+                <div class="ce-wu-bar-wrap">
+                    <div class="ce-wu-bar">
+                        <div class="ce-wu-bar-fill" style="width:<?= $totalActivePct ?>%"></div>
+                    </div>
+                    <span class="ce-wu-pct"><?= $totalActivePct ?>%</span>
+                </div>
+
+                <div class="ce-wu-badges">
+                    <span class="ce-wu-badge ce-wu-badge--active">
+                        <span class="ce-wu-dot ce-wu-dot--active"></span>
+                        <?= number_format($activeWalletUsers) ?> Active
+                    </span>
+                    <span class="ce-wu-badge ce-wu-badge--inactive">
+                        <span class="ce-wu-dot ce-wu-dot--inactive"></span>
+                        <?= number_format($inactiveWalletUsers) ?> Inactive
+                    </span>
+                </div>
+
+                <small class="ce-pool-share">
+                </small>
+            </div>
+        </div>
+
+        <div class="ce-pool-card ce-pool-students ce-pool-card--wallet ce-pool-card--clickable"
+             role="button" tabindex="0"
+             data-bs-toggle="modal" data-bs-target="#walletUsersModal"
+             data-wallet-filter="Student" data-wallet-title="Student Wallet Users (<?= number_format(
+                 $walletStats["total"],
+             ) ?>)"
+             aria-label="View student wallet users in a table">
             <div class="ce-pool-icon-wrap">
                 <i class="fa-solid fa-user-graduate ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info" style="flex:1;min-width:0;">
-                <span class="ce-pool-label">Total Student Wallet Users</span>
+                <span class="ce-pool-label">Student Wallet Users</span>
                 <div class="ce-pool-amt"><?= number_format(
                     $walletStats["total"],
                 ) ?></div>
@@ -163,12 +219,18 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
             </div>
         </div>
 
-        <div class="ce-pool-card ce-pool-merchants ce-pool-card--wallet">
+        <div class="ce-pool-card ce-pool-merchants ce-pool-card--wallet ce-pool-card--clickable"
+             role="button" tabindex="0"
+             data-bs-toggle="modal" data-bs-target="#walletUsersModal"
+             data-wallet-filter="Merchant" data-wallet-title="Merchant Wallet Users (<?= number_format(
+                 $merchantWalletStats["total"],
+             ) ?>)"
+             aria-label="View merchant wallet users in a table">
             <div class="ce-pool-icon-wrap">
                 <i class="fa-solid fa-store ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info" style="flex:1;min-width:0;">
-                <span class="ce-pool-label">Total Merchant Wallet Users</span>
+                <span class="ce-pool-label">Merchant Wallet Users</span>
                 <div class="ce-pool-amt"><?= number_format(
                     $merchantWalletStats["total"],
                 ) ?></div>
@@ -204,17 +266,6 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                 </div>
 
                 <small class="ce-pool-share">No sales in 30 days = inactive</small>
-            </div>
-        </div>
-
-        <div class="ce-pool-card ce-pool-vouchers">
-            <div class="ce-pool-icon-wrap">
-                <i class="fa-solid fa-ticket ce-pool-icon"></i>
-            </div>
-            <div class="ce-pool-info">
-                <span class="ce-pool-label">Active Vouchers</span>
-                <div class="ce-pool-amt"><?= gjc_money($vouchers) ?></div>
-                <small class="ce-pool-share">Visitor QR balances</small>
             </div>
         </div>
 
@@ -364,6 +415,75 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
 
 </section>
 
+<!-- Total Wallet Users drill-in table -->
+<div class="modal fade" id="walletUsersModal" tabindex="-1" aria-labelledby="walletUsersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none">
+            <div class="modal-header" style="background:var(--gjc-soft)">
+                <h5 class="modal-title" id="walletUsersModalLabel" style="font-weight:800;color:var(--gjc-green-800)">
+                    <i class="fa-solid fa-users me-2"></i><span id="walletUsersModalText">All Wallet Users (<?= number_format(
+                        $totalWalletUsers,
+                    ) ?>)</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table align-middle js-datatable" id="walletUsersTable"
+                       data-page-length="10" data-empty-message="No wallet users found">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Wallet Balance</th>
+                            <th>Status</th>
+                            <th>Last Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($walletUsersList as $wu): ?>
+                        <tr>
+                            <td><?= htmlspecialchars(
+                                $wu["name"],
+                                ENT_QUOTES,
+                            ) ?></td>
+                            <td>
+                                <span class="ce-type-pill ce-type-<?= strtolower(
+                                    $wu["type"],
+                                ) ?>">
+                                    <?= htmlspecialchars(
+                                        $wu["type"],
+                                        ENT_QUOTES,
+                                    ) ?>
+                                </span>
+                            </td>
+                            <td><?= gjc_money((float) $wu["balance"]) ?></td>
+                            <td>
+                                <?php if ($wu["active"]): ?>
+                                <span class="ce-wu-badge ce-wu-badge--active">
+                                    <span class="ce-wu-dot ce-wu-dot--active"></span> Active
+                                </span>
+                                <?php else: ?>
+                                <span class="ce-wu-badge ce-wu-badge--inactive">
+                                    <span class="ce-wu-dot ce-wu-dot--inactive"></span> Inactive
+                                </span>
+                                <?php endif; ?>
+                            </td>
+                            <td data-order="<?= $wu["last_txn"]
+                                ? strtotime($wu["last_txn"])
+                                : 0 ?>">
+                                <?= $wu["last_txn"]
+                                    ? date("M j, Y", strtotime($wu["last_txn"]))
+                                    : '<span style="color:var(--gjc-muted)">&mdash;</span>' ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .ce-wu-bar-wrap{display:flex;align-items:center;gap:6px;margin:6px 0 4px}
 .ce-wu-bar{flex:1;height:6px;background:rgba(0,0,0,.12);border-radius:99px;overflow:hidden}
@@ -371,15 +491,26 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
 .ce-wu-pct{font-size:11px;font-weight:700;color:#22c55e;white-space:nowrap}
 .ce-wu-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
 .ce-wu-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
-.ce-wu-badge--active{background:rgba(34,197,94,.15);color:#16a34a}
+.ce-wu-badge--active{background:rgba(34,197,94,.15);color:var(--gjc-success)}
 .ce-wu-badge--inactive{background:rgba(100,116,139,.13);color:#64748b}
 .ce-wu-dot{display:inline-block;width:6px;height:6px;border-radius:50%}
 .ce-wu-dot--active{background:#22c55e}
 .ce-wu-dot--inactive{background:#94a3b8}
 .ce-wu-bar-fill--merchant{background:#f59e0b}
-.ce-wu-pct--merchant{color:#d97706}
+.ce-wu-pct--merchant{color:var(--gjc-warning)}
 .ce-wu-badge--merchant-active{background:rgba(245,158,11,.15);color:#b45309}
 .ce-wu-dot--merchant{background:#f59e0b}
+/* Total Wallet Users card (replaces Active Vouchers) */
+.ce-pool-card.ce-pool-users{background:var(--gjc-panel)}
+.ce-pool-card.ce-pool-users .ce-pool-icon-wrap{background:rgba(6,68,32,.1)}
+.ce-pool-card.ce-pool-users .ce-pool-icon{color:var(--gjc-green-800)}
+.ce-pool-card--clickable{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.ce-pool-card--clickable:hover{transform:translateY(-2px);box-shadow:var(--gjc-shadow-md)}
+.ce-pool-card--clickable:focus-visible{outline:2px solid var(--gjc-green-600);outline-offset:2px}
+/* Type pill in the wallet-users drill-in table */
+.ce-type-pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px}
+.ce-type-student{background:var(--gjc-success-bg);color:var(--gjc-success)}
+.ce-type-merchant{background:var(--gjc-warning-bg);color:var(--gjc-warning)}
 </style>
 
 <script>
