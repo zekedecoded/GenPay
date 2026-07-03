@@ -293,3 +293,9 @@
     justify-content: center;
   }
 }
+
+/* Send-GenCoin stepper dots (moved from inline <style> in topups.php) */
+.sgc-step-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s}
+.sgc-step-dot--active{background:var(--gjc-success)}
+.sgc-step-dot--done{background:var(--gjc-success-border)}
+.sgc-step-line{flex:1;height:2px;background:#d1fae5;max-width:40px}

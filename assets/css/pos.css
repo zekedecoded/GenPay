@@ -1,0 +1,61 @@
+.pos-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; padding:0 0 32px; }
+.pos-products-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px; }
+.pos-product-card {
+    background:#fff; border-radius:12px; padding:14px 12px; cursor:pointer;
+    border:2px solid transparent; transition:all .2s;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.pos-product-card:hover { border-color:#10b981; box-shadow:0 4px 12px rgba(16,185,129,.15); transform:translateY(-2px); }
+.pos-product-card.in-cart { border-color:#10b981; background:#f0fdf4; }
+.pos-product-card .product-name { font-weight:700; font-size:13px; margin:0 0 4px; }
+.pos-product-card .product-price { font-size:16px; font-weight:800; color:#064420; }
+.pos-product-card .product-stock { font-size:11px; color:#9ca3af; margin-top:3px; }
+.pos-product-card .product-cat { font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    color:#6b7280; background:#f3f4f6; padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:6px; }
+
+.pos-cart-panel { background:#fff; border-radius:16px; padding:20px; box-shadow:0 2px 12px rgba(0,0,0,.08);
+    position:sticky; top:20px; display:flex; flex-direction:column; max-height:calc(100vh - 120px); }
+.pos-cart-panel h4 { font-weight:800; font-size:16px; margin:0 0 14px; }
+.cart-items-list { flex:1; overflow-y:auto; min-height:100px; }
+.cart-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+.cart-item-name { flex:1; font-size:13px; font-weight:600; }
+.cart-item-qty { display:flex; align-items:center; gap:4px; }
+.cart-item-qty button { width:24px;height:24px;border-radius:6px;border:1px solid #e5e7eb;
+    background:#f9fafb;font-weight:700;font-size:13px;cursor:pointer;line-height:1; }
+.cart-item-qty span { min-width:24px;text-align:center;font-weight:700; }
+.cart-item-price { font-weight:700; font-size:13px; color:#064420; min-width:70px; text-align:right; }
+.cart-total-row { display:flex; justify-content:space-between; align-items:center;
+    padding:12px 0 4px; font-weight:800; font-size:18px; border-top:2px solid #e5e7eb; margin-top:8px; }
+.pos-qr-box {
+    display:none; margin-top:14px; padding:14px; border-radius:14px;
+    background:#f8fafc; border:1px solid #e5e7eb; text-align:center;
+}
+.pos-qr-box img { width:220px; height:220px; max-width:100%; }
+.pos-qr-box strong { display:block; margin-bottom:4px; color:#064420; }
+.pos-qr-box span { display:block; color:#6b7280; font-size:12px; }
+.pos-charge-btn { margin-top:14px; width:100%; padding:14px; font-size:16px; font-weight:800;
+    background:linear-gradient(135deg,#10b981,#064420); color:#fff; border:none; border-radius:12px; cursor:pointer;
+    transition:all .2s; }
+.pos-charge-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(6,68,32,.25); }
+.pos-charge-btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.cat-filter { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.cat-btn { padding:4px 12px; border-radius:20px; border:1px solid #e5e7eb; background:#fff;
+    font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+.cat-btn.active { background:#064420; color:#fff; border-color:#064420; }
+.pos-product-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
+.pos-search-input {
+    width:100%; border:1px solid #d1d5db; border-radius:10px; padding:10px 12px;
+    font-size:14px; background:#fff; outline:none; transition:border-color .15s, box-shadow .15s;
+}
+.pos-search-input:focus { border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.14); }
+.pos-empty-filter { display:none; text-align:center; padding:36px 20px; color:#9ca3af; font-size:13px; }
+
+@media (max-width: 768px) {
+    .pos-layout { grid-template-columns:1fr; }
+    .pos-cart-panel { position:static; max-height:none; }
+}
+
+/* POS modal/secondary styles (moved from a second inline <style> block) */
+.lw-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s;flex-shrink:0}
+.lw-dot--active{background:var(--gjc-success)}
+.lw-dot--done{background:var(--gjc-success-border)}

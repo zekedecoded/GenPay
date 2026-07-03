@@ -64,7 +64,7 @@ if (isset($_SESSION['force_change'])) {
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -154,6 +154,11 @@ if (isset($_SESSION['force_change'])) {
                     <div>
                         <span>Available Balance</span>
                         <h2 id="walletBalanceValue"><?php echo gjc_money($balance); ?></h2>
+                        <div class="student-wallet-gc">
+                            <i class="fa-solid fa-coins" aria-hidden="true"></i>
+                            <span id="walletGencoinValue"><?php echo number_format($balance / 10, 1); ?></span> GenCoin
+                            <em>&#8369;10 = 1 GenCoin</em>
+                        </div>
                         <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
 
                         <div class="student-wallet-actions">
@@ -419,6 +424,7 @@ if (isset($_SESSION['force_change'])) {
     // ── Live wallet stats — keeps balance/spent/transaction count fresh
     // without a manual reload (e.g. after a transfer or top-up lands). ────────
     const walletBalanceValue = document.getElementById("walletBalanceValue");
+    const walletGencoinValue = document.getElementById("walletGencoinValue");
     const totalSpentValue = document.getElementById("totalSpentValue");
     const totalTxnsValue = document.getElementById("totalTxnsValue");
 
@@ -431,6 +437,7 @@ if (isset($_SESSION['force_change'])) {
             if (!data.success) return;
 
             walletBalanceValue.innerHTML = "&#8369;" + Number(data.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (walletGencoinValue) walletGencoinValue.textContent = (Number(data.balance) / 10).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
             totalSpentValue.innerHTML = "&#8369;" + Number(data.total_spent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             totalTxnsValue.textContent = data.total_txns;
         } catch (error) {

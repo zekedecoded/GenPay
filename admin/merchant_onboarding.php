@@ -57,59 +57,9 @@ $stageColors = [
     <meta name="description" content="Multi-stage merchant vendor application pipeline for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        .pipeline-board {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            padding-bottom: 12px;
-            align-items: flex-start;
-        }
-        .pipeline-col {
-            flex: 0 0 240px;
-            background: #f8fafc;
-            border-radius: 14px;
-            padding: 14px;
-            min-height: 280px;
-        }
-        .pipeline-col-header {
-            font-weight: 800;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: .07em;
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .pipeline-count {
-            background: rgba(255,255,255,.25);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 12px;
-        }
-        .pipeline-card {
-            background: #fff;
-            border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 10px;
-            box-shadow: 0 1px 4px rgba(0,0,0,.06);
-            border: 1px solid #e5e7eb;
-            transition: box-shadow .2s;
-        }
-        .pipeline-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
-        .pipeline-card h6 { font-weight: 700; font-size: 13px; margin: 0 0 3px; }
-        .pipeline-card .pc-meta { font-size: 11px; color: #6b7280; margin: 0 0 8px; }
-        .pipeline-card .pc-actions { display: flex; gap: 5px; flex-wrap: wrap; }
-        .pipeline-empty { text-align: center; color: #9ca3af; font-size: 12px; padding: 20px 0; }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_onboarding.css?v=1">
 </head>
 <body>
 <div class="admin-layout">

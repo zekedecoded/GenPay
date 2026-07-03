@@ -44,8 +44,8 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=2">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -402,13 +402,6 @@ $currentPage = 'topups';
             </div>
         </div>
     </div>
-
-    <style>
-    .sgc-step-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s}
-    .sgc-step-dot--active{background:var(--gjc-success)}
-    .sgc-step-dot--done{background:var(--gjc-success-border)}
-    .sgc-step-line{flex:1;height:2px;background:#d1fae5;max-width:40px}
-    </style>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>

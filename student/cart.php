@@ -24,7 +24,7 @@ $balance = $wallet['balance'];
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
@@ -32,40 +32,7 @@ $balance = $wallet['balance'];
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-    <style>
-        .cart-line-list { display: flex; flex-direction: column; gap: 10px; }
-        .cart-line {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 14px; border-radius: 12px; background: #fff;
-            border: 1px solid #e5e7eb;
-        }
-        .cart-line-name { flex: 1; font-weight: 700; font-size: 13.5px; }
-        .cart-line-sku { font-size: 11px; color: #9ca3af; }
-        .cart-line-qty { display: flex; align-items: center; gap: 6px; }
-        .cart-line-qty button {
-            width: 26px; height: 26px; border-radius: 8px; border: 1px solid #e5e7eb;
-            background: #f9fafb; font-weight: 700; cursor: pointer;
-        }
-        .cart-line-qty span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
-        .cart-line-price { font-weight: 800; font-size: 13.5px; color: #064420; min-width: 72px; text-align: right; }
-        .cart-line-remove { color: var(--gjc-alert); background: none; border: none; font-size: 16px; cursor: pointer; }
-        .cart-empty { text-align: center; padding: 36px 16px; color: #9ca3af; font-size: 13px; }
-        .cart-total-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 0 4px; font-weight: 800; font-size: 19px; border-top: 2px solid #e5e7eb; margin-top: 8px;
-        }
-        .cart-merchant-pill {
-            display: inline-block; padding: 4px 12px; border-radius: 20px;
-            background: var(--emerald-soft); color: var(--emerald-800);
-            font-size: 12px; font-weight: 700; margin-bottom: 12px;
-        }
-        .pending-order-badge {
-            display: inline-block; padding: 5px 14px; border-radius: 20px;
-            background: var(--gjc-warning-bg); color: #92660a; font-size: 12px; font-weight: 800;
-            text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;
-        }
-        .pending-order-note { font-size: 12.5px; color: #6b7280; text-align: center; margin: 10px 0 0; }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=1">
 </head>
 
 <body>

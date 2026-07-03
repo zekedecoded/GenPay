@@ -1776,13 +1776,6 @@ function gjc_sub_role(): string
     return strtolower((string) ($_SESSION["sub_role"] ?? ""));
 }
 
-function gjc_is_super_admin(): bool
-{
-    $sub = gjc_sub_role();
-    $role = gjc_current_role();
-    return $sub === 'super_admin' || $role === 'finance';
-}
-
 function gjc_is_merchant_admin(): bool
 {
     return gjc_sub_role() === "merchant_admin";
@@ -1791,25 +1784,6 @@ function gjc_is_merchant_admin(): bool
 function gjc_is_merchant_staff(): bool
 {
     return gjc_sub_role() === "merchant_staff";
-}
-
-function gjc_can_view_sales_metrics(): bool
-{
-    // Merchant Staff are blocked from overall store sales metrics
-    return !gjc_is_merchant_staff();
-}
-
-function gjc_require_sub_role(array $allowedSubRoles): void
-{
-    $sub = gjc_sub_role();
-    if (!in_array($sub, $allowedSubRoles, true)) {
-        header("Content-Type: application/json");
-        echo json_encode([
-            "success" => false,
-            "message" => "Access denied: insufficient role.",
-        ]);
-        exit();
-    }
 }
 
 function gjc_token_display(float $phpAmount): string
@@ -1830,26 +1804,6 @@ function gjc_p2p_daily_sent(PDO $db, int $userId): float
     );
     $stmt->execute([$userId]);
     return (float) $stmt->fetchColumn();
-}
-
-function gjc_ensure_new_tables(PDO $db): void
-{
-    // Ensure migration v2 tables exist (graceful fallback)
-    $tables = [
-        "merchant_leases",
-        "merchant_rent_payments",
-        "restricted_products",
-        "merchant_inventory",
-        "merchant_applications",
-        "p2p_transfers",
-        "school_revenue_ledger",
-    ];
-    foreach ($tables as $table) {
-        if (!gjc_table_exists($db, $table)) {
-            // Tables created by migration_v2.sql — just silently skip if missing
-            return;
-        }
-    }
 }
 
 // ─── Parent Account Module ────────────────────────────────────────────────────

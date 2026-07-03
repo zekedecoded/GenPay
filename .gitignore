@@ -1,0 +1,5 @@
+# Local database backups / dumps — keep these out of version control
+/backups/
+
+# Claude Code local session state
+/.claude/

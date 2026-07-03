@@ -24,7 +24,7 @@ $dailyPct    = min(100, round(($dailySent / $dailyLimit) * 100, 1));
     <title>Transfer Tokens | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=49">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>

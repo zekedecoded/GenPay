@@ -1,0 +1,6 @@
+student_id_number,first_name,last_name,course_program,email,phone_number,suffix,parent_name,parent_email,parent_contact
+GJC2026-2001,Andrea,Santos,BSIT,andrea.santos@student.gjc.edu.ph,09171234567,,Maria Santos,maria.santos@gmail.com,09181234567
+GJC2026-2002,Miguel,Santos,BSA,miguel.santos@student.gjc.edu.ph,09171234568,,Maria Santos,maria.santos@gmail.com,09181234567
+GJC2026-2003,Rafael,Dela Cruz,BSHM,rafael.delacruz@student.gjc.edu.ph,09221234501,III,Jose Dela Cruz,jose.delacruz@gmail.com,09182223344
+GJC2026-2004,Bea,Reyes,BSED-MATH,bea.reyes@student.gjc.edu.ph,09221234502,,,,
+GJC2026-2005,Paolo,Mendoza,BSBA-MM,paolo.mendoza@student.gjc.edu.ph,09221234503,Jr.,,,

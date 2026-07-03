@@ -30,9 +30,7 @@ session_destroy();
     <meta charset="UTF-8">
     <title>Logging Out | GenPay</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body { background: #f8fbf7; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/logout.css?v=1">
 </head>
 <body>
     <script>

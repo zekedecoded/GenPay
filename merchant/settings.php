@@ -56,41 +56,9 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ec
     <title>Business Profile | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=18">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=19">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        .profile-logo-preview {
-            width: 96px; height: 96px; border-radius: 50%;
-            object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15);
-            background: #f3f4f6;
-        }
-        .profile-logo-fallback {
-            width: 96px; height: 96px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, #064420, #15803d);
-            color: #fff; font-weight: 800; font-size: 32px;
-        }
-        .wallet-qr-print-card {
-            display: flex; align-items: center; gap: 24px;
-            flex-wrap: wrap; padding: 20px; border-radius: 16px;
-            background: #f8fafc; border: 1px solid #e5e7eb;
-        }
-        .wallet-qr-image {
-            width: 200px; height: 200px; border-radius: 12px;
-            background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
-        }
-        .wallet-qr-caption { display: flex; flex-direction: column; gap: 4px; }
-        .wallet-qr-caption strong { font-size: 18px; color: #064420; }
-        .wallet-qr-caption span { font-size: 13px; color: #6b7280; }
-
-        @media print {
-            .merchant-sidebar, .merchant-topbar, .merchant-premium-panel:not(#walletQrPanel) {
-                display: none !important;
-            }
-            #walletQrPanel .merchant-panel-header button { display: none; }
-            .wallet-qr-image { width: 320px; height: 320px; }
-        }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=1">
 </head>
 <body>
 <div class="merchant-layout">

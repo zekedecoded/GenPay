@@ -106,32 +106,10 @@ $currentPage = '';
     <title><?= htmlspecialchars($studentName) ?> — Ledger | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        .ledger-header { background: linear-gradient(135deg, #064420, #0b5c2c); border-radius: 14px; padding: 24px 28px; color: #fff; margin-bottom: 22px; }
-        .ledger-header h2 { font-weight: 800; font-size: 20px; margin: 0 0 4px; }
-        .ledger-header .balance-big { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
-        .ledger-header small { opacity: .75; font-size: 13px; }
-        .status-chips { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .status-chip { background: rgba(255,255,255,.15); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; }
-        .status-chip.frozen { background: rgba(239,68,68,.25); }
-        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-        .filter-tab { background: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; border-radius: 20px; padding: 5px 16px; font-size: 13px; font-weight: 600; text-decoration: none; }
-        .filter-tab.active, .filter-tab:hover { background: #0b5c2c; border-color: #0b5c2c; color: #fff; }
-        .txn-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
-        .txn-row td { background: #fff; padding: 13px 16px; font-size: 13px; }
-        .txn-row td:first-child { border-radius: 10px 0 0 10px; }
-        .txn-row td:last-child  { border-radius: 0 10px 10px 0; }
-        .txn-row:hover td { background: #f8fafc; }
-        .type-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-        .txn-amount.credit { color: var(--gjc-green-600); font-weight: 700; }
-        .txn-amount.debit  { color: var(--gjc-danger); font-weight: 700; }
-        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #0b5c2c; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
-        .back-link:hover { text-decoration: underline; }
-        .empty-state { text-align: center; padding: 40px 16px; color: #94a3b8; }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=1">
 </head>
 <body>
 <div class="student-layout">

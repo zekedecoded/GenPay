@@ -4,7 +4,7 @@ $currentPage = $currentPage ?? '';
 <aside class="student-sidebar" id="parentSidebar">
     <div class="student-brand">
         <div class="student-brand-logo">
-            <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="GenPay Logo">
+            <img src="<?= ICONS_URL ?>/gp_logo.png" alt="GenPay Logo">
         </div>
         <div class="student-brand-text">
             <h4>GenPay</h4>

@@ -60,41 +60,10 @@ $currentPage = '';
     <title>Wallet Controls — <?= htmlspecialchars($studentName) ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        .control-card { background: #fff; border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 24px 28px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-        .control-card h5 { font-weight: 700; font-size: 15px; color: #0d1f14; margin: 0 0 6px; }
-        .control-card p { font-size: 13px; color: #64748b; margin: 0 0 18px; }
-        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-        .toggle-wrap { display: flex; align-items: center; gap: 14px; }
-        .toggle-label { font-size: 14px; font-weight: 600; color: #1e293b; }
-        .toggle-sublabel { font-size: 12px; color: #64748b; display: block; }
-        .toggle-switch { position: relative; width: 48px; height: 26px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 26px; cursor: pointer; transition: .2s; }
-        .toggle-slider:before { content:''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-        input:checked + .toggle-slider { background: var(--gjc-danger); }
-        input:checked + .toggle-slider:before { transform: translateX(22px); }
-        .limit-form { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
-        .limit-form label { font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 4px; }
-        .limit-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 15px; font-weight: 600; width: 160px; }
-        .limit-form input:focus { border-color: #0b5c2c; outline: none; box-shadow: 0 0 0 3px rgba(11,92,44,.1); }
-        .limit-form .btn-save { background: linear-gradient(135deg, #064420, #0b5c2c); color: #fff; border: none; border-radius: 8px; padding: 9px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .limit-form .btn-save:hover { filter: brightness(1.12); }
-        .unlink-btn { background: none; border: 1.5px solid var(--gjc-danger-border); color: var(--gjc-danger); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .unlink-btn:hover { background: #fef2f2; }
-        .status-bar { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-        .stat-pill { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; font-size: 13px; }
-        .stat-pill strong { display: block; font-size: 18px; font-weight: 800; color: #0d1f14; }
-        .stat-pill span { color: #64748b; }
-        .back-link { display: inline-flex; align-items: center; gap: 6px; color: #0b5c2c; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
-        .back-link:hover { text-decoration: underline; }
-        .flash-msg { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
-        .flash-msg.success { background: #f0fdf4; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
-        .flash-msg.error   { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=1">
 </head>
 <body>
 <div class="student-layout">

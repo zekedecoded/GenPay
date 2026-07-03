@@ -5,7 +5,7 @@ $currentPage = $currentPage ?? ""; ?>
 <aside class="admin-sidebar" id="sidebar">
     <div class="brand-box">
         <div class="brand-logo">
-            <img src="<?= ICONS_URL ?>/GenPay_logo.png" alt="Logo">
+            <img src="<?= ICONS_URL ?>/gp_logo.png" alt="Logo">
         </div>
         <div class="brand-text">
             <h4>GenPay</h4>

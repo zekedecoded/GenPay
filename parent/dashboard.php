@@ -55,90 +55,10 @@ $currentPage = 'dashboard';
     <title>Parent Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=51">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        .parent-card {
-            background: #fff;
-            border-radius: 14px;
-            border: 1.5px solid #e2e8f0;
-            padding: 20px 24px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.04);
-        }
-        .parent-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-        }
-        .parent-card-header h5 {
-            font-weight: 700;
-            font-size: 15px;
-            color: #0d1f14;
-            margin: 0;
-        }
-        .student-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .student-row:last-child { border-bottom: none; }
-        .student-avatar {
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #064420, #0b5c2c);
-            color: #fff;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 17px; flex-shrink: 0;
-        }
-        .student-info { flex: 1; min-width: 0; }
-        .student-info strong { display: block; font-size: 14px; font-weight: 700; color: #1e293b; }
-        .student-info small { color: #64748b; font-size: 12px; }
-        .balance-chip {
-            font-size: 15px; font-weight: 700;
-            padding: 4px 12px; border-radius: 20px;
-            white-space: nowrap;
-        }
-        .balance-chip.ok  { background: #f0fdf4; color: var(--gjc-green-600); }
-        .balance-chip.low { background: #fff7ed; color: #c2410c; }
-        .frozen-badge {
-            background: #fef2f2; color: var(--gjc-danger);
-            border: 1px solid var(--gjc-danger-border);
-            font-size: 11px; font-weight: 700;
-            padding: 2px 8px; border-radius: 12px;
-        }
-        .student-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .btn-view { background: #f0fdf4; color: var(--gjc-green-600); border: 1.5px solid var(--gjc-success-border); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
-        .btn-view:hover { background: var(--gjc-success-bg); color: var(--gjc-green-600); }
-        .btn-controls { background: #f8fafc; color: #334155; border: 1.5px solid #cbd5e1; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px; text-decoration: none; }
-        .btn-controls:hover { background: #e2e8f0; color: #1e293b; }
-        .alert-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-        .alert-row:last-child { border-bottom: none; }
-        .alert-icon { width: 32px; height: 32px; border-radius: 50%; background: #fff7ed; color: #c2410c; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
-        .alert-icon.read { background: #f1f5f9; color: #94a3b8; }
-        .alert-text { flex: 1; font-size: 13px; }
-        .alert-text strong { display: block; color: #1e293b; font-weight: 600; }
-        .alert-text small { color: #64748b; }
-        .link-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-        .link-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 14px; flex: 1; min-width: 160px; outline: none; }
-        .link-form input:focus { border-color: #0b5c2c; box-shadow: 0 0 0 3px rgba(11,92,44,.1); }
-        .link-form .btn-link { background: linear-gradient(135deg, #064420, #0b5c2c); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .link-form .btn-link:hover { filter: brightness(1.12); }
-        .threshold-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 8px; }
-        .threshold-form label { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
-        .threshold-form input { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 10px; font-size: 14px; width: 130px; }
-        .threshold-form .btn-save { background: #0b5c2c; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .alert-badge { background: var(--gjc-alert); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 12px; margin-left: 6px; }
-        .empty-state { text-align: center; padding: 32px 16px; color: #94a3b8; }
-        .empty-state i { font-size: 36px; margin-bottom: 10px; }
-        .flash-msg { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
-        .flash-msg.success { background: #f0fdf4; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
-        .flash-msg.error   { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=1">
 </head>
 <body>
 <div class="student-layout">

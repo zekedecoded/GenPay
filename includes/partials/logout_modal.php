@@ -38,4 +38,18 @@ document.addEventListener('DOMContentLoaded', function () {
         overlay.addEventListener('click', function () { closeLogoutModal(); });
     }
 });
+
+// Instant active-tab feedback. The gold highlight is rendered server-side on
+// the *next* page, so a clicked tab shows nothing until that page finishes
+// loading — which reads as a lag. Paint the highlight immediately on click.
+document.addEventListener('click', function (e) {
+    var link = e.target.closest('.sidebar-menu > a, .merchant-menu > a, .student-menu > a');
+    if (!link || link.classList.contains('active')) return;
+    // Leave new-tab / middle-click / modified clicks to the browser.
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var nav = link.parentElement;
+    var current = nav.querySelector(':scope > a.active');
+    if (current) current.classList.remove('active');
+    link.classList.add('active');
+});
 </script>

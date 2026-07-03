@@ -28,6 +28,11 @@ function maintenance_ensure_student_registry(PDO $db): void
             course_program VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL,
             phone_number VARCHAR(40) NULL,
+            parent_name VARCHAR(255) NULL,
+            parent_email VARCHAR(255) NULL,
+            parent_contact VARCHAR(40) NULL,
+            parent_user_id INT NULL,
+            parent_status VARCHAR(20) NOT NULL DEFAULT 'none',
             import_status ENUM('imported', 'duplicate', 'failed') NOT NULL,
             message VARCHAR(255) NULL,
             imported_by INT NOT NULL,
@@ -38,11 +43,42 @@ function maintenance_ensure_student_registry(PDO $db): void
             INDEX idx_import_status (import_status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+
+    // Bring pre-parent installs up to date. A fresh read avoids the stale
+    // static cache in gjc_table_columns() when this runs twice per request.
+    $columns = maintenance_table_columns_fresh($db, 'imported_student_registry');
+    $adds = [
+        'parent_name'    => "VARCHAR(255) NULL AFTER phone_number",
+        'parent_email'   => "VARCHAR(255) NULL AFTER parent_name",
+        'parent_contact' => "VARCHAR(40) NULL AFTER parent_email",
+        'parent_user_id' => "INT NULL AFTER parent_contact",
+        'parent_status'  => "VARCHAR(20) NOT NULL DEFAULT 'none' AFTER parent_user_id",
+    ];
+    foreach ($adds as $column => $definition) {
+        if (!in_array($column, $columns, true)) {
+            try {
+                $db->exec("ALTER TABLE imported_student_registry ADD COLUMN {$column} {$definition}");
+            } catch (\Throwable $ignored) {
+            }
+        }
+    }
+}
+
+/** Required student columns and the optional ones (suffix + guardian details). */
+function maintenance_student_csv_columns(): array
+{
+    return [
+        'required' => ['student_id_number', 'first_name', 'last_name', 'course_program', 'email', 'phone_number'],
+        'optional' => ['suffix', 'parent_name', 'parent_email', 'parent_contact'],
+    ];
 }
 
 function maintenance_parse_student_csv(string $path): array
 {
-    $expected = ['student_id_number', 'first_name', 'last_name', 'course_program', 'email', 'phone_number'];
+    $cols     = maintenance_student_csv_columns();
+    $required = $cols['required'];
+    $known    = array_merge($required, $cols['optional']);
+
     $handle = fopen($path, 'r');
     if (!$handle) {
         throw new RuntimeException('Unable to read the uploaded CSV file.');
@@ -54,13 +90,34 @@ function maintenance_parse_student_csv(string $path): array
         throw new RuntimeException('The CSV file is empty.');
     }
 
-    $normalizedHeader = array_map(
-        static fn($value) => strtolower(trim((string) $value)),
-        $header
-    );
-    if ($normalizedHeader !== $expected) {
+    // Strip a UTF-8 BOM Excel likes to prepend to the first header cell.
+    if (isset($header[0])) {
+        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
+    }
+
+    // Map each header to its position. Columns may appear in any order; every
+    // required column must be present and any extras must be recognised.
+    $index = [];
+    foreach ($header as $pos => $name) {
+        $name = strtolower(trim((string) $name));
+        if ($name === '') {
+            continue;
+        }
+        if (!in_array($name, $known, true)) {
+            fclose($handle);
+            throw new RuntimeException("Unrecognised CSV column '{$name}'. Allowed columns: " . implode(', ', $known));
+        }
+        if (isset($index[$name])) {
+            fclose($handle);
+            throw new RuntimeException("Duplicate CSV column '{$name}'.");
+        }
+        $index[$name] = $pos;
+    }
+
+    $missing = array_values(array_diff($required, array_keys($index)));
+    if ($missing) {
         fclose($handle);
-        throw new RuntimeException('CSV header must be: ' . implode(', ', $expected));
+        throw new RuntimeException('CSV is missing required column(s): ' . implode(', ', $missing));
     }
 
     $rows = [];
@@ -71,10 +128,12 @@ function maintenance_parse_student_csv(string $path): array
             continue;
         }
 
-        $data = array_pad($data, count($expected), '');
-        $row = array_combine($expected, array_slice($data, 0, count($expected)));
-        foreach ($row as $key => $value) {
-            $row[$key] = trim((string) $value);
+        // Pull each known column by its header position; absent optional columns
+        // default to '' so downstream code can rely on every key existing.
+        $row = [];
+        foreach ($known as $col) {
+            $pos = $index[$col] ?? null;
+            $row[$col] = $pos === null ? '' : trim((string) ($data[$pos] ?? ''));
         }
         $row['row_number'] = $rowNumber;
         $rows[] = $row;
@@ -87,6 +146,225 @@ function maintenance_parse_student_csv(string $path): array
     }
 
     return $rows;
+}
+
+/** Splits a single "Full Name" into first/last, falling back to the email local part. */
+function maintenance_split_name(string $fullName, string $fallbackEmail = ''): array
+{
+    $fullName = trim(preg_replace('/\s+/', ' ', $fullName) ?? '');
+    if ($fullName === '') {
+        $local = trim((string) strstr($fallbackEmail, '@', true));
+        return ['first' => $local !== '' ? $local : 'Guardian', 'last' => ''];
+    }
+    $pos = strpos($fullName, ' ');
+    if ($pos === false) {
+        return ['first' => $fullName, 'last' => ''];
+    }
+    return [
+        'first' => substr($fullName, 0, $pos),
+        'last'  => substr($fullName, $pos + 1),
+    ];
+}
+
+/**
+ * Validates every parsed row up-front so the whole batch can be judged before a
+ * single account is written. Each row becomes ready / duplicate / error, with
+ * in-file duplicates caught alongside ones already in the database, and the
+ * intended guardian action worked out. This is what makes the preview an
+ * all-or-nothing gate rather than a row-by-row commit.
+ */
+function maintenance_validate_student_rows(PDO $db, array $rows): array
+{
+    $emailCheck   = $db->prepare("SELECT userID FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
+    $studentCheck = $db->prepare("SELECT userID FROM student_info WHERE studentID = ? LIMIT 1");
+
+    $seenStudentIds = [];
+    $seenEmails     = [];
+
+    $analysis = [];
+    $counts = ['total' => 0, 'ready' => 0, 'duplicate' => 0, 'error' => 0, 'with_parent' => 0];
+
+    foreach ($rows as $row) {
+        $counts['total']++;
+        $studentId = (string) $row['student_id_number'];
+        $email     = strtolower((string) $row['email']);
+        $status    = 'ready';
+        $message   = 'Ready to import.';
+
+        // ── Required fields, then email shape ──────────────────────────────
+        $missing = [];
+        foreach ([
+            'student_id_number' => 'Student ID',
+            'first_name'        => 'First name',
+            'last_name'         => 'Last name',
+            'course_program'    => 'Course',
+            'email'             => 'Email',
+        ] as $field => $label) {
+            if (trim((string) $row[$field]) === '') {
+                $missing[] = $label;
+            }
+        }
+        if ($missing) {
+            $status  = 'error';
+            $message = 'Missing required field(s): ' . implode(', ', $missing) . '.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $status  = 'error';
+            $message = 'Invalid student email address.';
+        }
+
+        // ── Duplicate detection: in-file first, then the database ──────────
+        if ($status === 'ready') {
+            if (isset($seenStudentIds[$studentId])) {
+                $status  = 'duplicate';
+                $message = 'Duplicate student ID earlier in this file.';
+            } elseif (isset($seenEmails[$email])) {
+                $status  = 'duplicate';
+                $message = 'Duplicate email earlier in this file.';
+            } else {
+                $studentCheck->execute([$studentId]);
+                if ($studentCheck->fetchColumn()) {
+                    $status  = 'duplicate';
+                    $message = 'Student ID already exists.';
+                } else {
+                    $emailCheck->execute([$email]);
+                    if ($emailCheck->fetchColumn()) {
+                        $status  = 'duplicate';
+                        $message = 'Email already exists.';
+                    }
+                }
+            }
+        }
+
+        // Remember identifiers so later rows in the same file collide with them.
+        if ($studentId !== '') {
+            $seenStudentIds[$studentId] = true;
+        }
+        if ($email !== '') {
+            $seenEmails[$email] = true;
+        }
+
+        // ── Guardian (optional) ────────────────────────────────────────────
+        $parentEmail = strtolower(trim((string) $row['parent_email']));
+        $parentName  = trim((string) $row['parent_name']);
+        $parentPhone = trim((string) $row['parent_contact']);
+        $parentAction  = 'none';
+        $parentMessage = '';
+
+        if ($parentEmail !== '' || $parentName !== '' || $parentPhone !== '') {
+            if ($parentEmail === '') {
+                $parentAction  = 'skip';
+                $parentMessage = 'Guardian skipped — parent_email is required to create a guardian account.';
+            } elseif (!filter_var($parentEmail, FILTER_VALIDATE_EMAIL)) {
+                $parentAction  = 'skip';
+                $parentMessage = 'Guardian skipped — invalid parent_email.';
+            } elseif ($parentEmail === $email) {
+                $parentAction  = 'skip';
+                $parentMessage = 'Guardian skipped — parent_email matches the student email.';
+            } else {
+                $parentAction  = 'link';
+                $parentMessage = 'Guardian account will be created/linked.';
+                $counts['with_parent']++;
+            }
+        }
+
+        $counts[$status]++;
+        $analysis[] = [
+            'row_number'     => (int) $row['row_number'],
+            'data'           => $row,
+            'status'         => $status,
+            'message'        => $message,
+            'parent_action'  => $parentAction,
+            'parent_message' => $parentMessage,
+        ];
+    }
+
+    return [
+        'rows'       => $analysis,
+        'counts'     => $counts,
+        'has_errors' => $counts['error'] > 0,
+    ];
+}
+
+/**
+ * Creates or reuses a guardian (parent) login account keyed by email and makes
+ * sure a row exists in `parents`, returning what the caller needs to link it to
+ * a student. New guardians get a random temp password and must change it on
+ * first login, mirroring how imported students are provisioned. An email already
+ * in use by a non-guardian account is reported back as a conflict rather than
+ * being altered. $cache (keyed by lowercased email) means the same guardian
+ * across several student rows is provisioned once and merely linked to each.
+ */
+function maintenance_provision_parent(PDO $db, array $parent, array &$cache): array
+{
+    $email = strtolower(trim((string) $parent['email']));
+    if (isset($cache[$email])) {
+        return $cache[$email];
+    }
+
+    $lookup = $db->prepare("SELECT userID, roleID FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
+    $lookup->execute([$email]);
+    $existing = $lookup->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        if ((int) $existing['roleID'] !== 7) {
+            return $cache[$email] = [
+                'ok'     => false,
+                'reason' => 'parent_email already belongs to a non-guardian account.',
+            ];
+        }
+        $parentUserId = (int) $existing['userID'];
+        $tempPassword = null;
+        $reused       = true;
+    } else {
+        $names        = maintenance_split_name((string) $parent['name'], $email);
+        $tempPassword = maintenance_temp_password();
+        $columns      = maintenance_table_columns_fresh($db, 'users');
+        $payload = [
+            'last_name'             => $names['last'],
+            'first_name'            => $names['first'],
+            'name'                  => trim($names['first'] . ' ' . $names['last']),
+            'middle_name'           => '',
+            'suffix'                => '',
+            'contact_number'        => maintenance_phone_digits((string) $parent['contact']),
+            'phone'                 => (string) $parent['contact'],
+            'email'                 => $email,
+            'roleID'                => 7,
+            'sub_role'              => 'parent',
+            'password'              => password_hash($tempPassword, PASSWORD_DEFAULT),
+            'profile_img'           => '',
+            'force_password_change' => 1,
+            'is_first_login'        => 1,
+            'password_changed'      => 0,
+            'temp_password'         => $tempPassword,
+        ];
+
+        $insert = [];
+        $values = [];
+        foreach ($payload as $column => $value) {
+            if (in_array($column, $columns, true)) {
+                $insert[] = $column;
+                $values[] = $value;
+            }
+        }
+        $sql = 'INSERT INTO users (' . implode(', ', $insert) . ') VALUES (' . implode(', ', array_fill(0, count($insert), '?')) . ')';
+        $db->prepare($sql)->execute($values);
+        $parentUserId = (int) $db->lastInsertId();
+        $reused       = false;
+    }
+
+    // Ensure the parents row exists and read back its id (parent_student_links.parent_id).
+    $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$parentUserId]);
+    $pidStmt = $db->prepare("SELECT id FROM parents WHERE user_id = ? LIMIT 1");
+    $pidStmt->execute([$parentUserId]);
+    $parentId = (int) $pidStmt->fetchColumn();
+
+    return $cache[$email] = [
+        'ok'             => true,
+        'parent_id'      => $parentId,
+        'parent_user_id' => $parentUserId,
+        'temp_password'  => $tempPassword,
+        'reused'         => $reused,
+    ];
 }
 
 function maintenance_phone_digits(string $phone): string
@@ -126,7 +404,7 @@ function maintenance_insert_student_user(PDO $db, array $row): int
         'last_name' => $row['last_name'],
         'first_name' => $row['first_name'],
         'middle_name' => '',
-        'suffix' => '',
+        'suffix' => (string) ($row['suffix'] ?? ''),
         'contact_number' => maintenance_phone_digits((string) $row['phone_number']),
         'phone' => $row['phone_number'],
         'email' => $row['email'],
@@ -333,13 +611,17 @@ function maintenance_ensure_restricted_products_schema(PDO $db): void
 maintenance_ensure_student_registry($db);
 maintenance_ensure_merchant_bypass_schema($db);
 maintenance_ensure_restricted_products_schema($db);
+gjc_ensure_parent_schema($db);
 
 $previewRows = $_SESSION['bulk_student_import_rows'] ?? [];
 $previewFileName = (string) ($_SESSION['bulk_student_import_filename'] ?? '');
+$previewReport = null;
 $importError = '';
 $importSummary = null;
 $merchantError = '';
 $merchantSuccess = null;
+$parentLinkError = '';
+$parentLinkSuccess = '';
 
 $restrictedProducts = $db->query(
     "SELECT * FROM restricted_products ORDER BY is_active DESC, category ASC, product_name ASC"
@@ -348,6 +630,7 @@ $restrictedProducts = $db->query(
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['student_import_action'] ?? '');
     $merchantAction = (string) ($_POST['merchant_bypass_action'] ?? '');
+    $parentLinkAction = (string) ($_POST['parent_link_action'] ?? '');
 
     try {
         maintenance_ensure_student_registry($db);
@@ -375,106 +658,130 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 throw new RuntimeException('Upload and preview a CSV before importing.');
             }
 
-            $batchId = date('YmdHis');
+            gjc_ensure_parent_schema($db);
+
+            // Re-validate the whole batch against the current database. If any row
+            // is invalid we refuse before opening a transaction — nothing is
+            // written unless every row is clean (duplicates are the one allowed
+            // skip, since detecting them is the point of the unique student ID).
+            $report = maintenance_validate_student_rows($db, $rows);
+            if ($report['has_errors']) {
+                throw new RuntimeException(
+                    $report['counts']['error'] . ' row(s) still have validation errors. '
+                    . 'Fix them and re-upload — nothing was imported.'
+                );
+            }
+
+            $batchId  = date('YmdHis');
+            $fileName = (string) ($_SESSION['bulk_student_import_filename'] ?? 'students.csv');
             $summary = [
-                'batch_id' => $batchId,
-                'total_rows' => count($rows),
-                'imported' => 0,
-                'duplicates' => 0,
-                'failed' => 0,
+                'batch_id'        => $batchId,
+                'file_name'       => $fileName,
+                'total_rows'      => count($rows),
+                'imported'        => 0,
+                'duplicates'      => 0,
+                'failed'          => 0,
+                'parents_created' => 0,
+                'parents_linked'  => 0,
             ];
             $createdUserIds = [];
-            $seenStudentIds = [];
-            $seenEmails = [];
+            $parentCache    = [];
 
-            $emailCheck = $db->prepare("SELECT userID FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1");
-            $studentCheck = $db->prepare("SELECT userID FROM student_info WHERE studentID = ? LIMIT 1");
             $studentInfoInsert = $db->prepare(
                 "INSERT INTO student_info (userID, studentID, yr_lvl, courseID) VALUES (?, ?, '1', ?)"
             );
             $registryInsert = $db->prepare(
                 "INSERT INTO imported_student_registry
                     (import_batch_id, user_id, student_id_number, first_name, last_name,
-                     course_program, email, phone_number, import_status, message, imported_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                     course_program, email, phone_number, parent_name, parent_email,
+                     parent_contact, parent_user_id, parent_status, import_status, message, imported_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $linkInsert = $db->prepare(
+                "INSERT IGNORE INTO parent_student_links (parent_id, student_user_id) VALUES (?, ?)"
             );
 
+            // One all-or-nothing transaction: every insert commits together, or a
+            // mid-import failure rolls the whole batch back leaving no partial data.
             $db->beginTransaction();
-            foreach ($rows as $row) {
-                $message = '';
-                $status = 'failed';
-                $userId = null;
-                $studentId = (string) $row['student_id_number'];
-                $email = strtolower((string) $row['email']);
+            try {
+                foreach ($report['rows'] as $entry) {
+                    $row       = $entry['data'];
+                    $studentId = (string) $row['student_id_number'];
+                    $userId       = null;
+                    $parentUserId = null;
+                    $parentStatus = 'none';
 
-                $db->exec('SAVEPOINT student_import_row');
-                try {
-                    if ($studentId === '' || $row['first_name'] === '' || $row['last_name'] === '' || $row['course_program'] === '' || $email === '') {
-                        throw new RuntimeException('Required fields are missing.');
-                    }
-                    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        throw new RuntimeException('Invalid email address.');
-                    }
-
-                    $isDuplicate = isset($seenStudentIds[$studentId]) || isset($seenEmails[$email]);
-                    if (!$isDuplicate) {
-                        $emailCheck->execute([$email]);
-                        $isDuplicate = (bool) $emailCheck->fetchColumn();
-                    }
-                    if (!$isDuplicate) {
-                        $studentCheck->execute([$studentId]);
-                        $isDuplicate = (bool) $studentCheck->fetchColumn();
-                    }
-
-                    if ($isDuplicate) {
-                        $status = 'duplicate';
-                        $message = 'Skipped duplicate student ID or email.';
+                    if ($entry['status'] === 'duplicate') {
                         $summary['duplicates']++;
+                        $registryStatus = 'duplicate';
+                        $message = $entry['message'];
                     } else {
+                        // status === 'ready' (error rows were rejected above)
                         $courseId = maintenance_course_id($db, (string) $row['course_program']);
-                        $userId = maintenance_insert_student_user($db, $row);
+                        $userId   = maintenance_insert_student_user($db, $row);
                         $studentInfoInsert->execute([$userId, $studentId, $courseId]);
                         gjc_student_wallet($db, $userId);
 
-                        $status = 'imported';
-                        $message = 'Student account imported.';
                         $summary['imported']++;
                         $createdUserIds[] = $userId;
-                    }
-                    $db->exec('RELEASE SAVEPOINT student_import_row');
-                } catch (Throwable $rowError) {
-                    try {
-                        $db->exec('ROLLBACK TO SAVEPOINT student_import_row');
-                        $db->exec('RELEASE SAVEPOINT student_import_row');
-                    } catch (Throwable) {
-                    }
-                    if ($status !== 'duplicate') {
-                        $status = 'failed';
-                        $message = substr($rowError->getMessage(), 0, 255);
-                        $summary['failed']++;
-                    }
-                }
+                        $registryStatus = 'imported';
+                        $message = 'Student account imported.';
 
-                $seenStudentIds[$studentId] = true;
-                if ($email !== '') {
-                    $seenEmails[$email] = true;
-                }
+                        // Optional guardian: provision (or reuse) and link.
+                        if ($entry['parent_action'] === 'link') {
+                            $provision = maintenance_provision_parent($db, [
+                                'name'    => $row['parent_name'],
+                                'email'   => $row['parent_email'],
+                                'contact' => $row['parent_contact'],
+                            ], $parentCache);
 
-                $registryInsert->execute([
-                    $batchId,
-                    $userId,
-                    $studentId,
-                    (string) $row['first_name'],
-                    (string) $row['last_name'],
-                    (string) $row['course_program'],
-                    (string) $row['email'],
-                    (string) $row['phone_number'],
-                    $status,
-                    $message,
-                    (int) $currentUser['id'],
-                ]);
+                            if ($provision['ok']) {
+                                $parentUserId = $provision['parent_user_id'];
+                                $linkInsert->execute([$provision['parent_id'], $userId]);
+                                $summary['parents_linked']++;
+                                if ($provision['reused']) {
+                                    $parentStatus = 'linked';
+                                    $message .= ' Guardian linked.';
+                                } else {
+                                    $summary['parents_created']++;
+                                    $parentStatus = 'created';
+                                    $message .= ' Guardian created & linked.';
+                                }
+                            } else {
+                                $parentStatus = 'skipped';
+                                $message .= ' Guardian skipped: ' . $provision['reason'];
+                            }
+                        } elseif ($entry['parent_action'] === 'skip') {
+                            $parentStatus = 'skipped';
+                            $message .= ' ' . $entry['parent_message'];
+                        }
+                    }
+
+                    $registryInsert->execute([
+                        $batchId,
+                        $userId,
+                        $studentId,
+                        (string) $row['first_name'],
+                        (string) $row['last_name'],
+                        (string) $row['course_program'],
+                        (string) $row['email'],
+                        (string) $row['phone_number'],
+                        (string) $row['parent_name'],
+                        (string) $row['parent_email'],
+                        (string) $row['parent_contact'],
+                        $parentUserId,
+                        $parentStatus,
+                        $registryStatus,
+                        substr($message, 0, 255),
+                        (int) $currentUser['id'],
+                    ]);
+                }
+                $db->commit();
+            } catch (Throwable $importFailure) {
+                $db->rollBack();
+                throw $importFailure;
             }
-            $db->commit();
 
             logAudit(
                 $db,
@@ -484,11 +791,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'imported_student_registry',
                 null,
                 [
-                    'import_batch_id' => $summary['batch_id'],
-                    'total_rows' => $summary['total_rows'],
-                    'imported' => $summary['imported'],
-                    'duplicates' => $summary['duplicates'],
-                    'failed' => $summary['failed'],
+                    'import_batch_id'  => $summary['batch_id'],
+                    'file_name'        => $summary['file_name'],
+                    'total_rows'       => $summary['total_rows'],
+                    'imported'         => $summary['imported'],
+                    'duplicates'       => $summary['duplicates'],
+                    'failed'           => $summary['failed'],
+                    'parents_created'  => $summary['parents_created'],
+                    'parents_linked'   => $summary['parents_linked'],
                     'created_user_ids' => $createdUserIds,
                 ]
             );
@@ -598,17 +908,143 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'temp_password' => $merchantData['temp_password'],
             ];
         }
+
+        if ($parentLinkAction === 'link') {
+            $parentUserId    = (int) ($_POST['parent_user_id'] ?? 0);
+            $studentSchoolId = strtoupper(trim((string) ($_POST['student_school_id'] ?? '')));
+            if ($parentUserId <= 0 || $studentSchoolId === '') {
+                throw new RuntimeException('Choose a parent account and enter a student school ID.');
+            }
+
+            // The selected account must still be a parent (roleID 7).
+            $parentChk = $db->prepare("SELECT userID FROM users WHERE userID = ? AND roleID = 7 LIMIT 1");
+            $parentChk->execute([$parentUserId]);
+            if (!$parentChk->fetchColumn()) {
+                throw new RuntimeException('That parent account no longer exists.');
+            }
+
+            // Resolve the student by their school ID (same key parents self-link with).
+            $studentStmt = $db->prepare(
+                "SELECT u.userID, u.first_name, u.last_name
+                   FROM users u
+                   JOIN student_info si ON si.userID = u.userID
+                  WHERE si.studentID = ? AND u.roleID = 1
+                  LIMIT 1"
+            );
+            $studentStmt->execute([$studentSchoolId]);
+            $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$student) {
+                throw new RuntimeException("No student found with school ID {$studentSchoolId}.");
+            }
+            $studentUserId = (int) $student['userID'];
+            $studentName   = trim($student['first_name'] . ' ' . $student['last_name']);
+
+            // Ensure the parents row exists, then read its id (parent_student_links.parent_id).
+            $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$parentUserId]);
+            $pidStmt = $db->prepare("SELECT id FROM parents WHERE user_id = ? LIMIT 1");
+            $pidStmt->execute([$parentUserId]);
+            $parentRowId = (int) $pidStmt->fetchColumn();
+
+            $dupStmt = $db->prepare("SELECT id FROM parent_student_links WHERE parent_id = ? AND student_user_id = ?");
+            $dupStmt->execute([$parentRowId, $studentUserId]);
+            if ($dupStmt->fetchColumn()) {
+                throw new RuntimeException($studentName . ' is already linked to that parent.');
+            }
+
+            $db->prepare("INSERT INTO parent_student_links (parent_id, student_user_id) VALUES (?, ?)")
+               ->execute([$parentRowId, $studentUserId]);
+
+            logAudit(
+                $db,
+                (int) $currentUser['id'],
+                gjc_current_role(),
+                'USER_ACCOUNT',
+                'parent_student_links',
+                null,
+                [
+                    'event' => 'parent_link',
+                    'parent_user_id' => $parentUserId,
+                    'parent_id' => $parentRowId,
+                    'student_user_id' => $studentUserId,
+                    'student_school_id' => $studentSchoolId,
+                ]
+            );
+
+            $parentLinkSuccess = "Linked {$studentName} ({$studentSchoolId}) to the selected parent.";
+        }
+
+        if ($parentLinkAction === 'unlink') {
+            $linkId = (int) ($_POST['link_id'] ?? 0);
+            if ($linkId <= 0) {
+                throw new RuntimeException('Invalid link.');
+            }
+
+            // Capture who was linked before deleting, for the audit trail.
+            $infoStmt = $db->prepare(
+                "SELECT psl.parent_id, p.user_id AS parent_user_id, psl.student_user_id
+                   FROM parent_student_links psl
+                   JOIN parents p ON p.id = psl.parent_id
+                  WHERE psl.id = ?
+                  LIMIT 1"
+            );
+            $infoStmt->execute([$linkId]);
+            $linkRow = $infoStmt->fetch(PDO::FETCH_ASSOC);
+
+            $db->prepare("DELETE FROM parent_student_links WHERE id = ?")->execute([$linkId]);
+
+            if ($linkRow) {
+                logAudit(
+                    $db,
+                    (int) $currentUser['id'],
+                    gjc_current_role(),
+                    'USER_ACCOUNT',
+                    'parent_student_links',
+                    $linkRow,
+                    ['event' => 'parent_unlink', 'link_id' => $linkId]
+                );
+            }
+
+            $parentLinkSuccess = 'Parent–student link removed.';
+        }
     } catch (Throwable $error) {
         if ($db->inTransaction()) {
             $db->rollBack();
         }
         if ($merchantAction === 'create') {
             $merchantError = $error->getMessage();
+        } elseif ($parentLinkAction !== '') {
+            $parentLinkError = $error->getMessage();
         } else {
             $importError = $error->getMessage();
         }
     }
 }
+
+// Validate whatever is staged for preview against the current database so the
+// operator always sees an up-to-date verdict (works on POST preview and on any
+// later page reload while a preview is held in the session).
+$previewReport = $previewRows ? maintenance_validate_student_rows($db, $previewRows) : null;
+
+// Parent accounts available to link, and the links that already exist.
+$parentAccounts = $db->query(
+    "SELECT u.userID, u.first_name, u.last_name, u.email
+       FROM users u
+      WHERE u.roleID = 7
+      ORDER BY u.last_name, u.first_name"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$parentLinks = $db->query(
+    "SELECT psl.id AS link_id, psl.linked_at,
+            pu.first_name AS p_first, pu.last_name AS p_last, pu.email AS p_email,
+            su.first_name AS s_first, su.last_name AS s_last,
+            si.studentID
+       FROM parent_student_links psl
+       JOIN parents p  ON p.id = psl.parent_id
+       JOIN users  pu  ON pu.userID = p.user_id
+       JOIN users  su  ON su.userID = psl.student_user_id
+       LEFT JOIN student_info si ON si.userID = su.userID
+      ORDER BY psl.linked_at DESC, psl.id DESC"
+)->fetchAll(PDO::FETCH_ASSOC);
 
 $vacantStalls = $db->query(
     "SELECT stall_id, label, monthly_rate FROM stalls WHERE status = 'vacant' ORDER BY label ASC"
@@ -625,291 +1061,11 @@ $vacantStalls = $db->query(
     <title>Maintenance | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        /* ── Layout ─────────────────────────────────────────────────────────── */
-        .maintenance-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 14px;
-        }
-
-        .maintenance-placeholder {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .maintenance-placeholder .section-tag {
-            display: inline-block;
-            background: #f1f5f9;
-            color: #64748b;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            margin-bottom: 8px;
-        }
-
-        .maintenance-placeholder h3 {
-            color: #111827;
-            font-size: 15px;
-            font-weight: 700;
-            margin: 0 0 4px;
-        }
-
-        .maintenance-help {
-            margin: 4px 0 14px;
-            color: #6b7280;
-            font-size: 12px;
-            line-height: 1.55;
-        }
-
-        /* ── Form elements ───────────────────────────────────────────────────── */
-        .student-import-form label,
-        .merchant-bypass-form label {
-            display: block;
-            color: var(--gjc-ink);
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .student-import-form input[type="file"] {
-            width: 100%;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: #f9fafb;
-            padding: 8px 10px;
-            font-size: 13px;
-        }
-
-        .merchant-bypass-form input,
-        .merchant-bypass-form textarea,
-        .merchant-bypass-form select {
-            width: 100%;
-            border: 1px solid var(--gjc-line);
-            border-radius: var(--gjc-radius);
-            background: #fff;
-            padding: 10px 14px;
-            font-size: 14px;
-            color: var(--gjc-ink);
-            outline: none;
-            box-sizing: border-box;
-            transition: border-color .15s, box-shadow .15s;
-        }
-        .merchant-bypass-form input:focus,
-        .merchant-bypass-form textarea:focus,
-        .merchant-bypass-form select:focus {
-            border-color: var(--gjc-green-700);
-            box-shadow: 0 0 0 3px rgba(17, 106, 56, 0.14);
-        }
-        .merchant-bypass-form select {
-            appearance: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-            padding-right: 38px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2366756c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 13px center;
-        }
-
-        .merchant-bypass-form textarea { min-height: 80px; resize: vertical; }
-
-        .maintenance-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-        }
-        .maintenance-form-grid .full { grid-column: 1 / -1; }
-
-        /* Grouped field sections for the merchant form */
-        .mbf-section { margin-bottom: 18px; }
-        .mbf-section-eyebrow {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            color: var(--gjc-green-700);
-            margin-bottom: 12px;
-            padding-bottom: 7px;
-            border-bottom: 1px solid var(--gjc-line);
-        }
-        .mbf-section-eyebrow i { font-size: 12px; color: var(--gjc-green-600); }
-
-        /* ── Buttons ─────────────────────────────────────────────────────────── */
-        .maintenance-btn-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .maintenance-btn {
-            border: 0;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity .15s;
-        }
-        .maintenance-btn:hover { opacity: .88; }
-        .maintenance-btn.primary { background: var(--gjc-success); color: #fff; }
-        .maintenance-btn.warning { background: var(--gjc-warning); color: #fff; }
-        .maintenance-btn.muted   { background: #f1f5f9; color: #374151; border: 1px solid #e5e7eb; }
-
-        /* ── Alerts ──────────────────────────────────────────────────────────── */
-        .maintenance-alert {
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin: 12px 0;
-            font-size: 13px;
-            font-weight: 500;
-            line-height: 1.5;
-        }
-        .maintenance-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--gjc-success); }
-        .maintenance-alert.error   { background: var(--gjc-danger-bg); border: 1px solid var(--gjc-danger-border); color: var(--gjc-danger); }
-
-        /* ── Import summary ──────────────────────────────────────────────────── */
-        .import-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .import-summary-card {
-            border-radius: 8px;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            padding: 8px 12px;
-        }
-        .import-summary-card span {
-            display: block;
-            color: #6b7280;
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-        }
-        .import-summary-card strong { color: #111827; font-size: 18px; font-weight: 700; }
-
-        /* ── Student preview table ───────────────────────────────────────────── */
-        .student-preview {
-            margin-top: 14px;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .student-preview-head {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 8px 12px;
-            background: #fafafa;
-            border-bottom: 1px solid #e5e7eb;
-            color: #374151;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .student-preview table { margin: 0; font-size: 12px; }
-        .student-preview th { color: #6b7280; font-size: 10px; font-weight: 600; text-transform: uppercase; }
-
-        /* ── Responsive ──────────────────────────────────────────────────────── */
-        @media (max-width: 900px) {
-            .maintenance-grid          { grid-template-columns: 1fr; }
-            .import-summary-grid       { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .maintenance-form-grid     { grid-template-columns: 1fr; }
-        }
-
-        /* ── Prohibited Products ───────────────────────────────────────────── */
-        .rp-section { margin-top: 14px; }
-        .rp-section-header {
-            display: flex; align-items: center; justify-content: space-between;
-            flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
-        }
-        .rp-section-title { display: flex; align-items: center; gap: 8px; }
-        .rp-section-title h3 { margin: 0; font-size: 15px; font-weight: 700; color: #111827; }
-        .rp-count-badge {
-            background: var(--gjc-danger-bg); color: var(--gjc-danger); font-size: 11px; font-weight: 700;
-            padding: 3px 10px; border-radius: 99px; letter-spacing: .4px;
-        }
-        .rp-add-btn {
-            display: inline-flex; align-items: center; gap: 7px;
-            background: var(--gjc-alert); color: #fff; border: none; border-radius: 10px;
-            padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
-            transition: background .15s;
-        }
-        .rp-add-btn:hover { background: var(--gjc-danger); }
-
-        .rp-empty {
-            text-align: center; padding: 48px 24px;
-            background: #fff; border-radius: 16px;
-            border: 2px dashed #fecaca; color: #9ca3af;
-        }
-        .rp-empty i { font-size: 40px; color: var(--gjc-danger-border); margin-bottom: 12px; }
-        .rp-empty p { font-size: 14px; margin: 0; }
-
-        .rp-tag {
-            font-size: 10px; font-weight: 700; padding: 2px 8px;
-            border-radius: 99px; text-transform: uppercase; letter-spacing: .4px;
-        }
-        .rp-tag--match-exact { background: #fef3c7; color: var(--gjc-warning); }
-        .rp-tag--match-contains { background: #e0e7ff; color: var(--gjc-info); }
-
-        .rp-status-badge {
-            display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .8px;
-            text-transform: uppercase; padding: 3px 10px; border-radius: 99px;
-        }
-        .rp-status--banned { background: var(--gjc-danger-bg); color: var(--gjc-danger); }
-        .rp-status--lifted { background: #f1f5f9; color: #64748b; }
-
-        .rp-table { font-size: 13px; border-collapse: separate; border-spacing: 0; }
-        .rp-table thead th {
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: .5px; color: #6b7280; border-bottom: 2px solid #f3f4f6;
-            padding: 10px 12px; white-space: nowrap;
-        }
-        .rp-table tbody tr { transition: background .12s; }
-        .rp-table tbody tr:hover { background: #fafafa; }
-        .rp-table tbody td { padding: 12px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-
-        .rp-toggle-btn {
-            padding: 5px 12px; font-size: 11px; font-weight: 700;
-            border-radius: 8px; border: none; cursor: pointer; transition: background .15s;
-        }
-        .rp-toggle-btn--ban { background: var(--gjc-success-bg); color: var(--gjc-green-600); }
-        .rp-toggle-btn--ban:hover { background: #bbf7d0; }
-        .rp-toggle-btn--lift { background: var(--gjc-danger-bg); color: var(--gjc-danger); }
-        .rp-toggle-btn--lift:hover { background: #fecaca; }
-        .rp-remove-btn {
-            width: 28px; height: 28px; border: none; border-radius: 8px;
-            background: #f1f5f9; color: #94a3b8; cursor: pointer; font-size: 12px;
-            display: inline-flex; align-items: center; justify-content: center; transition: all .15s;
-            vertical-align: middle;
-        }
-        .rp-remove-btn:hover { background: var(--gjc-danger-bg); color: var(--gjc-alert); }
-
-        /* Flag modal */
-        .rp-modal-field { margin-bottom: 14px; }
-        .rp-modal-label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 5px; }
-        .rp-modal-input {
-            width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
-            border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s;
-        }
-        .rp-modal-input:focus { border-color: var(--gjc-alert); }
-        .rp-modal-alert { font-size: 13px; padding: 8px 12px; border-radius: 8px; margin-top: 10px; }
-
-    </style>
+    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=2">
 </head>
 <body>
 <div class="admin-layout">
@@ -935,9 +1091,8 @@ $vacantStalls = $db->query(
                 <span class="section-tag">Section A</span>
                 <h3>Bulk Student Import</h3>
                 <p class="maintenance-help">
-                    Upload a CSV with these exact columns:
-                    <strong>student_id_number, first_name, last_name, course_program, email, phone_number</strong>.
-                    The first five rows are shown before anything is created.
+                    Required: <strong>student_id_number, first_name, last_name, course_program, email, phone_number</strong>.
+                    Optional: <strong>suffix, parent_name, parent_email, parent_contact</strong> (guardian is auto-created &amp; linked).
                 </p>
 
                 <?php if ($importError !== ''): ?>
@@ -948,7 +1103,8 @@ $vacantStalls = $db->query(
 
                 <?php if ($importSummary): ?>
                 <div class="maintenance-alert success">
-                    Import batch <strong><?= maintenance_e($importSummary['batch_id']) ?></strong> completed.
+                    Import batch <strong><?= maintenance_e($importSummary['batch_id']) ?></strong>
+                    from <strong><?= maintenance_e($importSummary['file_name']) ?></strong> completed.
                     Duplicates were skipped and logged in the import registry.
                     <div class="import-summary-grid">
                         <div class="import-summary-card">
@@ -964,8 +1120,12 @@ $vacantStalls = $db->query(
                             <strong><?= (int) $importSummary['duplicates'] ?></strong>
                         </div>
                         <div class="import-summary-card">
-                            <span>Failed</span>
-                            <strong><?= (int) $importSummary['failed'] ?></strong>
+                            <span>Guardians Created</span>
+                            <strong><?= (int) $importSummary['parents_created'] ?></strong>
+                        </div>
+                        <div class="import-summary-card">
+                            <span>Guardians Linked</span>
+                            <strong><?= (int) $importSummary['parents_linked'] ?></strong>
                         </div>
                     </div>
                 </div>
@@ -976,60 +1136,14 @@ $vacantStalls = $db->query(
                     <label for="students_csv">CSV File</label>
                     <input type="file" id="students_csv" name="students_csv" accept=".csv,text/csv" required>
                     <p class="maintenance-help mb-0 mt-2">
-                        Imported students use their student ID number as the initial password and must change it on first login.
+                        Imported students use their student ID number as the initial password. Guardians (when provided)
+                        get a generated temporary password. Both are forced to change it on first login.
                     </p>
                     <div class="maintenance-btn-row">
                         <button class="maintenance-btn primary" type="submit">Preview CSV</button>
                     </div>
                 </form>
 
-                <?php if ($previewRows): ?>
-                <div class="student-preview">
-                    <div class="student-preview-head">
-                        <span>Preview: <?= maintenance_e($previewFileName ?: 'Uploaded CSV') ?></span>
-                        <span><?= count($previewRows) ?> parsed rows</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Row</th>
-                                    <th>Student ID</th>
-                                    <th>First Name</th>
-                                    <th>Last Name</th>
-                                    <th>Course</th>
-                                    <th>Email</th>
-                                    <th>Phone</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach (array_slice($previewRows, 0, 5) as $row): ?>
-                                <tr>
-                                    <td><?= (int) $row['row_number'] ?></td>
-                                    <td><?= maintenance_e($row['student_id_number']) ?></td>
-                                    <td><?= maintenance_e($row['first_name']) ?></td>
-                                    <td><?= maintenance_e($row['last_name']) ?></td>
-                                    <td><?= maintenance_e($row['course_program']) ?></td>
-                                    <td><?= maintenance_e($row['email']) ?></td>
-                                    <td><?= maintenance_e($row['phone_number']) ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="maintenance-btn-row">
-                    <form method="POST">
-                        <input type="hidden" name="student_import_action" value="import">
-                        <button class="maintenance-btn warning" type="submit">Import Students</button>
-                    </form>
-                    <form method="POST">
-                        <input type="hidden" name="student_import_action" value="clear_preview">
-                        <button class="maintenance-btn muted" type="submit">Clear Preview</button>
-                    </form>
-                </div>
-                <?php endif; ?>
             </div>
 
             <div class="maintenance-placeholder">
@@ -1042,10 +1156,12 @@ $vacantStalls = $db->query(
                 <?php if ($merchantSuccess): ?>
                 <div class="maintenance-alert success">
                     Merchant account created for
-                    <strong><?= maintenance_e($merchantSuccess['business_name']) ?></strong>.
-                    User ID: <strong><?= (int) $merchantSuccess['user_id'] ?></strong>,
-                    Username: <strong><?= maintenance_e($merchantSuccess['username']) ?></strong>,
-                    Email: <strong><?= maintenance_e($merchantSuccess['email']) ?></strong>.
+                    <strong><?= maintenance_e($merchantSuccess['business_name']) ?></strong>
+                    (User ID <strong><?= (int) $merchantSuccess['user_id'] ?></strong>).
+                    They sign in with email <strong><?= maintenance_e($merchantSuccess['email']) ?></strong>
+                    and temporary password
+                    <strong style="font-family:monospace;letter-spacing:.5px"><?= maintenance_e($merchantSuccess['temp_password']) ?></strong>.
+                    Share these with the merchant — they will be asked to set a new password on first login.
                 </div>
                 <?php endif; ?>
 
@@ -1057,6 +1173,121 @@ $vacantStalls = $db->query(
             </div>
         </section>
 
+        <!-- Import Preview Modal -->
+        <?php if ($previewRows && $previewReport): $rc = $previewReport['counts']; ?>
+        <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0" style="padding:20px 24px 6px">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="font-size:17px">
+                                <i class="fa-solid fa-file-csv me-2" style="color:var(--gjc-success)"></i>Import Preview
+                            </h5>
+                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">
+                                <?= maintenance_e($previewFileName ?: 'Uploaded CSV') ?> — <?= (int) $rc['total'] ?> parsed row<?= $rc['total'] !== 1 ? 's' : '' ?>, reviewed before anything is written.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:12px 24px 8px">
+                        <div class="import-summary-grid">
+                            <div class="import-summary-card"><span>Total</span><strong><?= (int) $rc['total'] ?></strong></div>
+                            <div class="import-summary-card"><span>Ready</span><strong><?= (int) $rc['ready'] ?></strong></div>
+                            <div class="import-summary-card"><span>Duplicates</span><strong><?= (int) $rc['duplicate'] ?></strong></div>
+                            <div class="import-summary-card"><span>Errors</span><strong><?= (int) $rc['error'] ?></strong></div>
+                            <div class="import-summary-card"><span>With Guardian</span><strong><?= (int) $rc['with_parent'] ?></strong></div>
+                        </div>
+
+                        <?php if ($previewReport['has_errors']): ?>
+                        <div class="maintenance-alert error">
+                            <?= (int) $rc['error'] ?> row(s) have validation errors (highlighted below). Fix them in the CSV
+                            and upload again — the import stays blocked until every row is valid.
+                        </div>
+                        <?php endif; ?>
+
+                        <div class="table-responsive" style="max-height:52vh;overflow:auto">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Row</th>
+                                        <th>Status</th>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Course</th>
+                                        <th>Email</th>
+                                        <th>Guardian</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach (array_slice($previewReport['rows'], 0, 100) as $entry): $r = $entry['data']; ?>
+                                    <tr class="<?= $entry['status'] === 'error' ? 'table-danger' : ($entry['status'] === 'duplicate' ? 'table-warning' : '') ?>">
+                                        <td><?= (int) $entry['row_number'] ?></td>
+                                        <td>
+                                            <?php if ($entry['status'] === 'ready'): ?>
+                                                <span class="badge bg-success">Ready</span>
+                                            <?php elseif ($entry['status'] === 'duplicate'): ?>
+                                                <span class="badge bg-warning text-dark">Duplicate</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger">Error</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= maintenance_e($r['student_id_number']) ?></td>
+                                        <td><?= maintenance_e(trim(preg_replace('/\s+/', ' ', $r['first_name'] . ' ' . $r['last_name'] . ' ' . ($r['suffix'] ?? '')))) ?></td>
+                                        <td><?= maintenance_e($r['course_program']) ?></td>
+                                        <td><?= maintenance_e($r['email']) ?></td>
+                                        <td>
+                                            <?php if ($entry['parent_action'] === 'link'): ?>
+                                                <span title="<?= maintenance_e($r['parent_email']) ?>">
+                                                    <i class="fa-solid fa-user-shield" style="color:var(--gjc-success)"></i>
+                                                    <?= maintenance_e($r['parent_name'] ?: $r['parent_email']) ?>
+                                                </span>
+                                            <?php elseif ($entry['parent_action'] === 'skip'): ?>
+                                                <span class="text-warning" title="<?= maintenance_e($entry['parent_message']) ?>">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> skipped
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="font-size:12px"><?= maintenance_e(trim($entry['message'] . ' ' . ($entry['parent_action'] === 'skip' ? $entry['parent_message'] : ''))) ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php if (count($previewReport['rows']) > 100): ?>
+                        <p class="maintenance-help mb-0">Showing the first 100 of <?= count($previewReport['rows']) ?> rows.</p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="modal-footer border-0" style="padding:8px 24px 22px">
+                        <form method="POST" style="margin:0">
+                            <input type="hidden" name="student_import_action" value="clear_preview">
+                            <button class="maintenance-btn muted" type="submit">Clear Preview</button>
+                        </form>
+                        <?php if ($previewReport['has_errors']): ?>
+                            <button class="maintenance-btn warning" type="button" disabled
+                                    title="Resolve the highlighted validation errors first">
+                                Import Blocked — Fix <?= (int) $rc['error'] ?> Error<?= $rc['error'] !== 1 ? 's' : '' ?>
+                            </button>
+                        <?php elseif ((int) $rc['ready'] === 0): ?>
+                            <button class="maintenance-btn muted" type="button" disabled>
+                                No New Students to Import
+                            </button>
+                        <?php else: ?>
+                            <form method="POST" style="margin:0">
+                                <input type="hidden" name="student_import_action" value="import">
+                                <button class="maintenance-btn warning" type="submit">
+                                    Import <?= (int) $rc['ready'] ?> Student<?= $rc['ready'] !== 1 ? 's' : '' ?><?php if ($rc['duplicate']): ?> (<?= (int) $rc['duplicate'] ?> dup skipped)<?php endif; ?>
+                                </button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Add Merchant Modal -->
         <div class="modal fade" id="addMerchantModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
@@ -1066,7 +1297,7 @@ $vacantStalls = $db->query(
                             <h5 class="modal-title fw-bold" style="font-size:17px">
                                 <i class="fa-solid fa-store me-2" style="color:var(--gjc-success)"></i>Add Merchant
                             </h5>
-                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">Credentials are set directly — no verification email is sent.</p>
+                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">Same details as the public application, but approved instantly — the account is created and ready to use right away.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -1097,6 +1328,14 @@ $vacantStalls = $db->query(
                                     <div>
                                         <label for="merchant_suffix">Suffix</label>
                                         <input type="text" id="merchant_suffix" name="merchant_suffix" maxlength="20" placeholder="e.g. Jr., Sr., III">
+                                    </div>
+                                    <div>
+                                        <label for="merchant_sex">Sex *</label>
+                                        <select id="merchant_sex" name="merchant_sex" required>
+                                            <option value="">Select…</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -1130,19 +1369,9 @@ $vacantStalls = $db->query(
 
                             <div class="mbf-section">
                                 <div class="mbf-section-eyebrow"><i class="fa-solid fa-key"></i> Login credentials</div>
-                                <div class="maintenance-form-grid">
-                                    <div class="full">
-                                        <label for="merchant_username">Username *</label>
-                                        <input type="text" id="merchant_username" name="merchant_username" minlength="3" maxlength="80" required>
-                                    </div>
-                                    <div>
-                                        <label for="merchant_password">Password *</label>
-                                        <input type="password" id="merchant_password" name="merchant_password" minlength="6" required>
-                                    </div>
-                                    <div>
-                                        <label for="merchant_confirm_password">Confirm Password *</label>
-                                        <input type="password" id="merchant_confirm_password" name="merchant_confirm_password" minlength="6" required>
-                                    </div>
+                                <div class="mbf-credentials-note">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                    <span>The merchant signs in with the email above. A temporary password is generated automatically and shown here once the account is created — share it with the merchant, who will be prompted to set a new password on first login.</span>
                                 </div>
                             </div>
 
@@ -1304,6 +1533,129 @@ $vacantStalls = $db->query(
             </div>
         </div>
 
+        <!-- Section D: Link Parent to Student -->
+        <section class="maintenance-placeholder" style="margin-top:14px">
+            <span class="section-tag">Section D</span>
+            <h3>Link Parent to Student</h3>
+            <p class="maintenance-help">
+                Connect an existing parent account to a student by the student's school ID. Parents can also self-link
+                from their own dashboard — this is the admin shortcut for accounts made via Add User or bulk import.
+            </p>
+
+            <?php if ($parentLinkError !== ''): ?>
+            <div class="maintenance-alert error"><?= maintenance_e($parentLinkError) ?></div>
+            <?php endif; ?>
+            <?php if ($parentLinkSuccess !== ''): ?>
+            <div class="maintenance-alert success"><?= maintenance_e($parentLinkSuccess) ?></div>
+            <?php endif; ?>
+
+            <?php if (empty($parentAccounts)): ?>
+            <div class="maintenance-alert" style="background:#f8fafc;border:1px solid #e5e7eb;color:#475569">
+                No parent accounts exist yet. Create one via <strong>Users → Add User</strong> (role: Parent),
+                or import students with the <strong>parent_*</strong> columns filled in.
+            </div>
+            <?php else: ?>
+            <form class="merchant-bypass-form" method="POST">
+                <input type="hidden" name="parent_link_action" value="link">
+                <div class="maintenance-form-grid">
+                    <div class="full parent-search-wrap">
+                        <label for="parent_search">Parent Account</label>
+                        <input type="text" id="parent_search" placeholder="Search parent by name or email…" autocomplete="off">
+                        <input type="hidden" name="parent_user_id" id="parent_user_id" value="">
+                        <div id="parent_results" class="parent-search-results" style="display:none"></div>
+                        <div id="parent_selected" class="parent-search-selected" style="display:none"></div>
+                    </div>
+                    <div class="full">
+                        <label for="student_school_id">Student School ID</label>
+                        <input type="text" id="student_school_id" name="student_school_id"
+                               placeholder="e.g. GJC2026-2001" maxlength="30" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="maintenance-btn-row">
+                    <button class="maintenance-btn primary" type="submit">
+                        <i class="fa-solid fa-link" style="margin-right:6px"></i>Link Parent to Student
+                    </button>
+                </div>
+            </form>
+            <?php endif; ?>
+
+            <div class="student-preview" style="margin-top:16px">
+                <div class="student-preview-head">
+                    <span>Existing Links</span>
+                    <span><?= count($parentLinks) ?> link<?= count($parentLinks) !== 1 ? 's' : '' ?></span>
+                </div>
+                <?php if (empty($parentLinks)): ?>
+                <div style="padding:14px 12px"><p class="maintenance-help" style="margin:0">No parent–student links yet.</p></div>
+                <?php else: ?>
+                <div class="table-responsive" style="max-height:360px;overflow:auto">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Parent</th>
+                                <th>Parent Email</th>
+                                <th>Student</th>
+                                <th>Student ID</th>
+                                <th>Linked</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($parentLinks as $lk): ?>
+                            <tr>
+                                <td><?= maintenance_e(trim($lk['p_first'] . ' ' . $lk['p_last']) ?: '—') ?></td>
+                                <td><?= maintenance_e($lk['p_email']) ?></td>
+                                <td><?= maintenance_e(trim($lk['s_first'] . ' ' . $lk['s_last']) ?: '—') ?></td>
+                                <td><?= maintenance_e($lk['studentID'] ?? '—') ?></td>
+                                <td style="font-size:12px;white-space:nowrap"><?= maintenance_e($lk['linked_at']) ?></td>
+                                <td>
+                                    <button type="button" class="maintenance-btn muted js-unlink-btn" style="padding:4px 10px" title="Unlink"
+                                            data-link-id="<?= (int) $lk['link_id'] ?>"
+                                            data-parent="<?= maintenance_e(trim($lk['p_first'] . ' ' . $lk['p_last']) ?: 'this parent') ?>"
+                                            data-student="<?= maintenance_e(trim($lk['s_first'] . ' ' . $lk['s_last']) ?: 'this student') ?>"
+                                            data-bs-toggle="modal" data-bs-target="#unlinkModal">
+                                        <i class="fa-solid fa-link-slash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <!-- Unlink Confirmation Modal -->
+        <div class="modal fade" id="unlinkModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0" style="padding:20px 24px 0">
+                        <h5 class="modal-title fw-bold" style="font-size:17px">
+                            <i class="fa-solid fa-link-slash me-2" style="color:var(--gjc-danger)"></i>Remove Link
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:14px 24px 24px">
+                        <p style="font-size:13px;color:var(--gjc-muted);line-height:1.55;margin-bottom:18px">
+                            Unlink <strong id="unlinkStudentName">this student</strong> from
+                            <strong id="unlinkParentName">this parent</strong>? The parent will no longer see this
+                            student's wallet, ledger, or spending controls.
+                        </p>
+                        <form method="POST" style="margin:0">
+                            <input type="hidden" name="parent_link_action" value="unlink">
+                            <input type="hidden" name="link_id" id="unlinkLinkId" value="">
+                            <div class="maintenance-btn-row" style="justify-content:flex-end">
+                                <button type="button" class="maintenance-btn muted" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="maintenance-btn warning">
+                                    <i class="fa-solid fa-link-slash" style="margin-right:6px"></i>Unlink
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
@@ -1320,19 +1672,15 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 <?php endif; ?>
 
+<?php if ($previewRows && $previewReport): ?>
+document.addEventListener('DOMContentLoaded', function () {
+    var pm = document.getElementById('previewModal');
+    if (pm) new bootstrap.Modal(pm).show();
+});
+<?php endif; ?>
+
 // ── Prohibited Products ─────────────────────────────────────────────────────
 const RP_API = '<?= ADMIN_URL ?>/api/restricted_products.php';
-
-const RP_ICONS = {
-    beverage:'fa-mug-hot', drink:'fa-bottle-water', snack:'fa-cookie-bite',
-    food:'fa-burger', alcohol:'fa-wine-glass', tobacco:'fa-smoking',
-    supplement:'fa-pills', medicine:'fa-capsules', candy:'fa-candy-cane',
-    general:'fa-ban'
-};
-
-function rpIcon(cat) {
-    return RP_ICONS[cat.toLowerCase()] || 'fa-ban';
-}
 
 async function rpToggle(id, newActive) {
     const row = document.getElementById('rp-card-' + id);
@@ -1452,7 +1800,94 @@ function rpUpdateCount(delta) {
     badge.textContent = next + ' item' + (next !== 1 ? 's' : '');
 }
 
+// ── Parent → Student linking ────────────────────────────────────────────────
+// Populate the shared unlink modal with the row that triggered it.
+(function () {
+    const modal = document.getElementById('unlinkModal');
+    if (!modal) return;
+    modal.addEventListener('show.bs.modal', function (event) {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+        document.getElementById('unlinkLinkId').value        = btn.getAttribute('data-link-id') || '';
+        document.getElementById('unlinkStudentName').textContent = btn.getAttribute('data-student') || 'this student';
+        document.getElementById('unlinkParentName').textContent  = btn.getAttribute('data-parent') || 'this parent';
+    });
+})();
 
+// Type-to-search parent picker (client-side over the loaded parent list).
+(function () {
+    const input = document.getElementById('parent_search');
+    if (!input) return;
+    const hidden   = document.getElementById('parent_user_id');
+    const results  = document.getElementById('parent_results');
+    const selected = document.getElementById('parent_selected');
+    const PARENTS  = <?= json_encode(array_map(static fn($pa) => [
+        'id'    => (int) $pa['userID'],
+        'name'  => trim($pa['first_name'] . ' ' . $pa['last_name']) ?: 'Parent',
+        'email' => (string) $pa['email'],
+    ], $parentAccounts), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+
+    const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+    function clearSelection() {
+        hidden.value = '';
+        selected.style.display = 'none';
+        selected.textContent = '';
+    }
+
+    function closeResults() { results.style.display = 'none'; results.innerHTML = ''; }
+
+    input.addEventListener('input', function () {
+        clearSelection();
+        const q = input.value.trim().toLowerCase();
+        if (q === '') { closeResults(); return; }
+        const matches = PARENTS.filter(p =>
+            p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+        ).slice(0, 8);
+        if (!matches.length) {
+            results.innerHTML = '<div class="parent-search-empty">No parents match “' + esc(input.value.trim()) + '”.</div>';
+        } else {
+            results.innerHTML = matches.map(p =>
+                '<div class="parent-search-item" data-id="' + p.id + '">' +
+                    '<strong>' + esc(p.name) + '</strong><span>' + esc(p.email) + '</span>' +
+                '</div>'
+            ).join('');
+        }
+        results.style.display = 'block';
+    });
+
+    results.addEventListener('click', function (e) {
+        const item = e.target.closest('.parent-search-item');
+        if (!item) return;
+        const p = PARENTS.find(x => String(x.id) === item.getAttribute('data-id'));
+        if (!p) return;
+        hidden.value = String(p.id);
+        input.value  = p.name + ' — ' + p.email;
+        closeResults();
+        selected.style.color = '';
+        selected.textContent = '✓ Selected ' + p.name;
+        selected.style.display = 'block';
+    });
+
+    // Close the dropdown when clicking outside the picker.
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.parent-search-wrap')) closeResults();
+    });
+
+    // Require a chosen parent before the form can submit.
+    const form = input.closest('form');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!hidden.value) {
+                e.preventDefault();
+                input.focus();
+                selected.style.color = 'var(--gjc-danger)';
+                selected.textContent = 'Please pick a parent from the search results.';
+                selected.style.display = 'block';
+            }
+        });
+    }
+})();
 </script>
 </body>
 </html>
