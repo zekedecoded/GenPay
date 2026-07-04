@@ -522,10 +522,29 @@ class VoucherEngine
     {
         $where = $status === 'all' ? '' : "WHERE status = " . $this->db->quote($status);
 
+        // Same result the old `v_vouchers_active` view produced, but computed
+        // inline so the app has no dependency on a database view.
         $stmt = $this->db->prepare(
-            "SELECT * FROM v_vouchers_active {$where}
-         ORDER BY created_at DESC
-         LIMIT ? OFFSET ?"
+            "SELECT * FROM (
+                SELECT
+                    v.id, v.voucher_code, v.visitor_name, v.visitor_contact,
+                    v.initial_value, v.remaining_balance, v.status, v.is_refundable,
+                    v.created_at, v.expires_at,
+                    TIMESTAMPDIFF(MINUTE, NOW(), v.expires_at) AS minutes_until_expiry,
+                    CASE
+                        WHEN v.status <> 'active'        THEN v.status
+                        WHEN NOW() > v.expires_at        THEN 'expired_pending'
+                        WHEN v.remaining_balance <= 0    THEN 'fully_redeemed'
+                        ELSE 'active'
+                    END AS computed_status,
+                    CONCAT(u.first_name, ' ', u.last_name) AS issued_by_name,
+                    v.use_count
+                FROM vouchers v
+                LEFT JOIN users u ON u.userID = v.issued_by
+            ) AS voucher_list
+            {$where}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?"
         );
 
         $stmt->execute([$limit, $offset]);

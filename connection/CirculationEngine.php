@@ -682,17 +682,8 @@ class CirculationEngine
     
     public function getCirculationSnapshot(): array
     {
-        foreach (['v_circulation_health', 'v_circulation_snapshot'] as $view) {
-            try {
-                $row = $this->db->query("SELECT * FROM {$view}")->fetch();
-                if ($row) {
-                    return $row;
-                }
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
+        // Circulation health is computed in PHP (buildCirculationSnapshot),
+        // so the app has no dependency on any database view.
         return $this->buildCirculationSnapshot();
     }
     

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/audit_logger.php';
+require_once __DIR__ . '/../connection/mailer.php';
 
 gjc_require_role(['finance']);
 gjc_ensure_audit_table($db);
@@ -545,6 +546,50 @@ function maintenance_temp_password(int $length = 10): string
 }
 
 /**
+ * Emails a newly-created guardian their login credentials. Mirrors the merchant
+ * credentials mail in admin/api/stall_applications.php. Returns true on success;
+ * any SMTP failure is swallowed and reported as false so a bad address never
+ * derails an import that has already committed.
+ */
+function maintenance_send_guardian_credentials(string $email, string $name, string $tempPassword): bool
+{
+    if ($email === '' || $tempPassword === '') {
+        return false;
+    }
+
+    $loginUrl  = defined('BASE_URL') ? rtrim(BASE_URL, '/') . '/login' : '/login';
+    $safeName  = htmlspecialchars($name !== '' ? $name : 'Guardian', ENT_QUOTES, 'UTF-8');
+    $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+    $safePass  = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
+
+    try {
+        $mail = gjc_mailer();
+        $mail->addAddress($email, $name !== '' ? $name : 'Guardian');
+        $mail->Subject = 'GenPay - Parent Account Credentials';
+        $mail->Body = '
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
+                <h2 style="color:#064420;margin-top:0">Your GenPay Parent Account</h2>
+                <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+                <p style="color:#374151;line-height:1.7">A GenPay parent account has been created so you can monitor and manage your child\'s wallet.</p>
+                <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
+                    <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#86efac;text-transform:uppercase">Login Credentials</p>
+                    <p style="margin:0"><strong>Email:</strong> ' . $safeEmail . '</p>
+                    <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . $safePass . '</p>
+                </div>
+                <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
+                <p style="color:#374151">Login page: <a href="' . $loginUrl . '" style="color:#16a34a">' . $loginUrl . '</a></p>
+                <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+            </div>';
+        $mail->AltBody = "Dear {$name},\n\nA GenPay parent account has been created so you can monitor and manage your child's wallet.\n\nEmail: {$email}\nTemporary Password: {$tempPassword}\n\nLog in at {$loginUrl}. You must change your password on first login.\n\nGenPay Team";
+        $mail->send();
+        return true;
+    } catch (Throwable $mailEx) {
+        error_log('[maintenance] guardian credentials email failed for ' . $email . ': ' . $mailEx->getMessage());
+        return false;
+    }
+}
+
+/**
  * Records an admin-created merchant as an already-approved stall application, so
  * it matches a merchant onboarded through the public form + approval. This is the
  * only home for fields like sex / proprietor_name (no column on users/merchant).
@@ -683,9 +728,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'failed'          => 0,
                 'parents_created' => 0,
                 'parents_linked'  => 0,
+                'parents_emailed' => 0,
+                'parents_email_failed' => 0,
             ];
             $createdUserIds = [];
             $parentCache    = [];
+            // Guardians whose accounts were freshly created in this batch; their
+            // temp-password emails are sent AFTER commit so SMTP latency never
+            // holds a DB lock open and a bad address can't roll back the import.
+            $guardianEmailQueue = [];
 
             $studentInfoInsert = $db->prepare(
                 "INSERT INTO student_info (userID, studentID, yr_lvl, courseID) VALUES (?, ?, '1', ?)"
@@ -747,6 +798,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                                     $summary['parents_created']++;
                                     $parentStatus = 'created';
                                     $message .= ' Guardian created & linked.';
+                                    // Queue the credentials email (sent after commit).
+                                    if (!empty($provision['temp_password'])) {
+                                        $guardianEmailQueue[$provision['parent_user_id']] = [
+                                            'email'    => (string) $row['parent_email'],
+                                            'name'     => (string) $row['parent_name'],
+                                            'password' => (string) $provision['temp_password'],
+                                        ];
+                                    }
                                 }
                             } else {
                                 $parentStatus = 'skipped';
@@ -783,6 +842,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 throw $importFailure;
             }
 
+            // The batch is committed. Now email each newly-created guardian their
+            // temporary password. A failure here never affects imported data — it
+            // only bumps the "email failed" counter shown in the summary.
+            foreach ($guardianEmailQueue as $guardian) {
+                if (maintenance_send_guardian_credentials($guardian['email'], $guardian['name'], $guardian['password'])) {
+                    $summary['parents_emailed']++;
+                } else {
+                    $summary['parents_email_failed']++;
+                }
+            }
+
             logAudit(
                 $db,
                 (int) $currentUser['id'],
@@ -799,6 +869,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     'failed'           => $summary['failed'],
                     'parents_created'  => $summary['parents_created'],
                     'parents_linked'   => $summary['parents_linked'],
+                    'parents_emailed'  => $summary['parents_emailed'],
+                    'parents_email_failed' => $summary['parents_email_failed'],
                     'created_user_ids' => $createdUserIds,
                 ]
             );
@@ -1127,7 +1199,18 @@ $vacantStalls = $db->query(
                             <span>Guardians Linked</span>
                             <strong><?= (int) $importSummary['parents_linked'] ?></strong>
                         </div>
+                        <div class="import-summary-card">
+                            <span>Credentials Emailed</span>
+                            <strong><?= (int) ($importSummary['parents_emailed'] ?? 0) ?></strong>
+                        </div>
                     </div>
+                    <?php if ((int) ($importSummary['parents_email_failed'] ?? 0) > 0): ?>
+                        <p style="margin:10px 0 0;color:var(--gjc-danger);font-size:12px">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <?= (int) $importSummary['parents_email_failed'] ?> credential email(s) could not be sent.
+                            Those guardians' temporary passwords are still saved and can be retrieved from the import registry.
+                        </p>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -1137,7 +1220,7 @@ $vacantStalls = $db->query(
                     <input type="file" id="students_csv" name="students_csv" accept=".csv,text/csv" required>
                     <p class="maintenance-help mb-0 mt-2">
                         Imported students use their student ID number as the initial password. Guardians (when provided)
-                        get a generated temporary password. Both are forced to change it on first login.
+                        get a generated temporary password emailed to them automatically. Both are forced to change it on first login.
                     </p>
                     <div class="maintenance-btn-row">
                         <button class="maintenance-btn primary" type="submit">Preview CSV</button>
