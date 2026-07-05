@@ -1,20 +1,13 @@
 <?php
 // ============================================================
 //  admin/stall_applications.php
-//  Unified 4-step stall application pipeline (Bootstrap 5 native).
-//  Source requirement: adviser feedback session (SIR EMMAN 4.mp3)
+//  ONE-STOP stall application management.
 //
-//  Step 1: Review Requirements   - Accept / Decline
-//  Step 2: Meeting                - Accept / Decline
-//  Step 3: Down Payment          - Next (forward-only)
-//  Step 4: Approval / Award      - Approve & Award (forward-only)
+//  Submit -> meeting auto-scheduled at submission -> single in-person meeting
+//  (verify docs + sign contract + pay) -> Awarded.
 //
-//  Only in-flight submissions are listed here - once an application is
-//  awarded (status='active') it becomes a merchant account and is managed
-//  from admin/users.php instead, not this tab.
-//
-//  Each "Next" action auto-saves via fetch to admin/api/stall_applications.php
-//  and re-renders the affected row in place (no full page reload).
+//  Two visible statuses: Pending for Verification and Awarded. Rejected and
+//  Cancelled are kept as records (daily log / history) but are internal.
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -26,40 +19,55 @@ require_once __DIR__ . "/../connection/StallManager.php";
 
 gjc_require_role(["finance"]);
 gjc_ensure_stall_application_workflow_schema($db);
-gjc_ensure_archived_rejections_schema($db);
 gjc_ensure_meeting_scheduling_schema($db);
 $currentUser = gjc_current_user($db);
 $currentPage = "stall_applications";
 $adminId = gjc_user_id();
 
-// Only submitted, not-yet-awarded applications - awarded ones are merchant
-// accounts now and live under Users, not here.
-$apps = $db
-    ->query(
-        "SELECT sa.*, s.label AS stall_label
-     FROM stall_applications sa
-     LEFT JOIN stalls s ON s.stall_id = sa.stall_id
-     WHERE sa.status NOT IN ('active', 'expired')
-     ORDER BY sa.current_step ASC, sa.created_at ASC",
-    )
-    ->fetchAll(PDO::FETCH_ASSOC);
+$apps = $db->query(
+    "SELECT sa.*, s.label AS stall_label, s.monthly_rate AS stall_rate
+       FROM stall_applications sa
+       LEFT JOIN stalls s ON s.stall_id = sa.stall_id
+      WHERE sa.status IN ('pending_verification','awarded','rejected','cancelled')
+      ORDER BY (sa.status = 'pending_verification') DESC, sa.meetup_scheduled_at ASC, sa.created_at DESC"
+)->fetchAll(PDO::FETCH_ASSOC);
 
-// Vacant stalls available for assignment at Step 4
+// Vacant stalls available for assignment at award.
 $stallMgr = new StallManager($db);
 $vacantStalls = array_values(
-    array_filter($stallMgr->allStalls(), fn($s) => $s["status"] === "vacant"),
+    array_filter($stallMgr->allStalls(), fn($s) => $s["status"] === "vacant")
 );
 
-$archivedCount = (int) $db
-    ->query("SELECT COUNT(*) FROM archived_rejections WHERE reactivated = 0")
-    ->fetchColumn();
+// Today's meetings — the appointment log the admin works from, time-ordered.
+$today = date("Y-m-d");
+$todaySchedule = array_values(array_filter(
+    $apps,
+    fn($a) => $a["meetup_scheduled_at"] && substr($a["meetup_scheduled_at"], 0, 10) === $today
+));
+usort($todaySchedule, fn($a, $b) => strcmp((string) $a["meetup_scheduled_at"], (string) $b["meetup_scheduled_at"]));
 
-const STEP_LABELS = [
-    1 => "Review Requirements",
-    2 => "Meeting",
-    3 => "Down Payment",
-    4 => "Approval / Award",
+$statusCounts = ["pending_verification" => 0, "awarded" => 0, "rejected" => 0, "cancelled" => 0];
+foreach ($apps as $a) {
+    if (isset($statusCounts[$a["status"]])) {
+        $statusCounts[$a["status"]]++;
+    }
+}
+
+$STATUS_META = [
+    "pending_verification" => ["label" => "Pending for Verification", "badge" => "warning", "icon" => "fa-hourglass-half"],
+    "awarded"              => ["label" => "Awarded",                   "badge" => "success", "icon" => "fa-circle-check"],
+    "rejected"             => ["label" => "Rejected",                  "badge" => "danger",  "icon" => "fa-circle-xmark"],
+    "cancelled"            => ["label" => "Cancelled",                 "badge" => "secondary", "icon" => "fa-ban"],
 ];
+
+function sa_meeting_label(?string $dt): string
+{
+    if (!$dt) {
+        return '<span class="text-muted">&mdash;</span>';
+    }
+    $ts = strtotime($dt);
+    return '<span class="fw-semibold">' . date("M j, Y", $ts) . '</span><br><span class="small text-muted">' . date("g:i A", $ts) . '</span>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,7 +82,29 @@ const STEP_LABELS = [
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=2">
+    <style>
+    .sa-kpi { border:1px solid #e5e7eb; border-radius:16px; padding:16px 18px; background:#fff; }
+    .sa-kpi .n { font-size:28px; font-weight:800; line-height:1; }
+    .sa-kpi .l { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; }
+    .today-card { border:1px solid #e5e7eb; border-radius:16px; background:#fff; overflow:hidden; }
+    .today-head { padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; }
+    .today-item { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid #f6f7f9; cursor:pointer; transition:.12s; }
+    .today-item:last-child { border-bottom:0; }
+    .today-item:hover { background:#f0fdf4; }
+    .today-time { min-width:78px; font-weight:800; color:#064420; }
+    .today-who { flex:1; min-width:0; }
+    .today-who .b { font-weight:700; }
+    .today-who .p { font-size:12px; color:#6b7280; }
+    .sa-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+    .sa-doc { border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff; }
+    .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; font-size:12px; font-weight:700; border-bottom:1px solid #f1f5f9; }
+    .sa-doc iframe { width:100%; height:180px; border:0; display:block; background:#1e1e1e; }
+    .sa-section { border:1px solid #e5e7eb; border-radius:14px; padding:16px; }
+    .sa-section h6 { font-weight:800; margin-bottom:12px; }
+    .sa-done-pill { font-size:11px; font-weight:800; color:#166534; background:#dcfce7; border-radius:999px; padding:3px 10px; }
+    .filter-btn.active { background:#064420; color:#fff; border-color:#064420; }
+    </style>
 </head>
 <body>
 <div class="admin-layout">
@@ -85,307 +115,192 @@ const STEP_LABELS = [
             <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Stall Applications</h1>
-                <p>Manage incoming vendor applications.</p>
+                <p>One-stop verification: documents, contract, and payment in a single meeting.</p>
             </div>
-
             <div class="admin-user">
                 <span><?= gjc_e($currentUser["name"]) ?></span>
                 <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
 
-        <!-- Search, sort, and archived rejections - kept out of the topbar
-             so it stays consistent with every other admin page. -->
-        <div class="app-toolbar">
-            <div class="input-group input-group-sm app-toolbar-search">
+        <!-- Two visible KPIs -->
+        <section class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="sa-kpi">
+                    <div class="l"><i class="fa-solid fa-hourglass-half text-warning me-1"></i> Pending Verification</div>
+                    <div class="n mt-2"><?= $statusCounts["pending_verification"] ?></div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="sa-kpi">
+                    <div class="l"><i class="fa-solid fa-circle-check text-success me-1"></i> Awarded (Active Tenants)</div>
+                    <div class="n mt-2"><?= $statusCounts["awarded"] ?></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Today's schedule -->
+        <section class="today-card mb-4">
+            <div class="today-head">
+                <div>
+                    <h5 class="mb-0 fw-bold"><i class="fa-solid fa-calendar-day text-success me-2"></i>Today's Schedule</h5>
+                    <div class="small text-muted"><?= date("l, F j, Y") ?> &middot; meetings in time order</div>
+                </div>
+                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle"><?= count($todaySchedule) ?> meeting<?= count($todaySchedule) === 1 ? "" : "s" ?></span>
+            </div>
+            <?php if (empty($todaySchedule)): ?>
+            <div class="p-4 text-center text-muted">No meetings scheduled for today.</div>
+            <?php else: ?>
+                <?php foreach ($todaySchedule as $a): $m = $STATUS_META[$a["status"]]; ?>
+                <div class="today-item" onclick="openApp(<?= (int) $a["id"] ?>)">
+                    <div class="today-time"><?= date("g:i A", strtotime($a["meetup_scheduled_at"])) ?></div>
+                    <div class="today-who">
+                        <div class="b"><?= gjc_e($a["business_name"]) ?></div>
+                        <div class="p"><?= gjc_e($a["proprietor_name"]) ?> &middot; <?= gjc_e($a["contact_number"]) ?></div>
+                    </div>
+                    <span class="badge bg-<?= $m["badge"] ?>"><i class="fa-solid <?= $m["icon"] ?> me-1"></i><?= $m["label"] ?></span>
+                    <button type="button" class="btn btn-sm btn-outline-success ms-2">Open</button>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </section>
+
+        <!-- Toolbar: search + status filter -->
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+            <div class="input-group input-group-sm" style="max-width:320px">
                 <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
                 <input type="search" id="appSearch" class="form-control" placeholder="Search business, proprietor, or email&hellip;">
             </div>
-
-            <div class="input-group input-group-sm app-toolbar-sort">
-                <label class="input-group-text bg-white" for="appSort">Sort</label>
-                <select id="appSort" class="form-select">
-                    <option value="submitted_desc">Date Submitted (Newest)</option>
-                    <option value="submitted_asc">Date Submitted (Oldest)</option>
-                    <option value="business_asc">Business Name (A&ndash;Z)</option>
-                    <option value="business_desc">Business Name (Z&ndash;A)</option>
-                    <option value="proprietor_asc">Proprietor (A&ndash;Z)</option>
-                    <option value="proprietor_desc">Proprietor (Z&ndash;A)</option>
-                </select>
+            <div class="btn-group btn-group-sm ms-auto flex-wrap" role="group" id="statusFilter">
+                <button type="button" class="btn btn-outline-secondary filter-btn active" data-status="all">All (<?= count($apps) ?>)</button>
+                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="pending_verification">Pending (<?= $statusCounts["pending_verification"] ?>)</button>
+                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="awarded">Awarded (<?= $statusCounts["awarded"] ?>)</button>
+                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="rejected">Rejected (<?= $statusCounts["rejected"] ?>)</button>
+                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="cancelled">Cancelled (<?= $statusCounts["cancelled"] ?>)</button>
             </div>
-
-            <button type="button" class="btn btn-outline-secondary btn-sm app-toolbar-archived" data-bs-toggle="modal" data-bs-target="#archivedModal" onclick="loadArchived()">
-                Archived Rejections <span class="badge bg-danger ms-1"><?= $archivedCount ?></span>
-            </button>
         </div>
 
-        <!-- Filter by pipeline step (cards) -->
-        <section class="row g-3 mb-3" id="stepFilterCards">
-            <div class="col-6 col-md">
-                <button type="button" class="step-filter-card active" data-step="0">
-                    <span class="sfc-count"><?= count($apps) ?></span>
-                    <span class="sfc-label">All Applications</span>
-                </button>
-            </div>
-            <?php foreach (STEP_LABELS as $stepNum => $stepLabel): ?>
-            <div class="col-6 col-md">
-                <button type="button" class="step-filter-card" data-step="<?= $stepNum ?>">
-                    <span class="sfc-count"><?= count(
-                        array_filter(
-                            $apps,
-                            fn($a) => (int) $a["current_step"] === $stepNum,
-                        ),
-                    ) ?></span>
-                    <span class="sfc-label"><?= htmlspecialchars(
-                        $stepLabel,
-                    ) ?></span>
-                </button>
-            </div>
-            <?php endforeach; ?>
-        </section>
-
-        <?php if (empty($apps)): ?>
-        <div class="text-center text-muted py-5">
-            <p class="fs-5 fw-semibold">No submitted applications awaiting review.</p>
-        </div>
-        <?php else: ?>
         <div class="card shadow-sm">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:2rem"></th>
                             <th>Business</th>
                             <th>Proprietor</th>
                             <th>Contact</th>
-                            <th>Current Step</th>
-                            <th>Date Submitted</th>
+                            <th>Meeting Schedule</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="appTableBody">
-                        <?php foreach ($apps as $app): ?>
-                        <tr class="app-row" data-app-id="<?= (int) $app[
-                            "id"
-                        ] ?>"
-                            data-step="<?= (int) $app["current_step"] ?>"
-                            data-search="<?= htmlspecialchars(
-                                strtolower(
-                                    $app["business_name"] .
-                                        " " .
-                                        $app["proprietor_name"] .
-                                        " " .
-                                        $app["email"],
-                                ),
-                            ) ?>"
-                            data-bs-toggle="collapse" data-bs-target="#detail-<?= (int) $app[
-                                "id"
-                            ] ?>" aria-expanded="false">
-                            <td><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></td>
-                            <td class="fw-semibold"><?= htmlspecialchars(
-                                $app["business_name"],
-                            ) ?></td>
-                            <td><?= htmlspecialchars(
-                                $app["proprietor_name"],
-                            ) ?></td>
-                            <td class="small text-muted"><?= htmlspecialchars(
-                                $app["contact_number"],
-                            ) ?><br><?= htmlspecialchars($app["email"]) ?></td>
-                            <td><span class="badge bg-danger step-badge">Step <?= (int) $app[
-                                "current_step"
-                            ] ?> &middot; <?= STEP_LABELS[
-     (int) $app["current_step"]
- ] ?></span></td>
-                            <td class="small text-muted"><?= date(
-                                "M j, Y",
-                                strtotime($app["created_at"]),
-                            ) ?></td>
+                        <?php if (empty($apps)): ?>
+                        <tr><td colspan="7" class="text-center text-muted py-4">No applications yet.</td></tr>
+                        <?php else: foreach ($apps as $app): $m = $STATUS_META[$app["status"]]; ?>
+                        <tr class="app-row" data-app-id="<?= (int) $app["id"] ?>"
+                            data-status="<?= $app["status"] ?>"
+                            data-search="<?= htmlspecialchars(strtolower($app["business_name"] . " " . $app["proprietor_name"] . " " . $app["email"])) ?>"
+                            style="cursor:pointer" onclick="openApp(<?= (int) $app["id"] ?>)">
+                            <td class="fw-semibold"><?= gjc_e($app["business_name"]) ?></td>
+                            <td><?= gjc_e($app["proprietor_name"]) ?></td>
+                            <td class="small text-muted"><?= gjc_e($app["contact_number"]) ?><br><?= gjc_e($app["email"]) ?></td>
+                            <td class="sa-meeting"><?= sa_meeting_label($app["meetup_scheduled_at"]) ?></td>
+                            <td><span class="badge bg-<?= $m["badge"] ?> status-badge"><i class="fa-solid <?= $m["icon"] ?> me-1"></i><?= $m["label"] ?></span></td>
+                            <td class="small text-muted"><?= date("M j, Y", strtotime($app["created_at"])) ?></td>
+                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-success">Open</button></td>
                         </tr>
-                        <tr class="collapse app-detail-row" id="detail-<?= (int) $app[
-                            "id"
-                        ] ?>" data-app-id="<?= (int) $app["id"] ?>">
-                            <td colspan="6">
-                                <div class="app-detail-inner bg-light border-top">
-                                    <div class="stepper mb-4"></div>
-                                    <div class="step-panel"></div>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
+                        <?php endforeach; endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
-        <?php endif; ?>
     </main>
 </div>
 
-<!-- Document Viewer Modal (Bootstrap 5 native, in-page preview via iframe) -->
-<div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+<!-- Application / Meeting workspace modal -->
+<div class="modal fade" id="appModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="docModalTitle">Document</h5>
+                <h5 class="modal-title" id="appModalTitle">Application</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0">
-                <iframe id="docFrame" src="about:blank" title="Document preview"></iframe>
-            </div>
+            <div class="modal-body" id="appModalBody"></div>
         </div>
     </div>
 </div>
 
-<!-- Award Stall Confirm Modal -->
-<div class="modal fade" id="awardConfirmModal" tabindex="-1" aria-hidden="true">
+<!-- Reason modal (reject / cancel) -->
+<div class="modal fade" id="reasonModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirm Stall Award</h5>
+                <h5 class="modal-title" id="reasonTitle">Reason</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-1">You are about to award <strong id="awardStallLabel"></strong> and create a merchant account for:</p>
-                <p class="fw-semibold mb-0" id="awardApplicantLabel"></p>
-                <p class="small text-muted" id="awardBusinessLabel"></p>
-                <p class="small text-muted mt-2 mb-0">Login credentials will be emailed to the applicant. This action cannot be undone.</p>
+                <p class="text-muted small" id="reasonHelp"></p>
+                <textarea id="reasonText" class="form-control" rows="3" placeholder="Enter the reason..."></textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="awardConfirmBtn">Approve &amp; Award</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                <button type="button" class="btn btn-danger" id="reasonConfirm">Confirm</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Decline Modal (Bootstrap 5 native) -->
-<div class="modal fade" id="declineModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Decline Application</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted small">This application will be archived to <code>archived_rejections</code> and removed from the active pipeline.</p>
-                <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-                <textarea id="declineReason" class="form-control" rows="3" placeholder="Enter the reason for declining..."></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="declineConfirmBtn">Decline</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Archived Rejections Modal -->
-<div class="modal fade" id="archivedModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Archived Rejections</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="archivedList" class="d-flex flex-column gap-2"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Toast container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastWrap"></div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
-const APPS = <?= json_encode(
-    array_values($apps),
-    JSON_HEX_TAG |
-        JSON_HEX_AMP |
-        JSON_HEX_APOS |
-        JSON_HEX_QUOT |
-        JSON_INVALID_UTF8_SUBSTITUTE,
-) ?>;
-const VACANT_STALLS = <?= json_encode(
-    $vacantStalls,
-    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
-) ?>;
-const MEETING_TIME_SLOTS = <?= json_encode(gjc_meeting_time_slots()) ?>;
-const STEP_LABELS = <?= json_encode(STEP_LABELS) ?>;
-let DP_DEFAULT_AMOUNT = <?= (float) gjc_down_payment_default_amount($db) ?>;
-const DOC_URL  = '<?= ADMIN_URL ?>/doc?f=';
-const API_URL  = '<?= ADMIN_URL ?>/api/stall_applications';
-const ARCHIVE_API_URL = '<?= ADMIN_URL ?>/api/archived_rejections';
+const APPS = <?= json_encode(array_values($apps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?>;
+const VACANT_STALLS = <?= json_encode($vacantStalls, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const STATUS_META = <?= json_encode($STATUS_META) ?>;
+const DOC_URL = '<?= ADMIN_URL ?>/doc?f=';
+const API_URL = '<?= ADMIN_URL ?>/api/stall_applications';
 
-let declineTargetId = null;
+let appModal, reasonModal, reasonAction = null, reasonAppId = null;
+document.addEventListener('DOMContentLoaded', () => {
+    appModal = new bootstrap.Modal(document.getElementById('appModal'));
+    reasonModal = new bootstrap.Modal(document.getElementById('reasonModal'));
+});
 
-function esc(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function peso(v) { return '₱' + parseFloat(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 }); }
+function findApp(id) { return APPS.find(a => a.id == id); }
+function fmtDateTime(v) {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
 }
-function money(v) {
-    return '&#8369;' + parseFloat(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+function fmtDate(v) {
+    if (!v) return '—';
+    const d = new Date(String(v).replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
 }
-function formatDateTime(value) {
-    if (!value) return '';
-    const date = new Date(String(value).replace(' ', 'T'));
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-}
-function toast(msg, type = 'success') {
+function toast(msg, ok = true) {
     const wrap = document.getElementById('toastWrap');
     const el = document.createElement('div');
-    el.className = `toast align-items-center text-bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    el.className = `toast align-items-center text-bg-${ok ? 'success' : 'danger'} border-0`;
     el.setAttribute('role', 'alert');
-    el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(msg)}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(msg)}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
     wrap.appendChild(el);
     const t = new bootstrap.Toast(el, { delay: 4500 });
     t.show();
     el.addEventListener('hidden.bs.toast', () => el.remove());
 }
-function post(data) {
-    const fd = new FormData();
-    Object.entries(data).forEach(([k, v]) => fd.append(k, v));
-    return fetch(API_URL, { method: 'POST', body: fd }).then(async r => {
-        const text = await r.text();
-        try { return JSON.parse(text); }
-        catch (err) {
-            console.error('Invalid API response:', text);
-            return { success: false, message: 'The server returned an invalid response.' };
-        }
+function post(data, isForm = false) {
+    const body = isForm ? data : (() => { const fd = new FormData(); Object.entries(data).forEach(([k, v]) => fd.append(k, v)); return fd; })();
+    return fetch(API_URL, { method: 'POST', body }).then(async r => {
+        const t = await r.text();
+        try { return JSON.parse(t); } catch (e) { console.error('Bad API response:', t); return { success: false, message: 'The server returned an invalid response.' }; }
     });
 }
 
-// ── Stepper (Bootstrap 5 utility-built stepper + progress track) ──
-function renderStepper(app) {
-    const step = app.current_step;
-    let circles = '';
-    for (let i = 1; i <= 4; i++) {
-        let cls = 'bg-secondary';
-        if (i < step) cls = 'bg-success';
-        else if (i === step) cls = 'bg-danger';
-        circles += `
-            <div class="d-flex flex-column align-items-center" style="width:25%">
-                <div class="step-circle rounded-circle ${cls} text-white d-flex align-items-center justify-content-center fw-bold">${i}</div>
-                <div class="small text-center mt-1 ${i === step ? 'fw-bold text-danger' : 'text-muted'}">${STEP_LABELS[i]}</div>
-            </div>`;
-    }
-    const pct = Math.round(((step - 1) / 4) * 100) + 12;
-    return `
-        <div class="d-flex justify-content-between">${circles}</div>
-        <div class="progress step-track mt-2">
-            <div class="progress-bar bg-danger" style="width:${pct}%"></div>
-        </div>`;
-}
-
-// ── Document viewer (Bootstrap 5 modal + iframe, in-page preview) ──
-function openDoc(path, label) {
-    document.getElementById('docModalTitle').textContent = label;
-    document.getElementById('docFrame').src = DOC_URL + encodeURIComponent(String(path).replace(/^\//, ''));
-    new bootstrap.Modal(document.getElementById('docModal')).show();
-}
-
-function docButtons(app) {
+// ── Document grid (side-by-side preview) ──
+function docGrid(app) {
     const docs = {
         'Profile Picture': app.profile_picture,
         'Business Permit': app.business_permit,
@@ -393,397 +308,247 @@ function docButtons(app) {
         'GJC Requirements': app.gjc_requirements,
         'Clearance': app.clearance,
     };
-    return Object.entries(docs).map(([label, path]) => path
-        ? `<button type="button" class="btn btn-outline-secondary btn-sm" onclick='openDoc(${JSON.stringify(path)}, ${JSON.stringify(label)})'>${esc(label)}</button>`
-        : '').join(' ');
+    const cells = Object.entries(docs).map(([label, path]) => {
+        if (!path || path === 'pending_path') return '';
+        const url = DOC_URL + encodeURIComponent(String(path).replace(/^\//, ''));
+        return `<div class="sa-doc">
+            <div class="cap"><span>${esc(label)}</span><a href="${url}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i></a></div>
+            <iframe src="${url}" loading="lazy"></iframe>
+        </div>`;
+    }).join('');
+    return `<div class="sa-doc-grid">${cells}</div>`;
 }
 
-// ── Step content panel ──
-function renderPanel(app) {
-    if (app.status === 'review') {
-        return `
-            <div class="mb-3">
-                <div class="fw-semibold small text-uppercase text-muted mb-2">Submitted Documents</div>
-                <div class="d-flex flex-wrap gap-2">${docButtons(app)}</div>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-success" onclick="acceptReview(${app.id})">Accept</button>
-                <button type="button" class="btn btn-outline-danger" onclick="openDecline(${app.id})">Decline</button>
-            </div>`;
-    }
+// ── Modal body per status ──
+function openApp(id) {
+    const app = findApp(id);
+    if (!app) return;
+    const m = STATUS_META[app.status];
+    document.getElementById('appModalTitle').innerHTML =
+        `${esc(app.business_name)} <span class="badge bg-${m.badge} ms-2"><i class="fa-solid ${m.icon} me-1"></i>${m.label}</span>`;
+    document.getElementById('appModalBody').innerHTML =
+        app.status === 'pending_verification' ? renderWorkspace(app) : renderSummary(app);
+    if (app.status === 'pending_verification') wireWorkspace(app);
+    appModal.show();
+}
 
-    if (app.status === 'meeting') {
-        const savedDate  = app.meetup_scheduled_at ? String(app.meetup_scheduled_at).slice(0, 10) : '';
-        const savedLoc   = esc(app.meetup_location  || '');
-        const savedNotes = esc(app.meetup_notes     || '');
-        return `
-            <div class="row g-3 mb-3">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Date</label>
-                    <input type="date" class="form-control" id="meetDate-${app.id}" min="${todayStr()}" value="${savedDate}" onchange="refreshMeetingSlots(${app.id})">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Time</label>
-                    <select class="form-select" id="meetTime-${app.id}" disabled>
-                        <option value="">${savedDate ? 'Loading…' : 'Pick a date first'}</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Location</label>
-                    <input type="text" class="form-control" id="meetLoc-${app.id}" placeholder="e.g. GJC Finance Office" value="${savedLoc}">
-                </div>
-                <div class="col-12">
-                    <label class="form-label small fw-semibold">Notes</label>
-                    <textarea class="form-control" id="meetNotes-${app.id}" rows="2" placeholder="Optional instructions for the applicant">${savedNotes}</textarea>
-                </div>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-success" onclick="saveMeeting(${app.id})">Accept &amp; Next</button>
-                <button type="button" class="btn btn-outline-danger" onclick="openDecline(${app.id})">Decline</button>
-            </div>`;
-    }
+function applicantHeader(app) {
+    return `<div class="d-flex flex-wrap gap-4 mb-3 pb-3 border-bottom">
+        <div><div class="small text-muted">Proprietor</div><div class="fw-semibold">${esc(app.proprietor_name)}</div></div>
+        <div><div class="small text-muted">Contact</div><div class="fw-semibold">${esc(app.contact_number)}</div></div>
+        <div><div class="small text-muted">Email</div><div class="fw-semibold">${esc(app.email)}</div></div>
+        <div><div class="small text-muted">Meeting</div><div class="fw-semibold">${fmtDateTime(app.meetup_scheduled_at)}</div></div>
+        ${app.preferred_stall_id ? `<div><div class="small text-muted">Preferred Stall</div><div class="fw-semibold">${esc(app.preferred_stall_id)}</div></div>` : ''}
+    </div>`;
+}
 
-    if (app.status === 'down_payment') {
-        const dpDefault = DP_DEFAULT_AMOUNT > 0 ? DP_DEFAULT_AMOUNT.toFixed(2) : '';
-        return `
-            <div class="row g-3 mb-3">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Amount</label>
-                    <div class="input-group">
-                        <input type="number" min="0" step="0.01" class="form-control" id="dpAmount-${app.id}" placeholder="0.00" value="${esc(dpDefault)}">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" title="Set as default for future applications" onclick="setDpDefault(${app.id})"><i class="fa-solid fa-bookmark"></i></button>
+function renderWorkspace(app) {
+    const hasContract = !!app.contract_file;
+    const payDone = parseFloat(app.deposit_amount) > 0 && parseFloat(app.advance_amount) > 0 && app.rental_start_date && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30);
+    const contractUrl = hasContract ? DOC_URL + encodeURIComponent(String(app.contract_file).replace(/^\//, '')) : '';
+
+    const stallOpts = VACANT_STALLS.map(s =>
+        `<option value="${esc(s.stall_id)}" data-rate="${s.monthly_rate}" ${s.stall_id === app.preferred_stall_id ? 'selected' : ''}>${esc(s.stall_id)} — ${esc(s.label)} (${peso(s.monthly_rate)}/mo)</option>`).join('');
+
+    return `${applicantHeader(app)}
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="sa-section">
+                <h6><i class="fa-solid fa-folder-open text-success me-2"></i>Submitted Documents <span class="small text-muted fw-normal">— compare against the originals the applicant brought</span></h6>
+                ${docGrid(app)}
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="sa-section h-100">
+                <h6><i class="fa-solid fa-file-signature text-success me-2"></i>Signed Contract ${hasContract ? '<span class="sa-done-pill ms-1">Uploaded</span>' : ''}</h6>
+                ${hasContract ? `<p class="small mb-2"><a href="${contractUrl}" target="_blank" rel="noopener"><i class="fa-solid fa-file-arrow-down me-1"></i>View uploaded contract</a></p>` : '<p class="small text-muted">Upload the scanned contract after the applicant signs it.</p>'}
+                <input type="file" class="form-control form-control-sm mb-2" id="contractFile-${app.id}" accept=".pdf,.jpg,.jpeg,.png">
+                <button type="button" class="btn btn-sm btn-success" id="contractBtn-${app.id}"><i class="fa-solid fa-upload me-1"></i>${hasContract ? 'Replace Contract' : 'Upload Contract'}</button>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="sa-section h-100">
+                <h6><i class="fa-solid fa-money-check-dollar text-success me-2"></i>Payment ${payDone ? '<span class="sa-done-pill ms-1">Recorded</span>' : ''}</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">2-Month Deposit</label>
+                        <div class="input-group input-group-sm"><span class="input-group-text">₱</span>
+                            <input type="number" min="0" step="0.01" class="form-control" id="dep-${app.id}" value="${app.deposit_amount ?? ''}"></div>
                     </div>
-                    ${DP_DEFAULT_AMOUNT > 0 ? `<div class="form-text">Default: &#8369;${parseFloat(DP_DEFAULT_AMOUNT).toLocaleString('en-PH', {minimumFractionDigits:2})}</div>` : ''}
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Reference</label>
-                    <input type="text" class="form-control" id="dpRef-${app.id}" placeholder="Receipt / GCash ref">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Notes</label>
-                    <input type="text" class="form-control" id="dpNotes-${app.id}" placeholder="Optional">
+                    <div class="col-6">
+                        <label class="form-label small mb-1">1-Month Advance</label>
+                        <div class="input-group input-group-sm"><span class="input-group-text">₱</span>
+                            <input type="number" min="0" step="0.01" class="form-control" id="adv-${app.id}" value="${app.advance_amount ?? ''}"></div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Rental Start Date</label>
+                        <input type="date" class="form-control form-control-sm" id="start-${app.id}" value="${app.rental_start_date ?? ''}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1">Recurring Payment</label>
+                        <select class="form-select form-select-sm" id="sched-${app.id}">
+                            <option value="">Choose…</option>
+                            <option value="15" ${app.payment_schedule_day == 15 ? 'selected' : ''}>Every 15th</option>
+                            <option value="30" ${app.payment_schedule_day == 30 ? 'selected' : ''}>Every 30th</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-sm btn-success mt-1" id="payBtn-${app.id}"><i class="fa-solid fa-floppy-disk me-1"></i>Save Payment</button>
+                    </div>
                 </div>
             </div>
-            <button type="button" class="btn btn-success" onclick="saveDownPayment(${app.id})">Next</button>`;
-    }
+        </div>
 
-    if (app.status === 'approval') {
-        const preferred = (app.preferred_stall_id || '').trim();
-        const preferredVacant = preferred && VACANT_STALLS.some(s => s.stall_id === preferred);
-        const options = VACANT_STALLS.map(s => {
-            const sel = s.stall_id === preferred ? ' selected' : '';
-            return `<option value="${esc(s.stall_id)}"${sel}>${esc(s.stall_id)} - ${esc(s.label)} (${money(s.monthly_rate)}/mo)</option>`;
-        }).join('');
-        const disabled = VACANT_STALLS.length === 0 ? 'disabled' : '';
-
-        let preferredNote = '';
-        if (preferred) {
-            if (preferredVacant) {
-                preferredNote = `<div class="small text-success mt-1"><i class="fa-solid fa-circle-check me-1"></i>Applicant's preferred stall <strong>${esc(preferred)}</strong> is available and pre-selected.</div>`;
-            } else {
-                preferredNote = `<div class="small text-warning mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>Applicant preferred <strong>${esc(preferred)}</strong> but it is no longer vacant. Please assign a different stall.</div>`;
-            }
-        }
-
-        return `
-            <div class="mb-3" style="max-width:420px">
-                <label class="form-label small fw-semibold">Assign Stall <span class="text-danger">*</span></label>
-                <select class="form-select" id="awardStall-${app.id}" ${disabled}>
-                    ${options || '<option value="">No vacant stalls available</option>'}
-                </select>
-                ${preferredNote}
+        <div class="col-12">
+            <div class="sa-section">
+                <h6><i class="fa-solid fa-store text-success me-2"></i>Assign Stall &amp; Finalize</h6>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label small mb-1">Stall <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="awardStall-${app.id}" ${VACANT_STALLS.length ? '' : 'disabled'}>
+                            ${stallOpts || '<option value="">No vacant stalls available</option>'}
+                        </select>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="askReason('reject', ${app.id})"><i class="fa-solid fa-circle-xmark me-1"></i>Reject</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="askReason('cancel', ${app.id})"><i class="fa-solid fa-user-slash me-1"></i>No-show / Cancel</button>
+                        <button type="button" class="btn btn-success btn-sm" id="awardBtn-${app.id}"><i class="fa-solid fa-award me-1"></i>Award</button>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2"><i class="fa-solid fa-circle-info me-1"></i>Award requires the signed contract uploaded and payment recorded.</div>
             </div>
-            <button type="button" class="btn btn-success" onclick="awardStall(${app.id})" ${disabled}>Approve &amp; Award</button>`;
+        </div>
+    </div>`;
+}
+
+function renderSummary(app) {
+    const contractUrl = app.contract_file ? DOC_URL + encodeURIComponent(String(app.contract_file).replace(/^\//, '')) : '';
+    let outcome = '';
+    if (app.status === 'awarded') {
+        outcome = `<div class="alert alert-success"><i class="fa-solid fa-circle-check me-1"></i>Awarded <strong>Stall ${esc(app.stall_id)}</strong> on ${fmtDateTime(app.awarded_at)}.</div>
+        <div class="row g-3">
+            <div class="col-md-6"><div class="sa-section h-100"><h6>Payment</h6>
+                <div class="d-flex justify-content-between"><span class="text-muted">2-Month Deposit</span><span class="fw-semibold">${peso(app.deposit_amount)}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">1-Month Advance</span><span class="fw-semibold">${peso(app.advance_amount)}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Rental Start</span><span class="fw-semibold">${fmtDate(app.rental_start_date)}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Recurring</span><span class="fw-semibold">Every ${esc(app.payment_schedule_day)}th</span></div>
+            </div></div>
+            <div class="col-md-6"><div class="sa-section h-100"><h6>Contract</h6>
+                ${contractUrl ? `<a href="${contractUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-arrow-down me-1"></i>View signed contract</a>` : '<span class="text-muted">No contract on file.</span>'}
+                <div class="small text-muted mt-2">Merchant login: ${esc(app.email)}</div>
+            </div></div>
+        </div>`;
+    } else if (app.status === 'rejected') {
+        outcome = `<div class="alert alert-danger"><i class="fa-solid fa-circle-xmark me-1"></i>Rejected on ${fmtDateTime(app.reviewed_at)}.</div>
+            <div class="sa-section"><h6>Reason</h6><p class="mb-0">${esc(app.rejection_reason || '—')}</p></div>`;
+    } else if (app.status === 'cancelled') {
+        outcome = `<div class="alert alert-secondary"><i class="fa-solid fa-ban me-1"></i>Cancelled on ${fmtDateTime(app.cancelled_at)}. The meeting slot was released.</div>
+            <div class="sa-section"><h6>Reason</h6><p class="mb-0">${esc(app.cancel_reason || '—')}</p></div>`;
     }
-
-    return '';
+    return `${applicantHeader(app)}${outcome}
+        <div class="sa-section mt-3"><h6>Submitted Documents</h6>${docGrid(app)}</div>`;
 }
 
-function renderRow(app) {
-    const detail = document.querySelector(`.app-detail-row[data-app-id="${app.id}"]`);
-    if (!detail) return;
-    detail.querySelector('.stepper').innerHTML = renderStepper(app);
-    detail.querySelector('.step-panel').innerHTML = renderPanel(app);
-
-    // If the meeting form has a pre-saved date, load booked slots immediately
-    // so the time dropdown is ready when the admin opens the row.
-    if (app.status === 'meeting' && app.meetup_scheduled_at) {
-        const savedTime = String(app.meetup_scheduled_at).slice(11, 16);
-        refreshMeetingSlots(app.id, savedTime);
-    }
-
-    const row = document.querySelector(`.app-row[data-app-id="${app.id}"]`);
-    if (row) {
-        row.querySelector('.step-badge').textContent = `Step ${app.current_step} · ${STEP_LABELS[app.current_step]}`;
-        row.dataset.step = app.current_step;
-        applyFilters();
-        updateStepCounts();
-    }
-}
-
-function removeRow(id) {
-    document.querySelector(`.app-row[data-app-id="${id}"]`)?.remove();
-    document.querySelector(`.app-detail-row[data-app-id="${id}"]`)?.remove();
-    updateStepCounts();
-}
-
-function findApp(id) { return APPS.find(a => a.id == id); }
-function mergeAndRender(id, patch) {
-    const app = findApp(id);
-    Object.assign(app, patch);
-    // Awarded applications become merchant accounts (see admin/users.php) and
-    // are no longer "submitted applications" - drop them from this view.
-    if (app.status === 'active') { removeRow(id); return; }
-    renderRow(app);
-}
-
-// ── Step actions ──
-function acceptReview(id) {
-    post({ action: 'accept_review', app_id: id }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) {
-            const patch = { status: res.status, current_step: res.current_step };
-            if (res.proposed_slot) {
-                // Mirror the DB-persisted proposal into the in-memory app so
-                // renderPanel pre-fills correctly and survives re-renders.
-                patch.meetup_scheduled_at = res.proposed_slot.date + ' ' + res.proposed_slot.time + ':00';
-                patch.meetup_location     = res.proposed_slot.location;
-            }
-            mergeAndRender(id, patch);
+function wireWorkspace(app) {
+    const id = app.id;
+    // Prefill deposit/advance from the selected stall's monthly rate when empty.
+    const stallSel = document.getElementById(`awardStall-${id}`);
+    const dep = document.getElementById(`dep-${id}`);
+    const adv = document.getElementById(`adv-${id}`);
+    function suggest() {
+        const opt = stallSel?.selectedOptions?.[0];
+        const rate = opt ? parseFloat(opt.dataset.rate || 0) : 0;
+        if (rate > 0) {
+            if (!dep.value) dep.value = (rate * 2).toFixed(2);
+            if (!adv.value) adv.value = rate.toFixed(2);
         }
-    });
-}
-
-function todayStr() {
-    return new Date().toISOString().slice(0, 10);
-}
-
-function slotLabel(slot) {
-    const [h, m] = slot.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:${String(m).padStart(2, '0')} ${period}`;
-}
-
-// Refetch which fixed slots are already booked on the chosen date, then
-// rebuild the dropdown so a taken slot can't be picked twice.
-function refreshMeetingSlots(id, preselectTime = null) {
-    const dateInput = document.getElementById(`meetDate-${id}`);
-    const select = document.getElementById(`meetTime-${id}`);
-    const date = dateInput.value;
-
-    if (!date) {
-        select.disabled = true;
-        select.innerHTML = '<option value="">Pick a date first</option>';
-        return;
     }
+    if (stallSel) { stallSel.addEventListener('change', suggest); suggest(); }
 
-    select.disabled = true;
-    select.innerHTML = '<option value="">Loading...</option>';
-
-    post({ action: 'get_booked_slots', meetup_date: date }).then(res => {
-        if (!res.success) {
-            select.innerHTML = '<option value="">Failed to load slots</option>';
-            return;
-        }
-        const booked = new Set(res.booked || []);
-        const options = (res.slots || MEETING_TIME_SLOTS).map(slot => {
-            const taken = booked.has(slot);
-            return `<option value="${slot}" ${taken ? 'disabled' : ''}>${slotLabel(slot)}${taken ? ' - Already booked' : ''}</option>`;
-        }).join('');
-        select.innerHTML = `<option value="">Select a time</option>${options}`;
-        select.disabled = false;
-        if (preselectTime) select.value = preselectTime;
+    document.getElementById(`contractBtn-${id}`).addEventListener('click', () => {
+        const input = document.getElementById(`contractFile-${id}`);
+        if (!input.files.length) { toast('Choose the signed contract file first.', false); return; }
+        const fd = new FormData();
+        fd.append('action', 'upload_contract');
+        fd.append('app_id', id);
+        fd.append('contract', input.files[0]);
+        post(fd, true).then(res => {
+            toast(res.message, res.success);
+            if (res.success) { app.contract_file = res.contract_file; openApp(id); }
+        });
     });
-}
 
-// ── Down payment preview / confirm before sending ──
-function saveMeeting(id) {
-    const date = document.getElementById(`meetDate-${id}`).value;
-    const time = document.getElementById(`meetTime-${id}`).value;
-    const loc  = document.getElementById(`meetLoc-${id}`).value.trim();
-    const notes = document.getElementById(`meetNotes-${id}`).value.trim();
-    if (!date || !time || !loc) { toast('Please enter the meeting date, time, and location.', 'error'); return; }
-    post({ action: 'save_meeting', app_id: id, meetup_date: date, meetup_time: time, meetup_location: loc, meetup_notes: notes })
-        .then(res => {
-            toast(res.message, res.success ? 'success' : 'error');
+    document.getElementById(`payBtn-${id}`).addEventListener('click', () => {
+        post({
+            action: 'record_payment', app_id: id,
+            deposit_amount: dep.value, advance_amount: adv.value,
+            rental_start_date: document.getElementById(`start-${id}`).value,
+            payment_schedule_day: document.getElementById(`sched-${id}`).value,
+        }).then(res => {
+            toast(res.message, res.success);
             if (res.success) {
-                mergeAndRender(id, { status: res.status, current_step: res.current_step });
-            } else if (/just booked/i.test(res.message)) {
-                refreshMeetingSlots(id);
+                app.deposit_amount = dep.value;
+                app.advance_amount = adv.value;
+                app.rental_start_date = document.getElementById(`start-${id}`).value;
+                app.payment_schedule_day = document.getElementById(`sched-${id}`).value;
+                openApp(id);
             }
         });
-}
+    });
 
-function saveDownPayment(id) {
-    const amount = document.getElementById(`dpAmount-${id}`).value;
-    const ref = document.getElementById(`dpRef-${id}`).value.trim();
-    const notes = document.getElementById(`dpNotes-${id}`).value.trim();
-    if (!amount || Number(amount) <= 0) { toast('Please enter the down payment amount.', 'error'); return; }
-    post({ action: 'save_down_payment', app_id: id, down_payment_amount: amount, down_payment_reference: ref, down_payment_notes: notes })
-        .then(res => {
-            toast(res.message, res.success ? 'success' : 'error');
-            if (res.success) mergeAndRender(id, { status: res.status, current_step: res.current_step });
+    document.getElementById(`awardBtn-${id}`).addEventListener('click', () => {
+        const stallId = document.getElementById(`awardStall-${id}`).value;
+        if (!stallId) { toast('Select a stall to award.', false); return; }
+        if (!app.contract_file) { toast('Upload the signed contract before awarding.', false); return; }
+        const payDone = parseFloat(app.deposit_amount) > 0 && parseFloat(app.advance_amount) > 0 && app.rental_start_date && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30);
+        if (!payDone) { toast('Record the payment before awarding.', false); return; }
+        if (!confirm(`Award Stall ${stallId} and create a merchant account for ${app.proprietor_name}? This cannot be undone.`)) return;
+        post({ action: 'award', app_id: id, stall_id: stallId }).then(res => {
+            toast(res.message, res.success);
+            if (res.success) { appModal.hide(); setTimeout(() => location.reload(), 1200); }
         });
+    });
 }
 
-let awardTargetId = null;
-
-function awardStall(id) {
-    const stallId = document.getElementById(`awardStall-${id}`).value;
-    if (!stallId) { toast('Please select a stall to award.', 'error'); return; }
-    const app = findApp(id);
-    awardTargetId = id;
-    document.getElementById('awardStallLabel').textContent = `Stall ${stallId}`;
-    document.getElementById('awardApplicantLabel').textContent = app.proprietor_name;
-    document.getElementById('awardBusinessLabel').textContent = app.business_name;
-    new bootstrap.Modal(document.getElementById('awardConfirmModal')).show();
+// ── Reason modal (reject / cancel) ──
+function askReason(action, id) {
+    reasonAction = action; reasonAppId = id;
+    document.getElementById('reasonTitle').textContent = action === 'reject' ? 'Reject Application' : 'No-show / Cancel Application';
+    document.getElementById('reasonHelp').textContent = action === 'reject'
+        ? 'The application will be terminated. The applicant must submit a brand-new application.'
+        : 'The slot will be released and the application cancelled. The applicant must re-apply. (Reason optional for a no-show.)';
+    document.getElementById('reasonText').value = '';
+    document.getElementById('reasonConfirm').className = 'btn ' + (action === 'reject' ? 'btn-danger' : 'btn-secondary');
+    appModal.hide();
+    reasonModal.show();
 }
-
-document.getElementById('awardConfirmBtn').addEventListener('click', function () {
-    const id = awardTargetId;
-    const stallId = document.getElementById(`awardStall-${id}`).value;
-    bootstrap.Modal.getInstance(document.getElementById('awardConfirmModal')).hide();
-    post({ action: 'award_stall', app_id: id, stall_id: stallId }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) mergeAndRender(id, { status: res.status, current_step: res.current_step, stall_id: stallId });
+document.getElementById('reasonConfirm').addEventListener('click', () => {
+    const reason = document.getElementById('reasonText').value.trim();
+    if (reasonAction === 'reject' && !reason) { toast('A rejection reason is required.', false); return; }
+    post({ action: reasonAction, app_id: reasonAppId, reason }).then(res => {
+        toast(res.message, res.success);
+        if (res.success) { reasonModal.hide(); setTimeout(() => location.reload(), 1200); }
     });
 });
 
-function openDecline(id) {
-    declineTargetId = id;
-    document.getElementById('declineReason').value = '';
-    new bootstrap.Modal(document.getElementById('declineModal')).show();
-}
-document.getElementById('declineConfirmBtn').addEventListener('click', function () {
-    const reason = document.getElementById('declineReason').value.trim();
-    if (!reason) { toast('Please enter a decline reason.', 'error'); return; }
-    post({ action: 'decline', app_id: declineTargetId, rejection_reason: reason }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) {
-            bootstrap.Modal.getInstance(document.getElementById('declineModal')).hide();
-            removeRow(declineTargetId);
-        }
-    });
-});
-
-// ── Archived rejections list ──
-function loadArchived() {
-    const list = document.getElementById('archivedList');
-    list.innerHTML = '<div class="text-muted small">Loading&hellip;</div>';
-    const fd = new FormData(); fd.append('action', 'list');
-    fetch(ARCHIVE_API_URL, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
-        if (!res.success || !res.rows.length) { list.innerHTML = '<div class="text-muted small">No archived rejections.</div>'; return; }
-        list.innerHTML = res.rows.map(r => `
-            <div class="border rounded p-3 d-flex justify-content-between align-items-start">
-                <div>
-                    <div class="fw-semibold">${esc(r.business_name)} &middot; ${esc(r.proprietor_name)}</div>
-                    <div class="small text-muted">${esc(r.email)} &middot; Declined at Step ${esc(r.rejected_at_step)} &middot; ${formatDateTime(r.rejected_at)}</div>
-                    <div class="small mt-1"><strong>Reason:</strong> ${esc(r.rejection_reason)}</div>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-success" onclick="reactivate(${r.id})">Reactivate</button>
-            </div>`).join('');
-    });
-}
-function reactivate(id) {
-    if (!confirm('Reactivate this application back to Step 1 - Review Requirements?')) return;
-    const fd = new FormData(); fd.append('action', 'reactivate'); fd.append('id', id);
-    fetch(ARCHIVE_API_URL, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) { loadArchived(); setTimeout(() => location.reload(), 1200); }
-    });
-}
-
-// ── Down payment default amount (inline, set from the Step 3 panel) ──
-function setDpDefault(id) {
-    const amount = parseFloat(document.getElementById(`dpAmount-${id}`).value) || 0;
-    if (amount <= 0) { toast('Enter an amount first to set as default.', 'error'); return; }
-    post({ action: 'save_down_payment_settings', default_amount: amount }).then(res => {
-        toast(res.message, res.success ? 'success' : 'error');
-        if (res.success) {
-            DP_DEFAULT_AMOUNT = amount;
-            // Re-render only this row's panel so the "Default:" hint updates.
-            const app = findApp(id);
-            if (app) renderRow(app);
-        }
-    });
-}
-
-// ── Global search + step filter (combined) ──
-let currentStepFilter = '0';
-
+// ── Search + status filter ──
+let statusFilter = 'all';
 function applyFilters() {
     const q = document.getElementById('appSearch').value.trim().toLowerCase();
     document.querySelectorAll('.app-row').forEach(row => {
-        const matchesSearch = row.dataset.search.includes(q);
-        const matchesStep = currentStepFilter === '0' || row.dataset.step === currentStepFilter;
-        const visible = matchesSearch && matchesStep;
-
-        // A row being filtered out should collapse its expanded detail row too -
-        // otherwise switching tabs/search leaves an orphaned open detail behind.
-        if (!visible && row.getAttribute('aria-expanded') === 'true') {
-            row.setAttribute('aria-expanded', 'false');
-            const detail = document.getElementById(`detail-${row.dataset.appId}`);
-            if (detail) {
-                detail.classList.remove('show');
-            }
-        }
-
-        row.style.display = visible ? '' : 'none';
+        const okSearch = row.dataset.search.includes(q);
+        const okStatus = statusFilter === 'all' || row.dataset.status === statusFilter;
+        row.style.display = (okSearch && okStatus) ? '' : 'none';
     });
 }
 document.getElementById('appSearch').addEventListener('input', applyFilters);
-
-// ── Step filter cards ──
-function updateStepCounts() {
-    const rows = document.querySelectorAll('.app-row');
-    document.querySelectorAll('.step-filter-card').forEach(card => {
-        const step = card.dataset.step;
-        const count = step === '0'
-            ? rows.length
-            : Array.from(rows).filter(r => r.dataset.step === step).length;
-        card.querySelector('.sfc-count').textContent = count;
-    });
-}
-document.querySelectorAll('.step-filter-card').forEach(card => {
-    card.addEventListener('click', function () {
-        currentStepFilter = this.dataset.step;
-        document.querySelectorAll('.step-filter-card').forEach(c => c.classList.toggle('active', c === this));
-        applyFilters();
-    });
-});
-
-// ── Sort control ──
-const SORTERS = {
-    submitted_desc:  (a, b) => b.created_at.localeCompare(a.created_at),
-    submitted_asc:   (a, b) => a.created_at.localeCompare(b.created_at),
-    business_asc:    (a, b) => a.business_name.localeCompare(b.business_name),
-    business_desc:   (a, b) => b.business_name.localeCompare(a.business_name),
-    proprietor_asc:  (a, b) => a.proprietor_name.localeCompare(b.proprietor_name),
-    proprietor_desc: (a, b) => b.proprietor_name.localeCompare(a.proprietor_name),
-};
-
-function applySort() {
-    const sorter = SORTERS[document.getElementById('appSort').value];
-    if (!sorter) return;
-
-    const tbody = document.getElementById('appTableBody');
-    const rows = Array.from(tbody.querySelectorAll('.app-row'));
-    const sorted = rows
-        .map(row => ({ row, app: findApp(row.dataset.appId) }))
-        .filter(entry => entry.app)
-        .sort((a, b) => sorter(a.app, b.app));
-
-    sorted.forEach(({ row }) => {
-        const detail = tbody.querySelector(`.app-detail-row[data-app-id="${row.dataset.appId}"]`);
-        tbody.appendChild(row);
-        if (detail) tbody.appendChild(detail);
-    });
-}
-document.getElementById('appSort').addEventListener('change', applySort);
-
-// ── Initial render ──
-APPS.forEach(renderRow);
+document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', function () {
+    statusFilter = this.dataset.status;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === this));
+    applyFilters();
+}));
 </script>
 </body>
 </html>

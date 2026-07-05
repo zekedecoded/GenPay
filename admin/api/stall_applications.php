@@ -1,18 +1,19 @@
 <?php
 // ============================================================
 //  admin/api/stall_applications.php
-//  JSON API for the unified 4-step stall application pipeline.
-//  Source requirement: adviser feedback session (SIR EMMAN 4.mp3)
+//  JSON API for the ONE-STOP stall application flow.
 //
-//  Pipeline: review -> meeting -> down_payment -> approval -> active
-//  Actions:
-//    accept_review        Step 1 -> Step 2   (docs accepted; proposes next free slot)
-//    decline              Step 1 or 2 only   (archives to archived_rejections)
-//    get_booked_slots     (lookup)           (fixed meeting slots already taken on a date)
-//    save_meeting         Step 2 -> Step 3   (saves meeting, emails applicant)
-//    save_down_payment    Step 3 -> Step 4   (saves down payment record, emails applicant)
-//    award_stall          Step 4 -> active   (assigns stall, creates merchant)
-//    get_down_payment_settings / save_down_payment_settings   (default down payment amount)
+//  Submit -> meeting auto-scheduled at submission (see apply.php) ->
+//  everything (document verification, contract signing, payment) happens at a
+//  single in-person meeting -> Awarded.
+//
+//  Actions (all operate on a 'pending_verification' application):
+//    upload_contract   Save the scanned signed contract (multipart)
+//    record_payment    Record 2mo deposit + 1mo advance, start date, schedule
+//    award             Finalize: assign stall, create merchant, -> 'awarded'
+//                      (requires contract uploaded AND payment recorded)
+//    reject            Documents invalid -> 'rejected' (reason), notify to re-apply
+//    cancel            No-show / cancellation -> 'cancelled', notify to re-apply
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -26,9 +27,12 @@ require_once __DIR__ . '/../../connection/mailer.php';
 header('Content-Type: application/json; charset=UTF-8');
 gjc_require_role(['finance']);
 gjc_ensure_stall_application_workflow_schema($db);
-gjc_ensure_archived_rejections_schema($db);
 gjc_ensure_first_login_schema($db);
 gjc_ensure_meeting_scheduling_schema($db);
+
+const CONTRACT_MAX_BYTES = 5 * 1024 * 1024;
+const CONTRACT_ALLOWED_EXT   = ['pdf', 'jpg', 'jpeg', 'png'];
+const CONTRACT_ALLOWED_MIMES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();
@@ -57,317 +61,165 @@ function stall_app_fetch(PDO $db, int $appId): ?array
     return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-/**
- * Shared Step 2 -> Step 3 finalization: saves the meeting, advances the
- * pipeline, and emails the applicant. Used by both the manual "Accept &
- * Next" form and the automatic scheduler triggered right after Step 1.
- */
-function stall_app_finalize_meeting(
-    PDO $db,
-    array $app,
-    int $appId,
-    DateTime $dt,
-    string $place,
-    string $notes,
-    int $adminId
-): array {
-    $scheduledAt = $dt->format('Y-m-d H:i:s');
+/** True when the payment section is fully recorded for an application row. */
+function stall_app_payment_complete(array $app): bool
+{
+    return (float) ($app['deposit_amount'] ?? 0) > 0
+        && (float) ($app['advance_amount'] ?? 0) > 0
+        && !empty($app['rental_start_date'])
+        && in_array((int) ($app['payment_schedule_day'] ?? 0), [15, 30], true);
+}
 
-    $db->prepare(
-        "UPDATE stall_applications
-            SET status = 'down_payment', current_step = 3,
-                meetup_scheduled_at = ?, meetup_location = ?, meetup_notes = ?,
-                meetup_scheduled_by = ?, meetup_scheduled_email_sent_at = NOW()
-          WHERE id = ?"
-    )->execute([$scheduledAt, $place, $notes ?: null, $adminId, $appId]);
+/** First occurrence of the recurring day (15/30) on or after the start date. */
+function stall_app_next_due_date(string $startYmd, int $day): string
+{
+    $mk = static function (int $y, int $m, int $day): string {
+        $dim = (int) date('t', mktime(0, 0, 0, $m, 1, $y));
+        return sprintf('%04d-%02d-%02d', $y, $m, min($day, $dim));
+    };
+    $start = new DateTimeImmutable($startYmd);
+    $y = (int) $start->format('Y');
+    $m = (int) $start->format('n');
+    $cand = $mk($y, $m, $day);
+    if ($cand >= $startYmd) {
+        return $cand;
+    }
+    $m++;
+    if ($m > 12) { $m = 1; $y++; }
+    return $mk($y, $m, $day);
+}
 
-    $mailSent = false;
-    $mailError = '';
+/** Send a "your application was terminated, please re-apply" email (reject/cancel). */
+function stall_app_send_termination_email(array $app, string $heading, string $intro, string $reason): void
+{
     try {
         $mail = gjc_mailer();
         $mail->addAddress($app['email'], $app['proprietor_name']);
-        $mail->Subject = 'GenPay - Stall Application Meeting';
-        $prettyDate = $dt->format('F j, Y');
-        $prettyTime = $dt->format('g:i A');
+        $mail->Subject = 'GenPay - Stall Application Update';
+        $safeName   = htmlspecialchars($app['proprietor_name'], ENT_QUOTES, 'UTF-8');
+        $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+        $applyUrl   = BASE_URL . '/apply';
         $mail->Body = '
-            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                <h2 style="color:#064420;margin-top:0">Meeting Scheduled</h2>
-                <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
-                <p style="color:#374151;line-height:1.7">Your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong> has passed the document review stage.</p>
-                <div style="background:#fff;border:1px solid var(--gjc-success-border);border-radius:10px;padding:16px;margin:16px 0">
-                    <p style="margin:0 0 8px;color:var(--gjc-green-600);font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
-                    <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($prettyDate) . '</p>
-                    <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($prettyTime) . '</p>
-                    <p style="margin:4px 0 0;color:#111827"><strong>Location:</strong> ' . htmlspecialchars($place) . '</p>
+            <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fef2f2;border-radius:14px">
+                <h3 style="color:#b91c1c;margin-top:0">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h3>
+                <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+                <p style="color:#374151;line-height:1.7">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>
+                <div style="background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
+                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
+                    <p style="margin:0;color:#374151">' . $safeReason . '</p>
                 </div>
-                ' . ($notes !== '' ? '<p style="color:#374151;line-height:1.7"><strong>Notes:</strong> ' . nl2br(htmlspecialchars($notes)) . '</p>' : '') . '
-                <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+                <p style="color:#374151;line-height:1.7">You are welcome to submit a brand-new application anytime. A new verification meeting will be scheduled automatically at submission.</p>
+                <p style="color:#374151"><a href="' . $applyUrl . '" style="color:#059669;font-weight:700">Submit a new application</a></p>
+                <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
             </div>';
-        $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour stall application has passed review.\n\nMeeting schedule:\nDate: {$prettyDate}\nTime: {$prettyTime}\nLocation: {$place}" . ($notes !== '' ? "\nNotes: {$notes}" : '') . "\n\nGenPay Team";
+        $mail->AltBody = "Dear {$app['proprietor_name']},\n\n{$intro}\n\nReason: {$reason}\n\n"
+            . "You may submit a brand-new application anytime at {$applyUrl}. A new meeting will be auto-scheduled.\n\nGenPay Team";
         $mail->send();
-        $mailSent = true;
-    } catch (Throwable $mailEx) {
-        $mailError = $mailEx->getMessage();
+    } catch (Throwable $ignored) {
+        // Non-fatal — the status change already succeeded.
     }
-
-    return ['mailSent' => $mailSent, 'mailError' => $mailError, 'scheduledAt' => $scheduledAt];
 }
 
 try {
     switch ($action) {
 
-        // ── Step 1: Review Requirements — Accept ──────────────
-        case 'accept_review': {
+        // ── Upload the scanned signed contract ─────────────────
+        case 'upload_contract': {
             $appId = (int) ($_POST['app_id'] ?? 0);
             $app = $appId ? stall_app_fetch($db, $appId) : null;
-            if (!$app || $app['status'] !== 'review') {
-                stall_app_json(['success' => false, 'message' => 'Application not found or not at the Review step.']);
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+
+            $file = $_FILES['contract'] ?? null;
+            if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE || empty($file['tmp_name'])) {
+                stall_app_json(['success' => false, 'message' => 'Please choose the signed contract file to upload.']);
+            }
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                stall_app_json(['success' => false, 'message' => 'Upload error (code ' . $file['error'] . ').']);
+            }
+            if ($file['size'] > CONTRACT_MAX_BYTES) {
+                stall_app_json(['success' => false, 'message' => 'Contract exceeds the 5 MB limit.']);
+            }
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, CONTRACT_ALLOWED_EXT, true)) {
+                stall_app_json(['success' => false, 'message' => 'Contract must be a PDF, JPG, or PNG.']);
+            }
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+            if (!in_array($mime, CONTRACT_ALLOWED_MIMES, true)) {
+                stall_app_json(['success' => false, 'message' => 'The uploaded file is not a valid PDF or image.']);
+            }
+
+            $dir = BASE_PATH . '/uploads/stall_applications/' . $appId;
+            if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+                stall_app_json(['success' => false, 'message' => 'Could not prepare the upload folder.']);
+            }
+            $fname = 'contract_' . time() . mt_rand(1000, 9999) . '.' . $ext;
+            if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $fname)) {
+                stall_app_json(['success' => false, 'message' => 'Could not save the uploaded contract.']);
+            }
+            // Remove a previously-uploaded contract if the admin re-uploads.
+            if (!empty($app['contract_file'])) {
+                $old = BASE_PATH . '/' . $app['contract_file'];
+                if (is_file($old)) { @unlink($old); }
+            }
+            $rel = 'uploads/stall_applications/' . $appId . '/' . $fname;
+            $db->prepare(
+                "UPDATE stall_applications
+                    SET contract_file = ?, contract_uploaded_at = NOW(), contract_uploaded_by = ?
+                  WHERE id = ?"
+            )->execute([$rel, $adminId, $appId]);
+
+            stall_app_json(['success' => true, 'message' => 'Signed contract uploaded.', 'contract_file' => $rel]);
+        }
+
+        // ── Record payment: 2mo deposit + 1mo advance + schedule ─
+        case 'record_payment': {
+            $appId       = (int) ($_POST['app_id'] ?? 0);
+            $deposit     = round((float) ($_POST['deposit_amount'] ?? 0), 2);
+            $advance     = round((float) ($_POST['advance_amount'] ?? 0), 2);
+            $startDate   = trim((string) ($_POST['rental_start_date'] ?? ''));
+            $scheduleDay = (int) ($_POST['payment_schedule_day'] ?? 0);
+
+            $app = $appId ? stall_app_fetch($db, $appId) : null;
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+            if ($deposit <= 0 || $advance <= 0) {
+                stall_app_json(['success' => false, 'message' => 'Enter both the 2-month deposit and the 1-month advance.']);
+            }
+            $d = DateTime::createFromFormat('Y-m-d', $startDate);
+            if (!$d || $d->format('Y-m-d') !== $startDate) {
+                stall_app_json(['success' => false, 'message' => 'Enter a valid rental start date.']);
+            }
+            if (!in_array($scheduleDay, [15, 30], true)) {
+                stall_app_json(['success' => false, 'message' => 'Choose a payment schedule — every 15th or every 30th.']);
             }
 
             $db->prepare(
                 "UPDATE stall_applications
-                    SET status = 'meeting', current_step = 2,
-                        reviewed_by = ?, reviewed_at = NOW()
+                    SET deposit_amount = ?, advance_amount = ?, rental_start_date = ?, payment_schedule_day = ?
                   WHERE id = ?"
-            )->execute([$adminId, $appId]);
+            )->execute([$deposit, $advance, $startDate, $scheduleDay, $appId]);
 
-            // Find the next free slot and propose it to the finance staff.
-            // The proposed slot is saved to the DB immediately so it survives
-            // a page refresh. The email is NOT sent here — that only fires
-            // when the admin confirms by clicking "Accept & Next".
-            $slot = gjc_find_next_meeting_slot($db);
-            if ($slot !== null) {
-                $place = gjc_meeting_default_location($db);
-                $proposedAt = $slot['date'] . ' ' . $slot['time'] . ':00';
-                $dt = DateTime::createFromFormat('Y-m-d H:i:s', $proposedAt);
-                $prettyWhen = $dt->format('F j, Y \a\t g:i A');
-                // Persist the proposal so the form survives a page refresh.
-                $db->prepare(
-                    "UPDATE stall_applications
-                        SET meetup_scheduled_at = ?, meetup_location = ?
-                      WHERE id = ?"
-                )->execute([$proposedAt, $place, $appId]);
-                stall_app_json([
-                    'success'       => true,
-                    'message'       => "Documents accepted. A meeting slot has been proposed for {$prettyWhen} — please review and confirm before the email is sent.",
-                    'status'        => 'meeting', 'current_step' => 2,
-                    'proposed_slot' => ['date' => $slot['date'], 'time' => $slot['time'], 'location' => $place],
-                ]);
-            }
-
-            stall_app_json([
-                'success' => true,
-                'message' => 'Documents accepted. Moved to Step 2 - Meeting. No open auto-schedule slot was found — please schedule the meeting manually.',
-                'status' => 'meeting', 'current_step' => 2,
-            ]);
+            stall_app_json(['success' => true, 'message' => 'Payment recorded.']);
         }
 
-        // ── Step 1 or 2: Decline -> archive ────────────────────
-        case 'decline': {
-            $appId  = (int) ($_POST['app_id'] ?? 0);
-            $reason = trim((string) ($_POST['rejection_reason'] ?? ''));
-            $app = $appId ? stall_app_fetch($db, $appId) : null;
-
-            if (!$app || !in_array($app['status'], ['review', 'meeting'], true)) {
-                stall_app_json(['success' => false, 'message' => 'Decline is only available during Step 1 (Review) or Step 2 (Meeting).']);
-            }
-            if (!$reason) {
-                stall_app_json(['success' => false, 'message' => 'A decline reason is required.']);
-            }
-
-            $db->beginTransaction();
-            try {
-                $db->prepare(
-                    "INSERT INTO archived_rejections
-                        (original_application_id, rejected_at_step, business_name, proprietor_name,
-                         contact_number, email, profile_picture, business_permit, sanitary_permit,
-                         gjc_requirements, clearance, rejection_reason, rejected_by, rejected_at)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, NOW())"
-                )->execute([
-                    $app['id'], $app['current_step'], $app['business_name'], $app['proprietor_name'],
-                    $app['contact_number'], $app['email'], $app['profile_picture'], $app['business_permit'],
-                    $app['sanitary_permit'], $app['gjc_requirements'], $app['clearance'], $reason, $adminId,
-                ]);
-                $db->prepare("DELETE FROM stall_applications WHERE id = ?")->execute([$appId]);
-                $db->commit();
-            } catch (Throwable $e) {
-                $db->rollBack();
-                stall_app_json(['success' => false, 'message' => 'Decline failed: ' . $e->getMessage()]);
-            }
-
-            try {
-                $mail = gjc_mailer();
-                $mail->addAddress($app['email'], $app['proprietor_name']);
-                $mail->Subject = 'GenPay - Stall Application Update';
-                $mail->Body = '
-                    <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:var(--gjc-danger-bg);border-radius:14px">
-                        <h3 style="color:var(--gjc-danger)">Dear ' . htmlspecialchars($app['proprietor_name']) . ',</h3>
-                        <p style="color:#374151;line-height:1.7">After review, your stall application has not been approved at this time.</p>
-                        <div style="background:#fff;border:1px solid var(--gjc-danger-border);border-radius:10px;padding:14px;margin:14px 0">
-                            <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:var(--gjc-danger);text-transform:uppercase">Reason</p>
-                            <p style="margin:0;color:#374151">' . htmlspecialchars($reason) . '</p>
-                        </div>
-                        <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
-                    </div>';
-                $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour stall application was declined.\n\nReason: {$reason}\n\nGenPay Team";
-                $mail->send();
-            } catch (Throwable $ignored) {
-            }
-
-            stall_app_json([
-                'success' => true,
-                'message' => 'Application declined and archived.',
-            ]);
-        }
-
-        // ── Lookup: fixed meeting slots already taken on a given date ─
-        case 'get_booked_slots': {
-            $date = trim((string) ($_POST['meetup_date'] ?? ''));
-            $d = DateTime::createFromFormat('Y-m-d', $date);
-            if (!$d || $d->format('Y-m-d') !== $date) {
-                stall_app_json(['success' => false, 'message' => 'Invalid date.']);
-            }
-
-            $stmt = $db->prepare(
-                "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
-                   FROM stall_applications
-                  WHERE meetup_scheduled_at IS NOT NULL
-                    AND meetup_scheduled_email_sent_at IS NOT NULL
-                    AND DATE(meetup_scheduled_at) = ?"
-            );
-            $stmt->execute([$date]);
-            $booked = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-            stall_app_json(['success' => true, 'slots' => gjc_meeting_time_slots(), 'booked' => array_values($booked)]);
-        }
-
-        // ── Step 2: Meeting — save & advance ──────────
-        case 'save_meeting': {
-            $appId = (int) ($_POST['app_id'] ?? 0);
-            $date  = trim((string) ($_POST['meetup_date'] ?? ''));
-            $time  = trim((string) ($_POST['meetup_time'] ?? ''));
-            $place = trim((string) ($_POST['meetup_location'] ?? ''));
-            $notes = trim((string) ($_POST['meetup_notes'] ?? ''));
-
-            $app = $appId ? stall_app_fetch($db, $appId) : null;
-            if (!$app || $app['status'] !== 'meeting') {
-                stall_app_json(['success' => false, 'message' => 'Application not found or not at the Meeting step.']);
-            }
-            if (!$date || !$time || !$place) {
-                stall_app_json(['success' => false, 'message' => 'Date, time, and location are required.']);
-            }
-            if (!in_array($time, gjc_meeting_time_slots(), true)) {
-                stall_app_json(['success' => false, 'message' => 'Please choose one of the fixed meeting time slots.']);
-            }
-
-            $scheduledAt = $date . ' ' . $time . ':00';
-            $dt = DateTime::createFromFormat('Y-m-d H:i:s', $scheduledAt);
-            if (!$dt || $dt->format('Y-m-d H:i:s') !== $scheduledAt) {
-                stall_app_json(['success' => false, 'message' => 'Invalid meeting date or time.']);
-            }
-
-            $conflict = $db->prepare(
-                "SELECT id FROM stall_applications WHERE meetup_scheduled_at = ? AND id != ? LIMIT 1"
-            );
-            $conflict->execute([$scheduledAt, $appId]);
-            if ($conflict->fetch()) {
-                stall_app_json(['success' => false, 'message' => 'That time slot was just booked by another applicant. Please pick a different one.']);
-            }
-
-            $result = stall_app_finalize_meeting($db, $app, $appId, $dt, $place, $notes, $adminId);
-
-            stall_app_json([
-                'success' => true,
-                'message' => 'Meeting saved. Moved to Step 3 - Down Payment.' . ($result['mailSent'] ? ' Email sent.' : ' Note: email failed - ' . $result['mailError']),
-                'status' => 'down_payment', 'current_step' => 3,
-            ]);
-        }
-
-        // ── Down payment default amount settings ─────────────────────────
-        case 'get_down_payment_settings': {
-            stall_app_json(['success' => true, 'default_amount' => gjc_down_payment_default_amount($db)]);
-        }
-
-        case 'save_down_payment_settings': {
-            $amount = (float) ($_POST['default_amount'] ?? 0);
-            if ($amount < 0) {
-                stall_app_json(['success' => false, 'message' => 'Amount cannot be negative.']);
-            }
-            $db->prepare(
-                "UPDATE meeting_settings SET down_payment_default_amount = ?, updated_by = ?, updated_at = NOW() WHERE id = 1"
-            )->execute([$amount, $adminId]);
-            stall_app_json(['success' => true, 'message' => 'Default down payment amount saved.']);
-        }
-
-        // ── Step 3: Down Payment — save & advance ──────────────
-        case 'save_down_payment': {
-            $appId  = (int) ($_POST['app_id'] ?? 0);
-            $amount = (float) ($_POST['down_payment_amount'] ?? 0);
-            $ref    = trim((string) ($_POST['down_payment_reference'] ?? ''));
-            $notes  = trim((string) ($_POST['down_payment_notes'] ?? ''));
-
-            $app = $appId ? stall_app_fetch($db, $appId) : null;
-            if (!$app || $app['status'] !== 'down_payment') {
-                stall_app_json(['success' => false, 'message' => 'Application not found or not at the Down Payment step.']);
-            }
-            if ($amount <= 0) {
-                stall_app_json(['success' => false, 'message' => 'A valid down payment amount is required.']);
-            }
-
-            $db->prepare(
-                "UPDATE stall_applications
-                    SET status = 'approval', current_step = 4,
-                        down_payment_amount = ?, down_payment_reference = ?, down_payment_notes = ?,
-                        down_payment_recorded_by = ?, down_payment_recorded_at = NOW()
-                  WHERE id = ?"
-            )->execute([$amount, $ref ?: null, $notes ?: null, $adminId, $appId]);
-
-            $mailSent = false;
-            $mailError = '';
-            try {
-                $mail = gjc_mailer();
-                $mail->addAddress($app['email'], $app['proprietor_name']);
-                $mail->Subject = 'GenPay - Down Payment Received';
-                $prettyAmount = '₱' . number_format($amount, 2);
-                $mail->Body = '
-                    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                        <h2 style="color:#064420;margin-top:0">Down Payment Received</h2>
-                        <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
-                        <p style="color:#374151;line-height:1.7">We have received your down payment for your stall application for <strong>' . htmlspecialchars($app['business_name']) . '</strong>.</p>
-                        <div style="background:#fff;border:1px solid var(--gjc-success-border);border-radius:10px;padding:16px;margin:16px 0">
-                            <p style="margin:0 0 8px;color:var(--gjc-green-600);font-weight:700;text-transform:uppercase;font-size:12px">Payment Details</p>
-                            <p style="margin:0;color:#111827"><strong>Amount:</strong> ' . htmlspecialchars($prettyAmount) . '</p>
-                            ' . ($ref !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Reference:</strong> ' . htmlspecialchars($ref) . '</p>' : '') . '
-                            ' . ($notes !== '' ? '<p style="margin:4px 0 0;color:#111827"><strong>Notes:</strong> ' . htmlspecialchars($notes) . '</p>' : '') . '
-                        </div>
-                        <p style="color:#374151;line-height:1.7">Your application will now proceed to the final approval stage. We will be in touch shortly.</p>
-                        <p style="font-size:12px;color:#6b7280">GenPay Team</p>
-                    </div>';
-                $mail->AltBody = "Dear {$app['proprietor_name']},\n\nWe have received your down payment of {$prettyAmount} for {$app['business_name']}."
-                    . ($ref !== '' ? "\nReference: {$ref}" : '')
-                    . ($notes !== '' ? "\nNotes: {$notes}" : '')
-                    . "\n\nYour application will now proceed to the final approval stage.\n\nGenPay Team";
-                $mail->send();
-                $mailSent = true;
-            } catch (Throwable $mailEx) {
-                $mailError = $mailEx->getMessage();
-            }
-
-            stall_app_json([
-                'success' => true,
-                'message' => 'Down payment recorded. Moved to Step 4 - Approval / Award.' . ($mailSent ? ' Email sent.' : ' Note: email failed - ' . $mailError),
-                'status' => 'approval', 'current_step' => 4,
-            ]);
-        }
-
-        // ── Step 4: Approval / Award — assign stall & finalize ─
-        case 'award_stall': {
+        // ── Award: assign stall, create merchant, finalize -> awarded ─
+        case 'award': {
             $appId   = (int) ($_POST['app_id'] ?? 0);
             $stallId = strtoupper(trim((string) ($_POST['stall_id'] ?? '')));
 
             $app = $appId ? stall_app_fetch($db, $appId) : null;
-            if (!$app || $app['status'] !== 'approval') {
-                stall_app_json(['success' => false, 'message' => 'Application not found or not at the Approval step.']);
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+            // Gate: signed contract uploaded AND payment recorded.
+            if (empty($app['contract_file'])) {
+                stall_app_json(['success' => false, 'message' => 'Upload the signed contract before awarding.']);
+            }
+            if (!stall_app_payment_complete($app)) {
+                stall_app_json(['success' => false, 'message' => 'Record the payment (deposit, advance, start date, schedule) before awarding.']);
             }
             if (!preg_match('/^[A-Z]\d+$/', $stallId)) {
                 stall_app_json(['success' => false, 'message' => 'Please select a stall to award.']);
@@ -383,14 +235,13 @@ try {
             $hashedPw = password_hash($tempPassword, PASSWORD_BCRYPT);
 
             $nameParts = preg_split('/\s+/', trim($app['proprietor_name'])) ?: [];
-            $lastName = array_pop($nameParts) ?: trim($app['proprietor_name']);
+            $lastName  = array_pop($nameParts) ?: trim($app['proprietor_name']);
             $firstName = trim(implode(' ', $nameParts)) ?: $lastName;
             $oldStall = null;
             $newStall = null;
 
             $db->beginTransaction();
             try {
-                // Lock and re-validate the chosen stall is still vacant.
                 $stallStmt = $db->prepare("SELECT * FROM stalls WHERE stall_id = ? FOR UPDATE");
                 $stallStmt->execute([$stallId]);
                 $oldStall = $stallStmt->fetch(PDO::FETCH_ASSOC);
@@ -407,14 +258,7 @@ try {
                           roleID, sub_role, password, profile_img,
                           force_password_change, is_first_login, password_changed, temp_password)
                      VALUES (?, ?, ?, ?, 2, 'merchant_admin', ?, '', 1, 1, 0, ?)"
-                )->execute([
-                    $lastName,
-                    $firstName,
-                    $app['email'],
-                    $app['contact_number'],
-                    $hashedPw,
-                    $tempPassword,
-                ]);
+                )->execute([$lastName, $firstName, $app['email'], $app['contact_number'], $hashedPw, $tempPassword]);
                 $newUserId = (int) $db->lastInsertId();
 
                 $db->prepare(
@@ -423,10 +267,7 @@ try {
                 )->execute([$newUserId, $app['business_name'], $stallId]);
                 $newMerchantId = (int) $db->lastInsertId();
 
-                // The submitted profile picture lives under /uploads, which is blocked
-                // from direct public access (.htaccess: "served through PHP only").
-                // Copy it into /assets/merchant_logos so it can render on the public
-                // stall directory as the tenant's company logo.
+                // Copy the submitted profile picture into the public logos dir.
                 if ($app['profile_picture'] && $app['profile_picture'] !== 'pending_path') {
                     $srcPath = BASE_PATH . '/' . $app['profile_picture'];
                     $ext = strtolower(pathinfo($srcPath, PATHINFO_EXTENSION)) ?: 'jpg';
@@ -441,9 +282,8 @@ try {
                     }
                 }
 
-                $db->prepare(
-                    "INSERT IGNORE INTO merchant_wallets (user_id, balance) VALUES (?, 0.00)"
-                )->execute([$newUserId]);
+                $db->prepare("INSERT IGNORE INTO merchant_wallets (user_id, balance) VALUES (?, 0.00)")
+                   ->execute([$newUserId]);
 
                 $db->prepare(
                     "UPDATE stalls
@@ -455,13 +295,32 @@ try {
                 $newStall['merchant_id'] = $newMerchantId;
                 $newStall['pending_expires_at'] = null;
 
+                // Tenant lease record (payment schedule lives here + on the award row).
+                $monthlyRent = (float) ($oldStall['monthly_rate'] ?? 0);
+                $scheduleDay = (int) $app['payment_schedule_day'];
+                $nextDue = stall_app_next_due_date($app['rental_start_date'], $scheduleDay);
+                if (gjc_table_exists($db, 'merchant_leases')) {
+                    $db->prepare(
+                        "INSERT INTO merchant_leases
+                            (merchant_user_id, stall_number, stall_id, stall_name, monthly_rent,
+                             deposit_amount, lease_start, next_due_date, status, contract_notes, created_by, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, NOW())"
+                    )->execute([
+                        $newUserId, $stallId, $stallId, $app['business_name'], $monthlyRent,
+                        $app['deposit_amount'], $app['rental_start_date'], $nextDue,
+                        'Payment every ' . $scheduleDay . 'th. 2-month deposit + 1-month advance collected on award.',
+                        $adminId,
+                    ]);
+                }
+
                 $db->prepare(
                     "UPDATE stall_applications
-                        SET stall_id = ?, status = 'active',
+                        SET stall_id = ?, status = 'awarded',
+                            awarded_by = ?, awarded_at = NOW(),
                             reviewed_by = ?, reviewed_at = NOW(),
                             merchant_user_id = ?, temp_password_plain = ?
                       WHERE id = ?"
-                )->execute([$stallId, $adminId, $newUserId, $tempPassword, $appId]);
+                )->execute([$stallId, $adminId, $adminId, $newUserId, $tempPassword, $appId]);
 
                 if (gjc_table_exists($db, 'merchant_accounts')) {
                     $db->prepare(
@@ -480,8 +339,8 @@ try {
                 $db->rollBack();
                 $msg = match ($e->getMessage()) {
                     'STALL_NOT_FOUND' => 'The selected stall does not exist.',
-                    'STALL_TAKEN' => 'The selected stall was just taken. Please choose a different stall.',
-                    default => 'Award failed: ' . $e->getMessage(),
+                    'STALL_TAKEN'     => 'The selected stall was just taken. Please choose a different stall.',
+                    default           => 'Award failed: ' . $e->getMessage(),
                 };
                 stall_app_json(['success' => false, 'message' => $msg]);
             }
@@ -498,14 +357,14 @@ try {
                     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
                         <h2 style="color:#064420;margin-top:0">Your Merchant Account Is Approved</h2>
                         <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
-                        <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>.</p>
-                        <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:var(--gjc-success-bg)">
-                            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:var(--gjc-success-border);text-transform:uppercase">Login Credentials</p>
+                        <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>. Your signed contract and payment schedule are available in your merchant account.</p>
+                        <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
+                            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#bbf7d0;text-transform:uppercase">Login Credentials</p>
                             <p style="margin:0"><strong>Email:</strong> ' . htmlspecialchars($app['email']) . '</p>
                             <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . htmlspecialchars($tempPassword) . '</p>
                         </div>
-                        <p style="color:var(--gjc-danger);font-weight:700">You must change this password on first login before accessing your dashboard.</p>
-                        <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:var(--gjc-green-600)">' . BASE_URL . '/login</a></p>
+                        <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
+                        <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:#059669">' . BASE_URL . '/login</a></p>
                     </div>';
                 $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour merchant account is approved for Stall {$stallId}.\n\nEmail: {$app['email']}\nTemporary Password: {$tempPassword}\n\nLog in at " . BASE_URL . "/login. You must change your password on first login.\n\nGenPay Team";
                 $mail->send();
@@ -518,10 +377,75 @@ try {
                 'success' => true,
                 'message' => "Application awarded Stall {$stallId}. Merchant account created for {$app['proprietor_name']}."
                     . ($mailSent ? ' Credentials emailed.' : ' Note: email failed - ' . $mailError),
-                'status' => 'active', 'current_step' => 4,
+                'status'  => 'awarded',
                 'user_id' => $newUserId,
-                'temp_password' => $tempPassword,
                 'mail_sent' => $mailSent,
+            ]);
+        }
+
+        // ── Reject: documents invalid at the meeting -> terminated ─
+        case 'reject': {
+            $appId  = (int) ($_POST['app_id'] ?? 0);
+            $reason = trim((string) ($_POST['reason'] ?? ''));
+            $app = $appId ? stall_app_fetch($db, $appId) : null;
+
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+            if (!$reason) {
+                stall_app_json(['success' => false, 'message' => 'A rejection reason is required.']);
+            }
+
+            $db->prepare(
+                "UPDATE stall_applications
+                    SET status = 'rejected', rejection_reason = ?, reviewed_by = ?, reviewed_at = NOW()
+                  WHERE id = ?"
+            )->execute([$reason, $adminId, $appId]);
+
+            stall_app_send_termination_email(
+                $app,
+                'Application Not Approved',
+                'After reviewing your documents at the verification meeting, your stall application has not been approved.',
+                $reason
+            );
+
+            stall_app_json([
+                'success' => true,
+                'message' => 'Application rejected. The applicant has been notified that they may re-apply.',
+                'status'  => 'rejected',
+            ]);
+        }
+
+        // ── Cancel: no-show / cancellation -> terminated ───────
+        case 'cancel': {
+            $appId  = (int) ($_POST['app_id'] ?? 0);
+            $reason = trim((string) ($_POST['reason'] ?? ''));
+            if ($reason === '') {
+                $reason = 'Did not attend the scheduled verification meeting (no-show).';
+            }
+            $app = $appId ? stall_app_fetch($db, $appId) : null;
+
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+
+            $db->prepare(
+                "UPDATE stall_applications
+                    SET status = 'cancelled', cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW()
+                  WHERE id = ?"
+            )->execute([$reason, $adminId, $appId]);
+
+            stall_app_send_termination_email(
+                $app,
+                'Application Cancelled',
+                'Your stall application has been cancelled and its meeting slot released.',
+                $reason
+            );
+
+            stall_app_json([
+                'success' => true,
+                'message' => 'Application cancelled and its slot freed. The applicant may submit a new one.',
+                'status'  => 'cancelled',
             ]);
         }
 

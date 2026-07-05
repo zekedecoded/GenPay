@@ -276,12 +276,12 @@ $currentPage = 'topups';
                             </div>
                         </div>
 
-                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (GenCoins)</label>
+                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (₱)</label>
                         <div style="position:relative;margin-bottom:6px">
-                            <input type="number" id="sgc-gencoins" class="form-control" min="1" step="1"
-                                   placeholder="e.g. 5"
+                            <input type="number" id="sgc-gencoins" class="form-control" min="1" step="0.01"
+                                   placeholder="e.g. 50"
                                    style="border-radius:12px;padding:12px 70px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
-                            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:#9ca3af">GC</span>
+                            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:#9ca3af">₱</span>
                         </div>
                         <div id="sgc-peso-equiv" style="font-size:12px;color:var(--gjc-green-600);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
                         <!-- Fee breakdown preview (step 2) -->
@@ -489,14 +489,18 @@ $currentPage = 'topups';
         return '₱' + n.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
     }
 
+    // Peso -> GenCoin equivalent for display (₱10 = 1 GC).
+    function sgcGc(peso) {
+        return (peso / 10).toLocaleString('en-PH', {maximumFractionDigits:2});
+    }
+
     function sgcBuildPreview() {
-        const gc      = parseInt(document.getElementById('sgc-gencoins').value, 10) || 0;
-        const peso    = gc * 10;
+        const peso    = parseFloat(document.getElementById('sgc-gencoins').value) || 0;
         const { fee, credited } = sgcCalcFee(peso);
         const msg     = document.getElementById('sgc-message').value.trim();
 
-        document.getElementById('sgc-prev-coins').textContent   = gc + ' GenCoins';
-        document.getElementById('sgc-prev-peso').textContent    = '= ' + sgcFmt(peso) + ' cash';
+        document.getElementById('sgc-prev-coins').textContent   = sgcFmt(peso);
+        document.getElementById('sgc-prev-peso').textContent    = '= ' + sgcGc(peso) + ' GenCoins';
         document.getElementById('sgc-prev-name').textContent    = sgcStudentName;
         document.getElementById('sgc-prev-id').textContent      = sgcSchoolId;
         document.getElementById('sgc-prev-msg').textContent     = msg || '—';
@@ -558,13 +562,12 @@ $currentPage = 'topups';
         schoolInput.addEventListener('blur', sgcLookup);
 
         document.getElementById('sgc-gencoins').addEventListener('input', function () {
-            const gc      = parseInt(this.value, 10);
+            const peso    = parseFloat(this.value) || 0;   // amount is entered in ₱
             const next    = document.getElementById('sgc-next-2');
             const preview = document.getElementById('sgc-fee-preview');
-            if (gc > 0) {
-                const peso             = gc * 10;
+            if (peso > 0) {
                 const { fee, credited} = sgcCalcFee(peso);
-                document.getElementById('sgc-peso-equiv').textContent  = '≈ ' + sgcFmt(peso) + ' cash value (1 GC = ₱10)';
+                document.getElementById('sgc-peso-equiv').textContent  = '≈ ' + sgcGc(peso) + ' GenCoins (₱10 = 1 GC)';
                 document.getElementById('sgc-fp-cash').textContent    = sgcFmt(peso);
                 document.getElementById('sgc-fp-fee').textContent     = '− ' + sgcFmt(fee);
                 document.getElementById('sgc-fp-credited').textContent= sgcFmt(credited);
@@ -587,9 +590,8 @@ $currentPage = 'topups';
     async function sgcSend() {
         const sendBtn  = document.getElementById('sgc-send-btn');
         const errorEl  = document.getElementById('sgc-send-error');
-        const gc       = parseInt(document.getElementById('sgc-gencoins').value, 10);
+        const amount   = parseFloat(document.getElementById('sgc-gencoins').value) || 0;  // entered in ₱
         const msg      = document.getElementById('sgc-message').value.trim();
-        const amount   = gc * 10;
         const { fee, credited } = sgcCalcFee(amount);
 
         sendBtn.disabled = true;

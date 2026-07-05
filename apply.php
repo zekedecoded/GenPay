@@ -6,6 +6,7 @@ require_once __DIR__ . "/connection/config.php";
 require_once __DIR__ . "/connection/pdo.php";
 require_once __DIR__ . "/connection/app.php";
 require_once __DIR__ . "/connection/StallManager.php";
+require_once __DIR__ . "/connection/mailer.php";
 
 gjc_ensure_stall_application_workflow_schema($db);
 
@@ -23,13 +24,15 @@ $old        = [];
 $success    = false;
 $appId      = null;
 $successEmail = null;
+$successMeeting = null;
 
 // PRG landing: consume the one-time session flash set after a successful POST.
 if (isset($_SESSION['apply_success']) && isset($_GET['submitted'])) {
-    $flash        = $_SESSION['apply_success'];
-    $appId        = (int) $flash['app_id'];
-    $successEmail = $flash['email'];
-    $success      = true;
+    $flash          = $_SESSION['apply_success'];
+    $appId          = (int) $flash['app_id'];
+    $successEmail   = $flash['email'];
+    $successMeeting = $flash['meeting'] ?? null;
+    $success        = true;
     unset($_SESSION['apply_success']);
 }
 
@@ -141,6 +144,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $fileData[$field] = ["tmp" => $file["tmp_name"], "ext" => $ext];
     }
 
+    // Requirement 2 — hard filter: the Business Permit is mandatory. This is an
+    // explicit server-side gate (independent of the HTML 'required'/JS checks),
+    // so a submission can never be accepted without a valid business permit
+    // upload even if the client-side validation is bypassed.
+    if (empty($fileData["business_permit"]) && !isset($formErrors["business_permit"])) {
+        $formErrors["business_permit"] = "Business Permit is required.";
+    }
+
     if (empty($formErrors)) {
         $tmpToken = "tmp_" . bin2hex(random_bytes(8));
         $tmpDir   = BASE_PATH . "/uploads/stall_applications/" . $tmpToken;
@@ -173,7 +184,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                      street, barangay, city, province, contact_number, email, preferred_stall_id,
                      profile_picture, business_permit, sanitary_permit, gjc_requirements,
                      clearance, terms_accepted, status, current_step)
-                 VALUES (?,?,?,?,?,?,?, ?,?,?,?, ?,?,?, 'pending_path','pending_path','pending_path','pending_path','pending_path', 1, 'review', 1)"
+                 VALUES (?,?,?,?,?,?,?, ?,?,?,?, ?,?,?, 'pending_path','pending_path','pending_path','pending_path','pending_path', 1, 'pending_verification', 1)"
             );
             $ins->execute([
                 $old["business_name"],
@@ -219,12 +230,47 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $db->commit();
 
+            // ── One-stop scheduling: assign the verification meeting slot the
+            // moment the application is submitted (clinic-appointment model) and
+            // email the confirmation immediately. Runs AFTER commit so the slot
+            // UPDATE autocommits and is visible to concurrent submissions under
+            // the advisory lock. Non-fatal: a scheduling/email hiccup never loses
+            // the submission — the applicant is told we will email the schedule.
+            $meetingInfo = null;
+            try {
+                $slot = gjc_assign_meeting_slot($db, $appId);
+                if ($slot !== null) {
+                    $meetingDt = new DateTime($slot['datetime']);
+                    $mailResult = gjc_send_stall_meeting_email(
+                        $old['email'],
+                        $proprietorName,
+                        $old['business_name'],
+                        $meetingDt,
+                        $slot['location']
+                    );
+                    if ($mailResult['sent']) {
+                        $db->prepare(
+                            "UPDATE stall_applications SET meetup_scheduled_email_sent_at = NOW() WHERE id = ?"
+                        )->execute([$appId]);
+                    }
+                    $meetingInfo = [
+                        'datetime'  => $slot['datetime'],
+                        'location'  => $slot['location'],
+                        'email_ok'  => $mailResult['sent'],
+                    ];
+                }
+            } catch (Throwable $schedEx) {
+                // Leave $meetingInfo null — admin can schedule/re-send manually.
+                $meetingInfo = null;
+            }
+
             // PRG: store confirmation in session, then redirect so a page
             // refresh replays a GET instead of re-posting the form.
             if (session_status() === PHP_SESSION_NONE) session_start();
             $_SESSION['apply_success'] = [
-                'app_id' => $appId,
-                'email'  => $old['email'],
+                'app_id'  => $appId,
+                'email'   => $old['email'],
+                'meeting' => $meetingInfo,
             ];
             header('Location: ' . BASE_URL . '/apply?submitted=1');
             exit;
@@ -292,11 +338,55 @@ try {
     <div class="success-card">
         <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
         <div class="success-title">Application Submitted</div>
+
+        <?php if ($successMeeting && !empty($successMeeting['datetime'])):
+            $mDt = new DateTime($successMeeting['datetime']); ?>
         <p class="success-sub">
-            Your stall application has been received. Our team will review your documents
-            and contact you at <strong><?= htmlspecialchars($successEmail ?? "") ?></strong>
-            about next steps.
+            Your stall application has been received and your verification meeting is
+            <strong>booked</strong>. Everything — document check, contract signing, and
+            payment — happens at this one meeting.
         </p>
+
+        <div class="success-meeting" style="text-align:left;background:#fff;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:18px 0">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#059669;margin-bottom:10px">
+                <i class="fa-solid fa-calendar-check"></i> Your Meeting Schedule
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:6px">
+                <i class="fa-solid fa-calendar-day" style="color:#064420;width:18px;margin-top:3px"></i>
+                <div><strong><?= htmlspecialchars($mDt->format("l, F j, Y")) ?></strong></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:6px">
+                <i class="fa-solid fa-clock" style="color:#064420;width:18px;margin-top:3px"></i>
+                <div><strong><?= htmlspecialchars($mDt->format("g:i A")) ?></strong> (1 hour)</div>
+            </div>
+            <div style="display:flex;gap:10px">
+                <i class="fa-solid fa-location-dot" style="color:#064420;width:18px;margin-top:3px"></i>
+                <div><?= htmlspecialchars($successMeeting["location"] ?? "GJC Finance Office") ?></div>
+            </div>
+        </div>
+
+        <div class="success-reminder" style="text-align:left;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;margin:0 0 18px;color:#92400e;font-size:14px;line-height:1.6">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <strong>Please bring the original copies</strong> of all documents you uploaded
+            (business permit, sanitary permit, GJC requirements, and clearance) for verification.
+        </div>
+
+        <p class="success-sub" style="font-size:13px">
+            <?php if (!empty($successMeeting["email_ok"])): ?>
+            A confirmation with these details has been emailed to
+            <strong><?= htmlspecialchars($successEmail ?? "") ?></strong>.
+            <?php else: ?>
+            We could not send the confirmation email just now, but your meeting above is confirmed.
+            Please take a screenshot for your records.
+            <?php endif; ?>
+        </p>
+        <?php else: ?>
+        <p class="success-sub">
+            Your stall application has been received. We will email your verification meeting
+            schedule to <strong><?= htmlspecialchars($successEmail ?? "") ?></strong> shortly.
+        </p>
+        <?php endif; ?>
+
         <div class="success-ref">Application #<?= str_pad($appId, 5, "0", STR_PAD_LEFT) ?></div>
     </div>
 

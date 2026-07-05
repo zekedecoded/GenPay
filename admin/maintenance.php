@@ -448,11 +448,6 @@ function maintenance_table_columns_fresh(PDO $db, string $table): array
 
 function maintenance_ensure_merchant_bypass_schema(PDO $db): void
 {
-    $userColumns = maintenance_table_columns_fresh($db, 'users');
-    if (!in_array('username', $userColumns, true)) {
-        $db->exec("ALTER TABLE users ADD COLUMN username VARCHAR(80) NULL AFTER email");
-    }
-
     if (gjc_table_exists($db, 'merchant')) {
         $merchantColumns = maintenance_table_columns_fresh($db, 'merchant');
         if (!in_array('notes', $merchantColumns, true)) {
@@ -614,7 +609,7 @@ function maintenance_insert_approved_application(PDO $db, array $data, int $user
              profile_picture, business_permit, sanitary_permit, gjc_requirements, clearance,
              terms_accepted, status, current_step, reviewed_by, reviewed_at,
              merchant_user_id, temp_password_plain)
-         VALUES (?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?,  '', '', '', '', '',  1, 'active', 5, ?, NOW(),  ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?,  '', '', '', '', '',  1, 'awarded', 5, ?, NOW(),  ?, ?)"
     );
     $stmt->execute([
         $data['business_name'],

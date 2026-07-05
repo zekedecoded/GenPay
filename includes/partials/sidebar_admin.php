@@ -50,7 +50,7 @@ $currentPage = $currentPage ?? ""; ?>
             <span class="nav-text">Stall Applications</span>
             <?php
             try {
-                $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='review'")->fetchColumn();
+                $__pendingCount = $db->query("SELECT COUNT(*) FROM stall_applications WHERE status='pending_verification'")->fetchColumn();
                 if ($__pendingCount > 0): ?>
                 <span style="background:var(--gjc-alert);color:#fff;font-size:10px;font-weight:700;border-radius:50px;padding:1px 7px;margin-left:auto;"><?= (int)$__pendingCount ?></span>
             <?php endif;

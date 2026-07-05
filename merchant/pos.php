@@ -375,12 +375,12 @@ async function generatePaymentQr() {
                         </div>
                     </div>
 
-                    <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (GenCoins)</label>
+                    <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (₱)</label>
                     <div style="position:relative;margin-bottom:6px">
-                        <input type="number" id="lw-gc" class="form-control" min="1" step="1"
-                               placeholder="e.g. 5"
+                        <input type="number" id="lw-gc" class="form-control" min="1" step="0.01"
+                               placeholder="e.g. 50"
                                style="border-radius:12px;padding:12px 60px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
-                        <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:#9ca3af">GC</span>
+                        <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:#9ca3af">₱</span>
                     </div>
                     <div id="lw-gc-equiv" style="font-size:12px;color:var(--gjc-green-600);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
 
@@ -488,6 +488,11 @@ function lwFmt(n) {
     return '₱' + (+n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
+// Peso -> GenCoin equivalent for display (₱10 = 1 GC).
+function lwGc(cash) {
+    return (cash / 10).toLocaleString('en-PH', {maximumFractionDigits:2});
+}
+
 function lwCalcFee(cash) {
     const systemFee   = Math.round(cash * 0.02 * 100) / 100;
     const merchantFee = Math.round(cash * 0.01 * 100) / 100;
@@ -536,13 +541,12 @@ function lwGoStep(step) {
 }
 
 function lwBuildPreview() {
-    const gc   = parseInt(document.getElementById('lw-gc').value, 10) || 0;
-    const cash = gc * 10;
+    const cash = parseFloat(document.getElementById('lw-gc').value) || 0;
     const { systemFee, merchantFee, totalFee, credited } = lwCalcFee(cash);
 
     document.getElementById('lw-prev-name').textContent       = lwStudentName;
     document.getElementById('lw-prev-id').textContent         = lwSchoolId;
-    document.getElementById('lw-prev-gc-count').textContent   = gc + ' GC';
+    document.getElementById('lw-prev-gc-count').textContent   = lwGc(cash) + ' GC';
     document.getElementById('lw-prev-cash').textContent       = lwFmt(cash);
     document.getElementById('lw-prev-fee').textContent        = '− ' + lwFmt(totalFee);
     document.getElementById('lw-prev-mcut').textContent       = '+ ' + lwFmt(merchantFee);
@@ -597,8 +601,7 @@ async function lwLookup() {
 async function lwLoad() {
     const loadBtn = document.getElementById('lw-load-btn');
     const errorEl = document.getElementById('lw-send-error');
-    const gc      = parseInt(document.getElementById('lw-gc').value, 10) || 0;
-    const cash    = gc * 10;
+    const cash    = parseFloat(document.getElementById('lw-gc').value) || 0;  // entered in ₱
     const { credited, totalFee, merchantFee } = lwCalcFee(cash);
 
     loadBtn.disabled = true;
@@ -640,13 +643,12 @@ document.addEventListener('DOMContentLoaded', function () {
     idInput.addEventListener('blur', lwLookup);
 
     document.getElementById('lw-gc').addEventListener('input', function () {
-        const gc   = parseInt(this.value, 10) || 0;
-        const cash = gc * 10;
+        const cash = parseFloat(this.value) || 0;   // amount is entered in ₱
         const next = document.getElementById('lw-next-2');
         const prev = document.getElementById('lw-fee-preview');
-        if (gc > 0) {
+        if (cash > 0) {
             const { systemFee, merchantFee, totalFee, credited } = lwCalcFee(cash);
-            document.getElementById('lw-gc-equiv').textContent   = '≈ ' + lwFmt(cash) + ' cash value (1 GC = ₱10)';
+            document.getElementById('lw-gc-equiv').textContent   = '≈ ' + lwGc(cash) + ' GenCoins (₱10 = 1 GC)';
             document.getElementById('lw-fp-cash').textContent    = lwFmt(cash);
             document.getElementById('lw-fp-fee').textContent     = '− ' + lwFmt(totalFee);
             document.getElementById('lw-fp-mcut').textContent    = lwFmt(merchantFee);

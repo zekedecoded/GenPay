@@ -96,7 +96,12 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 <a href="<?= STUDENT_URL ?>/transfer.php">
                     <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
-                    <span class="student-nav-text">Transfer Tokens</span>
+                    <span class="student-nav-text">Send GenCoin</span>
+                </a>
+
+                <a href="<?= STUDENT_URL ?>/withdraw.php">
+                    <i class="fa-solid fa-money-bill-wave student-nav-icon"></i>
+                    <span class="student-nav-text">Withdraw</span>
                 </a>
 
                 <a href="<?= STUDENT_URL ?>/topup_request.php" class="active">

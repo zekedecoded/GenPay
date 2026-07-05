@@ -215,6 +215,19 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
         "merchant_user_id" => "INT UNSIGNED NULL",
         "temp_password_plain" => "VARCHAR(100) NULL",
         "preferred_stall_id" => "VARCHAR(10) NULL DEFAULT NULL",
+        // One-stop meeting: signed contract + payment recorded at the meeting.
+        "contract_file" => "VARCHAR(500) NULL",
+        "contract_uploaded_at" => "DATETIME NULL",
+        "contract_uploaded_by" => "INT UNSIGNED NULL",
+        "deposit_amount" => "DECIMAL(10,2) NULL",      // 2 months deposit
+        "advance_amount" => "DECIMAL(10,2) NULL",      // 1 month advance
+        "rental_start_date" => "DATE NULL",
+        "payment_schedule_day" => "TINYINT UNSIGNED NULL", // 15 or 30
+        "awarded_by" => "INT UNSIGNED NULL",
+        "awarded_at" => "DATETIME NULL",
+        "cancelled_by" => "INT UNSIGNED NULL",
+        "cancelled_at" => "DATETIME NULL",
+        "cancel_reason" => "TEXT NULL",
     ];
 
     foreach ($adds as $column => $definition) {
@@ -223,6 +236,40 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
                 "ALTER TABLE stall_applications ADD COLUMN {$column} {$definition}",
             );
         }
+    }
+
+    // One-stop pipeline: the meeting is auto-scheduled at submission and the
+    // old Review/Meeting/Down-Payment stages are collapsed into a single
+    // in-person verification meeting. Widen the ENUM (so old values still
+    // resolve), remap any legacy rows onto the two-status model, then narrow to
+    // the final vocabulary. Idempotent — safe to run on every page load.
+    try {
+        $db->exec(
+            "ALTER TABLE stall_applications
+             MODIFY status ENUM(
+                'pending_verification','awarded','cancelled','rejected','expired',
+                'review','meeting','down_payment','approval','active','pending','approved'
+             ) NOT NULL DEFAULT 'pending_verification'",
+        );
+        // Anything mid-pipeline (submitted, not yet awarded) -> Pending for Verification.
+        $db->exec(
+            "UPDATE stall_applications
+                SET status = 'pending_verification'
+              WHERE status IN ('review','meeting','down_payment','approval','pending')",
+        );
+        // Completed/awarded applications -> Awarded.
+        $db->exec(
+            "UPDATE stall_applications
+                SET status = 'awarded'
+              WHERE status IN ('active','approved')",
+        );
+        // Narrow to the final one-stop vocabulary.
+        $db->exec(
+            "ALTER TABLE stall_applications
+             MODIFY status ENUM('pending_verification','awarded','rejected','cancelled','expired')
+                NOT NULL DEFAULT 'pending_verification'",
+        );
+    } catch (Throwable $ignored) {
     }
 }
 
@@ -480,6 +527,53 @@ function gjc_ensure_operational_tables(PDO $db): void
         ) {
             $db->exec(
                 "ALTER TABLE encashment_requests ADD COLUMN {$column} {$definition}",
+            );
+        }
+    }
+
+    // Student cash-out (withdrawal) requests — mirrors encashment_requests
+    // but keyed on the student wallet. Balance is deducted on release, not
+    // at request time (same behaviour as merchant encashment).
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS withdrawal_requests (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NULL,
+            student_wallet_id INT UNSIGNED NULL,
+            amount DECIMAL(15,2) NOT NULL,
+            method VARCHAR(80) NOT NULL DEFAULT 'Cashier Release',
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            reference_no VARCHAR(40) NULL UNIQUE,
+            released_by INT UNSIGNED NULL,
+            released_at DATETIME NULL,
+            rejected_by INT UNSIGNED NULL,
+            rejected_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_withdraw_user (user_id),
+            INDEX idx_withdraw_status (status)
+        ) ENGINE=InnoDB",
+    );
+
+    $withdrawAdds = [
+        "user_id" => "INT UNSIGNED NULL",
+        "student_wallet_id" => "INT UNSIGNED NULL",
+        "method" => "VARCHAR(80) NOT NULL DEFAULT 'Cashier Release'",
+        "reference_no" => "VARCHAR(40) NULL",
+        "released_by" => "INT UNSIGNED NULL",
+        "released_at" => "DATETIME NULL",
+        "rejected_by" => "INT UNSIGNED NULL",
+        "rejected_at" => "DATETIME NULL",
+        "created_at" => "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    ];
+    foreach ($withdrawAdds as $column => $definition) {
+        if (
+            !in_array(
+                $column,
+                gjc_table_columns($db, "withdrawal_requests"),
+                true,
+            )
+        ) {
+            $db->exec(
+                "ALTER TABLE withdrawal_requests ADD COLUMN {$column} {$definition}",
             );
         }
     }
@@ -957,7 +1051,9 @@ function gjc_reference(string $prefix): string
 /** Fixed bookable times for stall application Step 2 meetings - one applicant per slot. */
 function gjc_meeting_time_slots(): array
 {
-    return ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00'];
+    // One-hour meeting slots, 8:00 AM – 5:00 PM with a noon lunch break.
+    // The last slot starts at 4:00 PM so no meeting runs past the 5:00 PM close.
+    return ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00'];
 }
 
 /**
@@ -1117,37 +1213,46 @@ function gjc_wallet_users_list(PDO $db): array
 }
 
 /**
- * Finds the earliest open meeting slot strictly after today, skipping
- * weekends, admin-defined holidays, and times already booked by another
- * applicant. Returns ['date' => 'Y-m-d', 'time' => 'H:i'] or null if nothing
- * is free within the lookahead window (manual scheduling remains available
- * as a backup in that case).
+ * Pure slot-finding core — no database, no clock, so it can be unit-tested
+ * against the edge cases (Friday afternoon → Monday, full day rolls over,
+ * weekend submission → Monday, past-cutoff same day, etc.).
+ *
+ * "Clinic appointment" model: from `$now`, return the earliest free slot whose
+ * start time is still in the future today, otherwise roll forward through
+ * business days (skipping weekends and $holidays) until one is free.
+ *
+ * @param DateTimeImmutable $now            The reference "now".
+ * @param callable          $bookedProvider fn(string $ymd): string[] of taken 'H:i' times.
+ * @param array             $holidays       Map of 'Y-m-d' => name to skip.
+ * @param string[]          $slots          Ordered 'H:i' slot start times.
+ * @return array{date:string,time:string}|null
  */
-function gjc_find_next_meeting_slot(PDO $db, int $lookaheadDays = 180): ?array
-{
-    $holidays = gjc_meeting_holiday_dates($db);
-    $slots = gjc_meeting_time_slots();
-    $bookedStmt = $db->prepare(
-        "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
-           FROM stall_applications
-          WHERE meetup_scheduled_at IS NOT NULL
-            AND meetup_scheduled_email_sent_at IS NOT NULL
-            AND DATE(meetup_scheduled_at) = ?"
-    );
+function gjc_compute_next_meeting_slot(
+    DateTimeImmutable $now,
+    callable $bookedProvider,
+    array $holidays,
+    array $slots,
+    int $lookaheadDays = 180
+): ?array {
+    $today   = $now->format('Y-m-d');
+    $nowTime = $now->format('H:i');
+    $cursor  = $now->setTime(0, 0, 0);
 
-    $cursor = new DateTimeImmutable('tomorrow');
     for ($i = 0; $i < $lookaheadDays; $i++) {
-        $dateStr = $cursor->format('Y-m-d');
+        $dateStr   = $cursor->format('Y-m-d');
         $dayOfWeek = (int) $cursor->format('N'); // 6 = Saturday, 7 = Sunday
 
         if ($dayOfWeek < 6 && !isset($holidays[$dateStr])) {
-            $bookedStmt->execute([$dateStr]);
-            $booked = array_flip($bookedStmt->fetchAll(PDO::FETCH_COLUMN));
-
+            $booked = array_flip($bookedProvider($dateStr));
             foreach ($slots as $slot) {
-                if (!isset($booked[$slot])) {
-                    return ['date' => $dateStr, 'time' => $slot];
+                if (isset($booked[$slot])) {
+                    continue;
                 }
+                // Same-day: only offer a slot that starts later than right now.
+                if ($dateStr === $today && $slot <= $nowTime) {
+                    continue;
+                }
+                return ['date' => $dateStr, 'time' => $slot];
             }
         }
 
@@ -1155,6 +1260,81 @@ function gjc_find_next_meeting_slot(PDO $db, int $lookaheadDays = 180): ?array
     }
 
     return null;
+}
+
+/**
+ * Finds the earliest open meeting slot from now, skipping weekends,
+ * admin-defined holidays, and times already held by another live application.
+ * A slot is "held" by any application with a meeting date on that day whose
+ * status is not cancelled/expired/rejected — so cancellations free their slot.
+ * Returns ['date' => 'Y-m-d', 'time' => 'H:i'] or null if nothing is free
+ * within the lookahead window.
+ */
+function gjc_find_next_meeting_slot(PDO $db, int $lookaheadDays = 180): ?array
+{
+    $holidays = gjc_meeting_holiday_dates($db);
+    $slots    = gjc_meeting_time_slots();
+
+    $bookedStmt = $db->prepare(
+        "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i') AS t
+           FROM stall_applications
+          WHERE meetup_scheduled_at IS NOT NULL
+            AND status NOT IN ('cancelled', 'expired', 'rejected')
+            AND DATE(meetup_scheduled_at) = ?"
+    );
+    $provider = static function (string $date) use ($bookedStmt): array {
+        $bookedStmt->execute([$date]);
+        return $bookedStmt->fetchAll(PDO::FETCH_COLUMN);
+    };
+
+    return gjc_compute_next_meeting_slot(
+        new DateTimeImmutable('now'),
+        $provider,
+        $holidays,
+        $slots,
+        $lookaheadDays
+    );
+}
+
+/**
+ * Atomically assign the next free meeting slot to an application and persist it.
+ *
+ * Concurrency guard: a named advisory lock (GET_LOCK) serialises the
+ * find-then-write critical section so two near-simultaneous submissions can
+ * never be handed the same slot — the second caller sees the first's committed
+ * assignment and rolls to the next free slot.
+ *
+ * MUST be called outside an open transaction so the UPDATE autocommits and is
+ * visible to the next lock holder before the lock is released.
+ *
+ * @return array{date:string,time:string,datetime:string,location:string}|null
+ */
+function gjc_assign_meeting_slot(PDO $db, int $appId, ?string $location = null): ?array
+{
+    $location = $location ?? gjc_meeting_default_location($db);
+
+    $db->prepare("SELECT GET_LOCK('gjc_stall_scheduler', 10)")->execute();
+    try {
+        $slot = gjc_find_next_meeting_slot($db);
+        if ($slot === null) {
+            return null;
+        }
+        $scheduledAt = $slot['date'] . ' ' . $slot['time'] . ':00';
+        $db->prepare(
+            "UPDATE stall_applications
+                SET meetup_scheduled_at = ?, meetup_location = ?
+              WHERE id = ?"
+        )->execute([$scheduledAt, $location, $appId]);
+
+        return [
+            'date'     => $slot['date'],
+            'time'     => $slot['time'],
+            'datetime' => $scheduledAt,
+            'location' => $location,
+        ];
+    } finally {
+        $db->prepare("SELECT RELEASE_LOCK('gjc_stall_scheduler')")->execute();
+    }
 }
 
 function gjc_transaction_type_options(): array

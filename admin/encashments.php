@@ -23,6 +23,15 @@ $encashmentHistory = $db->query(
       LIMIT 20"
 )->fetchAll(PDO::FETCH_ASSOC);
 
+// ── Student cash-out (withdrawal) requests ──────────────────────────────────
+$pendingWithdrawals = (int) $db->query("SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'")->fetchColumn();
+$pendingWithdrawalRequests = $db->query(
+    "SELECT * FROM withdrawal_requests
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+      LIMIT 20"
+)->fetchAll(PDO::FETCH_ASSOC);
+
 $currentPage = 'encashments';
 ?>
 
@@ -93,11 +102,11 @@ $currentPage = 'encashments';
 
                 <div class="encash-stat-card">
                     <div class="stat-icon-wrap">
-                        <i class="fa-solid fa-money-check-dollar"></i>
+                        <i class="fa-solid fa-graduation-cap"></i>
                     </div>
-                    <span>Encashment Queue</span>
-                    <h2><?php echo $encashmentQueue; ?></h2>
-                    <p>Requests waiting in queue</p>
+                    <span>Student Withdrawals</span>
+                    <h2><?php echo $pendingWithdrawals; ?></h2>
+                    <p>Pending student cash-outs</p>
                 </div>
 
             </section>
@@ -154,6 +163,67 @@ $currentPage = 'encashments';
                                 </td>
                             </tr>
                             <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </section>
+
+            <section class="encash-panel mb-4" id="pending-withdrawals">
+
+                <div class="encash-panel-header">
+                    <div>
+                        <h3>Pending Student Withdrawals</h3>
+                        <p>Release cash to students who requested a cash-out. Their balance is deducted on release.</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table encash-table align-middle js-datatable" id="pendingWithdrawalsTable" data-page-length="10">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Student Name</th>
+                                <th>Student ID</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php if (empty($pendingWithdrawalRequests)): ?>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-3">No pending student withdrawals.</td>
+                            </tr>
+                            <?php else: ?>
+                            <?php foreach ($pendingWithdrawalRequests as $request): ?>
+                            <tr>
+                                <?php $studentName = gjc_user_label($db, (int) $request['user_id']); ?>
+                                <td><?php echo gjc_e($request["reference_no"]); ?></td>
+                                <td>
+                                    <div class="encash-user-cell">
+                                        <div class="encash-avatar">
+                                            <?php echo gjc_e(strtoupper(substr($studentName, 0, 1))); ?>
+                                        </div>
+                                        <strong><?php echo gjc_e($studentName); ?></strong>
+                                    </div>
+                                </td>
+                                <td><?php echo 'GJC-' . str_pad((string) $request['user_id'], 5, '0', STR_PAD_LEFT); ?></td>
+                                <td class="amount-text"><?php echo gjc_money($request["amount"]); ?></td>
+                                <td><span class="method-pill"><?php echo gjc_e($request["method"]); ?></span></td>
+                                <td><?php echo gjc_e(date('M d, h:i A', strtotime($request["created_at"]))); ?></td>
+                                <td>
+                                    <div class="encash-actions">
+                                        <button type="button" class="release-btn"
+                                            onclick="releaseWithdrawal(<?php echo (int) $request['id']; ?>, <?php echo (int) $request['student_wallet_id']; ?>, <?php echo (float) $request['amount']; ?>)">Release</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
 
                     </table>
@@ -235,6 +305,27 @@ $currentPage = 'encashments';
         });
         const result = await response.json();
         alert(result.message || (result.success ? "Encashment released." : "Release failed."));
+        if (result.success) {
+            window.location.reload();
+        }
+    }
+
+    async function releaseWithdrawal(withdrawalId, studentWalletId, amount) {
+        if (!confirm("Release this student withdrawal? The student's balance will be deducted.")) {
+            return;
+        }
+
+        const form = new FormData();
+        form.append("withdrawal_id", withdrawalId);
+        form.append("student_wallet_id", studentWalletId);
+        form.append("amount", amount);
+
+        const response = await fetch("release_student_withdrawal.php", {
+            method: "POST",
+            body: form
+        });
+        const result = await response.json();
+        alert(result.message || (result.success ? "Withdrawal released." : "Release failed."));
         if (result.success) {
             window.location.reload();
         }

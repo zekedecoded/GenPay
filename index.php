@@ -5,7 +5,7 @@
     $role = (int) ($_SESSION['roleID'] ?? 0);
 
     
-    if ($role === 3) {
+    if ($role === 4) {
         header('Location: ' . DASHBOARD_URL);
         exit;
     } elseif ($role === 2) {
