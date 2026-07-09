@@ -108,6 +108,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $formErrors["terms"] = "You must scroll through and accept the Terms & Conditions.";
     }
 
+    // ── Duplicate handling: the same email, contact number, business name, or
+    // proprietor name can only sit on ONE live application at a time. "Live"
+    // means pending verification or already awarded — rejected and cancelled
+    // applications never block, so those applicants can re-apply as the
+    // termination emails promise. Each duplicate lands on its own field so the
+    // applicant sees exactly which detail is already taken.
+    $sameCI = fn($a, $b) => mb_strtolower(trim((string) $a)) === mb_strtolower(trim((string) $b));
+    $proprietorName = trim(implode(" ", array_filter(
+        [$old["first_name"], $old["middle_name"], $old["last_name"], $old["suffix"]],
+        fn($part) => $part !== ""
+    )));
+
+    if (!isset($formErrors["email"])) {
+        // The email becomes the merchant login at award — block it up front if
+        // any GenPay account already uses it (the award step would refuse it).
+        $userChk = $db->prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1");
+        $userChk->execute([$old["email"]]);
+        if ($userChk->fetch()) {
+            $formErrors["email"] = "This email address already belongs to a GenPay account. Please use a different email.";
+        }
+    }
+
+    $dupStmt = $db->prepare(
+        "SELECT email, contact_number, business_name, proprietor_name
+           FROM stall_applications
+          WHERE status IN ('pending_verification', 'awarded')
+            AND (email = ? OR contact_number = ?
+                 OR LOWER(business_name) = LOWER(?) OR LOWER(proprietor_name) = LOWER(?))"
+    );
+    $dupStmt->execute([$old["email"], $old["contact_number"], $old["business_name"], $proprietorName]);
+    $dupFound = false;
+    foreach ($dupStmt->fetchAll(PDO::FETCH_ASSOC) as $dup) {
+        if (!isset($formErrors["email"]) && $sameCI($dup["email"], $old["email"])) {
+            $formErrors["email"] = "This email address is already on an application that is in progress or awarded.";
+            $dupFound = true;
+        }
+        if (!isset($formErrors["contact_number"]) && $dup["contact_number"] === $old["contact_number"]) {
+            $formErrors["contact_number"] = "This contact number is already on an application that is in progress or awarded.";
+            $dupFound = true;
+        }
+        if (!isset($formErrors["business_name"]) && $sameCI($dup["business_name"], $old["business_name"])) {
+            $formErrors["business_name"] = "An application for this business name is already in progress or awarded.";
+            $dupFound = true;
+        }
+        if (!isset($formErrors["first_name"]) && !isset($formErrors["last_name"])
+            && $proprietorName !== "" && $sameCI($dup["proprietor_name"], $proprietorName)) {
+            // Keyed on its own so the form shows one message spanning the whole
+            // name row — the duplicate is the full name, not just one part.
+            $formErrors["proprietor_name"] = "This full name (first, middle, last, and suffix) already has an application in progress or an awarded stall.";
+            $dupFound = true;
+        }
+    }
+    if ($dupFound && !isset($formErrors["general"])) {
+        $formErrors["general"] = "Some of your details are already on an application that is being processed. Please review the highlighted fields below.";
+    }
+
     $fileRules = [
         "profile_picture" => ["label" => "Profile Picture",   "mimes" => IMG_ONLY_MIMES, "exts" => IMG_ONLY_EXT],
         "business_permit" => ["label" => "Business Permit",   "mimes" => ALLOWED_MIMES,  "exts" => ALLOWED_EXT],
@@ -418,7 +474,7 @@ try {
                     <div>
                         <label class="field-label" for="first_name">First Name <span class="req">*</span></label>
                         <input type="text" id="first_name" name="first_name"
-                               class="field-input <?= isset($formErrors['first_name']) ? 'err' : '' ?>"
+                               class="field-input <?= isset($formErrors['first_name']) || isset($formErrors['proprietor_name']) ? 'err' : '' ?>"
                                placeholder="Juan"
                                value="<?= htmlspecialchars($old['first_name'] ?? '') ?>"
                                maxlength="60">
@@ -429,7 +485,7 @@ try {
                     <div>
                         <label class="field-label" for="middle_name">Middle Name</label>
                         <input type="text" id="middle_name" name="middle_name"
-                               class="field-input <?= isset($formErrors['middle_name']) ? 'err' : '' ?>"
+                               class="field-input <?= isset($formErrors['middle_name']) || isset($formErrors['proprietor_name']) ? 'err' : '' ?>"
                                placeholder="Santos"
                                value="<?= htmlspecialchars($old['middle_name'] ?? '') ?>"
                                maxlength="60">
@@ -440,7 +496,7 @@ try {
                     <div>
                         <label class="field-label" for="last_name">Last Name <span class="req">*</span></label>
                         <input type="text" id="last_name" name="last_name"
-                               class="field-input <?= isset($formErrors['last_name']) ? 'err' : '' ?>"
+                               class="field-input <?= isset($formErrors['last_name']) || isset($formErrors['proprietor_name']) ? 'err' : '' ?>"
                                placeholder="Dela Cruz"
                                value="<?= htmlspecialchars($old['last_name'] ?? '') ?>"
                                maxlength="60">
@@ -450,11 +506,15 @@ try {
                     </div>
                 </div>
 
+                <?php if (isset($formErrors['proprietor_name'])): ?>
+                <div class="field-error"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($formErrors['proprietor_name']) ?></div>
+                <?php endif; ?>
+
                 <div class="frow frow-2">
                     <div>
                         <label class="field-label" for="suffix">Suffix</label>
                         <input type="text" id="suffix" name="suffix"
-                               class="field-input <?= isset($formErrors['suffix']) ? 'err' : '' ?>"
+                               class="field-input <?= isset($formErrors['suffix']) || isset($formErrors['proprietor_name']) ? 'err' : '' ?>"
                                placeholder="Jr., Sr., III"
                                value="<?= htmlspecialchars($old['suffix'] ?? '') ?>"
                                maxlength="20">

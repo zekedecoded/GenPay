@@ -49,6 +49,16 @@ try {
                 gjc_json_fail('Stall not found.');
             }
 
+            // Opening the detail view marks the stall's merchant activity as
+            // checked — shared stamp, so the dashboard badge clears for every
+            // finance admin.
+            gjc_ensure_merchant_card_views_schema($db);
+            $db->prepare(
+                "INSERT INTO merchant_card_views (merchant_id, last_viewed_at, viewed_by)
+                 VALUES (?, NOW(), ?)
+                 ON DUPLICATE KEY UPDATE last_viewed_at = NOW(), viewed_by = VALUES(viewed_by)"
+            )->execute([$merchantId, $adminId]);
+
             $lease = $directory->activeLease((int) $summary['merchant_user_id']);
             $leaseId = (int) ($lease['id'] ?? 0);
 
@@ -71,6 +81,11 @@ try {
                     trim((string) ($_GET['inventory_category'] ?? '')),
                     trim((string) ($_GET['inventory_restriction'] ?? '')),
                     (int) ($_GET['inventory_page'] ?? 1),
+                    (int) ($_GET['per_page'] ?? 10)
+                ),
+                'activity' => $directory->pagedActivity(
+                    (int) $summary['merchant_user_id'],
+                    (int) ($_GET['activity_page'] ?? 1),
                     (int) ($_GET['per_page'] ?? 10)
                 ),
                 'privacy_notice' => 'Admin stall details intentionally exclude merchant sales revenue and transaction history.',
@@ -110,6 +125,23 @@ try {
                     trim((string) ($_GET['search'] ?? '')),
                     trim((string) ($_GET['category'] ?? '')),
                     trim((string) ($_GET['restriction'] ?? '')),
+                    (int) ($_GET['page'] ?? 1),
+                    (int) ($_GET['per_page'] ?? 10)
+                ),
+            ]);
+            break;
+        }
+
+        case 'activity': {
+            $merchantUserId = (int) ($_GET['merchant_user_id'] ?? 0);
+            if ($merchantUserId <= 0) {
+                gjc_json_fail('Invalid merchant owner ID.');
+            }
+
+            echo json_encode([
+                'success' => true,
+                'activity' => $directory->pagedActivity(
+                    $merchantUserId,
                     (int) ($_GET['page'] ?? 1),
                     (int) ($_GET['per_page'] ?? 10)
                 ),

@@ -1725,6 +1725,7 @@ a.mini-metric-card:focus-visible {
 .mt-1  { margin-top: 6px !important; }
 
 .tenant-card {
+  position: relative;
   width: 100%;
   min-height: 150px;
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -1734,6 +1735,29 @@ a.mini-metric-card:focus-visible {
   text-align: left;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+/* Unread merchant-activity count, pinned to the card's top-right corner.
+   Cleared (server-side stamp + element removed) when the card is opened. */
+.tenant-card-notif {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+  z-index: 2;
 }
 
 .tenant-card:hover,

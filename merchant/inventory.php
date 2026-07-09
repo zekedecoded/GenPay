@@ -37,7 +37,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -121,7 +121,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             </td>
                             <td><?= gjc_e(ucwords($item['category'])) ?></td>
                             <td><?= gjc_e($item['unit']) ?></td>
-                            <td><?= gjc_money($item['price']) ?></td>
+                            <td data-order="<?= (float) $item['price'] ?>"><?= gjc_gc_price($item['price']) ?></td>
                             <td>
                                 <span class="<?= $isLow ? 'text-danger fw-bold' : '' ?>">
                                     <?= (int) $item['stock_qty'] ?>
@@ -150,6 +150,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                             "sku" => $item["sku"],
                                             "name" => $item["product_name"],
                                             "price" => number_format((float) $item["price"], 2),
+                                            "price_raw" => (float) $item["price"],
                                         ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)'>
                                         <i class="fa-solid fa-qrcode"></i> QR
                                     </button>
@@ -217,6 +218,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Price (₱) *</label>
                             <input type="number" class="form-control" name="price" id="pPrice" step="0.01" min="0" required>
+                            <div class="form-text" id="pPriceGcHint" style="min-height:18px"></div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Initial Stock *</label>
@@ -321,6 +323,12 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
 <script>
 const INV_API = '<?= MERCHANT_URL ?>/api/inventory.php';
 
+// GenCoin display conversion (₱10 = 1 GC). Prices are stored and saved in ₱.
+const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+function gcAmount(pesos) {
+    return (pesos / PESOS_PER_GC).toLocaleString('en-PH', {maximumFractionDigits: 2});
+}
+
 function editStock(id, qty, name) {
     document.getElementById('stockItemId').value = id;
     document.getElementById('stockQtyInput').value = qty;
@@ -332,17 +340,20 @@ function editStock(id, qty, name) {
 let currentItemQrSku = '';
 let currentItemQrName = '';
 let currentItemQrPrice = '';
+let currentItemQrGc = '';
 
 function openItemQr(item) {
     if (!item || !item.sku) return;
     currentItemQrSku = item.sku;
     currentItemQrName = item.name;
     currentItemQrPrice = item.price;
+    currentItemQrGc = gcAmount(item.price_raw);
 
     const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&ecc=H&margin=10&data=' + encodeURIComponent(item.sku);
     document.getElementById('itemQrImage').src = qrUrl;
     document.getElementById('itemQrName').textContent = item.name;
-    document.getElementById('itemQrPrice').textContent = '₱' + item.price;
+    document.getElementById('itemQrPrice').innerHTML =
+        `<strong style="color:#064420">${currentItemQrGc} GC</strong><br><small>≈ ₱${item.price}</small>`;
     new bootstrap.Modal(document.getElementById('itemQrModal')).show();
 }
 
@@ -364,7 +375,7 @@ document.getElementById('itemQrPrintBtn').addEventListener('click', function () 
         <body>
             <img src="${qrUrl}" alt="Item QR">
             <h2>${currentItemQrName}</h2>
-            <p>₱${currentItemQrPrice}</p>
+            <p><strong>${currentItemQrGc} GC</strong><br><span style="font-size:13px">≈ ₱${currentItemQrPrice}</span></p>
             <script>window.onload = () => window.print();<\/script>
         </body>
         </html>
@@ -373,6 +384,13 @@ document.getElementById('itemQrPrintBtn').addEventListener('click', function () 
 });
 
 <?php if ($isMerchAdmin): ?>
+function updatePriceGcHint() {
+    const pesos = parseFloat(document.getElementById('pPrice').value);
+    document.getElementById('pPriceGcHint').textContent =
+        pesos > 0 ? `≈ ${gcAmount(pesos)} GC (₱${PESOS_PER_GC} = 1 GC)` : '';
+}
+document.getElementById('pPrice').addEventListener('input', updatePriceGcHint);
+
 function editProduct(item) {
     document.getElementById('productModalTitle').textContent = 'Edit Product';
     document.getElementById('productAction').value = 'edit_product';
@@ -386,6 +404,7 @@ function editProduct(item) {
     document.getElementById('pStock').value = item.stock_qty;
     document.getElementById('pMinStock').value = item.min_stock_alert;
     document.getElementById('pAvailable').checked = !!parseInt(item.is_available);
+    updatePriceGcHint();
     new bootstrap.Modal(document.getElementById('addProductModal')).show();
 }
 

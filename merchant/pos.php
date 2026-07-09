@@ -38,7 +38,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=1">
 </head>
@@ -108,10 +108,14 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                         <div class="product-name"><?= gjc_e(
                             $p["product_name"],
                         ) ?></div>
-                        <div class="product-price">&#8369;<?= number_format(
-                            (float) $p["price"],
-                            2,
-                        ) ?></div>
+                        <div class="product-price gc-price">
+                            <span class="gc-price-main"><?= gjc_gc_amount(
+                                $p["price"],
+                            ) ?> GC</span>
+                            <span class="gc-price-sub">&asymp; <?= gjc_money(
+                                $p["price"],
+                            ) ?></span>
+                        </div>
                         <div class="product-stock">Stock: <?= (int) $p[
                             "stock_qty"
                         ] ?></div>
@@ -134,7 +138,10 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
 
                 <div class="cart-total-row">
                     <span>Total</span>
-                    <span id="cartTotal">&#8369;0.00</span>
+                    <span id="cartTotal" class="gc-price gc-price--end">
+                        <span class="gc-price-main">0 GC</span>
+                        <span class="gc-price-sub">&asymp; &#8369;0.00</span>
+                    </span>
                 </div>
 
                 <button class="pos-charge-btn" id="chargeBtn" onclick="generatePaymentQr()" disabled>
@@ -166,6 +173,18 @@ const merchantName = <?= json_encode(
 const merchantWalletId = <?= (int) $wallet["id"] ?>;
 const merchantUserId = <?= (int) $ownerMerchId ?>;
 let activeCategory = 'all';
+
+// GenCoin display conversion (₱10 = 1 GC). Amounts sent to the API stay in ₱.
+const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+function gcAmount(pesos) {
+    return (pesos / PESOS_PER_GC).toLocaleString('en-PH', {maximumFractionDigits: 2});
+}
+function gcPriceHtml(pesos, endAlign = false) {
+    return `<span class="gc-price${endAlign ? ' gc-price--end' : ''}">
+        <span class="gc-price-main">${gcAmount(pesos)} GC</span>
+        <span class="gc-price-sub">≈ ₱${(+pesos).toFixed(2)}</span>
+    </span>`;
+}
 
 // \u2500\u2500 Category filter \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function filterCat(cat, btn) {
@@ -238,7 +257,7 @@ function renderCart() {
 
     if (keys.length === 0) {
         list.innerHTML = '<div id="cartEmpty" style="text-align:center;color:#9ca3af;padding:30px 0;font-size:13px">Tap products to add them here</div>';
-        document.getElementById('cartTotal').textContent = '\u20b10.00';
+        document.getElementById('cartTotal').innerHTML = gcPriceHtml(0, true);
         document.getElementById('chargeBtn').disabled = true;
         document.getElementById('posQrBox').style.display = 'none';
         return;
@@ -258,11 +277,11 @@ function renderCart() {
                 <span>${item.qty}</span>
                 <button onclick="changeQty('${id}', 1)">+</button>
             </div>
-            <div class="cart-item-price">\u20b1${subtotal.toFixed(2)}</div>
+            <div class="cart-item-price">${gcPriceHtml(subtotal, true)}</div>
         </div>`;
     });
     list.innerHTML = html;
-    document.getElementById('cartTotal').textContent = '\u20b1' + total.toFixed(2);
+    document.getElementById('cartTotal').innerHTML = gcPriceHtml(total, true);
     document.getElementById('chargeBtn').disabled = !(merchantWalletId && total > 0);
     document.getElementById('posQrBox').style.display = 'none';
 }
@@ -311,7 +330,7 @@ async function generatePaymentQr() {
 
         document.getElementById('posQrImage').src =
             'https://api.qrserver.com/v1/create-qr-code/?size=320x320&ecc=H&margin=20&data=' + encodeURIComponent(result.qr_payload);
-        document.getElementById('posQrSummary').textContent = result.summary || `Total: \u20b1${total.toFixed(2)}`;
+        document.getElementById('posQrSummary').textContent = result.summary || `Total: ${gcAmount(total)} GC (\u2248 \u20b1${total.toFixed(2)})`;
         document.getElementById('posQrBox').style.display = 'block';
     } catch (error) {
         alert('Unable to create payment QR. Please try again.');

@@ -12,6 +12,7 @@
         leaseId: 0,
         paymentPage: 1,
         inventoryPage: 1,
+        activityPage: 1,
         perPage: 10,
     };
 
@@ -202,6 +203,87 @@
         });
     };
 
+    // Merchant Activity tab — audited management actions (products, staff,
+    // profile, banned items), matching what the dashboard badge counts.
+    const ACTIVITY_META = {
+        MENU_MUTATION: { label: 'Product / Menu', cls: 'bg-success' },
+        USER_ACCOUNT: { label: 'Staff / Profile', cls: 'bg-primary' },
+        PRODUCT_RESTRICTION: { label: 'Banned Item', cls: 'bg-danger' },
+    };
+
+    // Human summary from the audit row's new_value JSON: pick a few telling
+    // scalar fields instead of dumping the raw payload.
+    const activitySummary = (row) => {
+        let data = null;
+        try { data = JSON.parse(row.new_value); } catch (e) { /* not JSON */ }
+        if (!data || typeof data !== 'object') {
+            return row.new_value ? String(row.new_value).slice(0, 120) : '—';
+        }
+        const preferred = ['event', 'product_name', 'attempted_name', 'name', 'email', 'stall_name', 'sku', 'matched_reason', 'status', 'restriction_note', 'reason', 'price'];
+        const parts = [];
+        const push = (key, value) => parts.push(`${key.replace(/_/g, ' ')}: ${value}`);
+        preferred.forEach((key) => {
+            if (parts.length < 3 && data[key] !== undefined && data[key] !== null && data[key] !== '' && typeof data[key] !== 'object') {
+                push(key, data[key]);
+            }
+        });
+        if (!parts.length) {
+            Object.entries(data).some(([key, value]) => {
+                if (value !== null && value !== '' && typeof value !== 'object') push(key, value);
+                return parts.length >= 3;
+            });
+        }
+        return parts.join(' · ') || '—';
+    };
+
+    const renderActivity = (activity) => {
+        const body = document.getElementById('merchantActivityBody');
+        if (!body) return;
+
+        if (!activity.rows || activity.rows.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No merchant activity recorded yet.</td></tr>';
+        } else {
+            body.innerHTML = activity.rows.map((row) => {
+                const meta = ACTIVITY_META[row.action_type] || { label: row.action_type, cls: 'bg-secondary' };
+                const when = new Date(String(row.timestamp).replace(' ', 'T'));
+                const whenText = Number.isNaN(when.getTime())
+                    ? String(row.timestamp)
+                    : when.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                return `
+                    <tr>
+                        <td class="text-nowrap">${escapeHtml(whenText)}</td>
+                        <td>
+                            <strong>${escapeHtml(row.actor_name || 'Unknown user')}</strong>
+                            <br><small class="text-muted">${escapeHtml(row.user_role || '')}</small>
+                        </td>
+                        <td><span class="badge ${meta.cls}">${escapeHtml(meta.label)}</span></td>
+                        <td><small>${escapeHtml(activitySummary(row))}</small></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        renderPager('activityPager', activity, (page) => {
+            state.activityPage = page;
+            loadActivity();
+        });
+    };
+
+    const loadActivity = async () => {
+        if (!state.merchantUserId) return;
+        const data = await getJson({
+            action: 'activity',
+            merchant_user_id: state.merchantUserId,
+            page: state.activityPage,
+            per_page: state.perPage,
+        });
+        if (data.success) {
+            renderActivity(data.activity);
+        } else {
+            setAlert(data.message || 'Unable to load merchant activity.', 'danger');
+        }
+    };
+
     const loadPayments = async () => {
         if (!state.leaseId) return;
         const data = await getJson({
@@ -241,6 +323,7 @@
         state.merchantId = merchantId;
         state.paymentPage = 1;
         state.inventoryPage = 1;
+        state.activityPage = 1;
         setAlert('');
         loading.classList.remove('d-none');
         content.classList.add('d-none');
@@ -271,7 +354,13 @@
         renderLease(data.lease);
         renderPayments(data.payments);
         renderInventory(data.inventory);
+        renderActivity(data.activity || { rows: [], page: 1, total_pages: 1, total: 0 });
         content.classList.remove('d-none');
+
+        // The server stamped this stall as checked — drop its unread badge.
+        document
+            .querySelector(`.js-stall-card[data-merchant-id="${merchantId}"] .tenant-card-notif`)
+            ?.remove();
     };
 
     document.querySelectorAll('.js-stall-card').forEach((card) => {

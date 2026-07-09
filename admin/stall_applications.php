@@ -514,9 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
     awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
     rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
 
-    // Click a submitted-document thumbnail → open it full-size in the embedded viewer.
+    // Click a submitted-document thumbnail (or a .sa-doc-link, e.g. the signed
+    // contract) → open it full-size in the embedded viewer.
     document.addEventListener('click', (e) => {
         if (e.target.closest('.sa-doc-pop')) return;         // the ↗ icon still opens a new tab
+        const link = e.target.closest('.sa-doc-link');
+        if (link) { e.preventDefault(); openDoc(link.dataset.docUrl, link.dataset.docLabel); return; }
         const cell = e.target.closest('.sa-doc');
         if (cell) { e.preventDefault(); openDoc(cell.dataset.docUrl, cell.dataset.docLabel); }
     });
@@ -761,7 +764,7 @@ function renderWorkspace(app) {
         <div class="col-lg-6">
             <div class="sa-section h-100">
                 <h6><i class="fa-solid fa-file-signature text-success me-2"></i>Signed Contract ${hasContract ? '<span class="sa-done-pill ms-1">Uploaded</span>' : ''}</h6>
-                ${hasContract ? `<p class="small mb-2"><a href="${contractUrl}" target="_blank" rel="noopener"><i class="fa-solid fa-file-arrow-down me-1"></i>View uploaded contract</a></p>` : '<p class="small text-muted">Upload the scanned contract after the applicant signs it.</p>'}
+                ${hasContract ? `<p class="small mb-2"><a href="${contractUrl}" class="sa-doc-link" data-doc-url="${contractUrl}" data-doc-label="Signed Contract"><i class="fa-solid fa-eye me-1"></i>View uploaded contract</a></p>` : '<p class="small text-muted">Upload the scanned contract after the applicant signs it.</p>'}
                 <input type="file" class="form-control form-control-sm mb-2" id="contractFile-${app.id}" accept=".pdf,.jpg,.jpeg,.png">
                 <button type="button" class="btn btn-sm btn-success" id="contractBtn-${app.id}"><i class="fa-solid fa-upload me-1"></i>${hasContract ? 'Replace Contract' : 'Upload Contract'}</button>
             </div>
@@ -844,7 +847,7 @@ function renderSummary(app) {
                 <div class="d-flex justify-content-between"><span class="text-muted">Method</span><span class="fw-semibold">${pmLabel(app.payment_method)}${app.payment_ref_no ? ` · Ref ${esc(app.payment_ref_no)}` : ''}</span></div>
             </div></div>
             <div class="col-md-6"><div class="sa-section h-100"><h6>Contract</h6>
-                ${contractUrl ? `<a href="${contractUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-arrow-down me-1"></i>View signed contract</a>` : '<span class="text-muted">No contract on file.</span>'}
+                ${contractUrl ? `<a href="${contractUrl}" class="btn btn-sm btn-outline-success sa-doc-link" data-doc-url="${contractUrl}" data-doc-label="Signed Contract"><i class="fa-solid fa-eye me-1"></i>View signed contract</a>` : '<span class="text-muted">No contract on file.</span>'}
                 <div class="small text-muted mt-2">Merchant login: ${esc(app.email)}</div>
             </div></div>
         </div>`;

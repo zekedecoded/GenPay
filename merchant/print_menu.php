@@ -69,7 +69,7 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&ec
     <title>Print Menu | <?= gjc_e($merchantName) ?></title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/print_menu.css?v=1">
 </head>
@@ -117,7 +117,10 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&ec
                         <?php if ($item['description']): ?>
                         <div class="menu-item-desc"><?= gjc_e($item['description']) ?></div>
                         <?php endif; ?>
-                        <div class="menu-item-price"><?= gjc_money($item['price']) ?></div>
+                        <div class="menu-item-price gc-price">
+                            <span class="gc-price-main"><?= gjc_gc_amount($item['price']) ?> GC</span>
+                            <span class="gc-price-sub">&asymp; <?= gjc_money($item['price']) ?></span>
+                        </div>
                         <div class="menu-item-sku"><?= gjc_e($item['sku']) ?></div>
                     </div>
                     <?php endforeach; ?>

@@ -118,7 +118,7 @@ try {
             'success' => true,
             'order_id' => (int) $db->lastInsertId(),
             'qr_payload' => json_encode($qrPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            'summary' => 'Total: PHP ' . number_format($serverTotal, 2) . ' - ' . count($validatedItems) . ' item type(s)',
+            'summary' => 'Total: ' . gjc_gc_amount($serverTotal) . ' GC (PHP ' . number_format($serverTotal, 2) . ') - ' . count($validatedItems) . ' item type(s)',
             'expires_at' => $expiresAt,
         ]);
         exit;

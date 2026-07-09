@@ -11,6 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
 require_once __DIR__ . '/../../connection/app.php';
+require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 gjc_require_role(['merchant']);
@@ -23,7 +24,7 @@ if (gjc_is_merchant_staff()) {
 $currentUser = gjc_current_user($db);
 $userId = (int) $currentUser['id'];
 
-$stmt = $db->prepare("SELECT merchantID FROM merchant WHERE userID = ? LIMIT 1");
+$stmt = $db->prepare("SELECT merchantID, stall_name FROM merchant WHERE userID = ? LIMIT 1");
 $stmt->execute([$userId]);
 $merchant = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$merchant) {
@@ -31,6 +32,7 @@ if (!$merchant) {
     exit;
 }
 $merchantId = (int) $merchant['merchantID'];
+$oldStallName = (string) $merchant['stall_name'];
 
 $stallName = trim((string) ($_POST['stall_name'] ?? ''));
 if ($stallName === '' || mb_strlen($stallName) > 255) {
@@ -79,6 +81,15 @@ $db->prepare("UPDATE merchant SET stall_name = ? WHERE merchantID = ?")->execute
 if ($logoRelPath !== null) {
     $db->prepare("UPDATE users SET profile_img = ? WHERE userID = ?")->execute([$logoRelPath, $userId]);
 }
+
+logAudit($db, $userId, gjc_current_role(), 'USER_ACCOUNT', 'merchant', [
+    'event'      => 'business_profile_update',
+    'stall_name' => $oldStallName,
+], [
+    'event'        => 'business_profile_update',
+    'stall_name'   => $stallName,
+    'logo_updated' => $logoRelPath !== null,
+]);
 
 echo json_encode([
     'success' => true,

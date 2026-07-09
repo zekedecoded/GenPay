@@ -335,6 +335,62 @@ class MerchantTenantDirectory
         ];
     }
 
+    /**
+     * Paged merchant management activity from the systemic audit trail — the
+     * same action set the dashboard notification badge counts: product/menu
+     * changes, staff and profile changes, and banned-item attempts, by the
+     * stall owner or their staff. Routine sales are excluded on purpose,
+     * matching the stall detail view's revenue-privacy rule.
+     */
+    public function pagedActivity(int $merchantUserId, int $page, int $perPage): array
+    {
+        if (!gjc_table_exists($this->db, 'systemic_audit_trail')) {
+            return ['rows' => [], 'page' => 1, 'per_page' => $perPage, 'total' => 0, 'total_pages' => 1];
+        }
+
+        $page = max(1, $page);
+        $perPage = min(50, max(5, $perPage));
+        $offset = ($page - 1) * $perPage;
+
+        $actorSql = in_array('merchant_owner_id', gjc_table_columns($this->db, 'users'), true)
+            ? 'a.user_id IN (SELECT u2.userID FROM users u2 WHERE u2.userID = ? OR u2.merchant_owner_id = ?)'
+            : 'a.user_id = ?';
+        $params = $actorSql === 'a.user_id = ?' ? [$merchantUserId] : [$merchantUserId, $merchantUserId];
+
+        $whereSql = "{$actorSql} AND a.action_type IN ('MENU_MUTATION', 'USER_ACCOUNT', 'PRODUCT_RESTRICTION')";
+
+        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM systemic_audit_trail a WHERE {$whereSql}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $dataStmt = $this->db->prepare(
+            "SELECT a.log_id, a.user_role, a.action_type, a.affected_table,
+                    a.old_value, a.new_value, a.timestamp,
+                    TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS actor_name
+             FROM systemic_audit_trail a
+             LEFT JOIN users u ON u.userID = a.user_id
+             WHERE {$whereSql}
+             ORDER BY a.timestamp DESC, a.log_id DESC
+             LIMIT ? OFFSET ?"
+        );
+
+        $i = 1;
+        foreach ($params as $param) {
+            $dataStmt->bindValue($i++, $param, PDO::PARAM_INT);
+        }
+        $dataStmt->bindValue($i++, $perPage, PDO::PARAM_INT);
+        $dataStmt->bindValue($i, $offset, PDO::PARAM_INT);
+        $dataStmt->execute();
+
+        return [
+            'rows' => $dataStmt->fetchAll(PDO::FETCH_ASSOC),
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'total_pages' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
     public function toggleProductRestriction(int $itemId, bool $restricted, int $adminId, string $note): bool
     {
         if (!gjc_table_exists($this->db, 'merchant_inventory')) {

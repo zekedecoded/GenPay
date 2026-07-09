@@ -16,6 +16,24 @@ function gjc_money($amount): string
     return '&#8369;' . number_format((float) $amount, 2);
 }
 
+// GenCoin conversion rate: ₱10 = 1 GC (same rate the POS wallet-load flow uses).
+define('GJC_PESOS_PER_GC', 10);
+
+function gjc_gc_amount($pesos): string
+{
+    $gc = (float) $pesos / GJC_PESOS_PER_GC;
+    return rtrim(rtrim(number_format($gc, 2), '0'), '.');
+}
+
+// Two-line price tag: GC as the primary value, peso equivalent beneath.
+function gjc_gc_price($pesos): string
+{
+    return '<span class="gc-price">'
+        . '<span class="gc-price-main">' . gjc_gc_amount($pesos) . ' GC</span>'
+        . '<span class="gc-price-sub">&asymp; ' . gjc_money($pesos) . '</span>'
+        . '</span>';
+}
+
 function gjc_role_name($role): string
 {
     if (is_numeric($role)) {
@@ -1314,6 +1332,24 @@ function gjc_ensure_meeting_scheduling_schema(PDO $db): void
     } catch (\Throwable $ignored) {
     }
 
+}
+
+/**
+ * Shared "last checked" timestamp per merchant card on the finance dashboard.
+ * The notification badge counts audited merchant management actions newer than
+ * this; opening the stall detail view stamps it, clearing the badge for every
+ * finance admin (one team, one read state).
+ */
+function gjc_ensure_merchant_card_views_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS merchant_card_views (
+            merchant_id     INT NOT NULL,
+            last_viewed_at  DATETIME NOT NULL,
+            viewed_by       INT NULL,
+            PRIMARY KEY (merchant_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
 }
 
 /** Holiday dates the auto-scheduler must skip, as a Y-m-d => name map. */

@@ -15,6 +15,32 @@ $tenantCards = $isSuperAdmin
     ? (new MerchantTenantDirectory($db))->directoryCards()
     : [];
 
+// Notification badge per tenant card: audited MANAGEMENT actions by the
+// merchant (owner or their staff) — products, staff, profile, banned-item
+// attempts — newer than the shared last-viewed stamp. Routine sales are
+// deliberately excluded so the count stays meaningful. Opening a card's
+// detail view stamps merchant_card_views and zeroes the badge for everyone.
+$tenantNotifCounts = [];
+if ($isSuperAdmin && !empty($tenantCards)) {
+    gjc_ensure_merchant_card_views_schema($db);
+    $staffJoin = in_array("merchant_owner_id", gjc_table_columns($db, "users"), true)
+        ? "act.userID = m.userID OR act.merchant_owner_id = m.userID"
+        : "act.userID = m.userID";
+    $tenantNotifCounts = array_map(
+        "intval",
+        $db->query(
+            "SELECT m.merchantID, COUNT(a.log_id) AS unread
+               FROM merchant m
+               JOIN users act ON {$staffJoin}
+               JOIN systemic_audit_trail a ON a.user_id = act.userID
+               LEFT JOIN merchant_card_views v ON v.merchant_id = m.merchantID
+              WHERE a.action_type IN ('MENU_MUTATION', 'USER_ACCOUNT', 'PRODUCT_RESTRICTION')
+                AND (v.last_viewed_at IS NULL OR a.timestamp > v.last_viewed_at)
+              GROUP BY m.merchantID",
+        )->fetchAll(PDO::FETCH_KEY_PAIR),
+    );
+}
+
 $currentPage = "dashboard";
 ?>
 
@@ -29,7 +55,7 @@ $currentPage = "dashboard";
     <title>Admin Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -120,6 +146,11 @@ $currentPage = "dashboard";
                                         ENT_QUOTES,
                                         "UTF-8",
                                     ) ?>">
+                                    <?php $notif = $tenantNotifCounts[(int) $stall["merchant_id"]] ?? 0;
+                                    if ($notif > 0): ?>
+                                    <span class="tenant-card-notif"
+                                        title="<?= (int) $notif ?> merchant action<?= $notif === 1 ? "" : "s" ?> since last check"><?= $notif > 99 ? "99+" : (int) $notif ?></span>
+                                    <?php endif; ?>
                                     <span class="tenant-card-kicker">Stall #<?= (int) $stall[
                                         "merchant_id"
                                     ] ?></span>
@@ -381,6 +412,9 @@ $currentPage = "dashboard";
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventoryPane" type="button" role="tab">Inventory Compliance</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activityPane" type="button" role="tab">Merchant Activity</button>
+                            </li>
                         </ul>
 
                         <div class="tab-content pt-3">
@@ -533,6 +567,27 @@ $currentPage = "dashboard";
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center" id="inventoryPager"></div>
                             </div>
+
+                            <div class="tab-pane fade" id="activityPane" role="tabpanel">
+                                <p class="small text-muted mb-2">
+                                    Management actions by this stall's owner and staff — the same events the
+                                    dashboard notification badge counts. Routine sales are not shown.
+                                </p>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>When</th>
+                                                <th>By</th>
+                                                <th>Action</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="merchantActivityBody"></tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center" id="activityPager"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -556,7 +611,7 @@ $currentPage = "dashboard";
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
     <script src="<?= JS_URL ?>/dashboard_chart.js"></script>
     <?php if ($isSuperAdmin): ?>
-    <script src="<?= JS_URL ?>/admin_stall_directory.js"></script>
+    <script src="<?= JS_URL ?>/admin_stall_directory.js?v=2"></script>
     <?php endif; ?>
 
     <script>
