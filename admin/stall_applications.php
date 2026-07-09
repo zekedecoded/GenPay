@@ -141,7 +141,7 @@ function sa_meeting_label(?string $dt): string
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=3">
     <style>
     /* KPI cards — thin large numbers, left-aligned flex row */
     .sa-kpi { border:1px solid #dddfd8; border-radius:12px; padding:16px 20px; background:#fff; display:flex; flex-direction:column; gap:8px; min-width:200px; }
@@ -444,6 +444,39 @@ function sa_meeting_label(?string $dt): string
     </div>
 </div>
 
+<!-- Reschedule meeting modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reschedule Meeting</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small" id="resCurrent"></p>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="resDate">New Date</label>
+                        <input type="date" class="form-control form-control-sm" id="resDate">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="resTime">New Time</label>
+                        <select class="form-select form-select-sm" id="resTime" disabled>
+                            <option value="">Pick a date first&hellip;</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="small mt-2" id="resHint"></div>
+                <div class="small text-muted mt-3"><i class="fa-solid fa-envelope me-1"></i>The applicant will automatically receive an email with the new schedule.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                <button type="button" class="btn btn-success" id="resConfirm" disabled><i class="fa-solid fa-calendar-pen me-1"></i>Reschedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Full-size embedded document viewer -->
 <div id="docViewer" class="doc-viewer" hidden>
     <div class="doc-viewer-cap" id="docViewerCap"></div>
@@ -475,9 +508,11 @@ const API_URL = '<?= ADMIN_URL ?>/api/stall_applications';
 let dt = null;   // DataTables instance (null if assets are blocked — static fallback)
 let reasonModal, awardModal, reasonAppId = null;
 let awardAppId = null, awardStallId = null;
+let rescheduleModal, resAppId = null;
 document.addEventListener('DOMContentLoaded', () => {
     reasonModal = new bootstrap.Modal(document.getElementById('reasonModal'));
     awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
+    rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
 
     // Click a submitted-document thumbnail → open it full-size in the embedded viewer.
     document.addEventListener('click', (e) => {
@@ -669,15 +704,47 @@ function applicantHeader(app) {
         <div><div class="small text-muted">Proprietor</div><div class="fw-semibold">${esc(app.proprietor_name)}</div></div>
         <div><div class="small text-muted">Contact</div><div class="fw-semibold">${esc(app.contact_number)}</div></div>
         <div><div class="small text-muted">Email</div><div class="fw-semibold">${esc(app.email)}</div></div>
-        <div><div class="small text-muted">Meeting</div><div class="fw-semibold">${fmtDateTime(app.meetup_scheduled_at)}</div></div>
+        <div><div class="small text-muted">Meeting</div><div class="fw-semibold">${fmtDateTime(app.meetup_scheduled_at)}</div>
+            ${app.status === 'pending_verification' && app.meetup_scheduled_at ? `<button type="button" class="btn btn-link btn-sm p-0 text-success fw-semibold" onclick="openReschedule(${app.id})"><i class="fa-solid fa-calendar-pen me-1"></i>Reschedule</button>` : ''}</div>
         ${app.preferred_stall_id ? `<div><div class="small text-muted">Preferred Stall</div><div class="fw-semibold">${esc(app.preferred_stall_id)}</div></div>` : ''}
     </div>`;
 }
 
+// Payment methods offered at the one-stop meeting. E-wallets require the
+// transaction reference number (mirrors the record_payment API validation).
+const PAY_METHODS = [
+    { value: 'cash',  label: 'Cash',  icon: 'fa-money-bill-wave' },
+    { value: 'gcash', label: 'GCash', icon: 'fa-wallet' },
+    { value: 'maya',  label: 'Maya',  icon: 'fa-mobile-screen-button' },
+];
+function pmLabel(method) {
+    return (PAY_METHODS.find(m => m.value === method) || { label: '—' }).label;
+}
+function paymentComplete(app) {
+    const method = app.payment_method;
+    return parseFloat(app.deposit_amount) > 0
+        && parseFloat(app.advance_amount) > 0
+        && !!app.rental_start_date
+        && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30)
+        && PAY_METHODS.some(m => m.value === method)
+        && (method === 'cash' || String(app.payment_ref_no || '').trim() !== '');
+}
+
 function renderWorkspace(app) {
     const hasContract = !!app.contract_file;
-    const payDone = parseFloat(app.deposit_amount) > 0 && parseFloat(app.advance_amount) > 0 && app.rental_start_date && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30);
+    const payDone = paymentComplete(app);
     const contractUrl = hasContract ? DOC_URL + encodeURIComponent(String(app.contract_file).replace(/^\//, '')) : '';
+
+    const pmCards = PAY_METHODS.map(m => `
+        <div class="sa-pm-card ${app.payment_method === m.value ? 'selected' : ''}" data-method="${m.value}"
+             role="button" tabindex="0" aria-pressed="${app.payment_method === m.value}">
+            <div class="sa-pm-main">
+                <span class="sa-pm-icon sa-pm-icon--${m.value}"><i class="fa-solid ${m.icon}"></i></span>
+                <span class="sa-pm-name">${m.label}</span>
+                <span class="sa-pm-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span>
+            </div>
+            ${m.value === 'cash' ? '' : '<div class="sa-pm-refslot"></div>'}
+        </div>`).join('');
 
     const stallOpts = VACANT_STALLS.map(s =>
         `<option value="${esc(s.stall_id)}" data-rate="${s.monthly_rate}" ${s.stall_id === app.preferred_stall_id ? 'selected' : ''}>${esc(s.stall_id)} — ${esc(s.label)} (${peso(s.monthly_rate)}/mo)</option>`).join('');
@@ -727,6 +794,15 @@ function renderWorkspace(app) {
                         </select>
                     </div>
                     <div class="col-12">
+                        <label class="form-label small mb-1">Payment Method</label>
+                        <div class="sa-pm-list" id="pm-${app.id}">${pmCards}</div>
+                        <div class="sa-pm-ref" id="refWrap-${app.id}" hidden>
+                            <label class="form-label small mb-1" id="refLabel-${app.id}" for="ref-${app.id}">Reference No.</label>
+                            <input type="text" class="form-control form-control-sm" id="ref-${app.id}"
+                                   maxlength="60" placeholder="e.g. 9021 456 781234" value="${esc(app.payment_ref_no ?? '')}">
+                        </div>
+                    </div>
+                    <div class="col-12">
                         <button type="button" class="btn btn-sm btn-success mt-1" id="payBtn-${app.id}"><i class="fa-solid fa-floppy-disk me-1"></i>Save Payment</button>
                     </div>
                 </div>
@@ -765,6 +841,7 @@ function renderSummary(app) {
                 <div class="d-flex justify-content-between"><span class="text-muted">1-Month Advance</span><span class="fw-semibold">${peso(app.advance_amount)}</span></div>
                 <div class="d-flex justify-content-between"><span class="text-muted">Rental Start</span><span class="fw-semibold">${fmtDate(app.rental_start_date)}</span></div>
                 <div class="d-flex justify-content-between"><span class="text-muted">Recurring</span><span class="fw-semibold">Every ${esc(app.payment_schedule_day)}th</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">Method</span><span class="fw-semibold">${pmLabel(app.payment_method)}${app.payment_ref_no ? ` · Ref ${esc(app.payment_ref_no)}` : ''}</span></div>
             </div></div>
             <div class="col-md-6"><div class="sa-section h-100"><h6>Contract</h6>
                 ${contractUrl ? `<a href="${contractUrl}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-arrow-down me-1"></i>View signed contract</a>` : '<span class="text-muted">No contract on file.</span>'}
@@ -798,6 +875,41 @@ function wireWorkspace(app) {
     }
     if (stallSel) { stallSel.addEventListener('change', suggest); suggest(); }
 
+    // Payment method cards — single-select with a checkbox-style indicator.
+    // The shared Reference No. field docks inside the selected e-wallet card.
+    const pmList = document.getElementById(`pm-${id}`);
+    const refWrap = document.getElementById(`refWrap-${id}`);
+    const refLabel = document.getElementById(`refLabel-${id}`);
+    let pmValue = PAY_METHODS.some(m => m.value === app.payment_method) ? app.payment_method : '';
+    function selectMethod(value) {
+        pmValue = value;
+        pmList.querySelectorAll('.sa-pm-card').forEach(card => {
+            const on = card.dataset.method === value;
+            card.classList.toggle('selected', on);
+            card.setAttribute('aria-pressed', on);
+        });
+        const ewallet = value === 'gcash' || value === 'maya';
+        refWrap.hidden = !ewallet;
+        if (ewallet) {
+            const slot = pmList.querySelector(`.sa-pm-card[data-method="${value}"] .sa-pm-refslot`);
+            if (refWrap.parentElement !== slot) slot.appendChild(refWrap);
+            refLabel.textContent = `${pmLabel(value)} Reference No.`;
+        }
+    }
+    pmList.querySelectorAll('.sa-pm-card').forEach(card => {
+        // Ignore events from the docked ref field: re-selecting would move the
+        // input mid-typing, and Space must insert a space, not toggle the card.
+        card.addEventListener('click', e => {
+            if (e.target.closest('.sa-pm-refslot')) return;
+            selectMethod(card.dataset.method);
+        });
+        card.addEventListener('keydown', e => {
+            if (e.target !== card) return;
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMethod(card.dataset.method); }
+        });
+    });
+    if (pmValue) selectMethod(pmValue);
+
     document.getElementById(`contractBtn-${id}`).addEventListener('click', () => {
         const input = document.getElementById(`contractFile-${id}`);
         if (!input.files.length) { toast('Choose the signed contract file first.', false); return; }
@@ -812,11 +924,19 @@ function wireWorkspace(app) {
     });
 
     document.getElementById(`payBtn-${id}`).addEventListener('click', () => {
+        if (!pmValue) { toast('Choose a payment method — Cash, GCash, or Maya.', false); return; }
+        const refVal = document.getElementById(`ref-${id}`).value.trim();
+        if (pmValue !== 'cash' && !refVal) {
+            toast(`Enter the ${pmLabel(pmValue)} reference number for this payment.`, false);
+            return;
+        }
         post({
             action: 'record_payment', app_id: id,
             deposit_amount: dep.value, advance_amount: adv.value,
             rental_start_date: document.getElementById(`start-${id}`).value,
             payment_schedule_day: document.getElementById(`sched-${id}`).value,
+            payment_method: pmValue,
+            payment_ref_no: pmValue === 'cash' ? '' : refVal,
         }).then(res => {
             toast(res.message, res.success);
             if (res.success) {
@@ -824,6 +944,8 @@ function wireWorkspace(app) {
                 app.advance_amount = adv.value;
                 app.rental_start_date = document.getElementById(`start-${id}`).value;
                 app.payment_schedule_day = document.getElementById(`sched-${id}`).value;
+                app.payment_method = pmValue;
+                app.payment_ref_no = pmValue === 'cash' ? '' : refVal;
                 refreshApp(id);
             }
         });
@@ -833,8 +955,7 @@ function wireWorkspace(app) {
         const stallId = document.getElementById(`awardStall-${id}`).value;
         if (!stallId) { toast('Select a stall to award.', false); return; }
         if (!app.contract_file) { toast('Upload the signed contract before awarding.', false); return; }
-        const payDone = parseFloat(app.deposit_amount) > 0 && parseFloat(app.advance_amount) > 0 && app.rental_start_date && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30);
-        if (!payDone) { toast('Record the payment before awarding.', false); return; }
+        if (!paymentComplete(app)) { toast('Record the payment before awarding.', false); return; }
         awardAppId = id; awardStallId = stallId;
         document.getElementById('awardConfirmText').innerHTML =
             `Award Stall <strong>${esc(stallId)}</strong> and create a merchant account for <strong>${esc(app.proprietor_name)}</strong>?`;
@@ -846,6 +967,80 @@ document.getElementById('awardConfirm').addEventListener('click', () => {
     post({ action: 'award', app_id: awardAppId, stall_id: awardStallId }).then(res => {
         toast(res.message, res.success);
         if (res.success) { awardModal.hide(); setTimeout(() => location.reload(), 1200); }
+    });
+});
+
+// ── Reschedule modal — finance moves the system-assigned meeting ──
+function slotLabel(t) {
+    const [h, m] = t.split(':').map(Number);
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+function localYmd(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function openReschedule(id) {
+    resAppId = id;
+    const app = findApp(id);
+    if (!app) return;
+    document.getElementById('resCurrent').innerHTML =
+        `<strong>${esc(app.business_name)}</strong> is currently scheduled for <strong>${fmtDateTime(app.meetup_scheduled_at)}</strong>. Pick the new slot below.`;
+    const dateEl = document.getElementById('resDate');
+    dateEl.min = localYmd(new Date());
+    dateEl.value = '';
+    document.getElementById('resTime').innerHTML = '<option value="">Pick a date first&hellip;</option>';
+    document.getElementById('resTime').disabled = true;
+    document.getElementById('resHint').innerHTML = '';
+    document.getElementById('resConfirm').disabled = true;
+    rescheduleModal.show();
+}
+function loadResSlots() {
+    const date = document.getElementById('resDate').value;
+    const timeEl = document.getElementById('resTime');
+    const hint = document.getElementById('resHint');
+    document.getElementById('resConfirm').disabled = true;
+    timeEl.disabled = true;
+    hint.innerHTML = '';
+    if (!date) { timeEl.innerHTML = '<option value="">Pick a date first&hellip;</option>'; return; }
+    timeEl.innerHTML = '<option value="">Loading&hellip;</option>';
+    post({ action: 'meeting_slots', app_id: resAppId, date }).then(res => {
+        if (!res.success) { timeEl.innerHTML = '<option value="">—</option>'; toast(res.message, false); return; }
+        if (res.weekend || res.holiday) {
+            timeEl.innerHTML = '<option value="">—</option>';
+            hint.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>${res.weekend ? 'Meetings cannot be scheduled on weekends.' : `That date is a holiday (${esc(res.holiday)}).`}</span>`;
+            return;
+        }
+        const app = findApp(resAppId);
+        const current = String(app?.meetup_scheduled_at || '').slice(0, 16);
+        const now = new Date();
+        let free = 0;
+        const opts = res.slots.map(t => {
+            const isCurrent = current === `${date} ${t}`;
+            const taken = res.booked.includes(t);
+            const past = new Date(`${date}T${t}:00`) <= now;
+            const open = !isCurrent && !taken && !past;
+            if (open) free++;
+            const note = isCurrent ? ' (current)' : taken ? ' — taken' : past ? ' — past' : '';
+            return `<option value="${t}" ${open ? '' : 'disabled'}>${slotLabel(t)}${note}</option>`;
+        }).join('');
+        timeEl.innerHTML = '<option value="">Choose a time&hellip;</option>' + opts;
+        timeEl.disabled = false;
+        hint.innerHTML = free
+            ? `<span class="text-success">${free} slot${free === 1 ? '' : 's'} available on this date.</span>`
+            : '<span class="text-danger">No free slots on this date — pick another day.</span>';
+    });
+}
+document.getElementById('resDate').addEventListener('change', loadResSlots);
+document.getElementById('resTime').addEventListener('change', () => {
+    document.getElementById('resConfirm').disabled = !document.getElementById('resTime').value;
+});
+document.getElementById('resConfirm').addEventListener('click', () => {
+    const date = document.getElementById('resDate').value;
+    const time = document.getElementById('resTime').value;
+    if (!resAppId || !date || !time) return;
+    post({ action: 'reschedule_meeting', app_id: resAppId, meeting_date: date, meeting_time: time }).then(res => {
+        toast(res.message, res.success);
+        if (res.success) { rescheduleModal.hide(); setTimeout(() => location.reload(), 1200); }
     });
 });
 

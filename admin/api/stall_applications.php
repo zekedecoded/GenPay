@@ -14,6 +14,8 @@
 //                      (requires contract uploaded AND payment recorded)
 //    reject            Documents invalid / no-show -> 'rejected' (reason), notify to re-apply
 //    mark_viewed       Stamp first_viewed_at on first open (clears the "New" badge)
+//    meeting_slots     Slot availability for one date (drives the reschedule picker)
+//    reschedule_meeting  Finance moves the auto-assigned meeting; applicant is emailed
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -64,10 +66,14 @@ function stall_app_fetch(PDO $db, int $appId): ?array
 /** True when the payment section is fully recorded for an application row. */
 function stall_app_payment_complete(array $app): bool
 {
+    $method = (string) ($app['payment_method'] ?? '');
     return (float) ($app['deposit_amount'] ?? 0) > 0
         && (float) ($app['advance_amount'] ?? 0) > 0
         && !empty($app['rental_start_date'])
-        && in_array((int) ($app['payment_schedule_day'] ?? 0), [15, 30], true);
+        && in_array((int) ($app['payment_schedule_day'] ?? 0), [15, 30], true)
+        && in_array($method, ['cash', 'gcash', 'maya'], true)
+        // E-wallet payments must carry the transaction reference number.
+        && ($method === 'cash' || trim((string) ($app['payment_ref_no'] ?? '')) !== '');
 }
 
 /** First occurrence of the recurring day (15/30) on or after the start date. */
@@ -174,6 +180,8 @@ try {
             $advance     = round((float) ($_POST['advance_amount'] ?? 0), 2);
             $startDate   = trim((string) ($_POST['rental_start_date'] ?? ''));
             $scheduleDay = (int) ($_POST['payment_schedule_day'] ?? 0);
+            $method      = strtolower(trim((string) ($_POST['payment_method'] ?? '')));
+            $refNo       = trim((string) ($_POST['payment_ref_no'] ?? ''));
 
             $app = $appId ? stall_app_fetch($db, $appId) : null;
             if (!$app || $app['status'] !== 'pending_verification') {
@@ -189,12 +197,24 @@ try {
             if (!in_array($scheduleDay, [15, 30], true)) {
                 stall_app_json(['success' => false, 'message' => 'Choose a payment schedule — every 15th or every 30th.']);
             }
+            if (!in_array($method, ['cash', 'gcash', 'maya'], true)) {
+                stall_app_json(['success' => false, 'message' => 'Choose a payment method — Cash, GCash, or Maya.']);
+            }
+            if ($method === 'cash') {
+                $refNo = ''; // cash carries no e-wallet reference
+            } elseif ($refNo === '') {
+                $label = $method === 'gcash' ? 'GCash' : 'Maya';
+                stall_app_json(['success' => false, 'message' => "Enter the {$label} reference number for this payment."]);
+            } elseif (!preg_match('/^[A-Za-z0-9 \-]{4,60}$/', $refNo)) {
+                stall_app_json(['success' => false, 'message' => 'The reference number can only contain letters, numbers, spaces, or dashes (4–60 characters).']);
+            }
 
             $db->prepare(
                 "UPDATE stall_applications
-                    SET deposit_amount = ?, advance_amount = ?, rental_start_date = ?, payment_schedule_day = ?
+                    SET deposit_amount = ?, advance_amount = ?, rental_start_date = ?, payment_schedule_day = ?,
+                        payment_method = ?, payment_ref_no = ?
                   WHERE id = ?"
-            )->execute([$deposit, $advance, $startDate, $scheduleDay, $appId]);
+            )->execute([$deposit, $advance, $startDate, $scheduleDay, $method, $refNo !== '' ? $refNo : null, $appId]);
 
             stall_app_json(['success' => true, 'message' => 'Payment recorded.']);
         }
@@ -213,7 +233,7 @@ try {
                 stall_app_json(['success' => false, 'message' => 'Upload the signed contract before awarding.']);
             }
             if (!stall_app_payment_complete($app)) {
-                stall_app_json(['success' => false, 'message' => 'Record the payment (deposit, advance, start date, schedule) before awarding.']);
+                stall_app_json(['success' => false, 'message' => 'Record the payment (deposit, advance, start date, schedule, method) before awarding.']);
             }
             if (!preg_match('/^[A-Z]\d+$/', $stallId)) {
                 stall_app_json(['success' => false, 'message' => 'Please select a stall to award.']);
@@ -395,6 +415,122 @@ try {
                 'success' => true,
                 'message' => 'Application rejected. The applicant has been notified that they may re-apply.',
                 'status'  => 'rejected',
+            ]);
+        }
+
+        // ── Slot availability for one date (reschedule picker) ──
+        case 'meeting_slots': {
+            $appId = (int) ($_POST['app_id'] ?? 0);
+            $date  = trim((string) ($_POST['date'] ?? ''));
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) {
+                stall_app_json(['success' => false, 'message' => 'Enter a valid date.']);
+            }
+
+            $holidays = gjc_meeting_holiday_dates($db);
+            // Times already held on that date by any other live application.
+            $bookedStmt = $db->prepare(
+                "SELECT TIME_FORMAT(meetup_scheduled_at, '%H:%i')
+                   FROM stall_applications
+                  WHERE meetup_scheduled_at IS NOT NULL
+                    AND status NOT IN ('cancelled', 'expired', 'rejected')
+                    AND DATE(meetup_scheduled_at) = ?
+                    AND id <> ?"
+            );
+            $bookedStmt->execute([$date, $appId]);
+
+            stall_app_json([
+                'success' => true,
+                'slots'   => gjc_meeting_time_slots(),
+                'booked'  => $bookedStmt->fetchAll(PDO::FETCH_COLUMN),
+                'weekend' => (int) $d->format('N') >= 6,
+                'holiday' => $holidays[$date] ?? null,
+            ]);
+        }
+
+        // ── Reschedule: finance moves the system-assigned meeting ─
+        case 'reschedule_meeting': {
+            $appId = (int) ($_POST['app_id'] ?? 0);
+            $date  = trim((string) ($_POST['meeting_date'] ?? ''));
+            $time  = trim((string) ($_POST['meeting_time'] ?? ''));
+
+            $app = $appId ? stall_app_fetch($db, $appId) : null;
+            if (!$app || $app['status'] !== 'pending_verification') {
+                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
+            }
+            if (empty($app['meetup_scheduled_at'])) {
+                stall_app_json(['success' => false, 'message' => 'This application has no meeting to reschedule.']);
+            }
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) {
+                stall_app_json(['success' => false, 'message' => 'Enter a valid meeting date.']);
+            }
+            if (!in_array($time, gjc_meeting_time_slots(), true)) {
+                stall_app_json(['success' => false, 'message' => 'Choose one of the available time slots.']);
+            }
+            if ((int) $d->format('N') >= 6) {
+                stall_app_json(['success' => false, 'message' => 'Meetings cannot be scheduled on weekends.']);
+            }
+            $holidays = gjc_meeting_holiday_dates($db);
+            if (isset($holidays[$date])) {
+                stall_app_json(['success' => false, 'message' => "That date is a holiday ({$holidays[$date]})."]);
+            }
+            $newScheduledAt = $date . ' ' . $time . ':00';
+            if ($newScheduledAt <= date('Y-m-d H:i:s')) {
+                stall_app_json(['success' => false, 'message' => 'The new schedule must be in the future.']);
+            }
+            if ($newScheduledAt === $app['meetup_scheduled_at']) {
+                stall_app_json(['success' => false, 'message' => 'The meeting is already scheduled at that time.']);
+            }
+
+            // Same advisory lock as the auto-scheduler so a concurrent
+            // submission can never be handed the slot finance is taking.
+            // (stall_app_json exits, which skips finally — respond after release.)
+            $slotTaken = false;
+            $db->prepare("SELECT GET_LOCK('gjc_stall_scheduler', 10)")->execute();
+            try {
+                $clash = $db->prepare(
+                    "SELECT COUNT(*) FROM stall_applications
+                      WHERE meetup_scheduled_at = ?
+                        AND status NOT IN ('cancelled', 'expired', 'rejected')
+                        AND id <> ?"
+                );
+                $clash->execute([$newScheduledAt, $appId]);
+                $slotTaken = (int) $clash->fetchColumn() > 0;
+                if (!$slotTaken) {
+                    $db->prepare(
+                        "UPDATE stall_applications
+                            SET meetup_scheduled_at = ?, meetup_scheduled_email_sent_at = NOW()
+                          WHERE id = ?"
+                    )->execute([$newScheduledAt, $appId]);
+                }
+            } finally {
+                $db->prepare("SELECT RELEASE_LOCK('gjc_stall_scheduler')")->execute();
+            }
+            if ($slotTaken) {
+                stall_app_json(['success' => false, 'message' => 'That slot is already taken by another applicant. Pick a different time.']);
+            }
+
+            logAudit($db, $adminId, gjc_current_role(), 'STALL_UPDATE', 'stall_applications', [
+                'id' => $appId, 'meetup_scheduled_at' => $app['meetup_scheduled_at'],
+            ], [
+                'id' => $appId, 'meetup_scheduled_at' => $newScheduledAt,
+            ], $app['stall_id'] ?? null);
+
+            $mail = gjc_send_stall_meeting_reschedule_email(
+                $app['email'],
+                $app['proprietor_name'],
+                $app['business_name'],
+                new DateTime($newScheduledAt),
+                new DateTime($app['meetup_scheduled_at']),
+                $app['meetup_location'] ?: gjc_meeting_default_location($db)
+            );
+
+            stall_app_json([
+                'success' => true,
+                'message' => 'Meeting rescheduled to ' . (new DateTime($newScheduledAt))->format('M j, Y g:i A') . '.'
+                    . ($mail['sent'] ? ' The applicant is being notified by email.' : ' Note: the notification email could not be sent.'),
+                'meetup_scheduled_at' => $newScheduledAt,
             ]);
         }
 

@@ -68,20 +68,27 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
 
         <div class="ce-ledger-head">
             <div>
-                <span class="ce-ledger-label">Total Money in System</span>
+                <span class="ce-ledger-label">
+                    Total Money in System
+                    <span class="ce-info" tabindex="0" data-bs-toggle="tooltip"
+                          title="The maximum amount of money allowed in the system at any time. Only an admin can raise it by adding money."
+                          aria-label="What does this number mean?">
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    </span>
+                </span>
                 <div class="ce-ledger-amount"><?= gjc_token_display($cap) ?></div>
-                <p class="ce-ledger-sub">The maximum amount of money allowed in the system at any time</p>
-                <p class="ce-ledger-sub" style="margin-top:2px;font-weight:700;">
-                    &asymp; <?= gjc_money(
+                <p class="ce-ledger-sub">
+                    &asymp; <strong><?= gjc_money(
                         $cap,
-                    ) ?> &middot; Fixed rate: &#8369;10 = 1 GenCoin
+                    ) ?></strong> &middot; &#8369;10 = 1 GenCoin
                 </p>
             </div>
 
             <?php if ($isBalanced): ?>
-            <div class="ce-reconcile ce-reconcile--ok">
+            <div class="ce-reconcile ce-reconcile--ok" data-bs-toggle="tooltip"
+                 title="The vault, wallets, and vouchers add up exactly to the total money in the system.">
                 <i class="fa-solid fa-circle-check"></i>
-                <span>All money is accounted for — vault and wallets add up correctly.</span>
+                <span>All money accounted for</span>
             </div>
             <?php else: ?>
             <div class="ce-reconcile ce-reconcile--err">
@@ -114,7 +121,7 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
 
     <div class="ce-pool-intro">
         <div class="ce-flow-title">Wallet Pools</div>
-        <div class="ce-flow-sub">Where the cap currently sits - detail behind the bar above</div>
+        <div class="ce-flow-sub">Where the money sits right now</div>
     </div>
 
     <div class="ce-pool-grid">
@@ -167,9 +174,6 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                         <?= number_format($inactiveWalletUsers) ?> Inactive
                     </span>
                 </div>
-
-                <small class="ce-pool-share">
-                </small>
             </div>
         </div>
 
@@ -184,7 +188,14 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                 <i class="fa-solid fa-user-graduate ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info" style="flex:1;min-width:0;">
-                <span class="ce-pool-label">Student Wallet Users</span>
+                <span class="ce-pool-label">
+                    Student Wallet Users
+                    <span class="ce-info" tabindex="0" data-bs-toggle="tooltip"
+                          title="Students with no wallet activity in the last 30 days are counted as inactive."
+                          aria-label="How is inactive counted?">
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    </span>
+                </span>
                 <div class="ce-pool-amt"><?= number_format(
                     $walletStats["total"],
                 ) ?></div>
@@ -213,8 +224,6 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                         <?= number_format($walletStats["inactive"]) ?> Inactive
                     </span>
                 </div>
-
-                <small class="ce-pool-share">No activity in 30 days = inactive</small>
             </div>
         </div>
 
@@ -229,7 +238,14 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                 <i class="fa-solid fa-store ce-pool-icon"></i>
             </div>
             <div class="ce-pool-info" style="flex:1;min-width:0;">
-                <span class="ce-pool-label">Merchant Wallet Users</span>
+                <span class="ce-pool-label">
+                    Merchant Wallet Users
+                    <span class="ce-info" tabindex="0" data-bs-toggle="tooltip"
+                          title="Merchants with no sales in the last 30 days are counted as inactive."
+                          aria-label="How is inactive counted?">
+                        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                    </span>
+                </span>
                 <div class="ce-pool-amt"><?= number_format(
                     $merchantWalletStats["total"],
                 ) ?></div>
@@ -263,8 +279,6 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                         ) ?> Inactive
                     </span>
                 </div>
-
-                <small class="ce-pool-share">No sales in 30 days = inactive</small>
             </div>
         </div>
 
@@ -327,7 +341,7 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
             <div class="ce-mint-form-header">
                 <span class="ce-mint-badge">Admin</span>
                 <div class="ce-mint-form-title">Add Money to the System</div>
-                <div class="ce-mint-form-sub">Adds new money to the system and places it in the Cashier Vault</div>
+                <div class="ce-mint-form-sub">New money goes into the Cashier Vault</div>
             </div>
 
             <div id="ce-mint-alert"></div>
@@ -349,7 +363,7 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                      style="display:<?= $limitHit ? "block" : "none" ?>">
                     <label class="ce-label" for="ce-pin">
                         Security PIN
-                        <span class="ce-pin-badge">Required when monthly limit is exceeded</span>
+                        <span class="ce-pin-badge">Monthly limit reached</span>
                     </label>
                     <input type="password" id="ce-pin" class="ce-input" placeholder="Enter Security PIN">
                 </div>
@@ -486,6 +500,21 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
 (function () {
     const SOFT_LIMIT   = <?= MintingGuard::SOFT_LIMIT ?>;
     const mintedSoFar  = <?= $minted ?>;
+
+    // Long explanations live in tooltips instead of on-screen text.
+    // Bootstrap's bundle loads at the end of <body>, hence the DOM-ready wait.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.bootstrap || !bootstrap.Tooltip) return;
+        document.querySelectorAll('#circulation-health [data-bs-toggle="tooltip"]')
+            .forEach(el => {
+                new bootstrap.Tooltip(el);
+                // Info icons inside the clickable pool cards must not
+                // bubble their click into the wallet-users modal trigger.
+                if (el.classList.contains('ce-info')) {
+                    el.addEventListener('click', e => e.stopPropagation());
+                }
+            });
+    });
 
     const amtInput = document.getElementById('ce-amount');
     if (amtInput) {

@@ -439,6 +439,8 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
         "advance_amount" => "DECIMAL(10,2) NULL",      // 1 month advance
         "rental_start_date" => "DATE NULL",
         "payment_schedule_day" => "TINYINT UNSIGNED NULL", // 15 or 30
+        "payment_method" => "VARCHAR(20) NULL",        // cash | gcash | maya
+        "payment_ref_no" => "VARCHAR(60) NULL",        // e-wallet reference number
         "awarded_by" => "INT UNSIGNED NULL",
         "awarded_at" => "DATETIME NULL",
         "cancelled_by" => "INT UNSIGNED NULL",
@@ -1270,9 +1272,9 @@ function gjc_reference(string $prefix): string
 /** Fixed bookable times for stall application Step 2 meetings - one applicant per slot. */
 function gjc_meeting_time_slots(): array
 {
-    // One-hour meeting slots, 8:00 AM – 5:00 PM with a noon lunch break.
+    // One-hour meeting slots, 9:00 AM – 5:00 PM with a noon lunch break.
     // The last slot starts at 4:00 PM so no meeting runs past the 5:00 PM close.
-    return ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00'];
+    return ['09:00','10:00','11:00','13:00','14:00','15:00','16:00'];
 }
 
 /**

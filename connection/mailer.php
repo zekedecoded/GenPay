@@ -193,3 +193,60 @@ function gjc_send_stall_meeting_email(
     );
     return ['sent' => $queued, 'error' => $queued ? '' : 'Could not queue the confirmation email.'];
 }
+
+/**
+ * Queues the "your verification meeting was moved" notice, sent when finance
+ * reschedules an applicant's auto-assigned slot. Shows the previous schedule
+ * struck out next to the new one and repeats the bring-the-originals reminder.
+ *
+ * @return array{sent:bool,error:string}
+ */
+function gjc_send_stall_meeting_reschedule_email(
+    string $toEmail,
+    string $toName,
+    string $businessName,
+    DateTime $newMeetingAt,
+    DateTime $oldMeetingAt,
+    string $location
+): array {
+    $newDate = $newMeetingAt->format('l, F j, Y');
+    $newTime = $newMeetingAt->format('g:i A');
+    $oldPretty = $oldMeetingAt->format('l, F j, Y \a\t g:i A');
+    $safeName  = htmlspecialchars($toName, ENT_QUOTES, 'UTF-8');
+    $safeBiz   = htmlspecialchars($businessName, ENT_QUOTES, 'UTF-8');
+    $safePlace = htmlspecialchars($location, ENT_QUOTES, 'UTF-8');
+
+    $body = '
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
+            <h2 style="color:#064420;margin-top:0">Your Verification Meeting Was Rescheduled</h2>
+            <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+            <p style="color:#374151;line-height:1.7">The verification meeting for your stall application for <strong>' . $safeBiz . '</strong> has been moved to a new schedule by our finance office. Everything - document verification, contract signing, and payment - will still be handled in this one meeting.</p>
+            <div style="background:#fff;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:16px 0">
+                <p style="margin:0 0 8px;color:#059669;font-weight:700;text-transform:uppercase;font-size:12px">New Meeting Details</p>
+                <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($newDate, ENT_QUOTES, 'UTF-8') . '</p>
+                <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($newTime, ENT_QUOTES, 'UTF-8') . '</p>
+                <p style="margin:4px 0 0;color:#111827"><strong>Location:</strong> ' . $safePlace . '</p>
+                <p style="margin:10px 0 0;color:#6b7280;font-size:13px">Previous schedule: <s>' . htmlspecialchars($oldPretty, ENT_QUOTES, 'UTF-8') . '</s></p>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+                <p style="margin:0;color:#92400e;line-height:1.6"><strong>Important:</strong> Please bring the <strong>original copies</strong> of all documents you uploaded (business permit, sanitary permit, GJC requirements, and clearance) so they can be verified against your submission.</p>
+            </div>
+            <p style="color:#374151;line-height:1.7">If you cannot attend the new schedule, your application will be cancelled and you are welcome to submit a new one.</p>
+            <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+        </div>';
+    $altBody = "Dear {$toName},\n\n"
+        . "The verification meeting for your stall application for {$businessName} has been rescheduled.\n\n"
+        . "New meeting schedule:\nDate: {$newDate}\nTime: {$newTime}\nLocation: {$location}\n\n"
+        . "Previous schedule: {$oldPretty}\n\n"
+        . "IMPORTANT: Please bring the ORIGINAL copies of all uploaded documents (business permit, sanitary permit, GJC requirements, and clearance) for verification."
+        . "\n\nIf you cannot attend the new schedule, your application will be cancelled and you may submit a new one.\n\nGenPay Team";
+
+    $queued = gjc_queue_email(
+        $toEmail,
+        $toName,
+        'GenPay - Verification Meeting Rescheduled',
+        $body,
+        $altBody
+    );
+    return ['sent' => $queued, 'error' => $queued ? '' : 'Could not queue the reschedule email.'];
+}

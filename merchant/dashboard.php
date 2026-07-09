@@ -230,8 +230,8 @@ $currentPage = 'dashboard';
                             <div class="col-6 col-md-3">
                                 <div class="merchant-metric-card h-100">
                                     <span>Next Due</span>
-                                    <h2 style="font-size:1.15rem"><?= $lease['next_due_date'] ? date('M j, Y', strtotime($lease['next_due_date'])) : '—' ?></h2>
-                                    <p>Upcoming rent date</p>
+                                    <h2 style="font-size:1.15rem"><?= !empty($lease['monthly_rent']) ? gjc_money((float)$lease['monthly_rent']) : '—' ?></h2>
+                                    <p><?= $lease['next_due_date'] ? 'Due ' . date('M j, Y', strtotime($lease['next_due_date'])) : 'Upcoming rent date' ?></p>
                                 </div>
                             </div>
                             <div class="col-6 col-md-3">

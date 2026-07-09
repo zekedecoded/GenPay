@@ -20,6 +20,9 @@
 .ce-pool-card--clickable{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
 .ce-pool-card--clickable:hover{transform:translateY(-2px);box-shadow:var(--gjc-shadow-md)}
 .ce-pool-card--clickable:focus-visible{outline:2px solid var(--gjc-green-600);outline-offset:2px}
+/* Small info icon whose tooltip carries the long explanation text */
+.ce-info{display:inline-flex;align-items:center;margin-left:4px;color:var(--gjc-muted);opacity:.65;cursor:help;font-size:12px;vertical-align:-1px;text-transform:none;letter-spacing:0}
+.ce-info:hover,.ce-info:focus-visible{opacity:1;color:var(--gjc-green-800);outline:none}
 /* Type pill in the wallet-users drill-in table */
 .ce-type-pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px}
 .ce-type-student{background:var(--gjc-success-bg);color:var(--gjc-success)}
