@@ -32,6 +32,27 @@ try {
             $stmt->execute([$name, $category, $reason, $matchType, $adminId]);
             $newProductId = (int) $db->lastInsertId();
 
+            // Re-scan existing inventory: disable any already-listed items that
+            // match this new ban under the smart word/fuzzy rules. Closes the
+            // "merchant added it before the ban" loophole.
+            $disabled = 0;
+            if (gjc_table_exists($db, 'merchant_inventory')) {
+                $items = $db->query(
+                    "SELECT id, product_name FROM merchant_inventory WHERE is_restricted = 0"
+                )->fetchAll(PDO::FETCH_ASSOC);
+                $upd = $db->prepare(
+                    "UPDATE merchant_inventory
+                        SET is_restricted = 1, is_available = 0, restriction_note = ?
+                      WHERE id = ?"
+                );
+                foreach ($items as $it) {
+                    if (gjc_restriction_matches($name, $matchType, (string) $it['product_name'])) {
+                        $upd->execute([$reason, $it['id']]);
+                        $disabled++;
+                    }
+                }
+            }
+
             logAudit(
                 $db,
                 $adminId,
@@ -46,10 +67,14 @@ try {
                     'category' => $category,
                     'match_type' => $matchType,
                     'reason' => $reason,
+                    'existing_disabled' => $disabled,
                 ]
             );
 
-            echo json_encode(['success' => true, 'message' => 'Product flagged successfully.']);
+            $msg = $disabled > 0
+                ? "Product banned. {$disabled} existing item" . ($disabled === 1 ? '' : 's') . " disabled."
+                : 'Product banned successfully.';
+            echo json_encode(['success' => true, 'message' => $msg, 'existing_disabled' => $disabled]);
             break;
         }
 

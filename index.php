@@ -26,10 +26,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GenPay | General de Jesus College</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=3">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=3">
 </head>
 <body>
 

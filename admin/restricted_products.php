@@ -8,6 +8,11 @@ gjc_require_role(['finance']);
 $currentUser = gjc_current_user($db);
 $currentPage = 'restricted_products';
 
+// Retroactively enforce the current rules over already-listed inventory. Catches
+// items that slipped in before a rule existed or before matching was tightened
+// (e.g. an obfuscated "C0br4"). Idempotent: only newly-matching items are touched.
+$autoDisabled = gjc_enforce_restrictions_on_inventory($db);
+
 $products = [];
 if (gjc_table_exists($db, 'restricted_products')) {
     $products = $db->query(
@@ -31,8 +36,8 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="admin-layout">
@@ -54,8 +59,15 @@ if (gjc_table_exists($db, 'restricted_products')) {
         <!-- Info Banner -->
         <div style="background:linear-gradient(135deg,#064420 0%,#0d7a3e 100%);color:#fff;padding:20px 28px;border-radius:16px;margin-bottom:24px;">
             <h4 style="margin:0 0 6px;font-weight:800;"><i class="fa-solid fa-utensils"></i> Nutritional Compliance Registry</h4>
-            <p style="margin:0;opacity:.85;">Items listed here are cross-checked when merchants add products to their inventory. Matching items are automatically blocked and flagged with the reason on file.</p>
+            <p style="margin:0;opacity:.85;">Items listed here are cross-checked when merchants add products to their inventory. Matching items are automatically blocked and flagged with the reason on file &mdash; including disguised spellings (e.g. <code style="color:#fff">C0br4</code>), spacing/punctuation tricks, look-alike characters, and close misspellings.</p>
         </div>
+
+        <?php if ($autoDisabled > 0): ?>
+        <div class="alert alert-warning" style="border-radius:12px;margin-bottom:24px;">
+            <i class="fa-solid fa-shield-halved"></i>
+            Re-scan disabled <strong><?= (int) $autoDisabled ?></strong> already-listed merchant item<?= $autoDisabled === 1 ? '' : 's' ?> that matched an active restriction under the updated rules.
+        </div>
+        <?php endif; ?>
 
         <!-- Summary Row -->
         <section class="row g-4 mb-4">

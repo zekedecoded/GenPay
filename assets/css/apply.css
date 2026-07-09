@@ -22,7 +22,7 @@
 }
 
 body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
     background: #eef3ee;
     color: var(--gray-9);
     min-height: 100vh;

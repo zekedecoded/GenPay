@@ -175,6 +175,32 @@ INSERT IGNORE INTO `restricted_products`
 SELECT 'Junk Food', 'snack', 'Low nutritional value — institutional health guidelines', 'contains', userID, NOW()
 FROM `users` WHERE `sub_role` = 'super_admin' LIMIT 1;
 
+-- Extended prohibited items — specific Philippine brands (nutritional + campus-prohibited)
+INSERT IGNORE INTO `restricted_products`
+    (`product_name`, `category`, `reason`, `match_type`, `flagged_by`, `created_at`)
+SELECT t.product_name, t.category, t.reason, t.match_type, u.userID, NOW()
+FROM (
+              SELECT 'Royal'                AS product_name, 'beverage'  AS category, 'Carbonated soft drink — high sugar content, DepEd nutritional guidelines'  AS reason, 'contains' AS match_type
+    UNION ALL SELECT 'Sprite',                            'beverage',  'Carbonated soft drink — high sugar content, DepEd nutritional guidelines',   'contains'
+    UNION ALL SELECT 'Mountain Dew',                      'beverage',  'Carbonated soft drink — high sugar content, DepEd nutritional guidelines',   'contains'
+    UNION ALL SELECT 'RC Cola',                           'beverage',  'Carbonated soft drink — high sugar content, DepEd nutritional guidelines',   'contains'
+    UNION ALL SELECT 'Red Bull',                          'beverage',  'Energy drink — high caffeine and sugar content, prohibited on campus',       'contains'
+    UNION ALL SELECT 'Piattos',                           'junk_food', 'Salty snack — high sodium and low nutritional value, health guidelines',     'contains'
+    UNION ALL SELECT 'Nova',                              'junk_food', 'Salty snack — high sodium and low nutritional value, health guidelines',     'contains'
+    UNION ALL SELECT 'Chippy',                            'junk_food', 'Salty snack — high sodium and low nutritional value, health guidelines',     'contains'
+    UNION ALL SELECT 'Nagaraya',                          'junk_food', 'Salty snack — high sodium and low nutritional value, health guidelines',     'contains'
+    UNION ALL SELECT 'Lucky Me',                          'snack',     'Instant noodles — high sodium and low nutritional value, health guidelines', 'contains'
+    UNION ALL SELECT 'Chocnut',                           'candy',     'Confectionery — high sugar content, DepEd nutritional guidelines',            'contains'
+    UNION ALL SELECT 'Cloud 9',                           'candy',     'Chocolate bar — high sugar content, DepEd nutritional guidelines',            'contains'
+    UNION ALL SELECT 'Marlboro',                          'general',   'Tobacco product — banned on campus and prohibited for minors (RA 9211)',      'contains'
+    UNION ALL SELECT 'Winston',                           'general',   'Tobacco product — banned on campus and prohibited for minors (RA 9211)',      'contains'
+    UNION ALL SELECT 'San Miguel Pale Pilsen',           'general',   'Alcoholic beverage — prohibited on campus',                                  'contains'
+    UNION ALL SELECT 'Ginebra San Miguel',               'general',   'Alcoholic beverage — prohibited on campus',                                  'contains'
+    UNION ALL SELECT 'Emperador',                         'general',   'Alcoholic beverage — prohibited on campus',                                  'contains'
+    UNION ALL SELECT 'Tanduay',                           'general',   'Alcoholic beverage — prohibited on campus',                                  'contains'
+) AS t
+CROSS JOIN (SELECT userID FROM `users` WHERE `sub_role` = 'super_admin' LIMIT 1) AS u;
+
 -- ============================================================
 -- 10. CREATE merchant_inventory (detailed catalog)
 -- ============================================================

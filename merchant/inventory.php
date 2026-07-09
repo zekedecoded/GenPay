@@ -37,8 +37,8 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=19">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=25">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="merchant-layout">
@@ -353,8 +353,9 @@ document.getElementById('itemQrPrintBtn').addEventListener('click', function () 
         <html>
         <head>
             <title>${currentItemQrName} QR</title>
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
-                body { font-family: sans-serif; text-align: center; padding: 24px; }
+                body { font-family: 'Plus Jakarta Sans', sans-serif; text-align: center; padding: 24px; }
                 img { width: 280px; height: 280px; }
                 h2 { margin: 16px 0 4px; }
                 p { color: #555; }

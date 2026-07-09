@@ -12,8 +12,8 @@
 //    record_payment    Record 2mo deposit + 1mo advance, start date, schedule
 //    award             Finalize: assign stall, create merchant, -> 'awarded'
 //                      (requires contract uploaded AND payment recorded)
-//    reject            Documents invalid -> 'rejected' (reason), notify to re-apply
-//    cancel            No-show / cancellation -> 'cancelled', notify to re-apply
+//    reject            Documents invalid / no-show -> 'rejected' (reason), notify to re-apply
+//    mark_viewed       Stamp first_viewed_at on first open (clears the "New" badge)
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -267,20 +267,11 @@ try {
                 )->execute([$newUserId, $app['business_name'], $stallId]);
                 $newMerchantId = (int) $db->lastInsertId();
 
-                // Copy the submitted profile picture into the public logos dir.
-                if ($app['profile_picture'] && $app['profile_picture'] !== 'pending_path') {
-                    $srcPath = BASE_PATH . '/' . $app['profile_picture'];
-                    $ext = strtolower(pathinfo($srcPath, PATHINFO_EXTENSION)) ?: 'jpg';
-                    $logoDir = BASE_PATH . '/assets/merchant_logos';
-                    if (!is_dir($logoDir)) {
-                        mkdir($logoDir, 0755, true);
-                    }
-                    $logoRelPath = 'assets/merchant_logos/' . $newMerchantId . '.' . $ext;
-                    if (is_file($srcPath) && copy($srcPath, BASE_PATH . '/' . $logoRelPath)) {
-                        $db->prepare("UPDATE users SET profile_img = ? WHERE userID = ?")
-                           ->execute([$logoRelPath, $newUserId]);
-                    }
-                }
+                // NOTE: the submitted profile picture is a photo of the proprietor (a
+                // verification/KYC document) — NOT the business logo. It is deliberately
+                // not copied into the public logos dir, otherwise the proprietor's face
+                // becomes the storefront logo. New merchants start with no logo
+                // (users.profile_img = '') and set their own from Merchant Settings.
 
                 $db->prepare("INSERT IGNORE INTO merchant_wallets (user_id, balance) VALUES (?, 0.00)")
                    ->execute([$newUserId]);
@@ -303,11 +294,11 @@ try {
                     $db->prepare(
                         "INSERT INTO merchant_leases
                             (merchant_user_id, stall_number, stall_id, stall_name, monthly_rent,
-                             deposit_amount, lease_start, next_due_date, status, contract_notes, created_by, created_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, NOW())"
+                             deposit_amount, lease_start, lease_end, next_due_date, status, contract_notes, created_by, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(?, INTERVAL 1 YEAR), ?, 'active', ?, ?, NOW())"
                     )->execute([
                         $newUserId, $stallId, $stallId, $app['business_name'], $monthlyRent,
-                        $app['deposit_amount'], $app['rental_start_date'], $nextDue,
+                        $app['deposit_amount'], $app['rental_start_date'], $app['rental_start_date'], $nextDue,
                         'Payment every ' . $scheduleDay . 'th. 2-month deposit + 1-month advance collected on award.',
                         $adminId,
                     ]);
@@ -416,37 +407,18 @@ try {
             ]);
         }
 
-        // ── Cancel: no-show / cancellation -> terminated ───────
-        case 'cancel': {
-            $appId  = (int) ($_POST['app_id'] ?? 0);
-            $reason = trim((string) ($_POST['reason'] ?? ''));
-            if ($reason === '') {
-                $reason = 'Did not attend the scheduled verification meeting (no-show).';
+        // ── Mark viewed: first open clears the "New" badge ──────
+        case 'mark_viewed': {
+            $appId = (int) ($_POST['app_id'] ?? 0);
+            if ($appId <= 0) {
+                stall_app_json(['success' => false, 'message' => 'Application not found.']);
             }
-            $app = $appId ? stall_app_fetch($db, $appId) : null;
-
-            if (!$app || $app['status'] !== 'pending_verification') {
-                stall_app_json(['success' => false, 'message' => 'Application not found or not awaiting verification.']);
-            }
-
             $db->prepare(
                 "UPDATE stall_applications
-                    SET status = 'cancelled', cancel_reason = ?, cancelled_by = ?, cancelled_at = NOW()
-                  WHERE id = ?"
-            )->execute([$reason, $adminId, $appId]);
-
-            stall_app_send_termination_email(
-                $app,
-                'Application Cancelled',
-                'Your stall application has been cancelled and its meeting slot released.',
-                $reason
-            );
-
-            stall_app_json([
-                'success' => true,
-                'message' => 'Application cancelled and its slot freed. The applicant may submit a new one.',
-                'status'  => 'cancelled',
-            ]);
+                    SET first_viewed_at = NOW(), first_viewed_by = ?
+                  WHERE id = ? AND first_viewed_at IS NULL"
+            )->execute([$adminId, $appId]);
+            stall_app_json(['success' => true]);
         }
 
         default:

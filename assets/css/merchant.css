@@ -1,4 +1,4 @@
-@import url("gjc-clear.css?v=3");
+@import url("gjc-clear.css?v=8");
 
 :root {
   --emerald-950: var(--gjc-green-950);
@@ -19,7 +19,7 @@
 }
 
 * {
-  font-family: "Inter", sans-serif;
+  font-family: var(--gjc-font-body);
   box-sizing: border-box;
 }
 
@@ -465,7 +465,6 @@ body {
 
 .gc-ticket-figure {
   margin: 3px 0 2px;
-  font-family: "IBM Plex Mono", "Inter", monospace;
   font-variant-numeric: tabular-nums;
   font-size: 26px;
   font-weight: 700;

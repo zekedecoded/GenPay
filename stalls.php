@@ -43,8 +43,8 @@ function statusLabel(string $status): string
     <title>Available Stalls | GenPay</title>
     <meta name="description" content="Browse available stalls at General de Jesus College. View real-time occupancy and apply online for a stall slot.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/stalls.css?v=1">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/stalls.css?v=4">
 </head>
 <body>
 

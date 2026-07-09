@@ -69,13 +69,12 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
         <div class="ce-ledger-head">
             <div>
                 <span class="ce-ledger-label">Total Money in System</span>
-                <div class="ce-ledger-amount"><?= gjc_money($cap) ?></div>
+                <div class="ce-ledger-amount"><?= gjc_token_display($cap) ?></div>
                 <p class="ce-ledger-sub">The maximum amount of money allowed in the system at any time</p>
                 <p class="ce-ledger-sub" style="margin-top:2px;font-weight:700;">
-                    &asymp; <?= number_format(
-                        $cap / 10,
-                        1,
-                    ) ?> GenCoins &middot; Fixed rate: &#8369;10 = 1 GenCoin
+                    &asymp; <?= gjc_money(
+                        $cap,
+                    ) ?> &middot; Fixed rate: &#8369;10 = 1 GenCoin
                 </p>
             </div>
 
@@ -126,7 +125,7 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
             </div>
             <div class="ce-pool-info">
                 <span class="ce-pool-label">Cashier Vault</span>
-                <div class="ce-pool-amt"><?= gjc_money($vault) ?></div>
+                <div class="ce-pool-amt"><?= gjc_token_display($vault) ?></div>
                 <small class="ce-pool-share">Available to load</small>
             </div>
         </div>

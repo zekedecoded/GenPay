@@ -47,12 +47,27 @@ try {
                 }
             }
 
-            // Restriction check
+            // Banned-product gate: reject the save outright and alert the admins.
             $restrictionReason = gjc_check_restricted($db, $productName);
-            $isRestricted = $restrictionReason !== null ? 1 : 0;
-            if ($isRestricted) {
-                $isAvailable = 0; // Auto-disable restricted items
+            if ($restrictionReason !== null) {
+                logAudit(
+                    $db, $merchantUserId, gjc_current_role(),
+                    'PRODUCT_RESTRICTION', 'merchant_inventory', null,
+                    [
+                        'event' => 'blocked_add',
+                        'merchant_user_id' => $merchantUserId,
+                        'attempted_name' => $productName,
+                        'matched_reason' => $restrictionReason,
+                    ]
+                );
+                echo json_encode([
+                    'success' => false,
+                    'blocked' => true,
+                    'message' => "\"{$productName}\" is a banned product and cannot be added: {$restrictionReason}",
+                ]);
+                exit;
             }
+            $isRestricted = 0;
 
             $stmt = $db->prepare(
                 "INSERT INTO merchant_inventory
@@ -148,9 +163,28 @@ try {
                 }
             }
 
+            // Banned-product gate: reject the rename/save outright and alert admins.
             $restrictionReason = gjc_check_restricted($db, $productName);
-            $isRestricted = $restrictionReason !== null ? 1 : 0;
-            if ($isRestricted) $isAvailable = 0;
+            if ($restrictionReason !== null) {
+                logAudit(
+                    $db, $merchantUserId, gjc_current_role(),
+                    'PRODUCT_RESTRICTION', 'merchant_inventory', $oldItem,
+                    [
+                        'event' => 'blocked_edit',
+                        'id' => $itemId,
+                        'merchant_user_id' => $merchantUserId,
+                        'attempted_name' => $productName,
+                        'matched_reason' => $restrictionReason,
+                    ]
+                );
+                echo json_encode([
+                    'success' => false,
+                    'blocked' => true,
+                    'message' => "\"{$productName}\" is a banned product and cannot be saved: {$restrictionReason}",
+                ]);
+                exit;
+            }
+            $isRestricted = 0;
 
             $stmt = $db->prepare(
                 "UPDATE merchant_inventory

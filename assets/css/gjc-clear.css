@@ -64,6 +64,12 @@
   --gjc-shadow-md: 0 10px 24px rgba(5, 37, 21, 0.10);
   --gjc-shadow-lg: 0 14px 28px rgba(4, 68, 32, 0.18);
   --gjc-shadow-xl: 0 18px 45px rgba(3, 32, 20, 0.08);
+
+  /* Typography — Plus Jakarta Sans everywhere (has tnum tabular figures + ₱);
+     Manrope kept as fallback only */
+  --gjc-font-display: "Plus Jakarta Sans", "Manrope", Arial, sans-serif;
+  --gjc-font-body: "Plus Jakarta Sans", "Manrope", Arial, sans-serif;
+  --gjc-font-mono: "IBM Plex Mono", Consolas, monospace;
 }
 
 * {
@@ -78,8 +84,21 @@ body {
 body {
   background: var(--gjc-page) !important;
   color: var(--gjc-ink) !important;
-  font-family: "Inter", "Plus Jakarta Sans", Arial, sans-serif !important;
+  font-family: var(--gjc-font-body) !important;
+  /* Tabular figures everywhere: balances, amounts, and tables align and
+     don't jiggle when values change. */
+  font-variant-numeric: tabular-nums;
 }
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--gjc-font-display);
+}
+
+/* Plus Jakarta Sans needs slight tightening at display sizes.
+   !important to outrank the global letter-spacing reset above. */
+h1, h2, .h1, .h2 { letter-spacing: -0.02em !important; }
+h3, .h3 { letter-spacing: -0.01em !important; }
 
 a {
   color: var(--gjc-green-800);
@@ -182,21 +201,47 @@ img {
   box-shadow: none !important;
 }
 
+/* Logout: quiet neutral chip at rest (gold is reserved for active nav),
+   danger red on hover to match the modal's confirm button. */
 .logout-btn,
 .student-logout,
 .merchant-logout {
   height: 46px !important;
   border-radius: var(--gjc-radius) !important;
-  background: rgba(255, 255, 255, 0.10) !important;
-  border: 1px solid rgba(224, 184, 58, 0.45) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
   box-shadow: none !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease !important;
+}
+
+.logout-btn i,
+.student-logout i,
+.merchant-logout i {
+  transition: transform 0.18s ease;
 }
 
 .logout-btn:hover,
 .student-logout:hover,
 .merchant-logout:hover {
-  background: var(--gjc-gold-500) !important;
-  color: var(--gjc-green-950) !important;
+  background: var(--gjc-danger) !important;
+  border-color: var(--gjc-danger) !important;
+  color: #fff !important;
+}
+
+.logout-btn:hover i,
+.student-logout:hover i,
+.merchant-logout:hover i {
+  transform: translateX(3px);
+}
+
+.logout-btn:focus-visible,
+.student-logout:focus-visible,
+.merchant-logout:focus-visible {
+  outline: 2px solid var(--gjc-gold-500);
+  outline-offset: 2px;
 }
 
 /* Top bars */
@@ -317,12 +362,34 @@ img {
   color: var(--gjc-muted) !important;
 }
 
+/* ── Card system: banking-minimal ─────────────────────────────────────
+   Tier 1 · surface panels (tables/forms): the white-panel block above.
+   Tier 2 · stat tiles: white, ink figures, tinted icon chip — the
+             numbers carry the hierarchy, the chrome disappears.
+   Tier 3 · hero balance: the one dark emerald card per page, gold
+             keyline on top. */
+
+/* Tier 2 — stat tiles */
 .metric-card,
 .student-metric-card,
 .merchant-metric-card,
 .topup-stat-card,
 .encash-stat-card,
 .transaction-stat-card,
+.history-stat-card,
+.visitor-stat-card,
+.mini-metric-card,
+.history-mini-card {
+  background: var(--gjc-panel) !important;
+  border: 1px solid var(--gjc-line) !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: var(--gjc-shadow-sm) !important;
+  backdrop-filter: none !important;
+  color: var(--gjc-ink) !important;
+  overflow: hidden;
+}
+
+/* Tier 3 — hero balance cards */
 .student-wallet-card,
 .qr-balance-card,
 .encash-hero-card,
@@ -330,10 +397,11 @@ img {
 .topup-hero-card,
 .profile-hero-card,
 .history-balance-card,
-.history-stat-card {
-  background: var(--gjc-green-800) !important;
+.gc-ticket {
+  background: var(--gjc-green-950) !important;
   border: 1px solid var(--gjc-green-700) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-top: 3px solid var(--gjc-gold-500) !important;
+  border-radius: var(--gjc-radius-md) !important;
   box-shadow: var(--gjc-shadow-md) !important;
   overflow: hidden;
 }
@@ -355,34 +423,47 @@ img {
   display: none !important;
 }
 
-.metric-card h2,
-.student-metric-card h2,
-.merchant-metric-card h2,
-.topup-stat-card h2,
-.encash-stat-card h2,
-.transaction-stat-card h2,
-.student-wallet-card h2,
-.qr-balance-card h2,
-.encash-hero-card h2,
-.scan-balance-card h2,
-.topup-hero-card h2 {
-  color: #fff !important;
-  font-weight: 800 !important;
-}
-
+/* Tile hierarchy: quiet uppercase label, dominant tabular figure, muted hint */
 .metric-card span,
 .student-metric-card span,
 .merchant-metric-card span,
 .topup-stat-card span,
 .encash-stat-card span,
 .transaction-stat-card span,
-.student-wallet-card span,
-.qr-balance-card span,
-.encash-hero-card span,
-.scan-balance-card span,
-.topup-hero-card span {
-  color: var(--gjc-gold-100) !important;
+.history-stat-card span,
+.visitor-stat-card span {
+  color: var(--gjc-muted) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+.metric-card h2,
+.student-metric-card h2,
+.merchant-metric-card h2,
+.topup-stat-card h2,
+.encash-stat-card h2,
+.transaction-stat-card h2,
+.history-stat-card h2,
+.visitor-stat-card h2 {
+  color: var(--gjc-ink) !important;
   font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Guard: spans nested inside a figure are part of the number, not labels */
+.metric-card h2 span,
+.student-metric-card h2 span,
+.merchant-metric-card h2 span,
+.topup-stat-card h2 span,
+.encash-stat-card h2 span,
+.transaction-stat-card h2 span,
+.history-stat-card h2 span,
+.visitor-stat-card h2 span {
+  color: var(--gjc-ink) !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  text-transform: none !important;
 }
 
 .metric-card p,
@@ -391,30 +472,104 @@ img {
 .topup-stat-card p,
 .encash-stat-card p,
 .transaction-stat-card p,
-.student-wallet-card p,
-.qr-balance-card p,
-.encash-hero-card p,
-.scan-balance-card p,
-.topup-hero-card p {
-  color: rgba(255, 255, 255, 0.82) !important;
+.history-stat-card p,
+.visitor-stat-card p {
+  color: var(--gjc-muted) !important;
 }
 
+/* Tile icon chips: flat brand tint, green glyph (outranks inline color:#fff) */
 .metric-icon,
 .student-metric-icon,
 .merchant-metric-icon,
 .stat-icon-wrap,
+.mini-icon-wrap {
+  width: 40px !important;
+  height: 40px !important;
+  background: var(--gjc-soft) !important;
+  border: none !important;
+  border-radius: var(--gjc-radius) !important;
+  box-shadow: none !important;
+}
+
+.metric-icon i,
+.student-metric-icon i,
+.merchant-metric-icon i,
+.stat-icon-wrap i,
+.mini-icon-wrap i {
+  color: var(--gjc-green-700) !important;
+  font-size: 16px !important;
+  opacity: 1 !important;
+}
+
+/* Interactive tiles: restrained lift, no float */
+.mini-metric-card:hover {
+  transform: translateY(-1px) !important;
+  border-color: #c3d2c8 !important;
+  box-shadow: var(--gjc-shadow-md) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-metric-card,
+  .mini-metric-card:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Hero hierarchy: gold-muted label, white tabular figure */
+.student-wallet-card span,
+.qr-balance-card span,
+.encash-hero-card span,
+.scan-balance-card span,
+.topup-hero-card span,
+.profile-hero-card span,
+.history-balance-card span {
+  color: var(--gjc-gold-100) !important;
+  font-weight: 600 !important;
+}
+
+.student-wallet-card h2,
+.qr-balance-card h2,
+.encash-hero-card h2,
+.scan-balance-card h2,
+.topup-hero-card h2,
+.profile-hero-card h2,
+.history-balance-card h2 {
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Guard: the figure's nested spans stay part of the number */
+.student-wallet-card h2 span,
+.qr-balance-card h2 span,
+.encash-hero-card h2 span,
+.scan-balance-card h2 span,
+.topup-hero-card h2 span,
+.profile-hero-card h2 span,
+.history-balance-card h2 span {
+  color: #fff !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
+
+.student-wallet-card p,
+.qr-balance-card p,
+.encash-hero-card p,
+.scan-balance-card p,
+.topup-hero-card p,
+.profile-hero-card p,
+.history-balance-card p {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* Hero icon chips stay translucent on the dark card */
 .history-balance-icon,
 .student-empty-icon,
 .qr-preview-icon {
   background: rgba(255, 255, 255, 0.14) !important;
   border-radius: var(--gjc-radius) !important;
   box-shadow: none !important;
-}
-
-.mini-metric-card,
-.history-mini-card {
-  border-radius: var(--gjc-radius) !important;
-  background: #fff !important;
 }
 
 /* Forms */
@@ -1114,7 +1269,10 @@ footer {
 
 @media (prefers-reduced-motion: reduce) {
   .logout-modal-overlay,
-  .logout-modal {
+  .logout-modal,
+  .logout-btn, .logout-btn i,
+  .student-logout, .student-logout i,
+  .merchant-logout, .merchant-logout i {
     transition: none !important;
   }
 }

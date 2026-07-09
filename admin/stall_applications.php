@@ -24,29 +24,52 @@ $currentUser = gjc_current_user($db);
 $currentPage = "stall_applications";
 $adminId = gjc_user_id();
 
-$apps = $db->query(
-    "SELECT sa.*, s.label AS stall_label, s.monthly_rate AS stall_rate
+// Awarded applications become active tenants, so they no longer belong in the
+// applications list — only pending and the internal rejected/cancelled history remain.
+$apps = $db
+    ->query(
+        "SELECT sa.*, s.label AS stall_label, s.monthly_rate AS stall_rate
        FROM stall_applications sa
        LEFT JOIN stalls s ON s.stall_id = sa.stall_id
-      WHERE sa.status IN ('pending_verification','awarded','rejected','cancelled')
-      ORDER BY (sa.status = 'pending_verification') DESC, sa.meetup_scheduled_at ASC, sa.created_at DESC"
-)->fetchAll(PDO::FETCH_ASSOC);
+      WHERE sa.status IN ('pending_verification','rejected','cancelled')
+      ORDER BY sa.created_at DESC",
+    )
+    ->fetchAll(PDO::FETCH_ASSOC);
+
+// Awarded applications leave the list above; keep just a running total for the KPI.
+$awardedCount = (int) $db
+    ->query("SELECT COUNT(*) FROM stall_applications WHERE status = 'awarded'")
+    ->fetchColumn();
 
 // Vacant stalls available for assignment at award.
 $stallMgr = new StallManager($db);
 $vacantStalls = array_values(
-    array_filter($stallMgr->allStalls(), fn($s) => $s["status"] === "vacant")
+    array_filter($stallMgr->allStalls(), fn($s) => $s["status"] === "vacant"),
 );
 
 // Today's meetings — the appointment log the admin works from, time-ordered.
 $today = date("Y-m-d");
-$todaySchedule = array_values(array_filter(
-    $apps,
-    fn($a) => $a["meetup_scheduled_at"] && substr($a["meetup_scheduled_at"], 0, 10) === $today
-));
-usort($todaySchedule, fn($a, $b) => strcmp((string) $a["meetup_scheduled_at"], (string) $b["meetup_scheduled_at"]));
+$todaySchedule = array_values(
+    array_filter(
+        $apps,
+        fn($a) => $a["meetup_scheduled_at"] &&
+            substr($a["meetup_scheduled_at"], 0, 10) === $today,
+    ),
+);
+usort(
+    $todaySchedule,
+    fn($a, $b) => strcmp(
+        (string) $a["meetup_scheduled_at"],
+        (string) $b["meetup_scheduled_at"],
+    ),
+);
 
-$statusCounts = ["pending_verification" => 0, "awarded" => 0, "rejected" => 0, "cancelled" => 0];
+$statusCounts = [
+    "pending_verification" => 0,
+    "awarded" => 0,
+    "rejected" => 0,
+    "cancelled" => 0,
+];
 foreach ($apps as $a) {
     if (isset($statusCounts[$a["status"]])) {
         $statusCounts[$a["status"]]++;
@@ -54,11 +77,42 @@ foreach ($apps as $a) {
 }
 
 $STATUS_META = [
-    "pending_verification" => ["label" => "Pending for Verification", "badge" => "warning", "icon" => "fa-hourglass-half"],
-    "awarded"              => ["label" => "Awarded",                   "badge" => "success", "icon" => "fa-circle-check"],
-    "rejected"             => ["label" => "Rejected",                  "badge" => "danger",  "icon" => "fa-circle-xmark"],
-    "cancelled"            => ["label" => "Cancelled",                 "badge" => "secondary", "icon" => "fa-ban"],
+    "pending_verification" => [
+        "label" => "Pending for Verification",
+        "badge" => "warning",
+        "icon" => "fa-hourglass-half",
+    ],
+    "awarded" => [
+        "label" => "Awarded",
+        "badge" => "success",
+        "icon" => "fa-circle-check",
+    ],
+    "rejected" => [
+        "label" => "Rejected",
+        "badge" => "danger",
+        "icon" => "fa-circle-xmark",
+    ],
+    "cancelled" => [
+        "label" => "Cancelled",
+        "badge" => "secondary",
+        "icon" => "fa-ban",
+    ],
 ];
+
+// Gold "New" pill for applications no admin has opened yet; the first open
+// stamps first_viewed_at (via the mark_viewed API action) and removes it.
+function sa_new_badge(array $app): string
+{
+    if (
+        $app["status"] !== "pending_verification" ||
+        !empty($app["first_viewed_at"])
+    ) {
+        return "";
+    }
+    return ' <span class="sa-new-badge" data-new-badge="' .
+        (int) $app["id"] .
+        '">New</span>';
+}
 
 function sa_meeting_label(?string $dt): string
 {
@@ -66,7 +120,11 @@ function sa_meeting_label(?string $dt): string
         return '<span class="text-muted">&mdash;</span>';
     }
     $ts = strtotime($dt);
-    return '<span class="fw-semibold">' . date("M j, Y", $ts) . '</span><br><span class="small text-muted">' . date("g:i A", $ts) . '</span>';
+    return '<span class="fw-semibold">' .
+        date("M j, Y", $ts) .
+        '</span><br><span class="small text-muted">' .
+        date("g:i A", $ts) .
+        "</span>";
 }
 ?>
 <!DOCTYPE html>
@@ -79,31 +137,100 @@ function sa_meeting_label(?string $dt): string
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stall Applications | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=5">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=2">
     <style>
-    .sa-kpi { border:1px solid #e5e7eb; border-radius:16px; padding:16px 18px; background:#fff; }
-    .sa-kpi .n { font-size:28px; font-weight:800; line-height:1; }
-    .sa-kpi .l { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; }
-    .today-card { border:1px solid #e5e7eb; border-radius:16px; background:#fff; overflow:hidden; }
-    .today-head { padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; }
-    .today-item { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid #f6f7f9; cursor:pointer; transition:.12s; }
+    /* KPI cards — thin large numbers, left-aligned flex row */
+    .sa-kpi { border:1px solid #dddfd8; border-radius:12px; padding:16px 20px; background:#fff; display:flex; flex-direction:column; gap:8px; min-width:200px; }
+    .sa-kpi .l { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }
+    .sa-kpi .n { font-size:36px; font-weight:300; line-height:1; color:#1a1a1a; }
+
+    /* Card shell for schedule + table */
+    .sa-card { border:1px solid #dddfd8; border-radius:12px; background:#fff; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+    .today-card { border:1px solid #dddfd8; border-radius:12px; background:#fff; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+    .today-head { padding:15px 20px; border-bottom:1px solid #f1f0ea; display:flex; justify-content:space-between; align-items:center; }
+    .today-item { display:grid; grid-template-columns:90px 1fr auto; align-items:center; gap:16px; padding:14px 20px; border-bottom:1px solid #f5f5f0; cursor:pointer; transition:.12s; }
     .today-item:last-child { border-bottom:0; }
-    .today-item:hover { background:#f0fdf4; }
-    .today-time { min-width:78px; font-weight:800; color:#064420; }
-    .today-who { flex:1; min-width:0; }
-    .today-who .b { font-weight:700; }
-    .today-who .p { font-size:12px; color:#6b7280; }
-    .sa-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
-    .sa-doc { border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff; }
-    .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; font-size:12px; font-weight:700; border-bottom:1px solid #f1f5f9; }
-    .sa-doc iframe { width:100%; height:180px; border:0; display:block; background:#1e1e1e; }
+    .today-item:hover { background:#f6f8f4; }
+    .today-time { font-weight:700; font-size:13px; color:#064420; }
+    .today-who { min-width:0; }
+    .today-who .b { font-weight:600; font-size:14px; color:#1a1a1a; }
+    .today-who .p { font-size:12px; color:#9ca3af; margin-top:2px; }
+    .sa-sched-right { display:flex; align-items:center; gap:12px; }
+
+    /* "New" pill — newly submitted, not yet opened; cleared on first open */
+    .sa-new-badge { display:inline-block; margin-left:8px; padding:2px 9px; border-radius:999px; background:#fff5cc; border:1px solid #e0b83a; color:#8a6212; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; vertical-align:middle; }
+
+    /* Inline "Open" affordance */
+    .sa-open { font-size:13px; font-weight:600; color:#0b7a43; cursor:pointer; white-space:nowrap; }
+    .sa-open:hover { text-decoration:underline; }
+
+    /* Toolbar: pill search + filter pills */
+    .sa-search { display:flex; align-items:center; gap:8px; background:#f5f5f0; border:1px solid #e0e2db; border-radius:8px; padding:7px 12px; flex:1; max-width:300px; }
+    .sa-search input { border:none; background:transparent; font-size:13px; color:#374151; outline:none; width:100%; font-family:inherit; }
+    .sa-search input::placeholder { color:#9ca3af; }
+    .sa-search .fa-magnifying-glass { color:#9ca3af; font-size:13px; }
+    .sa-filters { display:flex; gap:4px; flex-wrap:wrap; }
+    .filter-btn { padding:7px 14px; border-radius:8px; border:1px solid #e0e2db; background:#fff; color:#374151; font-size:12px; font-weight:500; cursor:pointer; line-height:1.2; }
+    .filter-btn:hover { border-color:#064420; color:#064420; }
+    .filter-btn.active { background:#064420; color:#fff; border-color:#064420; }
+
+    /* Applications table */
+    .sa-table { margin:0; }
+    .sa-table thead th { font-size:10.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9ca3af; background:#f8f8f3; border-bottom:1px solid #eeeee8; padding:10px 16px; }
+    .sa-table tbody td { padding:14px 16px; border-bottom:1px solid #f5f5f0; vertical-align:middle; background:transparent; }
+    .sa-table tbody tr:last-child td { border-bottom:0; }
+    .sa-table tbody tr:hover td { background:#f6f8f4; }
+    .sa-table .biz { font-size:13.5px; font-weight:600; color:#1a1a1a; }
+    .sa-table .prop { font-size:13px; color:#374151; }
+    .sa-table .phone { font-size:12.5px; color:#555; }
+    .sa-table .email { font-size:11px; color:#9ca3af; margin-top:3px; }
+    .sa-table .submitted { font-size:12.5px; color:#777; }
+
+    /* DataTables footer (info + pagination) */
+    .sa-dt-foot { font-size:12.5px; }
+    .sa-dt-foot .dataTables_info { color:#6b7280; padding:0; }
+    .sa-dt-foot .dataTables_paginate { margin:0; }
+    .sa-dt-foot .pagination { margin:0; }
+    .sa-dt-foot .page-link { color:#064420; font-size:12.5px; }
+    .sa-dt-foot .page-item.active .page-link { background:#064420; border-color:#064420; color:#fff; }
+    .sa-dt-foot .page-item.disabled .page-link { color:#c0c4bd; }
+
+    .sa-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
+    .sa-doc { position:relative; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+    .sa-doc:hover { border-color:#0b7a43; box-shadow:0 2px 10px rgba(6,68,32,.14); }
+    .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:5px 8px; font-size:10.5px; font-weight:700; border-bottom:1px solid #f1f5f9; }
+    .sa-doc .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sa-doc .cap .sa-doc-pop { color:inherit; }
+    .sa-doc .sa-doc-thumb { width:100%; height:110px; border:0; display:block; background:#1e1e1e; pointer-events:none; }
+    .sa-doc .sa-doc-hint { position:absolute; right:6px; bottom:6px; background:rgba(6,68,32,.82); color:#fff; font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; opacity:0; transition:opacity .12s; pointer-events:none; }
+    .sa-doc:hover .sa-doc-hint { opacity:1; }
+
+    /* Full-size embedded document viewer (opens on click — no new tab) */
+    .doc-viewer { position:fixed; inset:0; z-index:1085; background:rgba(15,23,20,.88); display:flex; align-items:center; justify-content:center; padding:28px; }
+    .doc-viewer[hidden] { display:none; }
+    .doc-viewer-stage { width:min(1100px,96vw); height:min(90vh,920px); }
+    .doc-viewer-stage iframe { width:100%; height:100%; border:0; border-radius:8px; background:#fff; box-shadow:0 12px 44px rgba(0,0,0,.45); }
+    .doc-viewer-cap { position:absolute; top:22px; left:28px; color:#fff; font-weight:700; font-size:14px; }
+    .doc-viewer-close { position:absolute; top:15px; right:22px; width:42px; height:42px; border-radius:50%; border:0; background:rgba(255,255,255,.16); color:#fff; font-size:24px; line-height:1; cursor:pointer; }
+    .doc-viewer-close:hover { background:rgba(255,255,255,.3); }
     .sa-section { border:1px solid #e5e7eb; border-radius:14px; padding:16px; }
     .sa-section h6 { font-weight:800; margin-bottom:12px; }
     .sa-done-pill { font-size:11px; font-weight:800; color:#166534; background:#dcfce7; border-radius:999px; padding:3px 10px; }
     .filter-btn.active { background:#064420; color:#fff; border-color:#064420; }
+
+    /* Inline accordion (replaces the old workspace modal) */
+    .sa-open .sa-caret { transition:transform .18s ease; margin-left:5px; font-size:10px; }
+    .sa-table tbody tr.app-expanded .sa-caret { transform:rotate(180deg); }
+    .sa-table tbody tr.app-expanded > td { background:#eef4ea !important; }
+    .sa-table tbody tr.app-detail-row > td,
+    .sa-table tbody tr.app-detail-row:hover > td { background:#fbfcf9; padding:0; border-bottom:1px solid #eeeee8; }
+    .app-detail { padding:20px 22px; }
+    .app-detail-head { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:16px; }
+    .app-detail-title { font-size:16px; font-weight:800; color:#1a1a1a; }
     </style>
 </head>
 <body>
@@ -124,18 +251,16 @@ function sa_meeting_label(?string $dt): string
         </header>
 
         <!-- Two visible KPIs -->
-        <section class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-                <div class="sa-kpi">
-                    <div class="l"><i class="fa-solid fa-hourglass-half text-warning me-1"></i> Pending Verification</div>
-                    <div class="n mt-2"><?= $statusCounts["pending_verification"] ?></div>
-                </div>
+        <section class="d-flex flex-wrap gap-3 mb-4">
+            <div class="sa-kpi">
+                <div class="l"><i class="fa-solid fa-hourglass-half text-warning"></i> Pending Verification</div>
+                <div class="n"><?= $statusCounts[
+                    "pending_verification"
+                ] ?></div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="sa-kpi">
-                    <div class="l"><i class="fa-solid fa-circle-check text-success me-1"></i> Awarded (Active Tenants)</div>
-                    <div class="n mt-2"><?= $statusCounts["awarded"] ?></div>
-                </div>
+            <div class="sa-kpi">
+                <div class="l"><i class="fa-solid fa-circle-check text-success"></i> Awarded (Active Tenants)</div>
+                <div class="n"><?= $awardedCount ?></div>
             </div>
         </section>
 
@@ -144,73 +269,134 @@ function sa_meeting_label(?string $dt): string
             <div class="today-head">
                 <div>
                     <h5 class="mb-0 fw-bold"><i class="fa-solid fa-calendar-day text-success me-2"></i>Today's Schedule</h5>
-                    <div class="small text-muted"><?= date("l, F j, Y") ?> &middot; meetings in time order</div>
+                    <div class="small text-muted"><?= date(
+                        "l, F j, Y",
+                    ) ?> &middot; meetings in time order</div>
                 </div>
-                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle"><?= count($todaySchedule) ?> meeting<?= count($todaySchedule) === 1 ? "" : "s" ?></span>
+                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle"><?= count(
+                    $todaySchedule,
+                ) ?> meeting<?= count($todaySchedule) === 1 ? "" : "s" ?></span>
             </div>
             <?php if (empty($todaySchedule)): ?>
             <div class="p-4 text-center text-muted">No meetings scheduled for today.</div>
             <?php else: ?>
-                <?php foreach ($todaySchedule as $a): $m = $STATUS_META[$a["status"]]; ?>
-                <div class="today-item" onclick="openApp(<?= (int) $a["id"] ?>)">
-                    <div class="today-time"><?= date("g:i A", strtotime($a["meetup_scheduled_at"])) ?></div>
+                <?php foreach ($todaySchedule as $a):
+                    $m = $STATUS_META[$a["status"]]; ?>
+                <div class="today-item" onclick="openApp(<?= (int) $a[
+                    "id"
+                ] ?>)">
+                    <div class="today-time"><?= date(
+                        "g:i A",
+                        strtotime($a["meetup_scheduled_at"]),
+                    ) ?></div>
                     <div class="today-who">
-                        <div class="b"><?= gjc_e($a["business_name"]) ?></div>
-                        <div class="p"><?= gjc_e($a["proprietor_name"]) ?> &middot; <?= gjc_e($a["contact_number"]) ?></div>
+                        <div class="b"><?= gjc_e(
+                            $a["business_name"],
+                        ) ?><?= sa_new_badge($a) ?></div>
+                        <div class="p"><?= gjc_e(
+                            $a["proprietor_name"],
+                        ) ?> &middot; <?= gjc_e($a["contact_number"]) ?></div>
                     </div>
-                    <span class="badge bg-<?= $m["badge"] ?>"><i class="fa-solid <?= $m["icon"] ?> me-1"></i><?= $m["label"] ?></span>
-                    <button type="button" class="btn btn-sm btn-outline-success ms-2">Open</button>
+                    <div class="sa-sched-right">
+                        <span class="badge bg-<?= $m[
+                            "badge"
+                        ] ?>"><i class="fa-solid <?= $m[
+    "icon"
+] ?> me-1"></i><?= $m["label"] ?></span>
+                        <span class="sa-open">Open</span>
+                    </div>
                 </div>
-                <?php endforeach; ?>
+                <?php
+                endforeach; ?>
             <?php endif; ?>
         </section>
 
-        <!-- Toolbar: search + status filter -->
-        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-            <div class="input-group input-group-sm" style="max-width:320px">
-                <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass"></i></span>
-                <input type="search" id="appSearch" class="form-control" placeholder="Search business, proprietor, or email&hellip;">
+        <!-- Applications card: toolbar + table -->
+        <div class="sa-card">
+            <!-- Toolbar: search + status filter -->
+            <div class="d-flex flex-wrap gap-2 align-items-center" style="padding:13px 20px; border-bottom:1px solid #f1f0ea;">
+                <div class="sa-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="search" id="appSearch" placeholder="Search business, proprietor, or email&hellip;">
+                </div>
+                <div class="sa-filters ms-auto" id="statusFilter">
+                    <button type="button" class="filter-btn active" data-status="all">All (<?= count(
+                        $apps,
+                    ) ?>)</button>
+                    <button type="button" class="filter-btn" data-status="pending_verification">Pending (<?= $statusCounts[
+                        "pending_verification"
+                    ] ?>)</button>
+                    <button type="button" class="filter-btn" data-status="rejected">Rejected (<?= $statusCounts[
+                        "rejected"
+                    ] ?>)</button>
+                </div>
             </div>
-            <div class="btn-group btn-group-sm ms-auto flex-wrap" role="group" id="statusFilter">
-                <button type="button" class="btn btn-outline-secondary filter-btn active" data-status="all">All (<?= count($apps) ?>)</button>
-                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="pending_verification">Pending (<?= $statusCounts["pending_verification"] ?>)</button>
-                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="awarded">Awarded (<?= $statusCounts["awarded"] ?>)</button>
-                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="rejected">Rejected (<?= $statusCounts["rejected"] ?>)</button>
-                <button type="button" class="btn btn-outline-secondary filter-btn" data-status="cancelled">Cancelled (<?= $statusCounts["cancelled"] ?>)</button>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table id="appsTable" class="table align-middle mb-0 sa-table">
+                    <thead>
                         <tr>
-                            <th>Business</th>
-                            <th>Proprietor</th>
+                            <th>Business Name</th>
+                            <th>Full Name</th>
                             <th>Contact</th>
                             <th>Meeting Schedule</th>
                             <th>Status</th>
-                            <th>Submitted</th>
+                            <th>Date Submitted</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody id="appTableBody">
                         <?php if (empty($apps)): ?>
                         <tr><td colspan="7" class="text-center text-muted py-4">No applications yet.</td></tr>
-                        <?php else: foreach ($apps as $app): $m = $STATUS_META[$app["status"]]; ?>
-                        <tr class="app-row" data-app-id="<?= (int) $app["id"] ?>"
+                        <?php else:foreach ($apps as $app):
+                                $m = $STATUS_META[$app["status"]]; ?>
+                        <tr class="app-row" data-app-id="<?= (int) $app[
+                            "id"
+                        ] ?>"
                             data-status="<?= $app["status"] ?>"
-                            data-search="<?= htmlspecialchars(strtolower($app["business_name"] . " " . $app["proprietor_name"] . " " . $app["email"])) ?>"
-                            style="cursor:pointer" onclick="openApp(<?= (int) $app["id"] ?>)">
-                            <td class="fw-semibold"><?= gjc_e($app["business_name"]) ?></td>
-                            <td><?= gjc_e($app["proprietor_name"]) ?></td>
-                            <td class="small text-muted"><?= gjc_e($app["contact_number"]) ?><br><?= gjc_e($app["email"]) ?></td>
-                            <td class="sa-meeting"><?= sa_meeting_label($app["meetup_scheduled_at"]) ?></td>
-                            <td><span class="badge bg-<?= $m["badge"] ?> status-badge"><i class="fa-solid <?= $m["icon"] ?> me-1"></i><?= $m["label"] ?></span></td>
-                            <td class="small text-muted"><?= date("M j, Y", strtotime($app["created_at"])) ?></td>
-                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-success">Open</button></td>
+                            data-search="<?= htmlspecialchars(
+                                strtolower(
+                                    $app["business_name"] .
+                                        " " .
+                                        $app["proprietor_name"] .
+                                        " " .
+                                        $app["email"],
+                                ),
+                            ) ?>"
+                            style="cursor:pointer" onclick="expandApp(<?= (int) $app[
+                                "id"
+                            ] ?>, this)">
+                            <td><span class="biz"><?= gjc_e(
+                                $app["business_name"],
+                            ) ?></span><?= sa_new_badge($app) ?></td>
+                            <td><span class="prop"><?= gjc_e(
+                                $app["proprietor_name"],
+                            ) ?></span></td>
+                            <td>
+                                <div class="phone"><?= gjc_e(
+                                    $app["contact_number"],
+                                ) ?></div>
+                                <div class="email"><?= gjc_e(
+                                    $app["email"],
+                                ) ?></div>
+                            </td>
+                            <td class="sa-meeting"><?= sa_meeting_label(
+                                $app["meetup_scheduled_at"],
+                            ) ?></td>
+                            <td><span class="badge bg-<?= $m[
+                                "badge"
+                            ] ?> status-badge"><i class="fa-solid <?= $m[
+     "icon"
+ ] ?> me-1"></i><?= $m["label"] ?></span></td>
+                            <td data-order="<?= gjc_e(
+                                $app["created_at"],
+                            ) ?>"><span class="submitted"><?= date(
+    "M j, Y",
+    strtotime($app["created_at"]),
+) ?></span></td>
+                            <td class="text-end"><span class="sa-open">Details <i class="fa-solid fa-chevron-down sa-caret"></i></span></td>
                         </tr>
-                        <?php endforeach; endif; ?>
+                        <?php
+                            endforeach;endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -218,20 +404,7 @@ function sa_meeting_label(?string $dt): string
     </main>
 </div>
 
-<!-- Application / Meeting workspace modal -->
-<div class="modal fade" id="appModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="appModalTitle">Application</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="appModalBody"></div>
-        </div>
-    </div>
-</div>
-
-<!-- Reason modal (reject / cancel) -->
+<!-- Reject reason modal -->
 <div class="modal fade" id="reasonModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -251,21 +424,89 @@ function sa_meeting_label(?string $dt): string
     </div>
 </div>
 
+<!-- Award confirmation modal -->
+<div class="modal fade" id="awardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="awardTitle">Award Stall</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2" id="awardConfirmText"></p>
+                <p class="text-danger small mb-0"><strong>This cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back</button>
+                <button type="button" class="btn btn-success" id="awardConfirm">Award Stall</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full-size embedded document viewer -->
+<div id="docViewer" class="doc-viewer" hidden>
+    <div class="doc-viewer-cap" id="docViewerCap"></div>
+    <button type="button" class="doc-viewer-close" aria-label="Close">&times;</button>
+    <div class="doc-viewer-stage" id="docViewerStage"></div>
+</div>
+
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastWrap"></div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<?php require __DIR__ . "/../includes/partials/datatables_assets.php"; ?>
 <script>
-const APPS = <?= json_encode(array_values($apps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?>;
-const VACANT_STALLS = <?= json_encode($vacantStalls, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const APPS = <?= json_encode(
+    array_values($apps),
+    JSON_HEX_TAG |
+        JSON_HEX_AMP |
+        JSON_HEX_APOS |
+        JSON_HEX_QUOT |
+        JSON_INVALID_UTF8_SUBSTITUTE,
+) ?>;
+const VACANT_STALLS = <?= json_encode(
+    $vacantStalls,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+) ?>;
 const STATUS_META = <?= json_encode($STATUS_META) ?>;
 const DOC_URL = '<?= ADMIN_URL ?>/doc?f=';
 const API_URL = '<?= ADMIN_URL ?>/api/stall_applications';
 
-let appModal, reasonModal, reasonAction = null, reasonAppId = null;
+let dt = null;   // DataTables instance (null if assets are blocked — static fallback)
+let reasonModal, awardModal, reasonAppId = null;
+let awardAppId = null, awardStallId = null;
 document.addEventListener('DOMContentLoaded', () => {
-    appModal = new bootstrap.Modal(document.getElementById('appModal'));
     reasonModal = new bootstrap.Modal(document.getElementById('reasonModal'));
+    awardModal = new bootstrap.Modal(document.getElementById('awardModal'));
+
+    // Click a submitted-document thumbnail → open it full-size in the embedded viewer.
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.sa-doc-pop')) return;         // the ↗ icon still opens a new tab
+        const cell = e.target.closest('.sa-doc');
+        if (cell) { e.preventDefault(); openDoc(cell.dataset.docUrl, cell.dataset.docLabel); }
+    });
+    const viewer = document.getElementById('docViewer');
+    viewer.addEventListener('click', (e) => {
+        if (e.target === viewer || e.target.closest('.doc-viewer-close')) closeDoc();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewer.hidden) closeDoc(); });
 });
+
+// Embedded full-size document viewer — fits the whole image/PDF, never opens a new tab.
+function openDoc(url, label) {
+    if (!url) return;
+    document.getElementById('docViewerStage').innerHTML =
+        `<iframe src="${url}" title="${esc(label || 'Document')}"></iframe>`;
+    document.getElementById('docViewerCap').textContent = label || '';
+    document.getElementById('docViewer').hidden = false;
+    document.body.style.overflow = 'hidden';
+}
+function closeDoc() {
+    document.getElementById('docViewer').hidden = true;
+    document.getElementById('docViewerStage').innerHTML = '';   // stop the iframe loading
+    document.getElementById('docViewerCap').textContent = '';
+    document.body.style.overflow = '';
+}
 
 function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function peso(v) { return '₱' + parseFloat(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 }); }
@@ -302,7 +543,7 @@ function post(data, isForm = false) {
 // ── Document grid (side-by-side preview) ──
 function docGrid(app) {
     const docs = {
-        'Profile Picture': app.profile_picture,
+        'Applicant Photo': app.profile_picture,
         'Business Permit': app.business_permit,
         'Sanitary Permit': app.sanitary_permit,
         'GJC Requirements': app.gjc_requirements,
@@ -311,25 +552,116 @@ function docGrid(app) {
     const cells = Object.entries(docs).map(([label, path]) => {
         if (!path || path === 'pending_path') return '';
         const url = DOC_URL + encodeURIComponent(String(path).replace(/^\//, ''));
-        return `<div class="sa-doc">
-            <div class="cap"><span>${esc(label)}</span><a href="${url}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square"></i></a></div>
-            <iframe src="${url}" loading="lazy"></iframe>
+        return `<div class="sa-doc" data-doc-url="${url}" data-doc-label="${esc(label)}" title="Click to view full size">
+            <div class="cap"><span>${esc(label)}</span><a class="sa-doc-pop" href="${url}" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-up-right-from-square"></i></a></div>
+            <iframe class="sa-doc-thumb" src="${url}" loading="lazy"></iframe>
+            <span class="sa-doc-hint"><i class="fa-solid fa-expand me-1"></i>Enlarge</span>
         </div>`;
     }).join('');
     return `<div class="sa-doc-grid">${cells}</div>`;
 }
 
-// ── Modal body per status ──
-function openApp(id) {
-    const app = findApp(id);
-    if (!app) return;
+// ── Inline accordion (expands the detail directly under the clicked row) ──
+function detailHtml(app) {
     const m = STATUS_META[app.status];
-    document.getElementById('appModalTitle').innerHTML =
-        `${esc(app.business_name)} <span class="badge bg-${m.badge} ms-2"><i class="fa-solid ${m.icon} me-1"></i>${m.label}</span>`;
-    document.getElementById('appModalBody').innerHTML =
-        app.status === 'pending_verification' ? renderWorkspace(app) : renderSummary(app);
+    const inner = app.status === 'pending_verification' ? renderWorkspace(app) : renderSummary(app);
+    return `<div class="app-detail">
+        <div class="app-detail-head">
+            <span class="app-detail-title">${esc(app.business_name)}</span>
+            <span class="badge bg-${m.badge}"><i class="fa-solid ${m.icon} me-1"></i>${m.label}</span>
+        </div>
+        ${inner}
+    </div>`;
+}
+
+// Collapse every open panel — enforces the one-at-a-time accordion behaviour.
+function collapseAllDetails() {
+    if (dt) {
+        dt.rows().every(function () {
+            if (this.child.isShown()) this.child.hide();
+            this.node().classList.remove('app-expanded');
+        });
+    } else {
+        document.querySelectorAll('#appTableBody tr.app-detail-row').forEach(r => r.remove());
+        document.querySelectorAll('#appTableBody tr.app-expanded').forEach(r => r.classList.remove('app-expanded'));
+    }
+}
+
+// Toggle (row click) or force-open (Today's Schedule) the panel for one application.
+function expandApp(id, tr, toggle = true) {
+    const app = findApp(id);
+    if (!app || !tr) return;
+
+    if (dt) {
+        const row = dt.row(tr);
+        const wasOpen = row.child.isShown();
+        collapseAllDetails();
+        if (toggle && wasOpen) return;                       // clicking an open row closes it
+        row.child(detailHtml(app), 'app-detail-row').show();
+    } else {
+        const wasOpen = tr.classList.contains('app-expanded');
+        collapseAllDetails();
+        if (toggle && wasOpen) return;
+        const dr = document.createElement('tr');
+        dr.className = 'app-detail-row';
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.innerHTML = detailHtml(app);
+        dr.appendChild(td);
+        tr.after(dr);
+    }
+    tr.classList.add('app-expanded');
+    markViewed(app);
     if (app.status === 'pending_verification') wireWorkspace(app);
-    appModal.show();
+    tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// First open clears the "New" badge — persisted server-side so it stays
+// cleared for every admin session afterwards.
+function markViewed(app) {
+    if (app.first_viewed_at) return;
+    app.first_viewed_at = new Date().toISOString();
+    document.querySelectorAll(`[data-new-badge="${app.id}"]`).forEach(el => el.remove());
+    post({ action: 'mark_viewed', app_id: app.id });
+}
+
+// Re-render an already-open panel in place (after saving a contract/payment).
+function refreshApp(id) {
+    const app = findApp(id);
+    const tr = document.querySelector(`#appTableBody tr.app-row[data-app-id="${id}"]`);
+    if (!app || !tr) return;
+    if (dt) {
+        const row = dt.row(tr);
+        if (!row.child.isShown()) return;
+        row.child(detailHtml(app), 'app-detail-row').show();
+    } else {
+        const dr = tr.nextElementSibling;
+        if (!dr || !dr.classList.contains('app-detail-row')) return;
+        dr.querySelector('td').innerHTML = detailHtml(app);
+    }
+    if (app.status === 'pending_verification') wireWorkspace(app);
+}
+
+// Entry point from Today's Schedule — clear filters, page to the row, then open it.
+function openApp(id) {
+    if (dt) {
+        statusFilter = 'all';
+        jQuery('.filter-btn').removeClass('active').filter('[data-status="all"]').addClass('active');
+        jQuery('#appSearch').val('');
+        dt.search('');
+        const node = document.querySelector(`#appTableBody tr.app-row[data-app-id="${id}"]`);
+        if (node) {
+            const idx = dt.row(node).index();
+            dt.draw(false);
+            const order = dt.rows({ order: 'applied', search: 'applied' }).indexes().toArray();
+            const pos = order.indexOf(idx);
+            if (pos >= 0) dt.page(Math.floor(pos / dt.page.len())).draw(false);
+        } else {
+            dt.draw(false);
+        }
+    }
+    const tr = document.querySelector(`#appTableBody tr.app-row[data-app-id="${id}"]`);
+    if (tr) expandApp(id, tr, false);
 }
 
 function applicantHeader(app) {
@@ -412,8 +744,7 @@ function renderWorkspace(app) {
                         </select>
                     </div>
                     <div class="col-md-6 text-md-end">
-                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="askReason('reject', ${app.id})"><i class="fa-solid fa-circle-xmark me-1"></i>Reject</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="askReason('cancel', ${app.id})"><i class="fa-solid fa-user-slash me-1"></i>No-show / Cancel</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="askReason(${app.id})"><i class="fa-solid fa-circle-xmark me-1"></i>Reject</button>
                         <button type="button" class="btn btn-success btn-sm" id="awardBtn-${app.id}"><i class="fa-solid fa-award me-1"></i>Award</button>
                     </div>
                 </div>
@@ -476,7 +807,7 @@ function wireWorkspace(app) {
         fd.append('contract', input.files[0]);
         post(fd, true).then(res => {
             toast(res.message, res.success);
-            if (res.success) { app.contract_file = res.contract_file; openApp(id); }
+            if (res.success) { app.contract_file = res.contract_file; refreshApp(id); }
         });
     });
 
@@ -493,7 +824,7 @@ function wireWorkspace(app) {
                 app.advance_amount = adv.value;
                 app.rental_start_date = document.getElementById(`start-${id}`).value;
                 app.payment_schedule_day = document.getElementById(`sched-${id}`).value;
-                openApp(id);
+                refreshApp(id);
             }
         });
     });
@@ -504,51 +835,88 @@ function wireWorkspace(app) {
         if (!app.contract_file) { toast('Upload the signed contract before awarding.', false); return; }
         const payDone = parseFloat(app.deposit_amount) > 0 && parseFloat(app.advance_amount) > 0 && app.rental_start_date && (app.payment_schedule_day == 15 || app.payment_schedule_day == 30);
         if (!payDone) { toast('Record the payment before awarding.', false); return; }
-        if (!confirm(`Award Stall ${stallId} and create a merchant account for ${app.proprietor_name}? This cannot be undone.`)) return;
-        post({ action: 'award', app_id: id, stall_id: stallId }).then(res => {
-            toast(res.message, res.success);
-            if (res.success) { appModal.hide(); setTimeout(() => location.reload(), 1200); }
-        });
+        awardAppId = id; awardStallId = stallId;
+        document.getElementById('awardConfirmText').innerHTML =
+            `Award Stall <strong>${esc(stallId)}</strong> and create a merchant account for <strong>${esc(app.proprietor_name)}</strong>?`;
+        awardModal.show();
     });
 }
+document.getElementById('awardConfirm').addEventListener('click', () => {
+    if (!awardAppId || !awardStallId) return;
+    post({ action: 'award', app_id: awardAppId, stall_id: awardStallId }).then(res => {
+        toast(res.message, res.success);
+        if (res.success) { awardModal.hide(); setTimeout(() => location.reload(), 1200); }
+    });
+});
 
-// ── Reason modal (reject / cancel) ──
-function askReason(action, id) {
-    reasonAction = action; reasonAppId = id;
-    document.getElementById('reasonTitle').textContent = action === 'reject' ? 'Reject Application' : 'No-show / Cancel Application';
-    document.getElementById('reasonHelp').textContent = action === 'reject'
-        ? 'The application will be terminated. The applicant must submit a brand-new application.'
-        : 'The slot will be released and the application cancelled. The applicant must re-apply. (Reason optional for a no-show.)';
+// ── Reject modal ──
+function askReason(id) {
+    reasonAppId = id;
+    document.getElementById('reasonTitle').textContent = 'Reject Application';
+    document.getElementById('reasonHelp').textContent = 'The application will be terminated. The applicant must submit a brand-new application.';
     document.getElementById('reasonText').value = '';
-    document.getElementById('reasonConfirm').className = 'btn ' + (action === 'reject' ? 'btn-danger' : 'btn-secondary');
-    appModal.hide();
+    document.getElementById('reasonConfirm').className = 'btn btn-danger';
     reasonModal.show();
 }
 document.getElementById('reasonConfirm').addEventListener('click', () => {
     const reason = document.getElementById('reasonText').value.trim();
-    if (reasonAction === 'reject' && !reason) { toast('A rejection reason is required.', false); return; }
-    post({ action: reasonAction, app_id: reasonAppId, reason }).then(res => {
+    if (!reason) { toast('A rejection reason is required.', false); return; }
+    post({ action: 'reject', app_id: reasonAppId, reason }).then(res => {
         toast(res.message, res.success);
         if (res.success) { reasonModal.hide(); setTimeout(() => location.reload(), 1200); }
     });
 });
 
-// ── Search + status filter ──
+// ── DataTable + custom search / status-filter wiring ──
 let statusFilter = 'all';
-function applyFilters() {
-    const q = document.getElementById('appSearch').value.trim().toLowerCase();
-    document.querySelectorAll('.app-row').forEach(row => {
-        const okSearch = row.dataset.search.includes(q);
-        const okStatus = statusFilter === 'all' || row.dataset.status === statusFilter;
-        row.style.display = (okSearch && okStatus) ? '' : 'none';
+jQuery(function ($) {
+    if (!$.fn || !$.fn.DataTable) return;                 // assets blocked — leave static table
+    if ($.fn.dataTable.isDataTable('#appsTable')) return;
+    const $table = $('#appsTable');
+    if (!$table.length) return;
+
+    // Drop the "No applications yet." placeholder row so DataTables parses cleanly.
+    $table.find('tbody > tr').filter(function () {
+        const $c = $(this).children('td, th');
+        return $c.length === 1 && parseInt($c.attr('colspan'), 10) > 1;
+    }).remove();
+
+    // Status-pill filter — reads data-status off each row; scoped to this table.
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        if (settings.nTable.id !== 'appsTable' || statusFilter === 'all') return true;
+        const row = settings.aoData[dataIndex].nTr;
+        return !!row && row.dataset.status === statusFilter;
     });
-}
-document.getElementById('appSearch').addEventListener('input', applyFilters);
-document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', function () {
-    statusFilter = this.dataset.status;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b === this));
-    applyFilters();
-}));
+
+    dt = $table.DataTable({
+        pageLength: 10,
+        lengthChange: false,
+        autoWidth: false,
+        order: [[5, 'desc']],   // Date Submitted — newest first
+        columnDefs: [{ targets: 6, orderable: false, searchable: false }],
+        language: {
+            emptyTable: 'No applications yet.',
+            zeroRecords: 'No matching applications found.',
+            info: 'Showing _START_&ndash;_END_ of _TOTAL_',
+            infoEmpty: 'No applications',
+            infoFiltered: '(filtered from _MAX_)',
+            paginate: { previous: 'Prev', next: 'Next' },
+        },
+        dom: "t<'d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-2 border-top sa-dt-foot'ip>",
+    });
+
+    // The redesigned pill search drives DataTables' search instead of its default box.
+    $('#appSearch').on('input', function () { collapseAllDetails(); dt.search(this.value).draw(); });
+
+    // Status filter pills.
+    $('.filter-btn').on('click', function () {
+        statusFilter = this.dataset.status;
+        $('.filter-btn').removeClass('active');
+        $(this).addClass('active');
+        collapseAllDetails();
+        dt.draw();
+    });
+});
 </script>
 </body>
 </html>
