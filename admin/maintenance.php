@@ -541,9 +541,9 @@ function maintenance_temp_password(int $length = 10): string
 }
 
 /**
- * Emails a newly-created guardian their login credentials. Mirrors the merchant
- * credentials mail in admin/api/stall_applications.php. Returns true on success;
- * any SMTP failure is swallowed and reported as false so a bad address never
+ * Queues a newly-created guardian's login credentials email for background
+ * delivery. Mirrors the merchant credentials mail in
+ * admin/api/stall_applications.php. Returns true when queued; a failure never
  * derails an import that has already committed.
  */
 function maintenance_send_guardian_credentials(string $email, string $name, string $tempPassword): bool
@@ -557,11 +557,7 @@ function maintenance_send_guardian_credentials(string $email, string $name, stri
     $safeEmail = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
     $safePass  = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
 
-    try {
-        $mail = gjc_mailer();
-        $mail->addAddress($email, $name !== '' ? $name : 'Guardian');
-        $mail->Subject = 'GenPay - Parent Account Credentials';
-        $mail->Body = '
+    $body = '
             <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
                 <h2 style="color:#064420;margin-top:0">Your GenPay Parent Account</h2>
                 <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
@@ -575,13 +571,9 @@ function maintenance_send_guardian_credentials(string $email, string $name, stri
                 <p style="color:#374151">Login page: <a href="' . $loginUrl . '" style="color:#16a34a">' . $loginUrl . '</a></p>
                 <p style="font-size:12px;color:#6b7280">GenPay Team</p>
             </div>';
-        $mail->AltBody = "Dear {$name},\n\nA GenPay parent account has been created so you can monitor and manage your child's wallet.\n\nEmail: {$email}\nTemporary Password: {$tempPassword}\n\nLog in at {$loginUrl}. You must change your password on first login.\n\nGenPay Team";
-        $mail->send();
-        return true;
-    } catch (Throwable $mailEx) {
-        error_log('[maintenance] guardian credentials email failed for ' . $email . ': ' . $mailEx->getMessage());
-        return false;
-    }
+    $altBody = "Dear {$name},\n\nA GenPay parent account has been created so you can monitor and manage your child's wallet.\n\nEmail: {$email}\nTemporary Password: {$tempPassword}\n\nLog in at {$loginUrl}. You must change your password on first login.\n\nGenPay Team";
+
+    return gjc_queue_email($email, $name !== '' ? $name : 'Guardian', 'GenPay - Parent Account Credentials', $body, $altBody);
 }
 
 /**

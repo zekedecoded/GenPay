@@ -89,35 +89,29 @@ function stall_app_next_due_date(string $startYmd, int $day): string
     return $mk($y, $m, $day);
 }
 
-/** Send a "your application was terminated, please re-apply" email (reject/cancel). */
+/** Queue a "your application was terminated, please re-apply" email (reject/cancel). */
 function stall_app_send_termination_email(array $app, string $heading, string $intro, string $reason): void
 {
-    try {
-        $mail = gjc_mailer();
-        $mail->addAddress($app['email'], $app['proprietor_name']);
-        $mail->Subject = 'GenPay - Stall Application Update';
-        $safeName   = htmlspecialchars($app['proprietor_name'], ENT_QUOTES, 'UTF-8');
-        $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
-        $applyUrl   = BASE_URL . '/apply';
-        $mail->Body = '
-            <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fef2f2;border-radius:14px">
-                <h3 style="color:#b91c1c;margin-top:0">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h3>
-                <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
-                <p style="color:#374151;line-height:1.7">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>
-                <div style="background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
-                    <p style="margin:0;color:#374151">' . $safeReason . '</p>
-                </div>
-                <p style="color:#374151;line-height:1.7">You are welcome to submit a brand-new application anytime. A new verification meeting will be scheduled automatically at submission.</p>
-                <p style="color:#374151"><a href="' . $applyUrl . '" style="color:#059669;font-weight:700">Submit a new application</a></p>
-                <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
-            </div>';
-        $mail->AltBody = "Dear {$app['proprietor_name']},\n\n{$intro}\n\nReason: {$reason}\n\n"
-            . "You may submit a brand-new application anytime at {$applyUrl}. A new meeting will be auto-scheduled.\n\nGenPay Team";
-        $mail->send();
-    } catch (Throwable $ignored) {
-        // Non-fatal — the status change already succeeded.
-    }
+    $safeName   = htmlspecialchars($app['proprietor_name'], ENT_QUOTES, 'UTF-8');
+    $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+    $applyUrl   = BASE_URL . '/apply';
+    $body = '
+        <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fef2f2;border-radius:14px">
+            <h3 style="color:#b91c1c;margin-top:0">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h3>
+            <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+            <p style="color:#374151;line-height:1.7">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>
+            <div style="background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
+                <p style="margin:0;color:#374151">' . $safeReason . '</p>
+            </div>
+            <p style="color:#374151;line-height:1.7">You are welcome to submit a brand-new application anytime. A new verification meeting will be scheduled automatically at submission.</p>
+            <p style="color:#374151"><a href="' . $applyUrl . '" style="color:#059669;font-weight:700">Submit a new application</a></p>
+            <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
+        </div>';
+    $altBody = "Dear {$app['proprietor_name']},\n\n{$intro}\n\nReason: {$reason}\n\n"
+        . "You may submit a brand-new application anytime at {$applyUrl}. A new meeting will be auto-scheduled.\n\nGenPay Team";
+
+    gjc_queue_email($app['email'], $app['proprietor_name'], 'GenPay - Stall Application Update', $body, $altBody);
 }
 
 try {
@@ -338,39 +332,36 @@ try {
 
             logAudit($db, $adminId, gjc_current_role(), 'STALL_UPDATE', 'stalls', $oldStall, $newStall, $stallId);
 
-            $mailSent = false;
-            $mailError = '';
-            try {
-                $mail = gjc_mailer();
-                $mail->addAddress($app['email'], $app['proprietor_name']);
-                $mail->Subject = 'GenPay - Merchant Account Credentials';
-                $mail->Body = '
-                    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                        <h2 style="color:#064420;margin-top:0">Your Merchant Account Is Approved</h2>
-                        <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
-                        <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>. Your signed contract and payment schedule are available in your merchant account.</p>
-                        <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
-                            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#bbf7d0;text-transform:uppercase">Login Credentials</p>
-                            <p style="margin:0"><strong>Email:</strong> ' . htmlspecialchars($app['email']) . '</p>
-                            <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . htmlspecialchars($tempPassword) . '</p>
-                        </div>
-                        <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
-                        <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:#059669">' . BASE_URL . '/login</a></p>
-                    </div>';
-                $mail->AltBody = "Dear {$app['proprietor_name']},\n\nYour merchant account is approved for Stall {$stallId}.\n\nEmail: {$app['email']}\nTemporary Password: {$tempPassword}\n\nLog in at " . BASE_URL . "/login. You must change your password on first login.\n\nGenPay Team";
-                $mail->send();
-                $mailSent = true;
-            } catch (Throwable $mailEx) {
-                $mailError = $mailEx->getMessage();
-            }
+            $body = '
+                <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
+                    <h2 style="color:#064420;margin-top:0">Your Merchant Account Is Approved</h2>
+                    <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
+                    <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>. Your signed contract and payment schedule are available in your merchant account.</p>
+                    <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
+                        <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#bbf7d0;text-transform:uppercase">Login Credentials</p>
+                        <p style="margin:0"><strong>Email:</strong> ' . htmlspecialchars($app['email']) . '</p>
+                        <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . htmlspecialchars($tempPassword) . '</p>
+                    </div>
+                    <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
+                    <p style="color:#374151">Login page: <a href="' . BASE_URL . '/login" style="color:#059669">' . BASE_URL . '/login</a></p>
+                </div>';
+            $altBody = "Dear {$app['proprietor_name']},\n\nYour merchant account is approved for Stall {$stallId}.\n\nEmail: {$app['email']}\nTemporary Password: {$tempPassword}\n\nLog in at " . BASE_URL . "/login. You must change your password on first login.\n\nGenPay Team";
+
+            $mailQueued = gjc_queue_email(
+                $app['email'],
+                $app['proprietor_name'],
+                'GenPay - Merchant Account Credentials',
+                $body,
+                $altBody
+            );
 
             stall_app_json([
                 'success' => true,
                 'message' => "Application awarded Stall {$stallId}. Merchant account created for {$app['proprietor_name']}."
-                    . ($mailSent ? ' Credentials emailed.' : ' Note: email failed - ' . $mailError),
+                    . ($mailQueued ? ' Credentials are being emailed.' : ' Note: credentials email could not be sent.'),
                 'status'  => 'awarded',
                 'user_id' => $newUserId,
-                'mail_sent' => $mailSent,
+                'mail_sent' => $mailQueued,
             ]);
         }
 

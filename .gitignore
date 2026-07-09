@@ -1,5 +1,8 @@
 # Local database backups / dumps — keep these out of version control
 /backups/
 
+# Async mail spool — queued emails can contain temp passwords
+/storage/mail_spool/
+
 # Claude Code local session state
 /.claude/
