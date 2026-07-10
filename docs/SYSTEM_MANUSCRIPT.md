@@ -294,7 +294,7 @@ Roughly six groups (all InnoDB, mostly utf8mb4):
 
 ## 11. The front-end system
 
-- **Design tokens** live in `assets/css/gjc-clear.css`: an emerald + gold brand palette (`--gjc-gold-500: #e0b83a`, deep green `#064420`), a three-tier card system (flat panels → white stat tiles → one dark hero card per page with a gold keyline), and **Plus Jakarta Sans** for all text with tabular numerals so peso amounts align.
+- **Design tokens** live in `assets/css/gjc-clear.css`: an emerald + gold brand palette (`--gjc-gold-500: #e0b83a`, deep green `#0e6332`), a three-tier card system (flat panels → white stat tiles → one dark hero card per page with a gold keyline), and **Plus Jakarta Sans** for all text with tabular numerals so peso amounts align.
 - Stylesheets are versioned by query string (`admin.css?v=10`) — bump the number to bust browser caches after a change.
 - Tables use a shared DataTables pattern: PHP renders the full `<tbody>`, then JS enhances it with search/sort/paging — with a deliberate **fallback**: every page checks `$.fn.DataTable` exists first, so if the CDN is blocked the plain HTML table still works.
 - Client JS follows one shape everywhere: build `FormData` → `fetch()` the API → parse JSON defensively (non-JSON responses become a friendly error) → show a Bootstrap toast → refresh the affected UI fragment in place.

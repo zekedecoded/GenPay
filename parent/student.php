@@ -89,7 +89,7 @@ foreach ($txns as $t) {
 }
 
 $typeLabels = [
-    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => 'var(--gjc-green-600)', 'bg' => '#f0fdf4'],
+    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => 'var(--gjc-green-600)', 'bg' => '#f0fdf6'],
     'payment'       => ['label' => 'POS',       'icon' => 'fa-store',          'color' => '#0369a1', 'bg' => '#f0f9ff'],
     'p2p_transfer'  => ['label' => 'Transfer',  'icon' => 'fa-money-bill-transfer', 'color' => '#7c3aed', 'bg' => '#f5f3ff'],
     'voucher_payment' => ['label' => 'Voucher', 'icon' => 'fa-ticket',         'color' => '#b45309', 'bg' => '#fffbeb'],
@@ -106,10 +106,10 @@ $currentPage = '';
     <title><?= htmlspecialchars($studentName) ?> — Ledger | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=2">
 </head>
 <body>
 <div class="student-layout">

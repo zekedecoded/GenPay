@@ -103,10 +103,10 @@ $currentPage = 'profile';
     <title>My Profile | GenPay Parent Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=2">
 </head>
 <body>
 <div class="student-layout">
@@ -175,7 +175,7 @@ $currentPage = 'profile';
 
             <!-- Edit profile -->
             <div class="pcard">
-                <h5><i class="fa-solid fa-pen me-2" style="color:#0b5c2c"></i>Edit Profile</h5>
+                <h5><i class="fa-solid fa-pen me-2" style="color:#117039"></i>Edit Profile</h5>
                 <p>Update your name and contact number.</p>
                 <form method="POST">
                     <input type="hidden" name="profile_action" value="profile">
@@ -204,7 +204,7 @@ $currentPage = 'profile';
 
             <!-- Change password -->
             <div class="pcard">
-                <h5><i class="fa-solid fa-lock me-2" style="color:#0b5c2c"></i>Change Password</h5>
+                <h5><i class="fa-solid fa-lock me-2" style="color:#117039"></i>Change Password</h5>
                 <p>Keep your account secure by updating your password regularly.</p>
                 <form method="POST">
                     <input type="hidden" name="profile_action" value="password">

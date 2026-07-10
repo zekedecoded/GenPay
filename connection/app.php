@@ -648,8 +648,156 @@ function gjc_user_label(PDO $db, int $userId): string
     return $name;
 }
 
+// ── Remember me: persistent login via single-use rotating tokens ───────────
+// Cookie 'gjc_remember' = "<selector>:<validator>"; only a SHA-256 hash of the
+// validator is stored, so a leaked table can't forge cookies. Tokens rotate on
+// every use and are deleted on logout.
+
+function gjc_ensure_remember_token_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS auth_remember_tokens (
+            id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id     INT NOT NULL,
+            selector    CHAR(24) NOT NULL,
+            token_hash  CHAR(64) NOT NULL,
+            expires_at  DATETIME NOT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_art_selector (selector),
+            KEY idx_art_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
+}
+
+/** Populate the login session vars for a users row (shared by password login and remember-me). */
+function gjc_establish_login_session(array $user): void
+{
+    $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
+    $roleId = (int) ($user['roleID'] ?? 0);
+
+    $_SESSION['userID'] = $userId;
+    $_SESSION['user_id'] = $userId;
+    $_SESSION['roleID'] = $roleId;
+
+    // Soft remap to sub_role (no DB changes to roleID); DB sub_role wins.
+    $subRole = match ($roleId) {
+        1 => 'student',
+        2 => 'merchant_admin',
+        3 => 'super_admin',
+        4 => 'super_admin',
+        5 => 'merchant_admin',
+        6 => 'merchant_staff',
+        7 => 'parent',
+        default => 'student',
+    };
+    if (!empty($user['sub_role'])) {
+        $subRole = (string) $user['sub_role'];
+    }
+
+    $_SESSION['sub_role'] = $subRole;
+    $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
+    $_SESSION['role'] = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant', 7 => 'parent'][$roleId] ?? 'user';
+}
+
+function gjc_issue_remember_token(PDO $db, int $userId, int $days = 30): void
+{
+    gjc_ensure_remember_token_schema($db);
+    $selector  = bin2hex(random_bytes(12));
+    $validator = bin2hex(random_bytes(32));
+    $db->prepare(
+        "INSERT INTO auth_remember_tokens (user_id, selector, token_hash, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))"
+    )->execute([$userId, $selector, hash('sha256', $validator), $days]);
+
+    setcookie('gjc_remember', $selector . ':' . $validator, [
+        'expires'  => time() + $days * 86400,
+        'path'     => '/',
+        'secure'   => !empty($_SERVER['HTTPS']),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+/** Delete the presented token (if any) and expire the cookie. Safe to call anytime. */
+function gjc_clear_remember_token(PDO $db): void
+{
+    $raw = (string) ($_COOKIE['gjc_remember'] ?? '');
+    if ($raw === '') {
+        return;
+    }
+    if (strpos($raw, ':') !== false) {
+        [$selector] = explode(':', $raw, 2);
+        if (preg_match('/^[a-f0-9]{24}$/', $selector) && gjc_table_exists($db, 'auth_remember_tokens')) {
+            $db->prepare("DELETE FROM auth_remember_tokens WHERE selector = ?")->execute([$selector]);
+        }
+    }
+    setcookie('gjc_remember', '', ['expires' => time() - 3600, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    unset($_COOKIE['gjc_remember']);
+}
+
+/**
+ * Silently restore a login from the remember-me cookie when no session exists.
+ * Invalid/expired/foreign tokens are discarded. Deactivated accounts and
+ * accounts still on a forced password change never auto-login. The used token
+ * is rotated (deleted + reissued) so a stolen cookie only works once.
+ */
+function gjc_attempt_remember_login(PDO $db): void
+{
+    if (gjc_user_id() > 0) {
+        return;
+    }
+    $raw = (string) ($_COOKIE['gjc_remember'] ?? '');
+    if ($raw === '' || strpos($raw, ':') === false) {
+        return;
+    }
+    [$selector, $validator] = explode(':', $raw, 2);
+    if (!preg_match('/^[a-f0-9]{24}$/', $selector) || !preg_match('/^[a-f0-9]{64}$/', $validator)) {
+        gjc_clear_remember_token($db);
+        return;
+    }
+
+    gjc_ensure_remember_token_schema($db);
+    $stmt = $db->prepare("SELECT * FROM auth_remember_tokens WHERE selector = ? LIMIT 1");
+    $stmt->execute([$selector]);
+    $token = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$token
+        || $token['expires_at'] <= date('Y-m-d H:i:s')
+        || !hash_equals($token['token_hash'], hash('sha256', $validator))) {
+        gjc_clear_remember_token($db);
+        return;
+    }
+
+    $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+    $userStmt = $db->prepare("SELECT * FROM users WHERE {$idCol} = ? LIMIT 1");
+    $userStmt->execute([(int) $token['user_id']]);
+    $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+    $mustChange = $user && (
+        !empty($user['force_password_change'])
+        || !empty($user['is_first_login'])
+        || (isset($user['password_changed']) && (int) $user['password_changed'] === 0)
+    );
+    if (!$user || (!empty($user['status']) && $user['status'] === 'Inactive') || $mustChange) {
+        gjc_clear_remember_token($db);
+        return;
+    }
+
+    $db->prepare("DELETE FROM auth_remember_tokens WHERE id = ?")->execute([(int) $token['id']]);
+    gjc_establish_login_session($user);
+    session_regenerate_id(true);
+    gjc_issue_remember_token($db, (int) $token['user_id']);
+}
+
 function gjc_require_role(array $roles): void
 {
+    // A returning visitor with a valid remember-me cookie gets their session
+    // restored here, before the role check bounces them to the login page.
+    global $db;
+    if ($db instanceof PDO) {
+        gjc_attempt_remember_login($db);
+    }
+
     $role = gjc_current_role();
     if (!in_array($role, $roles, true)) {
         header("Location: " . BASE_URL . "/login.php");

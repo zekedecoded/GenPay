@@ -55,10 +55,10 @@ $currentPage = 'dashboard';
     <title>Parent Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=2">
 </head>
 <body>
 <div class="student-layout">
@@ -99,7 +99,7 @@ $currentPage = 'dashboard';
             <!-- Link a Student -->
             <div class="parent-card">
                 <div class="parent-card-header">
-                    <h5><i class="fa-solid fa-link me-2" style="color:#0b5c2c"></i>Link a Student</h5>
+                    <h5><i class="fa-solid fa-link me-2" style="color:#117039"></i>Link a Student</h5>
                 </div>
                 <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Enter your child's school-issued student ID (e.g. <code>GJC2026-0001</code>) to link their wallet to your account.</p>
                 <form class="link-form" id="linkForm">
@@ -112,7 +112,7 @@ $currentPage = 'dashboard';
             <!-- Linked Students -->
             <div class="parent-card">
                 <div class="parent-card-header">
-                    <h5><i class="fa-solid fa-user-graduate me-2" style="color:#0b5c2c"></i>Linked Students</h5>
+                    <h5><i class="fa-solid fa-user-graduate me-2" style="color:#117039"></i>Linked Students</h5>
                 </div>
                 <?php if (empty($linkedStudents)): ?>
                 <div class="empty-state">
@@ -151,7 +151,7 @@ $currentPage = 'dashboard';
                         <span class="alert-badge" id="alertBadge" style="display:none;"></span>
                     </h5>
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <button id="markReadBtn" onclick="markAlertsRead()" style="display:none;background:none;border:none;font-size:12px;color:#0b5c2c;font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
+                        <button id="markReadBtn" onclick="markAlertsRead()" style="display:none;background:none;border:none;font-size:12px;color:#117039;font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
                         <button onclick="fetchAlerts()" title="Refresh alerts" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px 4px;font-size:13px;line-height:1;" id="refreshBtn">
                             <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
                         </button>

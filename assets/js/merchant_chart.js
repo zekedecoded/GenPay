@@ -9,15 +9,15 @@ if (merchantCtx) {
         {
           label: "Sales",
           data: [0, 0, 0, 0, 0, 0, 0],
-          borderColor: "#064420",
-          backgroundColor: "rgba(6, 68, 32, 0.12)",
+          borderColor: "#0e6332",
+          backgroundColor: "rgba(14, 99, 50, 0.12)",
           borderWidth: 3,
           tension: 0.42,
           fill: true,
           pointRadius: 5,
           pointHoverRadius: 7,
           pointBackgroundColor: "#d9a928",
-          pointBorderColor: "#064420",
+          pointBorderColor: "#0e6332",
           pointBorderWidth: 2,
         },
       ],
@@ -28,7 +28,7 @@ if (merchantCtx) {
       plugins: {
         legend: {
           labels: {
-            color: "#064420",
+            color: "#0e6332",
             font: {
               weight: "700",
             },

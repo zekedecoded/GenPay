@@ -14,7 +14,7 @@
   background: #ffffff;
   border: 1px solid #e3ece6;
   border-radius: 20px;
-  box-shadow: 0 10px 24px rgba(3, 32, 20, 0.06);
+  box-shadow: 0 10px 24px rgba(5, 41, 22, 0.06);
   padding: 20px 22px;
   display: flex;
   align-items: flex-start;
@@ -38,7 +38,7 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  border: 1px solid rgba(6, 68, 32, 0.06);
+  border: 1px solid rgba(14, 99, 50, 0.06);
   position: relative;
   z-index: 1;
 }
@@ -115,7 +115,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 12px 24px rgba(4, 68, 32, 0.18);
+  box-shadow: 0 12px 24px rgba(14, 99, 50, 0.18);
 }
 
 .visitor-primary-btn span {
@@ -159,7 +159,7 @@
   background: #ffffff;
   border: 1px solid #e3ece6;
   border-radius: 26px;
-  box-shadow: 0 14px 34px rgba(3, 32, 20, 0.08);
+  box-shadow: 0 14px 34px rgba(5, 41, 22, 0.08);
   overflow: hidden;
 }
 
@@ -294,7 +294,7 @@
   border: none;
   background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(4, 68, 32, 0.16);
+  box-shadow: 0 8px 18px rgba(14, 99, 50, 0.16);
 }
 
 .load-cash-btn:hover {
@@ -321,7 +321,7 @@
   padding: 0 13px;
   background: var(--gjc-soft);
   color: var(--gjc-green-800);
-  border: 1px solid rgba(6, 68, 32, 0.18);
+  border: 1px solid rgba(14, 99, 50, 0.18);
 }
 
 .refund-btn:hover {
@@ -459,7 +459,7 @@
   color: #ffffff;
   font-size: 14px;
   font-weight: 900;
-  box-shadow: 0 12px 24px rgba(4, 68, 32, 0.18);
+  box-shadow: 0 12px 24px rgba(14, 99, 50, 0.18);
 }
 
 .visitor-load-btn:hover {

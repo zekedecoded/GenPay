@@ -122,7 +122,7 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
@@ -240,7 +240,7 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
                             <?php endif; ?>
                         </div>
                         <label for="photoInput" title="Change photo"
-                               style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:#0b5c2c;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.25);">
+                               style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:#117039;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.25);">
                             <i class="fa-solid fa-camera"></i>
                         </label>
                         <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">

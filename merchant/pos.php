@@ -38,9 +38,9 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=26">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=2">
 </head>
 <body>
 <div class="merchant-layout">
@@ -346,7 +346,7 @@ async function generatePaymentQr() {
     <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
         <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none">
 
-            <div class="modal-header border-0 pb-0" style="background:#f0fdf4;padding:20px 24px 12px">
+            <div class="modal-header border-0 pb-0" style="background:#f0fdf6;padding:20px 24px 12px">
                 <div style="flex:1">
                     <h5 class="modal-title fw-bold" style="color:var(--gjc-green-600);font-size:18px">
                         <i class="fa-solid fa-coins me-2"></i>Send GenCoin
@@ -363,7 +363,7 @@ async function generatePaymentQr() {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" style="margin-top:-16px"></button>
             </div>
 
-            <div class="modal-body" style="background:#f0fdf4;padding:20px 24px 24px">
+            <div class="modal-body" style="background:#f0fdf6;padding:20px 24px 24px">
 
                 <!-- STEP 1: Student ID -->
                 <div id="lw-step-1">
@@ -387,7 +387,7 @@ async function generatePaymentQr() {
                 <!-- STEP 2: Cash amount -->
                 <div id="lw-step-2" style="display:none">
                     <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px">
-                        <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="lw-avatar"></div>
+                        <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d4;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="lw-avatar"></div>
                         <div>
                             <div style="font-weight:700;font-size:14px;color:#111" id="lw-name-2"></div>
                             <div style="font-size:11px;color:#6b7280" id="lw-id-2"></div>
@@ -485,7 +485,7 @@ async function generatePaymentQr() {
                     </div>
                     <div style="font-size:18px;font-weight:700;color:var(--gjc-green-600);margin-bottom:4px">Sent!</div>
                     <div style="font-size:13px;color:#6b7280" id="lw-success-msg"></div>
-                    <div style="margin-top:10px;display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px">
+                    <div style="margin-top:10px;display:inline-block;background:#f0fdf6;border:1px solid #bbf7d4;border-radius:8px;padding:6px 14px">
                         <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
                         <span id="lw-success-ref" style="font-size:13px;font-weight:700;color:var(--gjc-green-600);font-family:monospace;letter-spacing:.5px"></span>
                     </div>

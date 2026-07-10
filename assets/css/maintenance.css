@@ -158,7 +158,7 @@
     font-weight: 500;
     line-height: 1.5;
 }
-.maintenance-alert.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--gjc-success); }
+.maintenance-alert.success { background: #f0fdf6; border: 1px solid #bbf7d4; color: var(--gjc-success); }
 .maintenance-alert.error   { background: var(--gjc-danger-bg); border: 1px solid var(--gjc-danger-border); color: var(--gjc-danger); }
 
 /* ── Import summary ──────────────────────────────────────────────────── */
@@ -269,7 +269,7 @@
     border-radius: 8px; border: none; cursor: pointer; transition: background .15s;
 }
 .rp-toggle-btn--ban { background: var(--gjc-success-bg); color: var(--gjc-green-600); }
-.rp-toggle-btn--ban:hover { background: #bbf7d0; }
+.rp-toggle-btn--ban:hover { background: #bbf7d4; }
 .rp-toggle-btn--lift { background: var(--gjc-danger-bg); color: var(--gjc-danger); }
 .rp-toggle-btn--lift:hover { background: #fecaca; }
 .rp-remove-btn {

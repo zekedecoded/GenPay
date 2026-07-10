@@ -13,7 +13,7 @@
 .audit-table thead th { background:var(--gjc-green-900); color:#fff; text-transform:uppercase; font-size:11px; letter-spacing:.04em; font-weight:700; border:0; padding:12px 14px; }
 .audit-table tbody td { padding:12px 14px; border-color:var(--gjc-line); vertical-align:middle; }
 .audit-table tbody tr:hover { background:#f9fbf8; }
-.audit-row-login { background:#f0fdf4; }
+.audit-row-login { background:#f0fdf6; }
 .audit-row-password { background:#fff8ec; }
 .audit-row-login-failed { background:#fef2f2; }
 

@@ -24,7 +24,7 @@ $balance = $wallet['balance'];
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
@@ -32,7 +32,7 @@ $balance = $wallet['balance'];
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-    <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=2">
 </head>
 
 <body>

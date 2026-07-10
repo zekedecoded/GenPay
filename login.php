@@ -10,6 +10,13 @@ require_once __DIR__ . "/record.php";
 
 use Classes\Record;
 
+// A visitor with a valid remember-me cookie skips the form entirely.
+gjc_attempt_remember_login($db);
+if (gjc_user_id() > 0 && empty($_SESSION['force_change'])) {
+    header('Location: ' . BASE_URL . '/dashboard.php');
+    exit;
+}
+
 $Record = new Record($db);
 $message = $Record->loginUser();
 $error = $message ?: $error;
@@ -33,7 +40,7 @@ if (!$error && ($_GET['reason'] ?? '') === 'deactivated') {
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="<?= CSS_URL ?>/login.css?v=6">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/login.css?v=9">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 </head>
 
@@ -73,7 +80,7 @@ if (!$error && ($_GET['reason'] ?? '') === 'deactivated') {
                 </div>
 
                 <div class="options">
-                    <label><input type="checkbox"> Remember me</label>
+                    <label><input type="checkbox" name="remember" value="1" <?= !empty($_POST['remember']) ? 'checked' : '' ?>> Remember me</label>
 
                     <a href="#" data-bs-toggle="modal" data-bs-target="#forgotModal">
                         Forgot Password?

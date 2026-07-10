@@ -24,7 +24,7 @@
 /* Step filter cards */
 .step-filter-card {
     width: 100%;
-    border: 1px solid rgba(6, 68, 32, 0.12);
+    border: 1px solid rgba(14, 99, 50, 0.12);
     background: #fff;
     border-radius: 16px;
     padding: 14px 18px;
@@ -38,12 +38,12 @@
 .step-filter-card:hover {
     border-color: var(--emerald-600);
     transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(6, 68, 32, 0.08);
+    box-shadow: 0 10px 22px rgba(14, 99, 50, 0.08);
 }
 .step-filter-card.active {
     border-color: var(--emerald-700);
     background: var(--emerald-soft);
-    box-shadow: 0 10px 24px rgba(6, 68, 32, 0.12);
+    box-shadow: 0 10px 24px rgba(14, 99, 50, 0.12);
 }
 .step-filter-card .sfc-count {
     font-size: 24px;
@@ -66,7 +66,7 @@
    selected e-wallet card (.sa-pm-refslot). */
 .sa-pm-list { display: flex; flex-direction: column; gap: 8px; }
 .sa-pm-card {
-    border: 1px solid rgba(6, 68, 32, 0.14);
+    border: 1px solid rgba(14, 99, 50, 0.14);
     background: #fff;
     border-radius: 12px;
     padding: 10px 12px;
@@ -79,7 +79,7 @@
 .sa-pm-card.selected {
     border-color: var(--emerald-700);
     background: var(--emerald-soft);
-    box-shadow: 0 6px 16px rgba(6, 68, 32, 0.10);
+    box-shadow: 0 6px 16px rgba(14, 99, 50, 0.10);
 }
 .sa-pm-main { display: flex; align-items: center; gap: 10px; }
 .sa-pm-icon {
@@ -101,7 +101,7 @@
     margin-left: auto;
     width: 20px;
     height: 20px;
-    border: 2px solid rgba(6, 68, 32, 0.25);
+    border: 2px solid rgba(14, 99, 50, 0.25);
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
@@ -117,6 +117,6 @@
 .sa-pm-refslot .sa-pm-ref {
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px dashed rgba(6, 68, 32, 0.18);
+    border-top: 1px dashed rgba(14, 99, 50, 0.18);
 }
 .sa-pm-refslot { cursor: default; }

@@ -44,14 +44,14 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=10">
 </head>
 
 <body>
@@ -226,7 +226,7 @@ $currentPage = 'topups';
             <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
 
                 <!-- Header -->
-                <div class="modal-header border-0 pb-0" style="background:#f0fdf4;padding:20px 24px 12px">
+                <div class="modal-header border-0 pb-0" style="background:#f0fdf6;padding:20px 24px 12px">
                     <div style="flex:1">
                         <h5 class="modal-title fw-bold" id="sendGenCoinModalLabel" style="color:var(--gjc-green-600);font-size:18px">
                             <i class="fa-solid fa-coins me-2"></i>Send GenCoin
@@ -244,7 +244,7 @@ $currentPage = 'topups';
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="margin-top:-16px"></button>
                 </div>
 
-                <div class="modal-body" style="padding:20px 24px 24px;background:#f0fdf4">
+                <div class="modal-body" style="padding:20px 24px 24px;background:#f0fdf6">
 
                     <!-- STEP 1: Student ID -->
                     <div id="sgc-step-1">
@@ -269,7 +269,7 @@ $currentPage = 'topups';
                     <div id="sgc-step-2" style="display:none">
                         <!-- Recipient pill -->
                         <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-                            <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d0;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="sgc-recipient-avatar"></div>
+                            <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d4;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="sgc-recipient-avatar"></div>
                             <div>
                                 <div style="font-weight:700;font-size:14px;color:#111" id="sgc-recipient-name-2"></div>
                                 <div style="font-size:11px;color:#6b7280" id="sgc-recipient-id-2"></div>
@@ -328,7 +328,7 @@ $currentPage = 'topups';
                                 <div style="font-size:32px;font-weight:800;color:var(--gjc-green-600)" id="sgc-prev-coins"></div>
                                 <div style="font-size:13px;color:#6b7280" id="sgc-prev-peso"></div>
                             </div>
-                            <hr style="margin:12px 0;border-color:#f0fdf4">
+                            <hr style="margin:12px 0;border-color:#f0fdf6">
                             <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
                                 <div style="display:flex;justify-content:space-between">
                                     <span style="color:#6b7280">To</span>
@@ -390,7 +390,7 @@ $currentPage = 'topups';
                         </div>
                         <div style="font-size:18px;font-weight:700;color:var(--gjc-green-600);margin-bottom:4px">Sent!</div>
                         <div style="font-size:13px;color:#6b7280" id="sgc-success-msg"></div>
-                        <div style="margin-top:10px;display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 14px">
+                        <div style="margin-top:10px;display:inline-block;background:#f0fdf6;border:1px solid #bbf7d4;border-radius:8px;padding:6px 14px">
                             <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
                             <span id="sgc-success-ref" style="font-size:13px;font-weight:700;color:var(--gjc-green-600);font-family:monospace;letter-spacing:.5px"></span>
                         </div>

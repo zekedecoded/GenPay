@@ -50,34 +50,24 @@ class Record
                     $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
                     $roleId = (int) ($user['roleID'] ?? 0);
 
-                    $_SESSION['userID'] = $userId;
-                    $_SESSION['user_id'] = $userId;
-                    $_SESSION['roleID'] = $roleId;
-                    // Determine sub_role via soft remap (no DB changes to roleID)
-                    $subRole = match($roleId) {
-                        1 => 'student',
-                        2 => 'merchant_admin', // legacy merchants become merchant_admin
-                        3 => 'super_admin',    // legacy admin becomes super_admin
-                        4 => 'super_admin',
-                        5 => 'merchant_admin',
-                        6 => 'merchant_staff',
-                        7 => 'parent',
-                        default => 'student',
-                    };
-
-                    // Override with DB sub_role if present
-                    if (!empty($user['sub_role'])) {
-                        $subRole = (string) $user['sub_role'];
-                    }
-
-                    $_SESSION['sub_role']         = $subRole;
-                    $_SESSION['merchant_owner_id'] = (int) ($user['merchant_owner_id'] ?? 0);
-                    $_SESSION['role']              = [1 => 'student', 2 => 'merchant', 3 => 'finance', 4 => 'finance', 5 => 'merchant', 6 => 'merchant', 7 => 'parent'][$roleId] ?? 'user';
+                    // Session vars (userID, roleID, sub_role, role, ...) —
+                    // shared with the remember-me auto-login in app.php.
+                    \gjc_establish_login_session($user);
+                    $subRole = (string) $_SESSION['sub_role'];
 
                     $mustChangePassword =
                         !empty($user['force_password_change']) ||
                         !empty($user['is_first_login']) ||
                         (isset($user['password_changed']) && (int) $user['password_changed'] === 0);
+
+                    // Remember me: issue a 30-day token when ticked (never for
+                    // accounts still on a forced password change); an unticked
+                    // login discards any token from a previous session.
+                    if (!empty($_POST['remember']) && !$mustChangePassword) {
+                        \gjc_issue_remember_token($this->con, $userId);
+                    } else {
+                        \gjc_clear_remember_token($this->con);
+                    }
 
                     \logAudit(
                         $this->con,

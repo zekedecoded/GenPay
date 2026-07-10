@@ -24,7 +24,7 @@ $sendMax     = min($balance, $dailyRemaining);
     <title>Send GenCoin | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -61,31 +61,31 @@ $sendMax     = min($balance, $dailyRemaining);
 
         <style>
         .sg-shell { max-width: 480px; margin: 0 auto; }
-        .sg-bal { background:linear-gradient(150deg,#0b5c2c,#116a38); color:#fff; border-radius:18px;
+        .sg-bal { background:linear-gradient(150deg,#117039,#116a38); color:#fff; border-radius:18px;
                     padding:16px 20px; display:flex; justify-content:space-between; align-items:center;
-                    box-shadow:0 12px 28px rgba(11,92,44,.2); }
+                    box-shadow:0 12px 28px rgba(17, 112, 57,.2); }
         .sg-bal .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.08em; opacity:.8; }
         .sg-bal .gc { font-size:26px; font-weight:800; line-height:1.1; }
         .sg-bal .php { font-size:13px; opacity:.85; }
         .sg-bal .daily { text-align:right; font-size:12px; opacity:.9; }
         .sg-bal .daily strong { display:block; font-size:15px; font-weight:800; }
         .sg-card { background:#fff; border:1px solid #eef2ef; border-radius:20px; padding:24px; margin-top:16px;
-                    box-shadow:0 10px 26px rgba(11,92,44,.06); }
+                    box-shadow:0 10px 26px rgba(17, 112, 57,.06); }
         .sg-flabel { display:block; font-size:13px; font-weight:600; color:#374151; margin:0 0 6px; }
         .sg-flabel .opt { font-weight:400; color:#9ca3af; }
         .sg-recip { font-size:13px; font-weight:600; min-height:20px; margin:6px 0 0; }
         .sg-amount-wrap { position:relative; }
         .sg-amount-wrap .sign { position:absolute; left:16px; top:50%; transform:translateY(-50%);
-                    font-size:22px; font-weight:800; color:#0b5c2c; }
+                    font-size:22px; font-weight:800; color:#117039; }
         .sg-amount-wrap input { padding-left:40px; font-size:22px; font-weight:800; height:60px; }
         .sg-equiv { font-size:13px; color:#116a38; font-weight:600; margin-top:6px; min-height:18px; }
         .sg-hint { font-size:12px; color:#64748b; margin-top:4px; }
         .sg-send { width:100%; border:0; border-radius:14px; padding:15px; font-size:16px; font-weight:800;
-                    color:#fff; background:linear-gradient(135deg,#0b5c2c,#116a38); cursor:pointer; margin-top:20px; transition:.15s; }
+                    color:#fff; background:linear-gradient(135deg,#117039,#116a38); cursor:pointer; margin-top:20px; transition:.15s; }
         .sg-send:hover:not(:disabled) { opacity:.92; }
         .sg-send:disabled { background:#cbd5e1; cursor:not-allowed; }
         .sg-success { background:#fff; border:1px solid #eef2ef; border-radius:20px; padding:34px 24px; text-align:center; margin-top:16px; }
-        .sg-success-icon { width:76px; height:76px; border-radius:50%; background:#dcfce7; color:#16a34a;
+        .sg-success-icon { width:76px; height:76px; border-radius:50%; background:#dcfce9; color:#16a34a;
                     display:grid; place-items:center; font-size:32px; margin:0 auto 16px; }
         .sg-btn-row { display:flex; gap:10px; max-width:320px; margin:22px auto 0; }
         .sg-btn { flex:1; border:0; border-radius:12px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; }

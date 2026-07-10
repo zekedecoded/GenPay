@@ -160,11 +160,11 @@ function gjc_send_stall_meeting_email(
     $safePlace  = htmlspecialchars($location, ENT_QUOTES, 'UTF-8');
 
     $body = '
-        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-            <h2 style="color:#064420;margin-top:0">Application Received - Meeting Scheduled</h2>
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
+            <h2 style="color:#0e6332;margin-top:0">Application Received - Meeting Scheduled</h2>
             <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
             <p style="color:#374151;line-height:1.7">Your stall application for <strong>' . $safeBiz . '</strong> has been received. A verification meeting has been scheduled for you. Everything - document verification, contract signing, and payment - will be handled in this one meeting.</p>
-            <div style="background:#fff;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:16px 0">
+            <div style="background:#fff;border:1px solid #bbf7d4;border-radius:10px;padding:16px;margin:16px 0">
                 <p style="margin:0 0 8px;color:#059669;font-weight:700;text-transform:uppercase;font-size:12px">Meeting Details</p>
                 <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($prettyDate, ENT_QUOTES, 'UTF-8') . '</p>
                 <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($prettyTime, ENT_QUOTES, 'UTF-8') . '</p>
@@ -217,11 +217,11 @@ function gjc_send_stall_meeting_reschedule_email(
     $safePlace = htmlspecialchars($location, ENT_QUOTES, 'UTF-8');
 
     $body = '
-        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-            <h2 style="color:#064420;margin-top:0">Your Verification Meeting Was Rescheduled</h2>
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
+            <h2 style="color:#0e6332;margin-top:0">Your Verification Meeting Was Rescheduled</h2>
             <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
             <p style="color:#374151;line-height:1.7">The verification meeting for your stall application for <strong>' . $safeBiz . '</strong> has been moved to a new schedule by our finance office. Everything - document verification, contract signing, and payment - will still be handled in this one meeting.</p>
-            <div style="background:#fff;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:16px 0">
+            <div style="background:#fff;border:1px solid #bbf7d4;border-radius:10px;padding:16px;margin:16px 0">
                 <p style="margin:0 0 8px;color:#059669;font-weight:700;text-transform:uppercase;font-size:12px">New Meeting Details</p>
                 <p style="margin:0;color:#111827"><strong>Date:</strong> ' . htmlspecialchars($newDate, ENT_QUOTES, 'UTF-8') . '</p>
                 <p style="margin:4px 0 0;color:#111827"><strong>Time:</strong> ' . htmlspecialchars($newTime, ENT_QUOTES, 'UTF-8') . '</p>

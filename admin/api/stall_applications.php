@@ -353,12 +353,12 @@ try {
             logAudit($db, $adminId, gjc_current_role(), 'STALL_UPDATE', 'stalls', $oldStall, $newStall, $stallId);
 
             $body = '
-                <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                    <h2 style="color:#064420;margin-top:0">Your Merchant Account Is Approved</h2>
+                <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
+                    <h2 style="color:#0e6332;margin-top:0">Your Merchant Account Is Approved</h2>
                     <p style="color:#374151;line-height:1.7">Dear <strong>' . htmlspecialchars($app['proprietor_name']) . '</strong>,</p>
                     <p style="color:#374151;line-height:1.7">Your stall application has been approved and awarded <strong>Stall ' . htmlspecialchars($stallId) . '</strong>. Your signed contract and payment schedule are available in your merchant account.</p>
-                    <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
-                        <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#bbf7d0;text-transform:uppercase">Login Credentials</p>
+                    <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce9">
+                        <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#bbf7d4;text-transform:uppercase">Login Credentials</p>
                         <p style="margin:0"><strong>Email:</strong> ' . htmlspecialchars($app['email']) . '</p>
                         <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . htmlspecialchars($tempPassword) . '</p>
                     </div>

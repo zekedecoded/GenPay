@@ -3,11 +3,11 @@
 
 :root {
   /* Primary green scale — canonical palette across all roles */
-  --gjc-green-950: #032014;
-  --gjc-green-900: #04351f;
-  --gjc-green-800: #064420;
-  --gjc-green-700: #0b5c2c;
-  --gjc-green-600: #137a3f;
+  --gjc-green-950: #052916;
+  --gjc-green-900: #084724;
+  --gjc-green-800: #0e6332;
+  --gjc-green-700: #117039;
+  --gjc-green-600: #147d41;
 
   /* Gold scale */
   --gjc-gold-600: #c89b1f;
@@ -22,17 +22,17 @@
   --gjc-line: #dfe8e2;
   --gjc-page: #f4f7f1;
   --gjc-panel: #ffffff;
-  --gjc-soft: #eaf5ee;
-  --gjc-soft-2: #f4faf6;
-  --gjc-sidebar: #0d1f14;
+  --gjc-soft: #eaf5ef;
+  --gjc-soft-2: #f4faf7;
+  --gjc-sidebar: #0d1f15;
 
   /* Semantic / status (canonical = GenPay-native soft family) */
   --gjc-danger: #b42318;
   --gjc-danger-bg: #fde2e2;
   --gjc-danger-border: #f0b8b2;
-  --gjc-success: #126b39;
-  --gjc-success-bg: #dff3e6;
-  --gjc-success-border: #a8dcbc;
+  --gjc-success: #117039;
+  --gjc-success-bg: #dff3e8;
+  --gjc-success-border: #a8dcbe;
   --gjc-warning: #7a5a00;
   --gjc-warning-bg: #fff4cc;
   --gjc-info: #1d4ed8;
@@ -60,10 +60,10 @@
   --gjc-radius-pill: 999px;
 
   /* Elevation scale (green-tinted drop shadows) */
-  --gjc-shadow-sm: 0 1px 2px rgba(5, 37, 21, 0.08);
-  --gjc-shadow-md: 0 10px 24px rgba(5, 37, 21, 0.10);
-  --gjc-shadow-lg: 0 14px 28px rgba(4, 68, 32, 0.18);
-  --gjc-shadow-xl: 0 18px 45px rgba(3, 32, 20, 0.08);
+  --gjc-shadow-sm: 0 1px 2px rgba(6, 55, 29, 0.08);
+  --gjc-shadow-md: 0 10px 24px rgba(6, 55, 29, 0.10);
+  --gjc-shadow-lg: 0 14px 28px rgba(14, 99, 50, 0.18);
+  --gjc-shadow-xl: 0 18px 45px rgba(5, 41, 22, 0.08);
 
   /* Typography — Plus Jakarta Sans everywhere (has tnum tabular figures + ₱);
      Manrope kept as fallback only */
@@ -129,7 +129,7 @@ img {
 .student-sidebar,
 .merchant-sidebar {
   background: var(--gjc-sidebar) !important;
-  box-shadow: 4px 0 18px rgba(5, 37, 21, 0.18) !important;
+  box-shadow: 4px 0 18px rgba(6, 55, 29, 0.18) !important;
   border-right: 4px solid var(--gjc-gold-500);
 }
 
@@ -910,7 +910,7 @@ img {
   color: var(--gjc-green-950) !important;
 }
 .metric-card.metric-students .metric-icon {
-  background: rgba(5, 37, 21, 0.12) !important;
+  background: rgba(6, 55, 29, 0.12) !important;
 }
 .metric-card.metric-students .metric-icon i {
   color: var(--gjc-green-950) !important;
@@ -965,7 +965,7 @@ img {
 }
 
 .mini-icon-wrap {
-  background: #eaf5ee !important;
+  background: #eaf5ef !important;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button.current,
@@ -979,7 +979,7 @@ img {
   height: auto !important;
   padding: 32px 18px !important;
   background:
-    linear-gradient(rgba(5, 37, 21, 0.76), rgba(5, 37, 21, 0.76)),
+    linear-gradient(rgba(6, 55, 29, 0.76), rgba(6, 55, 29, 0.76)),
     url("../images/GenSimeon-Bldg.jpg") center/cover no-repeat !important;
 }
 
@@ -1079,7 +1079,7 @@ img {
   text-align: left !important;
   justify-content: flex-start !important;
   background:
-    linear-gradient(rgba(5, 37, 21, 0.78), rgba(5, 37, 21, 0.78)),
+    linear-gradient(rgba(6, 55, 29, 0.78), rgba(6, 55, 29, 0.78)),
     url("../images/GenSimeon-Bldg.jpg") center/cover no-repeat !important;
 }
 
@@ -1172,7 +1172,7 @@ footer {
 .logout-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 37, 21, 0.55);
+  background: rgba(6, 55, 29, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;

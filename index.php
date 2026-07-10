@@ -28,8 +28,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=8">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=10">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=4">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
                     </div>
                     <h3>Stall Directory</h3>
                     <p>Browse available stalls in real-time and submit your vendor application online - no visits required.</p>
-                    <a href="<?= BASE_URL ?>/stalls" style="display:inline-block;margin-top:14px;font-weight:700;color:#064420;text-decoration:none;font-size:14px;">View Stalls <i class="fa-solid fa-arrow-right"></i></a>
+                    <a href="<?= BASE_URL ?>/stalls" style="display:inline-block;margin-top:14px;font-weight:700;color:#0e6332;text-decoration:none;font-size:14px;">View Stalls <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>

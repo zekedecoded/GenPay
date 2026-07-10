@@ -379,7 +379,7 @@ try {
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/apply.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/apply.css?v=4">
 </head>
 <body>
 
@@ -403,20 +403,20 @@ try {
             payment — happens at this one meeting.
         </p>
 
-        <div class="success-meeting" style="text-align:left;background:#fff;border:1px solid #bbf7d0;border-radius:12px;padding:18px 20px;margin:18px 0">
+        <div class="success-meeting" style="text-align:left;background:#fff;border:1px solid #bbf7d4;border-radius:12px;padding:18px 20px;margin:18px 0">
             <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#059669;margin-bottom:10px">
                 <i class="fa-solid fa-calendar-check"></i> Your Meeting Schedule
             </div>
             <div style="display:flex;gap:10px;margin-bottom:6px">
-                <i class="fa-solid fa-calendar-day" style="color:#064420;width:18px;margin-top:3px"></i>
+                <i class="fa-solid fa-calendar-day" style="color:#0e6332;width:18px;margin-top:3px"></i>
                 <div><strong><?= htmlspecialchars($mDt->format("l, F j, Y")) ?></strong></div>
             </div>
             <div style="display:flex;gap:10px;margin-bottom:6px">
-                <i class="fa-solid fa-clock" style="color:#064420;width:18px;margin-top:3px"></i>
+                <i class="fa-solid fa-clock" style="color:#0e6332;width:18px;margin-top:3px"></i>
                 <div><strong><?= htmlspecialchars($mDt->format("g:i A")) ?></strong> (1 hour)</div>
             </div>
             <div style="display:flex;gap:10px">
-                <i class="fa-solid fa-location-dot" style="color:#064420;width:18px;margin-top:3px"></i>
+                <i class="fa-solid fa-location-dot" style="color:#0e6332;width:18px;margin-top:3px"></i>
                 <div><?= htmlspecialchars($successMeeting["location"] ?? "GJC Finance Office") ?></div>
             </div>
         </div>
@@ -818,7 +818,7 @@ try {
                         <p><strong>6. Operational Standards.</strong> Vendors must maintain cleanliness, observe proper waste disposal, and adhere to campus operating hours.</p>
                         <p><strong>7. Data Privacy.</strong> Personal information and documents submitted through this form are collected solely for the purpose of processing your application, in accordance with the Data Privacy Act of 2012 (RA 10173).</p>
                         <p><strong>8. Stall Preference.</strong> Indicating a preferred stall does not constitute a reservation or guarantee of assignment. Final stall allocation is at the discretion of the administration.</p>
-                        <p style="font-weight:700;color:#064420;">By checking the box, you confirm that you have read, understood, and agree to all of the above terms and conditions.</p>
+                        <p style="font-weight:700;color:#0e6332;">By checking the box, you confirm that you have read, understood, and agree to all of the above terms and conditions.</p>
                     </div>
                     <div class="scroll-hint" id="scrollHint"><i class="fa-solid fa-circle-chevron-down"></i> Scroll to the bottom to unlock the checkbox</div>
                 </div>

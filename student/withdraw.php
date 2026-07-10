@@ -89,7 +89,7 @@ $recentWithdrawals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -131,8 +131,8 @@ $recentWithdrawals = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <style>
         .wd-wrap { display:grid; grid-template-columns: 1.1fr 1fr; gap:20px; align-items:start; }
         @media (max-width: 900px) { .wd-wrap { grid-template-columns: 1fr; } }
-        .wd-balance { background:linear-gradient(150deg,#0b5c2c,#116a38); color:#fff; border-radius:20px;
-                    padding:22px 24px; box-shadow:0 14px 34px rgba(11,92,44,.22); }
+        .wd-balance { background:linear-gradient(150deg,#117039,#116a38); color:#fff; border-radius:20px;
+                    padding:22px 24px; box-shadow:0 14px 34px rgba(17, 112, 57,.22); }
         .wd-balance span.lbl { font-size:12px; text-transform:uppercase; letter-spacing:.08em; opacity:.8; }
         .wd-balance .gc { font-size:34px; font-weight:800; line-height:1.1; margin-top:4px; }
         .wd-balance .php { font-size:14px; opacity:.85; margin-top:2px; }
@@ -141,27 +141,27 @@ $recentWithdrawals = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .wd-meta div span { display:block; font-size:11px; opacity:.7; text-transform:uppercase; letter-spacing:.05em; }
         .wd-meta div strong { font-size:15px; font-weight:700; }
         .wd-card { background:#fff; border:1px solid #e5e7eb; border-radius:20px; padding:24px; }
-        .wd-card h3 { margin:0 0 4px; font-size:18px; font-weight:800; color:#0b5c2c; }
+        .wd-card h3 { margin:0 0 4px; font-size:18px; font-weight:800; color:#117039; }
         .wd-card p.sub { margin:0 0 18px; font-size:13px; color:#6b7280; }
         .wd-flabel { display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
         .wd-input-wrap { position:relative; }
         .wd-input-wrap .peso-sign { position:absolute; left:14px; top:50%; transform:translateY(-50%);
-                    font-size:18px; font-weight:700; color:#0b5c2c; }
+                    font-size:18px; font-weight:700; color:#117039; }
         .wd-input-wrap input { padding-left:34px; }
         .wd-equiv { font-size:13px; color:#116a38; font-weight:600; margin-top:6px; min-height:18px; }
         .wd-chips { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
-        .wd-chip { border:1px solid #bbf7d0; background:#f0fdf4; color:#116a38; border-radius:999px;
+        .wd-chip { border:1px solid #bbf7d4; background:#f0fdf6; color:#116a38; border-radius:999px;
                     padding:7px 14px; font-size:13px; font-weight:700; cursor:pointer; transition:.15s; }
-        .wd-chip:hover { background:#dcfce7; }
+        .wd-chip:hover { background:#dcfce9; }
         .wd-note { display:flex; gap:10px; font-size:12px; color:#64748b; background:#f9fafb;
                     border-radius:12px; padding:12px 14px; margin:16px 0; }
         .wd-submit { width:100%; border:0; border-radius:14px; padding:14px; font-size:15px; font-weight:800;
-                    color:#fff; background:linear-gradient(135deg,#0b5c2c,#116a38); cursor:pointer; transition:.15s; }
+                    color:#fff; background:linear-gradient(135deg,#117039,#116a38); cursor:pointer; transition:.15s; }
         .wd-submit:hover { opacity:.92; }
         .wd-submit:disabled { background:#a7f3d0; color:#065f46; cursor:not-allowed; }
         .wd-status { padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; text-transform:capitalize; }
         .wd-status.pending  { background:#fef3c7; color:#92400e; }
-        .wd-status.released { background:#dcfce7; color:#166534; }
+        .wd-status.released { background:#dcfce9; color:#166534; }
         .wd-status.rejected { background:#fee2e2; color:#991b1b; }
         </style>
 

@@ -37,7 +37,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=26">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=29">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -95,7 +95,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             <th>Unit</th>
                             <th>Price</th>
                             <th>Stock</th>
-                            <th>Min Alert</th>
+                            <th>Stock Level</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -106,7 +106,12 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                     <?php endif; ?>
                     <?php foreach ($inventory as $item): ?>
                         <?php
-                            $isLow = $item['stock_qty'] <= $item['min_stock_alert'];
+                            // Stock tier off the item's own Min Alert:
+                            // low = at/below it, medium = up to 3x, high = above.
+                            $qty      = (int) $item['stock_qty'];
+                            $minAlert = (int) $item['min_stock_alert'];
+                            $isLow    = $qty <= $minAlert;
+                            $tier     = $isLow ? 'low' : ($qty <= $minAlert * 3 ? 'medium' : 'high');
                         ?>
                         <tr class="<?= $item['is_restricted'] ? 'table-danger' : ($isLow ? 'table-warning' : '') ?>">
                             <td><code><?= gjc_e($item['sku'] ?: '-') ?></code></td>
@@ -122,13 +127,13 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             <td><?= gjc_e(ucwords($item['category'])) ?></td>
                             <td><?= gjc_e($item['unit']) ?></td>
                             <td data-order="<?= (float) $item['price'] ?>"><?= gjc_gc_price($item['price']) ?></td>
-                            <td>
-                                <span class="<?= $isLow ? 'text-danger fw-bold' : '' ?>">
-                                    <?= (int) $item['stock_qty'] ?>
-                                    <?= $isLow ? '' : '' ?>
+                            <td><?= $qty ?></td>
+                            <td data-order="<?= ['low' => 0, 'medium' => 1, 'high' => 2][$tier] ?>">
+                                <span class="stock-pill stock-pill--<?= $tier ?>"
+                                      title="<?= $isLow ? "At or below the minimum stock alert ({$minAlert})" : ($tier === 'medium' ? "Within 3× of the minimum stock alert ({$minAlert})" : "Comfortably above the minimum stock alert ({$minAlert})") ?>">
+                                    <?= ucfirst($tier) ?>
                                 </span>
                             </td>
-                            <td><?= (int) $item['min_stock_alert'] ?></td>
                             <td>
                                 <?php if ($item['is_available'] && !$item['is_restricted']): ?>
                                     <span class="merchant-type-pill">Available</span>
@@ -140,10 +145,14 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             </td>
                             <td class="text-nowrap">
                                 <div class="d-flex align-items-center gap-1 flex-nowrap">
+                                    <?php if (!$isMerchAdmin): ?>
+                                    <!-- Staff have no Edit button, so the quick Stock modal stays their
+                                         only way to update quantities. Admins update stock via Edit. -->
                                     <button class="btn btn-sm btn-outline-primary"
                                         onclick="editStock(<?= (int)$item['id'] ?>, <?= (int)$item['stock_qty'] ?>, '<?= gjc_e($item['product_name']) ?>')">
                                         Stock
                                     </button>
+                                    <?php endif; ?>
                                     <button class="btn btn-sm btn-outline-success"
                                         <?= $item['sku'] ? '' : 'disabled title="Add a SKU first — the QR encodes the SKU."' ?>
                                         onclick='openItemQr(<?= json_encode([
@@ -221,7 +230,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             <div class="form-text" id="pPriceGcHint" style="min-height:18px"></div>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Initial Stock *</label>
+                            <label class="form-label fw-semibold">Stock Quantity *</label>
                             <input type="number" class="form-control" name="stock_qty" id="pStock" min="0" required value="0">
                         </div>
                         <div class="col-md-4">
@@ -353,7 +362,7 @@ function openItemQr(item) {
     document.getElementById('itemQrImage').src = qrUrl;
     document.getElementById('itemQrName').textContent = item.name;
     document.getElementById('itemQrPrice').innerHTML =
-        `<strong style="color:#064420">${currentItemQrGc} GC</strong><br><small>≈ ₱${item.price}</small>`;
+        `<strong style="color:#0e6332">${currentItemQrGc} GC</strong><br><small>≈ ₱${item.price}</small>`;
     new bootstrap.Modal(document.getElementById('itemQrModal')).show();
 }
 

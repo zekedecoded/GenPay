@@ -12,7 +12,7 @@
     background: #f9fafb; font-weight: 700; cursor: pointer;
 }
 .cart-line-qty span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
-.cart-line-price { font-weight: 800; font-size: 13.5px; color: #064420; min-width: 72px; text-align: right; }
+.cart-line-price { font-weight: 800; font-size: 13.5px; color: #0e6332; min-width: 72px; text-align: right; }
 .cart-line-remove { color: var(--gjc-alert); background: none; border: none; font-size: 16px; cursor: pointer; }
 .cart-empty { text-align: center; padding: 36px 16px; color: #9ca3af; font-size: 13px; }
 .cart-total-row {

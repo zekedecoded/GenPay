@@ -18,6 +18,10 @@ if ($logoutUserId > 0) {
     );
 }
 
+// Logging out also revokes the remember-me token, otherwise the next visit
+// would silently sign the user straight back in.
+gjc_clear_remember_token($db);
+
 $_SESSION = [];
 session_destroy();
 ?>
@@ -43,8 +47,8 @@ session_destroy();
             showConfirmButton: false,
             allowOutsideClick: false,
             background: '#ffffff',
-            color: '#032014',
-            iconColor: '#0b5c2c'
+            color: '#052916',
+            iconColor: '#117039'
         }).then(() => {
             window.location.href = 'index.php';
         });

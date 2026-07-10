@@ -50,7 +50,7 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voucher <?= gjc_e($voucher['voucher_code']) ?> | GenPay</title>
-    <link rel="stylesheet" href="<?= CSS_URL ?>/print_voucher.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/print_voucher.css?v=2">
 </head>
 <body>
     <div class="print-actions">
@@ -143,8 +143,8 @@ $displayStatus = $status === 'active' && $isExpiredByTime ? 'expired pending' : 
         const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
   <rect width="900" height="560" rx="18" fill="#ffffff"/>
-  <rect width="900" height="140" rx="18" fill="#064420"/>
-  <rect y="120" width="900" height="30" fill="#064420"/>
+  <rect width="900" height="140" rx="18" fill="#0e6332"/>
+  <rect y="120" width="900" height="30" fill="#0e6332"/>
   <text x="42" y="58" fill="#ffffff" font-family="Arial" font-size="31" font-weight="700">GenPay Visitor Voucher</text>
   <text x="42" y="92" fill="#d9eadf" font-family="Arial" font-size="16">Present this QR code to participating campus merchants.</text>
   <text x="858" y="54" text-anchor="end" fill="#d9eadf" font-family="Arial" font-size="15">Loaded Value</text>

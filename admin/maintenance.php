@@ -558,12 +558,12 @@ function maintenance_send_guardian_credentials(string $email, string $name, stri
     $safePass  = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
 
     $body = '
-            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf4;padding:28px;border-radius:14px">
-                <h2 style="color:#064420;margin-top:0">Your GenPay Parent Account</h2>
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
+                <h2 style="color:#0e6332;margin-top:0">Your GenPay Parent Account</h2>
                 <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
                 <p style="color:#374151;line-height:1.7">A GenPay parent account has been created so you can monitor and manage your child\'s wallet.</p>
-                <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce7">
-                    <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#86efac;text-transform:uppercase">Login Credentials</p>
+                <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce9">
+                    <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#86efb2;text-transform:uppercase">Login Credentials</p>
                     <p style="margin:0"><strong>Email:</strong> ' . $safeEmail . '</p>
                     <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . $safePass . '</p>
                 </div>
@@ -1120,11 +1120,11 @@ $vacantStalls = $db->query(
     <title>Maintenance | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=10">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=12">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=3">
 </head>
 <body>
 <div class="admin-layout">

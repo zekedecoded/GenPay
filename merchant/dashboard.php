@@ -84,7 +84,7 @@ $currentPage = 'dashboard';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -547,6 +547,18 @@ $currentPage = 'dashboard';
 
     // ── Live Order Queue ─────────────────────────────────────────────────────
     const LIVE_QUEUE_API = '<?= MERCHANT_URL ?>/api/pos.php';
+
+    // GenCoin display conversion (₱10 = 1 GC). Order amounts from the API stay in ₱.
+    const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+    function gcAmount(pesos) {
+        return (pesos / PESOS_PER_GC).toLocaleString('en-PH', {maximumFractionDigits: 2});
+    }
+    function gcPriceHtml(pesos, endAlign = false) {
+        return `<span class="gc-price${endAlign ? ' gc-price--end' : ''}">
+            <span class="gc-price-main">${gcAmount(pesos)} GC</span>
+            <span class="gc-price-sub">≈ ₱${(+pesos).toFixed(2)}</span>
+        </span>`;
+    }
     const liveQueueBody = document.getElementById('liveQueueBody');
     let lastQueueSignature = '';
 
@@ -592,7 +604,7 @@ $currentPage = 'dashboard';
                     <td>#${order.id}</td>
                     <td>${sourceBadge}</td>
                     <td>${escapeHtml(order.description)}</td>
-                    <td>&#8369;${Number(order.amount).toFixed(2)}</td>
+                    <td>${gcPriceHtml(Number(order.amount))}</td>
                     <td>${badge}</td>
                     <td>${time}</td>
                     <td class="text-end">
@@ -684,8 +696,8 @@ $currentPage = 'dashboard';
                         <tr>
                             <td>${escapeHtml(item.name || '')}</td>
                             <td class="text-center">${qty}</td>
-                            <td class="text-end">&#8369;${price.toFixed(2)}</td>
-                            <td class="text-end">&#8369;${lineTotal.toFixed(2)}</td>
+                            <td class="text-end">${gcPriceHtml(price, true)}</td>
+                            <td class="text-end">${gcPriceHtml(lineTotal, true)}</td>
                         </tr>`;
                 }).join('')
                 : `<tr><td colspan="4" class="text-muted text-center">${escapeHtml(data.description || 'No itemized details recorded.')}</td></tr>`;
@@ -717,7 +729,7 @@ $currentPage = 'dashboard';
                 </div>
                 <div class="d-flex justify-content-between fw-bold mb-3" style="font-size:16px;border-top:2px solid #e5e7eb;padding-top:10px;">
                     <span>Total</span>
-                    <span>&#8369;${Number(data.amount || 0).toFixed(2)}</span>
+                    ${gcPriceHtml(Number(data.amount || 0), true)}
                 </div>
                 <div style="font-size:12.5px;color:#6b7280;">
                     <div>Submitted: ${submittedTime}</div>

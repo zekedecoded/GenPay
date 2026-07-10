@@ -60,10 +60,10 @@ $currentPage = '';
     <title>Wallet Controls — <?= htmlspecialchars($studentName) ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=56">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=2">
 </head>
 <body>
 <div class="student-layout">
@@ -137,7 +137,7 @@ $currentPage = '';
 
             <!-- Daily spending limit -->
             <div class="control-card">
-                <h5><i class="fa-solid fa-gauge me-2" style="color:#0b5c2c"></i>Daily Spending Limit</h5>
+                <h5><i class="fa-solid fa-gauge me-2" style="color:#117039"></i>Daily Spending Limit</h5>
                 <p>Limits how much the student can spend in a single day across POS purchases and token transfers. Set to ₱0.00 to disable the limit.</p>
                 <form class="limit-form" id="limitForm">
                     <div>
@@ -155,7 +155,7 @@ $currentPage = '';
             <!-- View ledger link -->
             <div class="control-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
                 <div>
-                    <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:#0b5c2c"></i>Transaction Ledger</h5>
+                    <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:#117039"></i>Transaction Ledger</h5>
                     <p style="margin:0;">View the full read-only transaction history for this wallet.</p>
                 </div>
                 <a href="<?= PARENT_URL ?>/student.php?uid=<?= $targetUid ?>" class="btn-save" style="text-decoration:none;padding:9px 18px;font-size:13px;border-radius:8px;display:inline-block;">
