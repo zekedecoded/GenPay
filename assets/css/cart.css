@@ -1,32 +1,71 @@
-.cart-line-list { display: flex; flex-direction: column; gap: 10px; }
+/* Shop Cart page (student/cart.php) — cart-specific pieces on top of the
+   sd-* shell (student_dashboard.css) and shared sp-* scanner styles
+   (student_scan.css). Uses the --sd-* forest/gold tokens. */
+
+.cart-line-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .cart-line {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; border-radius: 12px; background: #fff;
-    border: 1px solid #e5e7eb;
+    padding: 12px 14px; border-radius: 12px; background: var(--sd-mint);
+    border: 1px solid var(--sd-line);
 }
-.cart-line-name { flex: 1; font-weight: 700; font-size: 13.5px; }
-.cart-line-sku { font-size: 11px; color: #9ca3af; }
+.cart-line-name { flex: 1; font-weight: 700; font-size: 13.5px; color: var(--sd-ink); }
+.cart-line-sku { font-size: 11px; color: var(--sd-muted); }
 .cart-line-qty { display: flex; align-items: center; gap: 6px; }
 .cart-line-qty button {
-    width: 26px; height: 26px; border-radius: 8px; border: 1px solid #e5e7eb;
-    background: #f9fafb; font-weight: 700; cursor: pointer;
+    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--sd-line);
+    background: #fff; font-weight: 700; cursor: pointer; color: var(--sd-ink);
+    transition: border-color .15s;
 }
+.cart-line-qty button:hover { border-color: var(--sd-forest-700); }
 .cart-line-qty span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
-.cart-line-price { font-weight: 800; font-size: 13.5px; color: #0e6332; min-width: 72px; text-align: right; }
-.cart-line-remove { color: var(--gjc-alert); background: none; border: none; font-size: 16px; cursor: pointer; }
-.cart-empty { text-align: center; padding: 36px 16px; color: #9ca3af; font-size: 13px; }
+.cart-line-price { font-weight: 800; font-size: 13.5px; color: var(--sd-forest-700); min-width: 72px; text-align: right; }
+.cart-line-remove { color: var(--sd-red); background: none; border: none; font-size: 16px; cursor: pointer; }
+.cart-empty { text-align: center; padding: 36px 16px; color: var(--sd-muted); font-size: 13px; }
 .cart-total-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 0 4px; font-weight: 800; font-size: 19px; border-top: 2px solid #e5e7eb; margin-top: 8px;
+    padding: 14px 0 4px; font-weight: 800; font-size: 19px; color: var(--sd-ink);
+    border-top: 2px solid var(--sd-line); margin-top: 12px;
 }
 .cart-merchant-pill {
     display: inline-block; padding: 4px 12px; border-radius: 20px;
-    background: var(--emerald-soft); color: var(--emerald-800);
+    background: var(--sd-gold-soft); color: #8a6100;
     font-size: 12px; font-weight: 700; margin-bottom: 12px;
 }
 .pending-order-badge {
     display: inline-block; padding: 5px 14px; border-radius: 20px;
-    background: var(--gjc-warning-bg); color: #92660a; font-size: 12px; font-weight: 800;
+    background: var(--sd-gold-soft); color: #8a6100; font-size: 12px; font-weight: 800;
     text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;
 }
-.pending-order-note { font-size: 12.5px; color: #6b7280; text-align: center; margin: 10px 0 0; }
+.pending-order-ref {
+    font-family: var(--sd-mono); font-weight: 700; color: var(--sd-forest-900);
+}
+.pending-order-note { font-size: 12.5px; color: var(--sd-muted); text-align: center; margin: 10px 0 0; }
+
+/* Full-width action buttons in the cart panel */
+.cart-panel-btn { width: 100%; display: block; text-align: center; }
+
+/* ── Mobile full-screen scanner (body.sp-page): the cart becomes a slide-up
+     bottom sheet over the camera, opened by the floating View Cart pill. ── */
+.sp-sheet-close {
+    display: none;
+    width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 50%; border: 1px solid var(--sd-line);
+    background: var(--sd-mint); color: var(--sd-ink);
+    place-items: center; font-size: 14px; cursor: pointer;
+}
+
+@media (max-width: 767.98px) {
+    body.sp-page .sp-cart-sheet {
+        position: fixed; left: 0; right: 0;
+        bottom: calc(58px + env(safe-area-inset-bottom));
+        z-index: 45; margin: 0;
+        max-height: 72vh; overflow-y: auto;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -12px 34px rgba(0, 0, 0, 0.35);
+        transform: translateY(105%);
+        transition: transform 0.28s ease;
+    }
+    body.sp-page .sp-cart-sheet.is-open { transform: translateY(0); }
+    body.sp-page .sp-scanner #cartAlerts { display: none; }
+    .sp-sheet-close { display: grid; }
+}

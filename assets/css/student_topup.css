@@ -1,0 +1,214 @@
+/* Shared tu-* money-form pieces (₱ amount input, quick-amount chips, method
+   cards, guide steps, limit callout) for the sd-* shell — used by
+   student/topup_request.php, student/transfer.php, and student/withdraw.php. */
+
+/* ===== FORM + GUIDE GRID ===== */
+.tu-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ===== AMOUNT INPUT (₱ prefix) ===== */
+.tu-money-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 4px 16px;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tu-money-input:focus-within {
+  border-color: var(--sd-gold);
+  box-shadow: 0 0 0 3px var(--sd-gold-soft);
+}
+
+.tu-money-input span {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--sd-forest-700);
+}
+
+.tu-money-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  padding: 9px 0;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--sd-ink);
+  background: transparent;
+}
+
+/* ===== QUICK AMOUNTS ===== */
+.tu-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tu-quick button {
+  border: 1px solid var(--sd-line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sd-ink);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.tu-quick button:hover {
+  border-color: var(--sd-gold);
+  background: var(--sd-gold-soft);
+}
+
+/* ===== PAYMENT METHOD CARDS ===== */
+.tu-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tu-method {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1.5px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color 0.15s, background 0.15s;
+  margin: 0;
+}
+
+.tu-method:hover {
+  border-color: var(--sd-forest-700);
+}
+
+.tu-method.selected {
+  border-color: var(--sd-gold);
+  background: var(--sd-gold-soft);
+}
+
+.tu-method input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tu-method-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--sd-mint);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.tu-method-icon img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.tu-method strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--sd-ink);
+}
+
+.tu-method span {
+  display: block;
+  font-size: 12px;
+  color: var(--sd-muted);
+}
+
+/* ===== GUIDE STEPS (matches the Scan & Pay guide) ===== */
+.tu-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.tu-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--sd-mint);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--sd-ink);
+  line-height: 1.5;
+}
+
+.tu-step strong {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f6b81f, var(--sd-gold));
+  color: var(--sd-forest-950);
+  font-size: 13px;
+}
+
+/* ===== DAILY LIMIT CARD ===== */
+.tu-limit {
+  margin-top: 14px;
+  border: 1px solid rgba(240, 165, 0, 0.4);
+  background: var(--sd-gold-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.tu-limit span {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #8a6100;
+}
+
+.tu-limit strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--sd-forest-900);
+  margin: 2px 0;
+}
+
+.tu-limit p {
+  font-size: 12px;
+  color: #7a6420;
+  margin: 0;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 767.98px) {
+  .tu-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Live GC equivalence line under the ₱ amount input */
+.tu-equiv {
+  font-size: 13px;
+  color: var(--sd-green);
+  font-weight: 600;
+  margin-top: 6px;
+  min-height: 18px;
+}

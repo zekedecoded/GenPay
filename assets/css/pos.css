@@ -59,3 +59,19 @@
 .lw-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s;flex-shrink:0}
 .lw-dot--active{background:var(--gjc-success)}
 .lw-dot--done{background:var(--gjc-success-border)}
+
+/* ── Scan & Pay payment QR panel (client-rendered QR + live status) ── */
+.pos-qr-canvas { display:flex; justify-content:center; width:fit-content; margin:12px auto 0;
+    padding:12px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; }
+.pos-qr-canvas:empty { display:none; }
+.pos-qr-canvas img, .pos-qr-canvas canvas { width:220px !important; height:220px !important; }
+.pos-qr-status { display:inline-flex; align-items:center; gap:6px; margin-bottom:8px;
+    padding:4px 14px; border-radius:999px; font-size:12px; font-weight:700; }
+.pos-qr-status.is-pending { background:#fef9c3; color:#a16207; }
+.pos-qr-status.is-paid { background:#dcfce7; color:#15803d; }
+.pos-qr-status.is-expired { background:#fee2e2; color:#b91c1c; }
+.pos-qr-manual { margin-top:10px; }
+.pos-qr-manual span { display:block; font-size:10.5px; color:#6b7280; text-transform:uppercase; letter-spacing:.6px; }
+.pos-qr-manual strong { display:block; margin-bottom:0; font-size:20px; letter-spacing:3px;
+    color:#0e6332; font-family:Consolas, "IBM Plex Mono", monospace; }
+#posQrSummary { margin-top:8px; }

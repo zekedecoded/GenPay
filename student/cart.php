@@ -5,11 +5,31 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
 
+if (isset($_SESSION['force_change'])) {
+    header('Location: ' . BASE_URL . '/change_password.php');
+    exit();
+}
+
 $currentUser = gjc_current_user($db);
-$wallet = gjc_student_wallet($db, $currentUser['id']);
+$wallet      = gjc_student_wallet($db, (int) $currentUser['id']);
 $studentName = $currentUser['name'];
+$balance     = (float) $wallet['balance'];
+
+// Real school-issued ID (GJC2026-0001); the padded userID is only a fallback
+// for accounts that never got a student_info row.
 $studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
-$balance = $wallet['balance'];
+if (gjc_table_exists($db, 'student_info')) {
+    $sidStmt = $db->prepare("SELECT studentID FROM student_info WHERE userID = ? LIMIT 1");
+    $sidStmt->execute([(int) $currentUser['id']]);
+    $realID = trim((string) $sidStmt->fetchColumn());
+    if ($realID !== '') {
+        $studentID = $realID;
+    }
+}
+
+$e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$currentPage = 'cart';
+$csrfToken = gjc_csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -24,233 +44,218 @@ $balance = $wallet['balance'];
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=4">
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-    <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=2">
 </head>
 
-<body>
+<body class="sd-body sp-page">
 
-    <div class="student-layout">
+    <div class="sd-layout">
 
-        <aside class="student-sidebar" id="studentSidebar">
+        <?php require __DIR__ . '/../includes/partials/sidebar_student.php'; ?>
 
-            <div class="student-brand">
-                <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
+        <main class="sd-main">
 
-                <div class="student-brand-text">
-                    <h4>GenPay</h4>
-                    <span>Student Portal</span>
-                </div>
-            </div>
-
-            <nav class="student-menu">
-                <a href="<?= DASHBOARD_URL ?>">
-                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
-                    <span class="student-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/cart.php" class="active">
-                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
-                    <span class="student-nav-text">Shop Cart</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/transfer.php">
-                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
-                    <span class="student-nav-text">Send GenCoin</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/withdraw.php">
-                    <i class="fa-solid fa-money-bill-wave student-nav-icon"></i>
-                    <span class="student-nav-text">Withdraw</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/topup_request.php">
-                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
-                    <span class="student-nav-text">Top-Up</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/history.php">
-                    <i class="fa-solid fa-receipt student-nav-icon"></i>
-                    <span class="student-nav-text">History</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/profile.php">
-                    <i class="fa-solid fa-user student-nav-icon"></i>
-                    <span class="student-nav-text">Profile</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
-               onclick="openLogoutModal(event);">
-                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
-                <span>Logout</span>
-            </a>
-
-        </aside>
-        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-
-        <main class="student-main">
-
-            <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">&#9776;</button>
-
-                <div>
+            <header class="sd-topbar">
+                <div class="sd-topbar-greet">
                     <h1>Shop Cart</h1>
-                    <p>Scan each item's barcode, submit your order, then pay at the counter by scanning the shop's Wallet QR.</p>
+                    <p>Scan each item&rsquo;s barcode, submit your order, then pay at the counter by scanning the shop&rsquo;s Wallet QR.</p>
                 </div>
-
-                <div class="student-user">
-                    <span><?php echo gjc_e($studentName); ?></span>
-                    <div class="student-avatar">
-                        <?php echo strtoupper(substr($studentName, 0, 1)); ?>
-                    </div>
+                <div class="sd-topbar-tools">
+                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
                 </div>
             </header>
 
-            <section class="scan-balance-card mb-4">
-                <div>
-                    <span>Current Balance</span>
-                    <h2><?php echo gjc_money($balance); ?></h2>
-                    <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
-                </div>
+            <div class="sd-content">
 
-                <div class="scan-balance-badge">
-                    Student Wallet
-                </div>
-            </section>
-
-            <section class="scan-layout-grid mb-4">
-
-                <div class="student-premium-panel scan-camera-panel">
-                    <div class="student-panel-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3>Scanner</h3>
-                            <p id="scannerHint">Point the camera at an item's barcode on the cardboard menu.</p>
+                <!-- Balance card -->
+                <section class="sd-balance">
+                    <div>
+                        <span class="sd-balance-label">Current Balance</span>
+                        <div class="sd-balance-amount">
+                            <span id="sdBalance"><?= gjc_gc_amount($balance) ?></span><span class="sd-unit">GC</span>
                         </div>
-
-                        <span class="scan-status-badge" id="cameraStatus">Starting Camera</span>
-                    </div>
-
-                    <div class="scan-camera-box">
-                        <video id="qrVideo" autoplay playsinline></video>
-                        <canvas id="qrCanvas" hidden></canvas>
-
-                        <div class="scan-camera-overlay" aria-hidden="true">
-                            <div class="scan-corner top-left"></div>
-                            <div class="scan-corner top-right"></div>
-                            <div class="scan-corner bottom-left"></div>
-                            <div class="scan-corner bottom-right"></div>
-                            <div class="scan-line"></div>
+                        <div class="sd-gc-row">
+                            <span class="sd-gc-badge">&#8776; &#8369;<span id="sdBalancePhp"><?= number_format($balance, 2) ?></span></span>
+                            <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
                         </div>
-
-                        <div class="scan-camera-message" id="cameraMessage">
-                            Opening camera...
+                        <div class="sd-balance-actions">
+                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
+                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/withdraw.php"><i class="fa-solid fa-money-bill-wave"></i>Withdraw</a>
                         </div>
                     </div>
-
-                    <div class="scan-toolbar">
-                        <button type="button" class="scan-action-btn secondary" id="switchCameraBtn">Switch Camera</button>
+                    <div class="sd-balance-holder">
+                        <strong><?= $e($studentName) ?></strong>
+                        <span class="sd-holder-id"><?= $e($studentID) ?></span>
+                        <span class="sd-role-badge">STUDENT</span>
                     </div>
+                </section>
 
-                    <div id="cartAlerts" class="mt-3"></div>
-                </div>
+                <!-- Scanner + cart -->
+                <section class="sp-grid">
 
-                <div class="student-premium-panel scan-guide-panel">
-                    <div class="student-panel-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 id="cartPanelTitle">Your Cart</h3>
-                            <p id="cartMerchantHint">No items scanned yet.</p>
-                        </div>
-                    </div>
+                    <div class="sd-panel sp-scanner">
 
-                    <div id="cartMerchantPillWrap"></div>
-
-                    <!-- Builder view: shown while there's no pending order yet -->
-                    <div id="cartBuilderView">
-                        <div class="cart-line-list" id="cartLineList">
-                            <div class="cart-empty" id="cartEmptyState">Scan an item to start your order.</div>
+                        <!-- Mobile-only chrome (full-screen scanner) -->
+                        <div class="sp-mobile-bar sp-mobile-only">
+                            <a href="<?= DASHBOARD_URL ?>" class="sp-mobile-iconbtn" aria-label="Back to dashboard">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </a>
+                            <h2>Shop Cart</h2>
+                            <button type="button" class="sp-mobile-iconbtn" id="switchCameraBtnM" aria-label="Switch camera">
+                                <i class="fa-solid fa-camera-rotate"></i>
+                            </button>
                         </div>
 
-                        <div class="cart-total-row">
-                            <span>Total</span>
-                            <span id="cartTotal">&#8369;0.00</span>
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3>Item Scanner</h3>
+                                <p id="scannerHint">Point the camera at an item&rsquo;s barcode on the cardboard menu.</p>
+                            </div>
+                            <span class="sp-status" id="cameraStatus">Starting Camera</span>
                         </div>
 
-                        <button type="button" class="scan-action-btn mt-3 w-100" id="submitOrderBtn" disabled>
-                            Submit Order
+                        <div class="sp-frame" id="scanFrame">
+                            <video id="qrVideo" autoplay playsinline muted></video>
+                            <canvas id="qrCanvas" hidden></canvas>
+
+                            <span class="sp-corner tl" aria-hidden="true"></span>
+                            <span class="sp-corner tr" aria-hidden="true"></span>
+                            <span class="sp-corner bl" aria-hidden="true"></span>
+                            <span class="sp-corner br" aria-hidden="true"></span>
+                            <span class="sp-scanline" aria-hidden="true"></span>
+
+                            <div class="sp-frame-msg" id="frameMsg">
+                                <div>
+                                    <strong id="frameMsgTitle">Opening camera&hellip;</strong>
+                                    <small id="frameMsgSub"></small>
+                                    <button type="button" class="sp-retry-btn" id="retryCameraBtn" hidden>
+                                        <i class="fa-solid fa-rotate-right me-1"></i> Retry Camera
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sp-mobile-caption sp-mobile-only">
+                            <strong id="mobileCaptionTitle">Align the item&rsquo;s barcode</strong>
+                            <span id="mobileCaptionSub">Items are added to your cart automatically</span>
+                        </div>
+
+                        <div class="sp-mobile-toast" id="mobileToast">
+                            <div id="mobileToastText"></div>
+                        </div>
+
+                        <button type="button" class="sp-mobile-pill sp-mobile-only" id="viewCartBtnMobile">
+                            <i class="fa-solid fa-cart-shopping"></i> <span id="viewCartBtnLabel">View Cart</span>
                         </button>
-                        <button type="button" class="scan-action-btn secondary mt-2 w-100" id="clearCartBtn">
-                            &#10005; Clear Cart
-                        </button>
-                    </div>
 
-                    <!-- Pending-order view: shown after Submit Order, until paid or cancelled -->
-                    <div id="pendingOrderView" class="d-none">
-                        <div class="text-center">
-                            <span class="pending-order-badge">Awaiting Payment</span>
-                            <h4 class="mb-1" id="pendingOrderRef">--</h4>
+                        <div class="sp-toolbar">
+                            <button type="button" class="sp-btn" id="switchCameraBtn">Switch Camera</button>
                         </div>
 
-                        <ul class="list-unstyled" id="pendingOrderLineList" style="font-size:13px;color:#475569;"></ul>
+                        <div id="cartAlerts" class="mt-3"></div>
+                    </div>
 
-                        <div class="cart-total-row">
-                            <span>Total</span>
-                            <span id="pendingOrderTotal">&#8369;0.00</span>
+                    <div class="sd-panel sp-cart-sheet" id="cartSheet">
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3 id="cartPanelTitle">Your Cart</h3>
+                                <p id="cartMerchantHint">No items scanned yet.</p>
+                            </div>
+                            <button type="button" class="sp-sheet-close" id="closeCartSheetBtn" aria-label="Close cart">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
                         </div>
 
-                        <p class="pending-order-note">Go to the counter and scan the shop's Wallet QR to pay.</p>
+                        <div id="cartMerchantPillWrap"></div>
 
-                        <button type="button" class="scan-action-btn secondary mt-2 w-100" id="cancelOrderBtn">
-                            Cancel Order
-                        </button>
+                        <!-- Builder view: shown while there's no pending order yet -->
+                        <div id="cartBuilderView">
+                            <div class="cart-line-list" id="cartLineList">
+                                <div class="cart-empty" id="cartEmptyState">Scan an item to start your order.</div>
+                            </div>
+
+                            <div class="cart-total-row">
+                                <span>Total</span>
+                                <span id="cartTotal">&#8369;0.00</span>
+                            </div>
+
+                            <button type="button" class="sp-btn-pay cart-panel-btn mt-3" id="submitOrderBtn" disabled>
+                                Submit Order
+                            </button>
+                            <button type="button" class="sp-btn-cancel cart-panel-btn mt-2" id="clearCartBtn">
+                                &#10005; Clear Cart
+                            </button>
+                        </div>
+
+                        <!-- Pending-order view: shown after Submit Order, until paid or cancelled -->
+                        <div id="pendingOrderView" class="d-none">
+                            <div class="text-center">
+                                <span class="pending-order-badge">Awaiting Payment</span>
+                                <h4 class="mb-1 pending-order-ref" id="pendingOrderRef">--</h4>
+                            </div>
+
+                            <ul class="list-unstyled mt-3" id="pendingOrderLineList" style="font-size:13px;color:var(--sd-muted);"></ul>
+
+                            <div class="cart-total-row">
+                                <span>Total</span>
+                                <span id="pendingOrderTotal">&#8369;0.00</span>
+                            </div>
+
+                            <p class="pending-order-note">Go to the counter and scan the shop&rsquo;s Wallet QR to pay.</p>
+
+                            <button type="button" class="sp-btn-cancel cart-panel-btn mt-2" id="cancelOrderBtn">
+                                Cancel Order
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-            </section>
+                </section>
+
+            </div>
 
         </main>
 
     </div>
 
-    <div class="modal fade" id="cartPayConfirmModal" tabindex="-1" aria-labelledby="cartPayConfirmModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
+
+    <!-- Payment confirmation -->
+    <div class="modal fade sp-modal" id="cartPayConfirmModal" tabindex="-1" aria-labelledby="cartPayConfirmModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="cartPayConfirmModalTitle">Confirm Payment</h5>
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="cartPayConfirmModalTitle">Confirm Payment</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="scan-payment-card" style="margin-top:0;">
-                        <div class="scan-payment-grid">
-                            <div>
-                                <label>Merchant</label>
-                                <strong id="payConfirmMerchant">--</strong>
-                            </div>
-                            <div>
-                                <label>Items</label>
-                                <strong id="payConfirmItemCount">--</strong>
-                            </div>
-                            <div>
-                                <label>Total</label>
-                                <strong id="payConfirmTotal">--</strong>
-                            </div>
+                <div class="modal-body pt-2">
+                    <div class="sp-pay-amount">
+                        <span>Total to pay</span>
+                        <strong id="payConfirmTotal">--</strong>
+                    </div>
+                    <div class="sp-pay-rows">
+                        <div class="sp-pay-row">
+                            <label>Merchant</label>
+                            <strong id="payConfirmMerchant">--</strong>
+                        </div>
+                        <div class="sp-pay-row">
+                            <label>Items</label>
+                            <strong id="payConfirmItemCount">--</strong>
+                        </div>
+                        <div class="sp-pay-row">
+                            <label>Peso value</label>
+                            <strong id="payConfirmPhp">--</strong>
                         </div>
                     </div>
-
-                    <ul class="list-unstyled mt-3 mb-0" id="payConfirmLineList" style="font-size:13px;color:#475569;"></ul>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="scan-action-btn secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="scan-action-btn" id="cartPayConfirmBtn">Confirm Payment</button>
+                    <ul class="list-unstyled mt-3 mb-0" id="payConfirmLineList" style="font-size:13px;color:var(--sd-muted);"></ul>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="sp-btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="sp-btn-pay" id="cartPayConfirmBtn">Confirm Payment</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -259,20 +264,29 @@ $balance = $wallet['balance'];
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 
     <script>
-    function toggleStudentSidebar() {
-        document.getElementById("studentSidebar").classList.toggle("collapsed");
-    }
-
-    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
-
+    const CSRF = <?= json_encode($csrfToken, JSON_UNESCAPED_SLASHES) ?>;
     const CART_API = "<?= STUDENT_URL ?>/api/cart.php";
     const CHECKOUT_API = "<?= STUDENT_URL ?>/api/checkout.php";
+    const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+
+    // Smart GC formatting: whole numbers stay whole ("2"), otherwise up to 2 decimals ("14.59").
+    function gcAmt(pesos) {
+        return (+((pesos / PESOS_PER_GC).toFixed(2))).toLocaleString('en-PH', { maximumFractionDigits: 2 });
+    }
+    // Two-line GC-first price tag (same .gc-price style the merchant POS uses).
+    function gcPriceHtml(pesos) {
+        return `<span class="gc-price gc-price--end"><span class="gc-price-main">${gcAmt(pesos)} GC</span><span class="gc-price-sub">≈ ₱${(+pesos).toFixed(2)}</span></span>`;
+    }
 
     const video = document.getElementById("qrVideo");
     const canvas = document.getElementById("qrCanvas");
-    const canvasContext = canvas.getContext("2d");
-    const cameraMessage = document.getElementById("cameraMessage");
+    const canvasContext = canvas.getContext("2d", { willReadFrequently: true });
+    const scanFrame = document.getElementById("scanFrame");
     const cameraStatus = document.getElementById("cameraStatus");
+    const frameMsg = document.getElementById("frameMsg");
+    const frameMsgTitle = document.getElementById("frameMsgTitle");
+    const frameMsgSub = document.getElementById("frameMsgSub");
+    const retryCameraBtn = document.getElementById("retryCameraBtn");
     const scannerHint = document.getElementById("scannerHint");
     const switchCameraBtn = document.getElementById("switchCameraBtn");
     const submitOrderBtn = document.getElementById("submitOrderBtn");
@@ -299,6 +313,7 @@ $balance = $wallet['balance'];
     const payConfirmLineList = document.getElementById("payConfirmLineList");
 
     let activeStream = null;
+    let scanLoopRunning = false;
     let currentFacingMode = "environment";
     let scanCooldown = false;
     let scanningPaused = false;
@@ -307,15 +322,67 @@ $balance = $wallet['balance'];
     let pendingWalletPayload = null;
 
     function setCameraStatus(text, tone = "") {
-        cameraStatus.className = "scan-status-badge";
-        if (tone) cameraStatus.classList.add(tone);
+        const map = { active: "is-active", blocked: "is-blocked" };
+        cameraStatus.className = "sp-status" + (map[tone] ? " " + map[tone] : "");
         cameraStatus.textContent = text;
     }
+
+    function showFrameMsg(title, sub = "", isError = false, withRetry = false) {
+        frameMsg.style.display = "grid";
+        frameMsg.className = "sp-frame-msg" + (isError ? " is-error" : "");
+        frameMsgTitle.textContent = title;
+        frameMsgSub.textContent = sub;
+        retryCameraBtn.hidden = !withRetry;
+    }
+
+    function hideFrameMsg() {
+        frameMsg.style.display = "none";
+    }
+
+    function setPaused(paused) {
+        scanningPaused = paused;
+        scanFrame.classList.toggle("is-paused", paused);
+    }
+
+    const mobileToast = document.getElementById("mobileToast");
+    const mobileToastText = document.getElementById("mobileToastText");
+    let toastTimer = null;
 
     function showAlert(message, type = "danger") {
         cartAlerts.innerHTML = `<div class="alert alert-${type} py-2 px-3 mb-0" style="font-size:13px">${message}</div>`;
         clearTimeout(window.__cartAlertTimer);
         window.__cartAlertTimer = setTimeout(() => { cartAlerts.innerHTML = ""; }, 4500);
+
+        // Mirror into the floating toast on the mobile full-screen scanner.
+        mobileToastText.textContent = message.replace(/<[^>]*>/g, "");
+        mobileToast.className = "sp-mobile-toast is-visible" + (type === "danger" ? " is-error" : "");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => mobileToast.classList.remove("is-visible"), 4500);
+    }
+
+    // ── Mobile cart bottom sheet ────────────────────────────────────────
+    const cartSheet = document.getElementById("cartSheet");
+    const viewCartBtnLabel = document.getElementById("viewCartBtnLabel");
+    const mobileCaptionTitle = document.getElementById("mobileCaptionTitle");
+    const mobileCaptionSub = document.getElementById("mobileCaptionSub");
+
+    document.getElementById("viewCartBtnMobile").addEventListener("click", () => {
+        cartSheet.classList.toggle("is-open");
+    });
+    document.getElementById("closeCartSheetBtn").addEventListener("click", () => {
+        cartSheet.classList.remove("is-open");
+    });
+
+    function updateMobilePill(snapshot) {
+        if (currentPendingOrder) {
+            viewCartBtnLabel.textContent = "View Order";
+            return;
+        }
+        const lines = (snapshot && snapshot.lines) || [];
+        const count = lines.reduce((sum, l) => sum + l.qty, 0);
+        viewCartBtnLabel.textContent = count
+            ? `View Cart · ${count} item${count > 1 ? "s" : ""} · ${gcAmt(Number(snapshot.total || 0))} GC`
+            : "View Cart";
     }
 
     function escapeHtml(value) {
@@ -349,19 +416,21 @@ $balance = $wallet['balance'];
                         <span>${line.qty}</span>
                         <button type="button" onclick="changeQty(${line.id}, ${line.qty + 1})">+</button>
                     </div>
-                    <div class="cart-line-price">&#8369;${line.line_total.toFixed(2)}</div>
+                    <div class="cart-line-price">${gcPriceHtml(line.line_total)}</div>
                     <button type="button" class="cart-line-remove" onclick="removeLine(${line.id})">&times;</button>
                 </div>
             `).join("");
         }
 
-        cartTotal.textContent = "₱" + Number(snapshot.total || 0).toFixed(2);
+        cartTotal.innerHTML = gcPriceHtml(Number(snapshot.total || 0));
         submitOrderBtn.disabled = lines.length === 0;
 
         if (Array.isArray(snapshot.dropped) && snapshot.dropped.length) {
             const reasons = snapshot.dropped.map(d => `${escapeHtml(d.name)} (${escapeHtml(d.reason)})`).join(", ");
             showAlert(`Removed from cart: ${reasons}`, "warning");
         }
+
+        updateMobilePill(snapshot);
     }
 
     function renderPendingOrder(order) {
@@ -371,9 +440,9 @@ $balance = $wallet['balance'];
         pendingOrderRef.textContent = order.reference;
         const lines = order.lines || [];
         pendingOrderLineList.innerHTML = lines.map(line =>
-            `<li>${line.qty}&times; ${escapeHtml(line.name)} <span class="text-muted">&mdash; ₱${line.line_total.toFixed(2)}</span></li>`
+            `<li>${line.qty}&times; ${escapeHtml(line.name)} <span class="text-muted">&mdash; ${gcAmt(line.line_total)} GC</span></li>`
         ).join("");
-        pendingOrderTotal.textContent = "₱" + Number(order.total || 0).toFixed(2);
+        pendingOrderTotal.innerHTML = gcPriceHtml(Number(order.total || 0));
     }
 
     function updateUiState() {
@@ -384,11 +453,22 @@ $balance = $wallet['balance'];
         scannerHint.textContent = hasPending
             ? "Go to the counter and scan the shop's Wallet QR to pay."
             : "Point the camera at an item's barcode on the cardboard menu.";
+
+        mobileCaptionTitle.textContent = hasPending
+            ? "Scan the shop's Wallet QR"
+            : "Align the item's barcode";
+        mobileCaptionSub.textContent = hasPending
+            ? "Pay at the counter to finish your order"
+            : "Items are added to your cart automatically";
+        if (hasPending) {
+            viewCartBtnLabel.textContent = "View Order";
+        }
     }
 
     async function callCartApi(action, extra = {}) {
         const form = new FormData();
         form.append("action", action);
+        form.append("csrf_token", CSRF);
         Object.entries(extra).forEach(([key, value]) => form.append(key, value));
         const response = await fetch(CART_API, { method: "POST", body: form });
         return response.json();
@@ -496,16 +576,18 @@ $balance = $wallet['balance'];
 
     function openPayConfirmModal(walletPayload) {
         pendingWalletPayload = walletPayload;
-        scanningPaused = true;
+        setPaused(true);
+        cartSheet.classList.remove("is-open");
 
         const order = currentPendingOrder || { lines: [], total: 0 };
         const lines = order.lines || [];
 
         payConfirmMerchant.textContent = walletPayload.merchant || order.merchant_label || "--";
         payConfirmItemCount.textContent = lines.reduce((sum, l) => sum + l.qty, 0) + " item(s)";
-        payConfirmTotal.textContent = "₱" + Number(order.total || 0).toFixed(2);
+        payConfirmTotal.textContent = gcAmt(Number(order.total || 0)) + " GC";
+        document.getElementById("payConfirmPhp").textContent = "₱" + Number(order.total || 0).toFixed(2);
         payConfirmLineList.innerHTML = lines.map(line =>
-            `<li>${line.qty}&times; ${escapeHtml(line.name)} &mdash; ₱${line.line_total.toFixed(2)}</li>`
+            `<li>${line.qty}&times; ${escapeHtml(line.name)} &mdash; ${gcAmt(line.line_total)} GC</li>`
         ).join("");
 
         cartPayConfirmModal.show();
@@ -513,9 +595,11 @@ $balance = $wallet['balance'];
 
     cartPayConfirmModalEl.addEventListener("hidden.bs.modal", () => {
         pendingWalletPayload = null;
-        scanningPaused = false;
+        setPaused(false);
         lastDetectedPayload = "";
-        setCameraStatus("Camera Active", "active");
+        if (activeStream) {
+            setCameraStatus("Camera Active", "active");
+        }
     });
 
     cartPayConfirmBtn.addEventListener("click", async () => {
@@ -528,6 +612,7 @@ $balance = $wallet['balance'];
         try {
             const form = new FormData();
             form.append("action", "pay_order");
+            form.append("csrf_token", CSRF);
             form.append("merchant_wallet_id", walletPayload.merchant_wallet_id);
             form.append("merchant_user_id", walletPayload.merchant_user_id);
             const response = await fetch(CHECKOUT_API, { method: "POST", body: form });
@@ -586,30 +671,37 @@ $balance = $wallet['balance'];
     async function startScanner(facingMode = currentFacingMode) {
         stopScannerStream();
         currentFacingMode = facingMode;
-        cameraMessage.style.display = "grid";
-        cameraMessage.innerHTML = "Opening camera...";
+        showFrameMsg("Opening camera…");
         setCameraStatus("Starting Camera");
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
             activeStream = stream;
             video.srcObject = stream;
-            cameraMessage.style.display = "none";
+            hideFrameMsg();
             setCameraStatus("Camera Active", "active");
-            requestAnimationFrame(scanLoop);
+            if (!scanLoopRunning) {
+                scanLoopRunning = true;
+                requestAnimationFrame(scanLoop);
+            }
         } catch (error) {
             setCameraStatus("Camera Blocked", "blocked");
-            cameraMessage.innerHTML = "Camera access denied.<br>Please allow camera permissions.";
+            showFrameMsg(
+                "Camera access denied.",
+                "Please allow camera permissions, then retry.",
+                true,
+                true
+            );
         }
     }
 
     function scanLoop() {
-        if (scanningPaused) {
-            requestAnimationFrame(scanLoop);
+        if (!activeStream) {
+            scanLoopRunning = false;
             return;
         }
 
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        if (!scanningPaused && video.readyState === video.HAVE_ENOUGH_DATA) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -631,16 +723,21 @@ $balance = $wallet['balance'];
         requestAnimationFrame(scanLoop);
     }
 
-    switchCameraBtn.addEventListener("click", () => {
+    function switchCamera() {
         const nextFacingMode = currentFacingMode === "environment" ? "user" : "environment";
         startScanner(nextFacingMode);
-    });
+    }
+
+    switchCameraBtn.addEventListener("click", switchCamera);
+    document.getElementById("switchCameraBtnM").addEventListener("click", switchCamera);
+
+    retryCameraBtn.addEventListener("click", () => startScanner());
 
     window.addEventListener("beforeunload", stopScannerStream);
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCameraStatus("Camera Unsupported", "blocked");
-        cameraMessage.innerHTML = "This browser does not support camera scanning.";
+        showFrameMsg("This browser does not support camera scanning.", "", true, false);
     } else {
         startScanner();
     }

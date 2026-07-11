@@ -1070,6 +1070,7 @@ function gjc_ensure_merchant_qr_orders_schema(PDO $db): void
         "CREATE TABLE IF NOT EXISTS merchant_qr_orders (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             token VARCHAR(64) NOT NULL UNIQUE,
+            short_code VARCHAR(12) NULL,
             merchant_user_id INT UNSIGNED NOT NULL,
             merchant_wallet_id INT UNSIGNED NOT NULL,
             description TEXT NULL,
@@ -1083,11 +1084,13 @@ function gjc_ensure_merchant_qr_orders_schema(PDO $db): void
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_mqo_token (token),
             INDEX idx_mqo_status_expiry (status, expires_at),
-            INDEX idx_mqo_merchant (merchant_user_id)
+            INDEX idx_mqo_merchant (merchant_user_id),
+            UNIQUE INDEX uq_mqo_short_code (short_code)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
     );
 
     $adds = [
+        "short_code" => "VARCHAR(12) NULL AFTER token",
         "description" => "TEXT NULL",
         "items_json" => "TEXT NOT NULL",
         "amount" => "DECIMAL(15,2) NOT NULL DEFAULT 0.00",
@@ -1105,6 +1108,44 @@ function gjc_ensure_merchant_qr_orders_schema(PDO $db): void
             $db->exec("ALTER TABLE merchant_qr_orders ADD COLUMN {$column} {$definition}");
         }
     }
+
+    $idxStmt = $db->prepare(
+        "SELECT COUNT(*) FROM information_schema.STATISTICS
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'merchant_qr_orders'
+            AND INDEX_NAME = 'uq_mqo_short_code'"
+    );
+    $idxStmt->execute();
+    if ((int) $idxStmt->fetchColumn() === 0) {
+        $db->exec("ALTER TABLE merchant_qr_orders ADD UNIQUE INDEX uq_mqo_short_code (short_code)");
+    }
+}
+
+/**
+ * Cryptographically random short code for manual (typed) payment entry.
+ * 8 chars from an unambiguous alphabet (no 0/O, 1/I/L), unique across
+ * merchant_qr_orders. The 32-hex QR token is unrealistic to type, so the
+ * POS shows this code beside the QR as the camera-less fallback; both
+ * resolve to the same single-use order row.
+ */
+function gjc_generate_order_short_code(PDO $db): string
+{
+    $alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+    $max = strlen($alphabet) - 1;
+
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $code = '';
+        for ($i = 0; $i < 8; $i++) {
+            $code .= $alphabet[random_int(0, $max)];
+        }
+
+        $stmt = $db->prepare("SELECT COUNT(*) FROM merchant_qr_orders WHERE short_code = ?");
+        $stmt->execute([$code]);
+        if ((int) $stmt->fetchColumn() === 0) {
+            return $code;
+        }
+    }
+
+    throw new RuntimeException('Could not allocate a unique payment code. Please try again.');
 }
 
 /**
@@ -1433,6 +1474,35 @@ function gjc_reference(string $prefix): string
         date("Ymd") .
         "-" .
         strtoupper(bin2hex(random_bytes(3)));
+}
+
+/**
+ * Session-scoped CSRF token for state-changing fetch endpoints (Scan & Pay
+ * payment/validation and POS QR creation). Pages embed gjc_csrf_token() and
+ * send it back as an X-CSRF-Token header or csrf_token form field;
+ * gjc_csrf_verify() accepts either.
+ */
+function gjc_csrf_token(): string
+{
+    if (empty($_SESSION["gjc_csrf_token"])) {
+        $_SESSION["gjc_csrf_token"] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION["gjc_csrf_token"];
+}
+
+function gjc_csrf_verify(?string $token = null): bool
+{
+    $known = (string) ($_SESSION["gjc_csrf_token"] ?? "");
+    if ($known === "") {
+        return false;
+    }
+
+    $given = $token
+        ?? $_SERVER["HTTP_X_CSRF_TOKEN"]
+        ?? $_POST["csrf_token"]
+        ?? "";
+
+    return is_string($given) && $given !== "" && hash_equals($known, $given);
 }
 
 /** Fixed bookable times for stall application Step 2 meetings - one applicant per slot. */
@@ -1794,6 +1864,37 @@ function gjc_transaction_type_slug(string $type): string
     ];
 
     return $map[$type] ?? strtolower($type);
+}
+
+// Icon / colour-slug / direction metadata for a student-facing transaction
+// row. Shared by student/dashboard.php and student/api/wallet_summary.php so
+// the server-rendered list and the AJAX-refreshed list can't drift apart.
+function gjc_student_txn_meta(string $type): array
+{
+    $slugs = [
+        "cash_in" => "topup",
+        "topup" => "topup",
+        "top_up" => "topup",
+        "refund" => "topup",
+        "payment" => "payment",
+        "voucher_payment" => "voucher",
+        "p2p_transfer" => "transfer",
+    ];
+    $icons = [
+        "topup" => "fa-circle-plus",
+        "payment" => "fa-bag-shopping",
+        "voucher" => "fa-credit-card",
+        "transfer" => "fa-paper-plane",
+        "other" => "fa-receipt",
+    ];
+    $slug = $slugs[$type] ?? "other";
+
+    return [
+        "slug" => $slug,
+        "icon" => $icons[$slug],
+        "incoming" => $slug === "topup",
+        "label" => gjc_transaction_type_label($type),
+    ];
 }
 
 function gjc_transaction_status_label(string $status): string

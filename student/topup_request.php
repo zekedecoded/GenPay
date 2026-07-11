@@ -9,16 +9,17 @@ gjc_ensure_operational_tables($db);
 $currentUser = gjc_current_user($db);
 $wallet = gjc_student_wallet($db, $currentUser['id']);
 $studentName = $currentUser['name'];
-$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
-$currentBalance = $wallet['balance'];
+$currentBalance = (float) $wallet['balance'];
 $notice = '';
 $error = '';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
+    $amount = filter_var($_POST['amount'] ?? '', FILTER_VALIDATE_FLOAT);
     $method = trim((string) ($_POST['payment_method'] ?? 'Cash at Cashier'));
 
-    if (!$amount || $amount <= 0) {
+    if (!gjc_csrf_verify()) {
+        $error = 'Security check failed. Please reload the page and try again.';
+    } elseif (!$amount || $amount <= 0) {
         $error = 'Enter a valid top-up amount.';
     } elseif ($wallet['id'] <= 0) {
         $error = 'Your student wallet is not ready. Contact the finance office.';
@@ -43,8 +44,39 @@ $stmt = $db->prepare(
 );
 $stmt->execute([$currentUser['id']]);
 $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
 
+// Real school-issued ID (GJC2026-0001); the padded userID is only a fallback
+// for accounts that never got a student_info row.
+$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
+if (gjc_table_exists($db, 'student_info')) {
+    $sidStmt = $db->prepare("SELECT studentID FROM student_info WHERE userID = ? LIMIT 1");
+    $sidStmt->execute([(int) $currentUser['id']]);
+    $realID = trim((string) $sidStmt->fetchColumn());
+    if ($realID !== '') {
+        $studentID = $realID;
+    }
+}
+
+// pending → gold, approved/completed → green, rejected/declined → red
+function gjc_topup_pill_tone(string $status): string
+{
+    $status = strtolower($status);
+    if (in_array($status, ['approved', 'completed', 'success'], true)) {
+        return 'green';
+    }
+    if (in_array($status, ['rejected', 'declined', 'failed', 'cancelled'], true)) {
+        return 'red';
+    }
+    if ($status === 'pending') {
+        return 'gold';
+    }
+    return 'gray';
+}
+
+$e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$currentPage = 'topup';
+$csrfToken = gjc_csrf_token();
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -58,302 +90,261 @@ $recentTopups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=2">
 </head>
 
-<body>
+<body class="sd-body">
 
-    <div class="student-layout">
+    <div class="sd-layout">
 
-        <aside class="student-sidebar" id="studentSidebar">
+        <?php require __DIR__ . '/../includes/partials/sidebar_student.php'; ?>
 
-            <div class="student-brand">
-                <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
+        <main class="sd-main">
 
-                <div class="student-brand-text">
-                    <h4>GenPay</h4>
-                    <span>Student Portal</span>
-                </div>
-            </div>
-
-            <nav class="student-menu">
-                <a href="<?= DASHBOARD_URL ?>">
-                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
-                    <span class="student-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/cart.php">
-                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
-                    <span class="student-nav-text">Shop Cart</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/transfer.php">
-                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
-                    <span class="student-nav-text">Send GenCoin</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/withdraw.php">
-                    <i class="fa-solid fa-money-bill-wave student-nav-icon"></i>
-                    <span class="student-nav-text">Withdraw</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/topup_request.php" class="active">
-                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
-                    <span class="student-nav-text">Top-Up</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/history.php">
-                    <i class="fa-solid fa-receipt student-nav-icon"></i>
-                    <span class="student-nav-text">History</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/profile.php">
-                    <i class="fa-solid fa-user student-nav-icon"></i>
-                    <span class="student-nav-text">Profile</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
-               onclick="openLogoutModal(event);">
-                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
-                <span>Logout</span>
-            </a>
-
-        </aside>
-        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-
-        <main class="student-main">
-
-            <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">Menu</button>
-
-                <div>
+            <header class="sd-topbar">
+                <div class="sd-topbar-greet">
                     <h1>Top-Up Wallet</h1>
                     <p>Submit a request to add funds to your student wallet.</p>
                 </div>
-
-                <div class="student-user">
-                    <span><?php echo $studentName; ?></span>
-                    <div class="student-avatar">
-                        <?php echo strtoupper(substr($studentName, 0, 1)); ?>
-                    </div>
+                <div class="sd-topbar-tools">
+                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
                 </div>
             </header>
 
-            <section class="topup-hero-card mb-4">
-                <div>
-                    <span>Current Balance</span>
-                    <h2><?php echo gjc_money($currentBalance); ?></h2>
-                    <p><?php echo gjc_e($studentName); ?> &middot; <?php echo gjc_e($studentID); ?></p>
-                </div>
+            <div class="sd-content">
 
-                <div class="topup-hero-badge">
-                    Student Wallet
-                </div>
-            </section>
-
-            <section class="topup-layout-grid mb-4">
-
-                <div class="student-premium-panel topup-form-panel">
-                    <div class="student-panel-header">
-                        <div>
-                            <h3>Request Top-Up</h3>
-                            <p>Enter your desired amount and choose a payment method.</p>
-                        </div>
-                    </div>
-
-                    <?php if ($notice): ?>
-                    <div class="alert alert-success"><?php echo gjc_e($notice); ?></div>
-                    <?php endif; ?>
-
-                    <?php if ($error): ?>
-                    <div class="alert alert-danger"><?php echo gjc_e($error); ?></div>
-                    <?php endif; ?>
-
-                    <form method="POST" class="topup-form">
-
-                        <div class="topup-field">
-                            <label>Amount (&#8369;)</label>
-
-                            <div class="topup-money-input">
-                                <span>&#8369;</span>
-                                <input type="number" name="amount" id="topupAmount" placeholder="0.00" min="1"
-                                    step="0.01" required>
-                            </div>
-                        </div>
-
-                        <div class="topup-quick-amounts">
-                            <button type="button" onclick="setTopupAmount(100)">&#8369;100</button>
-                            <button type="button" onclick="setTopupAmount(200)">&#8369;200</button>
-                            <button type="button" onclick="setTopupAmount(500)">&#8369;500</button>
-                            <button type="button" onclick="setTopupAmount(1000)">&#8369;1,000</button>
-                            <button type="button" onclick="setTopupAmount(2000)">&#8369;2,000</button>
-                        </div>
-
-                        <div class="topup-field">
-                            <label>Payment Method</label>
-
-                            <div class="topup-method-grid">
-
-                                <label class="topup-method-card selected">
-                                    <input type="radio" name="payment_method" value="Cash at Cashier" checked>
-                                    <div class="topup-method-icon">
-                                        <img src="<?= ICONS_URL ?>/add_cash.png" alt="">
-                                    </div>
-                                    <div>
-                                        <strong>Cash at Cashier</strong>
-                                        <span>Bring cash to the Accountancy Office</span>
-                                    </div>
-                                </label>
-
-                                <label class="topup-method-card">
-                                    <input type="radio" name="payment_method" value="GCash">
-                                    <div class="topup-method-icon">
-                                        <img src="<?= ICONS_URL ?>/gcash.png" alt="">
-                                    </div>
-                                    <div>
-                                        <strong>GCash</strong>
-                                        <span>09XX Campus GCash number</span>
-                                    </div>
-                                </label>
-
-                                <label class="topup-method-card">
-                                    <input type="radio" name="payment_method" value="Maya">
-                                    <div class="topup-method-icon">
-                                        <img src="<?= ICONS_URL ?>/maya.png" alt="">
-                                    </div>
-                                    <div>
-                                        <strong>Maya</strong>
-                                        <span>Maya linked campus account</span>
-                                    </div>
-                                </label>
-
-                            </div>
-                        </div>
-
-                        <button type="submit" class="topup-submit-btn">
-                            Submit Top-Up Request
-                        </button>
-
-                    </form>
-                </div>
-
-                <div class="student-premium-panel topup-guide-panel">
-                    <div class="student-panel-header">
-                        <div>
-                            <h3>Top-Up Guide</h3>
-                            <p>How your wallet top-up request works.</p>
-                        </div>
-                    </div>
-
-                    <div class="topup-guide-list">
-                        <div>
-                            <strong>1</strong>
-                            <span>Enter the amount you want to add.</span>
-                        </div>
-
-                        <div>
-                            <strong>2</strong>
-                            <span>Select your preferred payment method.</span>
-                        </div>
-
-                        <div>
-                            <strong>3</strong>
-                            <span>Submit your request for cashier verification.</span>
-                        </div>
-
-                        <div>
-                            <strong>4</strong>
-                            <span>Your wallet balance updates after approval.</span>
-                        </div>
-                    </div>
-
-                    <div class="topup-limit-card">
-                        <span>Daily Top-Up Limit</span>
-                        <strong>&#8369;5,000</strong>
-                        <p>Requests above the limit may require manual approval.</p>
-                    </div>
-                </div>
-
-            </section>
-
-            <section class="student-premium-panel">
-
-                <div class="student-panel-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3>Recent Top-Up Requests</h3>
-                        <p>Track your latest wallet top-up submissions.</p>
-                    </div>
-
-                    <a href="history.php" class="student-view-btn">Full History</a>
-                </div>
-
-                <?php if (empty($recentTopups)): ?>
-                <div class="student-empty-state">
-                    <div class="student-empty-icon">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
-                    </div>
-                    <h3>No top-up requests yet</h3>
-                    <p>Submit your first top-up request to add funds to your wallet.</p>
-                </div>
-                <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table student-premium-table align-middle js-datatable" id="studentTopupRequestsTable" data-page-length="8">
-                        <thead>
-                            <tr>
-                                <th>Reference</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <?php foreach ($recentTopups as $topup): ?>
-                            <tr>
-                                <td><?php echo gjc_e($topup["reference_no"]); ?></td>
-                                <td><?php echo gjc_money($topup["amount"]); ?></td>
-                                <td><span class="student-type-pill"><?php echo gjc_e($topup["payment_method"]); ?></span></td>
-                                <td><span class="topup-status-pill"><?php echo gjc_e(ucfirst($topup["status"])); ?></span></td>
-                                <td><?php echo gjc_e(date('M d, Y h:i A', strtotime($topup["created_at"]))); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <?php if ($notice): ?>
+                <div class="pf-alert">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <?= $e($notice) ?>
                 </div>
                 <?php endif; ?>
 
-            </section>
+                <?php if ($error): ?>
+                <div class="pf-alert is-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= $e($error) ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Balance card -->
+                <section class="sd-balance">
+                    <div>
+                        <span class="sd-balance-label">Current Balance</span>
+                        <div class="sd-balance-amount">
+                            <span id="sdBalance"><?= gjc_gc_amount($currentBalance) ?></span><span class="sd-unit">GC</span>
+                        </div>
+                        <div class="sd-gc-row">
+                            <span class="sd-gc-badge">&#8776; &#8369;<span id="sdBalancePhp"><?= number_format($currentBalance, 2) ?></span></span>
+                            <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
+                        </div>
+                        <div class="sd-balance-actions">
+                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
+                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/withdraw.php"><i class="fa-solid fa-money-bill-wave"></i>Withdraw</a>
+                        </div>
+                    </div>
+                    <div class="sd-balance-holder">
+                        <strong><?= $e($studentName) ?></strong>
+                        <span class="sd-holder-id"><?= $e($studentID) ?></span>
+                        <span class="sd-role-badge">STUDENT</span>
+                    </div>
+                </section>
+
+                <!-- Request form + guide -->
+                <section class="tu-grid">
+
+                    <div class="sd-panel">
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3>Request Top-Up</h3>
+                                <p>Enter your desired amount and choose a payment method.</p>
+                            </div>
+                        </div>
+
+                        <form method="POST" class="pf-form">
+                            <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
+
+                            <div class="pf-field">
+                                <label>Amount (&#8369;)</label>
+                                <div class="tu-money-input">
+                                    <span>&#8369;</span>
+                                    <input type="number" name="amount" id="topupAmount" placeholder="0.00" min="1"
+                                        step="0.01" required>
+                                </div>
+                                <div class="tu-equiv" id="tuEquiv"></div>
+                            </div>
+
+                            <div class="tu-quick">
+                                <button type="button" onclick="setTopupAmount(100)">&#8369;100</button>
+                                <button type="button" onclick="setTopupAmount(200)">&#8369;200</button>
+                                <button type="button" onclick="setTopupAmount(500)">&#8369;500</button>
+                                <button type="button" onclick="setTopupAmount(1000)">&#8369;1,000</button>
+                                <button type="button" onclick="setTopupAmount(2000)">&#8369;2,000</button>
+                            </div>
+
+                            <div class="pf-field">
+                                <label>Payment Method</label>
+                                <div class="tu-methods">
+
+                                    <label class="tu-method selected">
+                                        <input type="radio" name="payment_method" value="Cash at Cashier" checked>
+                                        <div class="tu-method-icon">
+                                            <img src="<?= ICONS_URL ?>/add_cash.png" alt="">
+                                        </div>
+                                        <div>
+                                            <strong>Cash at Cashier</strong>
+                                            <span>Bring cash to the Accountancy Office</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="tu-method">
+                                        <input type="radio" name="payment_method" value="GCash">
+                                        <div class="tu-method-icon">
+                                            <img src="<?= ICONS_URL ?>/gcash.png" alt="">
+                                        </div>
+                                        <div>
+                                            <strong>GCash</strong>
+                                            <span>09XX Campus GCash number</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="tu-method">
+                                        <input type="radio" name="payment_method" value="Maya">
+                                        <div class="tu-method-icon">
+                                            <img src="<?= ICONS_URL ?>/maya.png" alt="">
+                                        </div>
+                                        <div>
+                                            <strong>Maya</strong>
+                                            <span>Maya linked campus account</span>
+                                        </div>
+                                    </label>
+
+                                </div>
+                            </div>
+
+                            <button type="submit" class="pf-btn">
+                                <i class="fa-solid fa-circle-plus me-1"></i> Submit Top-Up Request
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="sd-panel">
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3>Top-Up Guide</h3>
+                                <p>How your wallet top-up request works.</p>
+                            </div>
+                        </div>
+
+                        <div class="tu-steps">
+                            <div class="tu-step">
+                                <strong>1</strong>
+                                <span>Enter the amount you want to add.</span>
+                            </div>
+                            <div class="tu-step">
+                                <strong>2</strong>
+                                <span>Select your preferred payment method.</span>
+                            </div>
+                            <div class="tu-step">
+                                <strong>3</strong>
+                                <span>Submit your request for cashier verification.</span>
+                            </div>
+                            <div class="tu-step">
+                                <strong>4</strong>
+                                <span>Your wallet balance updates after approval.</span>
+                            </div>
+                        </div>
+
+                        <div class="tu-limit">
+                            <span>Daily Top-Up Limit</span>
+                            <strong>&#8369;5,000</strong>
+                            <p>= 500 GC. Requests above the limit may require manual approval.</p>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Recent requests -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
+                        <div>
+                            <h3>Recent Top-Up Requests</h3>
+                            <p>Track your latest wallet top-up submissions.</p>
+                        </div>
+                        <a href="<?= STUDENT_URL ?>/history.php" class="sd-viewall">Full History</a>
+                    </div>
+
+                    <?php if (empty($recentTopups)): ?>
+                    <div class="sd-empty">
+                        <i class="fa-regular fa-folder-open"></i>
+                        No top-up requests yet. Submit your first top-up request to add funds to your wallet.
+                    </div>
+                    <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table align-middle js-datatable" id="studentTopupRequestsTable" data-page-length="8">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <?php foreach ($recentTopups as $topup): ?>
+                                <tr>
+                                    <td><?= $e($topup['reference_no']) ?></td>
+                                    <td><?= gjc_gc_price((float) $topup['amount']) ?></td>
+                                    <td><span class="pf-pill gray"><?= $e($topup['payment_method']) ?></span></td>
+                                    <td><span class="pf-pill <?= gjc_topup_pill_tone((string) $topup['status']) ?>"><?= $e(ucfirst($topup['status'])) ?></span></td>
+                                    <td><?= $e(date('M d, Y h:i A', strtotime($topup['created_at']))) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </section>
+
+            </div>
 
         </main>
 
     </div>
 
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <script>
-    function toggleStudentSidebar() {
-        document.getElementById("studentSidebar").classList.toggle("collapsed");
-    }
+    const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+    const topupAmountEl = document.getElementById("topupAmount");
+    const tuEquiv = document.getElementById("tuEquiv");
 
-    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
+    // Live "you will receive X GC" line under the ₱ input.
+    function tuRenderEquiv() {
+        const php = parseFloat(topupAmountEl.value) || 0;
+        tuEquiv.textContent = php > 0
+            ? "You will receive ≈ " + (+((php / PESOS_PER_GC).toFixed(2))).toLocaleString("en-PH", { maximumFractionDigits: 2 }) + " GC"
+            : "";
+    }
+    topupAmountEl.addEventListener("input", tuRenderEquiv);
 
     function setTopupAmount(amount) {
-        document.getElementById("topupAmount").value = amount;
+        topupAmountEl.value = amount;
+        tuRenderEquiv();
     }
 
-    document.querySelectorAll(".topup-method-card").forEach(function(card) {
+    document.querySelectorAll(".tu-method").forEach(function(card) {
         card.addEventListener("click", function() {
-            document.querySelectorAll(".topup-method-card").forEach(function(item) {
+            document.querySelectorAll(".tu-method").forEach(function(item) {
                 item.classList.remove("selected");
             });
 

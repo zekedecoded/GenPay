@@ -16,7 +16,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $columns = gjc_table_columns($db, 'users');
     $idColumn = gjc_column($db, 'users', ['id', 'userID']);
 
-    if (!$idColumn) {
+    if (!gjc_csrf_verify()) {
+        $error = 'Security check failed. Please reload the page and try again.';
+    } elseif (!$idColumn) {
         $error = 'Profile cannot be updated because the users table ID column was not found.';
     } elseif ($action === 'profile') {
         $firstName = trim((string) ($_POST['first_name'] ?? ''));
@@ -96,19 +98,44 @@ if ($firstName === '' && $lastName === '') {
 
 $studentName = $currentUser['name'];
 $studentInitial = strtoupper(substr($studentName, 0, 1));
-$studentID = (string) ($rawUser['school_id'] ?? ('GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT)));
 $email = (string) ($currentUser['email'] ?? '');
 $phone = (string) ($rawUser['phone'] ?? '');
 $walletBalance = (float) $wallet['balance'];
 $createdAt = (string) ($rawUser['created_at'] ?? '');
 $memberSince = $createdAt !== '' ? date('F Y', strtotime($createdAt)) : 'N/A';
-$accountStatus = ucfirst((string) ($rawUser['status'] ?? 'Active'));
-$transactionsStatus = $wallet['id'] > 0 ? 'Enabled' : 'Wallet Pending';
-$spendingLimit = 'No Limit';
 $profileImg = (string) ($rawUser['profile_img'] ?? '');
 $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '/')) : '';
-?>
 
+// Real school-issued ID (GJC2026-0001); the padded userID is only a fallback
+// for accounts that never got a student_info row.
+$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
+if (gjc_table_exists($db, 'student_info')) {
+    $sidStmt = $db->prepare("SELECT studentID FROM student_info WHERE userID = ? LIMIT 1");
+    $sidStmt->execute([(int) $currentUser['id']]);
+    $realID = trim((string) $sidStmt->fetchColumn());
+    if ($realID !== '') {
+        $studentID = $realID;
+    }
+}
+
+// Live wallet controls (parent freeze / daily limit) instead of hardcoded text.
+$isFrozen = false;
+$dailyLimit = 0.0;
+if ($wallet['id'] > 0 && $wallet['source'] === 'student_wallets') {
+    $wcStmt = $db->prepare("SELECT is_frozen, daily_spend_limit FROM student_wallets WHERE id = ?");
+    $wcStmt->execute([$wallet['id']]);
+    if ($wc = $wcStmt->fetch(PDO::FETCH_ASSOC)) {
+        $isFrozen = (int) $wc['is_frozen'] === 1;
+        $dailyLimit = (float) $wc['daily_spend_limit'];
+    }
+}
+$accountStatus = $isFrozen ? 'Frozen' : ucfirst((string) ($rawUser['status'] ?? 'Active'));
+$transactionsEnabled = $wallet['id'] > 0 && !$isFrozen;
+
+$e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$currentPage = 'profile';
+$csrfToken = gjc_csrf_token();
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -122,271 +149,212 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
 </head>
 
-<body>
+<body class="sd-body">
 
-    <div class="student-layout">
+    <div class="sd-layout">
 
-        <aside class="student-sidebar" id="studentSidebar">
+        <?php require __DIR__ . '/../includes/partials/sidebar_student.php'; ?>
 
-            <div class="student-brand">
-                <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
+        <main class="sd-main">
 
-                <div class="student-brand-text">
-                    <h4>GenPay</h4>
-                    <span>Student Portal</span>
-                </div>
-            </div>
-
-            <nav class="student-menu">
-                <a href="<?= DASHBOARD_URL ?>">
-                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
-                    <span class="student-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/cart.php">
-                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
-                    <span class="student-nav-text">Shop Cart</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/transfer.php">
-                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
-                    <span class="student-nav-text">Send GenCoin</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/withdraw.php">
-                    <i class="fa-solid fa-money-bill-wave student-nav-icon"></i>
-                    <span class="student-nav-text">Withdraw</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/topup_request.php">
-                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
-                    <span class="student-nav-text">Top-Up</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/history.php">
-                    <i class="fa-solid fa-receipt student-nav-icon"></i>
-                    <span class="student-nav-text">History</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/profile.php" class="active">
-                    <i class="fa-solid fa-user student-nav-icon"></i>
-                    <span class="student-nav-text">Profile</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
-               onclick="openLogoutModal(event);">
-                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
-                <span>Logout</span>
-            </a>
-
-        </aside>
-        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-
-        <main class="student-main">
-
-            <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">Menu</button>
-
-                <div>
+            <header class="sd-topbar">
+                <div class="sd-topbar-greet">
                     <h1>My Profile</h1>
                     <p>Manage your student account details, status, and password security.</p>
                 </div>
-
-                <div class="student-user">
-                    <span><?php echo gjc_e($studentName); ?></span>
-                    <div class="student-avatar" id="topbarAvatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
+                <div class="sd-topbar-tools">
+                    <div class="sd-avatar" id="topbarAvatar" style="<?= $profilePhotoUrl ? 'overflow:hidden;' : '' ?>">
                         <?php if ($profilePhotoUrl): ?>
-                            <img id="topbarAvatarImg" src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
-                                 style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
+                            <img id="topbarAvatarImg" src="<?= $e($profilePhotoUrl) ?>" alt=""
+                                 style="width:100%;height:100%;object-fit:cover;display:block;">
                         <?php else: ?>
-                            <?php echo gjc_e($studentInitial); ?>
+                            <?= $e($studentInitial) ?>
                         <?php endif; ?>
                     </div>
                 </div>
             </header>
 
-            <?php if ($notice): ?>
-            <div class="profile-alert mb-4">
-                <?php echo gjc_e($notice); ?>
-            </div>
-            <?php endif; ?>
+            <div class="sd-content">
 
-            <?php if ($error): ?>
-            <div class="profile-alert profile-alert-error mb-4">
-                <?php echo gjc_e($error); ?>
-            </div>
-            <?php endif; ?>
+                <?php if ($notice): ?>
+                <div class="pf-alert">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <?= $e($notice) ?>
+                </div>
+                <?php endif; ?>
 
-            <section class="profile-hero-card mb-4">
+                <?php if ($error): ?>
+                <div class="pf-alert is-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= $e($error) ?>
+                </div>
+                <?php endif; ?>
 
-                <div class="profile-hero-left">
-                    <div class="profile-avatar-wrap" style="position:relative;flex-shrink:0;">
-                        <div class="profile-avatar-large" id="avatarCircle" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
-                            <?php if ($profilePhotoUrl): ?>
-                                <img id="avatarImg" src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt="Profile Photo"
-                                     style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
-                            <?php else: ?>
-                                <span id="avatarInitial"><?php echo gjc_e($studentInitial); ?></span>
-                            <?php endif; ?>
+                <!-- Hero -->
+                <section class="pf-hero">
+                    <div class="pf-hero-left">
+                        <div class="pf-avatar-wrap">
+                            <div class="pf-avatar" id="avatarCircle">
+                                <?php if ($profilePhotoUrl): ?>
+                                    <img id="avatarImg" src="<?= $e($profilePhotoUrl) ?>" alt="Profile Photo">
+                                <?php else: ?>
+                                    <span id="avatarInitial"><?= $e($studentInitial) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <label for="photoInput" class="pf-avatar-edit" title="Change photo">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
                         </div>
-                        <label for="photoInput" title="Change photo"
-                               style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:#117039;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.25);">
-                            <i class="fa-solid fa-camera"></i>
-                        </label>
-                        <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none;">
+
+                        <div class="pf-identity">
+                            <span>Student Account</span>
+                            <h2><?= $e($studentName) ?></h2>
+                            <p><?= $e($email) ?> &middot; <?= $e($studentID) ?></p>
+                            <span class="sd-role-badge">STUDENT</span>
+                            <div class="pf-photo-msg" id="photoMsg"></div>
+                        </div>
                     </div>
 
-                    <div>
-                        <span>Student Account</span>
-                        <h2><?php echo gjc_e($studentName); ?></h2>
-                        <p><?php echo gjc_e($email); ?> &middot; ID: <?php echo gjc_e($studentID); ?></p>
-                        <div id="photoMsg" style="font-size:12px;margin-top:4px;"></div>
+                    <div class="pf-wallet-box">
+                        <span>Wallet Balance</span>
+                        <h3><?= gjc_gc_amount($walletBalance) ?> GC</h3>
+                        <p>&#8776; <?= gjc_money($walletBalance) ?> &middot; Member since <?= $e($memberSince) ?></p>
                     </div>
-                </div>
+                </section>
 
-                <div class="profile-wallet-box">
-                    <span>Wallet Balance</span>
-                    <h3><?php echo gjc_money($walletBalance); ?></h3>
-                    <p>Member since <?php echo gjc_e($memberSince); ?></p>
-                </div>
+                <!-- Profile form + account status -->
+                <section class="pf-grid">
 
-            </section>
+                    <div class="sd-panel">
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3>Update Profile</h3>
+                                <p>Edit your personal account information.</p>
+                            </div>
+                        </div>
 
-            <section class="profile-layout-grid mb-4">
+                        <form method="POST" class="pf-form">
+                            <input type="hidden" name="profile_action" value="profile">
+                            <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
 
-                <div class="student-premium-panel profile-form-panel">
-                    <div class="student-panel-header">
+                            <div class="pf-form-grid">
+                                <div class="pf-field">
+                                    <label>First Name</label>
+                                    <input type="text" name="first_name" value="<?= $e($firstName) ?>" required>
+                                </div>
+
+                                <div class="pf-field">
+                                    <label>Last Name</label>
+                                    <input type="text" name="last_name" value="<?= $e($lastName) ?>" required>
+                                </div>
+                            </div>
+
+                            <div class="pf-field">
+                                <label>Phone Number</label>
+                                <input type="text" name="phone" value="<?= $e($phone) ?>">
+                            </div>
+
+                            <div class="pf-field">
+                                <label>Email Address</label>
+                                <input type="email" value="<?= $e($email) ?>" disabled>
+                                <small>Email cannot be changed. Contact Admin if needed.</small>
+                            </div>
+
+                            <button type="submit" class="pf-btn">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="sd-panel">
+                        <div class="sd-panel-head">
+                            <div>
+                                <h3>Account Status</h3>
+                                <p>Current access and transaction settings.</p>
+                            </div>
+                        </div>
+
+                        <div class="pf-status-list">
+                            <div>
+                                <span>Account Status</span>
+                                <strong class="pf-pill <?= $isFrozen ? 'red' : 'green' ?>"><?= $e($accountStatus) ?></strong>
+                            </div>
+
+                            <div>
+                                <span>Transactions</span>
+                                <strong class="pf-pill <?= $transactionsEnabled ? 'green' : 'gold' ?>">
+                                    <?= $transactionsEnabled ? 'Enabled' : ($isFrozen ? 'Paused' : 'Wallet Pending') ?>
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>Spending Limit</span>
+                                <strong class="pf-pill <?= $dailyLimit > 0 ? 'gold' : 'gray' ?>">
+                                    <?= $dailyLimit > 0 ? '&#8369;' . number_format($dailyLimit, 2) . ' / day' : 'No Limit' ?>
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="pf-note">
+                            Some account settings are managed by the system administrator or your parent/guardian.
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- Change password -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
                         <div>
-                            <h3>Update Profile</h3>
-                            <p>Edit your personal account information.</p>
+                            <h3>Change Password</h3>
+                            <p>Update your login password for better account security.</p>
                         </div>
                     </div>
 
-                    <form method="POST" class="profile-form">
-                        <input type="hidden" name="profile_action" value="profile">
+                    <form method="POST" class="pf-form">
+                        <input type="hidden" name="profile_action" value="password">
+                        <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
 
-                        <div class="profile-form-grid">
-                            <div class="profile-field">
-                                <label>First Name</label>
-                                <input type="text" name="first_name" value="<?php echo gjc_e($firstName); ?>" required>
+                        <div class="pf-field">
+                            <label>Current Password</label>
+                            <input type="password" name="current_password" autocomplete="current-password" required>
+                        </div>
+
+                        <div class="pf-form-grid">
+                            <div class="pf-field">
+                                <label>New Password</label>
+                                <input type="password" name="new_password" minlength="6" autocomplete="new-password" required>
                             </div>
 
-                            <div class="profile-field">
-                                <label>Last Name</label>
-                                <input type="text" name="last_name" value="<?php echo gjc_e($lastName); ?>" required>
+                            <div class="pf-field">
+                                <label>Confirm New Password</label>
+                                <input type="password" name="confirm_password" minlength="6" autocomplete="new-password" required>
                             </div>
                         </div>
 
-                        <div class="profile-field">
-                            <label>Phone Number</label>
-                            <input type="text" name="phone" value="<?php echo gjc_e($phone); ?>">
-                        </div>
-
-                        <div class="profile-field">
-                            <label>Email Address</label>
-                            <input type="email" value="<?php echo gjc_e($email); ?>" disabled>
-                            <small>Email cannot be changed. Contact Admin if needed.</small>
-                        </div>
-
-                        <button type="submit" class="profile-save-btn">
-                            Save Changes
+                        <button type="submit" class="pf-btn">
+                            <i class="fa-solid fa-shield-halved me-1"></i> Update Password
                         </button>
-
                     </form>
-                </div>
+                </section>
 
-                <div class="student-premium-panel profile-status-panel">
-                    <div class="student-panel-header">
-                        <div>
-                            <h3>Account Status</h3>
-                            <p>Current access and transaction settings.</p>
-                        </div>
-                    </div>
-
-                    <div class="profile-status-list">
-                        <div>
-                            <span>Account Status</span>
-                            <strong class="profile-pill green"><?php echo gjc_e($accountStatus); ?></strong>
-                        </div>
-
-                        <div>
-                            <span>Transactions</span>
-                            <strong class="profile-pill green"><?php echo gjc_e($transactionsStatus); ?></strong>
-                        </div>
-
-                        <div>
-                            <span>Spending Limit</span>
-                            <strong class="profile-pill gray"><?php echo gjc_e($spendingLimit); ?></strong>
-                        </div>
-                    </div>
-
-                    <div class="profile-note">
-                        Some account settings are managed by the system administrator.
-                    </div>
-                </div>
-
-            </section>
-
-            <section class="student-premium-panel">
-
-                <div class="student-panel-header">
-                    <div>
-                        <h3>Change Password</h3>
-                        <p>Update your login password for better account security.</p>
-                    </div>
-                </div>
-
-                <form method="POST" class="profile-password-form">
-                    <input type="hidden" name="profile_action" value="password">
-
-                    <div class="profile-field">
-                        <label>Current Password</label>
-                        <input type="password" name="current_password" required>
-                    </div>
-
-                    <div class="profile-form-grid">
-                        <div class="profile-field">
-                            <label>New Password</label>
-                            <input type="password" name="new_password" minlength="6" required>
-                        </div>
-
-                        <div class="profile-field">
-                            <label>Confirm New Password</label>
-                            <input type="password" name="confirm_password" minlength="6" required>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="profile-password-btn">
-                        Update Password
-                    </button>
-
-                </form>
-
-            </section>
+            </div>
 
         </main>
 
     </div>
 
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 
     <script>
-    function toggleStudentSidebar() {
-        document.getElementById("studentSidebar").classList.toggle("collapsed");
-    }
-
-    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
-
     /* ── Profile photo upload ─────────────────────────────────── */
     const PHOTO_API = '<?= BASE_URL ?>/api/profile_photo.php';
 
@@ -396,7 +364,7 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
 
         const msg = document.getElementById('photoMsg');
         msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
-        msg.style.color = '#64748b';
+        msg.style.color = 'rgba(255,255,255,.7)';
 
         const fd = new FormData();
         fd.append('action', 'upload');
@@ -407,15 +375,12 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
             const data = await res.json();
             if (data.success) {
                 const circle = document.getElementById('avatarCircle');
-                circle.style.padding  = '0';
-                circle.style.overflow = 'hidden';
                 let img = document.getElementById('avatarImg');
                 const initial = document.getElementById('avatarInitial');
                 if (initial) initial.remove();
                 if (!img) {
                     img = document.createElement('img');
                     img.id = 'avatarImg';
-                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
                     img.alt = 'Profile Photo';
                     circle.appendChild(img);
                 }
@@ -424,7 +389,6 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
                 // Also sync topbar avatar
                 const topbar = document.getElementById('topbarAvatar');
                 if (topbar) {
-                    topbar.style.padding  = '0';
                     topbar.style.overflow = 'hidden';
                     let tImg = document.getElementById('topbarAvatarImg');
                     if (!tImg) {
@@ -432,26 +396,26 @@ $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '
                         tImg = document.createElement('img');
                         tImg.id = 'topbarAvatarImg';
                         tImg.alt = '';
-                        tImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;';
+                        tImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
                         topbar.appendChild(tImg);
                     }
                     tImg.src = data.photo_url;
                 }
 
-                msg.innerHTML = '<i class="fa-solid fa-check" style="color:var(--gjc-green-600)"></i> Photo updated.';
-                msg.style.color = 'var(--gjc-green-600)';
+                msg.innerHTML = '<i class="fa-solid fa-check"></i> Photo updated.';
+                msg.style.color = '#4ade80';
                 setTimeout(() => { msg.innerHTML = ''; }, 3000);
             } else {
                 msg.innerHTML = data.error || 'Upload failed.';
-                msg.style.color = 'var(--gjc-danger)';
+                msg.style.color = '#fca5a5';
             }
         } catch(err) {
             msg.innerHTML = 'Network error. Please try again.';
-            msg.style.color = 'var(--gjc-danger)';
+            msg.style.color = '#fca5a5';
         }
         this.value = '';
     });
-</script>
+    </script>
 
 </body>
 

@@ -139,7 +139,7 @@ function sa_meeting_label(?string $dt): string
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=4">
     <style>
@@ -155,17 +155,17 @@ function sa_meeting_label(?string $dt): string
     .today-item { display:grid; grid-template-columns:90px 1fr auto; align-items:center; gap:16px; padding:14px 20px; border-bottom:1px solid #f5f5f0; cursor:pointer; transition:.12s; }
     .today-item:last-child { border-bottom:0; }
     .today-item:hover { background:#f6f8f4; }
-    .today-time { font-weight:700; font-size:13px; color:#0e6332; }
+    .today-time { font-weight:700; font-size:13px; color:#1e5c3a; }
     .today-who { min-width:0; }
     .today-who .b { font-weight:600; font-size:14px; color:#1a1a1a; }
     .today-who .p { font-size:12px; color:#9ca3af; margin-top:2px; }
     .sa-sched-right { display:flex; align-items:center; gap:12px; }
 
     /* "New" pill — newly submitted, not yet opened; cleared on first open */
-    .sa-new-badge { display:inline-block; margin-left:8px; padding:2px 9px; border-radius:999px; background:#fff5cc; border:1px solid #e0b83a; color:#8a6212; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; vertical-align:middle; }
+    .sa-new-badge { display:inline-block; margin-left:8px; padding:2px 9px; border-radius:999px; background:#fff5cc; border:1px solid #f0a500; color:#7a5a00; font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; vertical-align:middle; }
 
     /* Inline "Open" affordance */
-    .sa-open { font-size:13px; font-weight:600; color:#147d41; cursor:pointer; white-space:nowrap; }
+    .sa-open { font-size:13px; font-weight:600; color:#27764b; cursor:pointer; white-space:nowrap; }
     .sa-open:hover { text-decoration:underline; }
 
     /* Toolbar: pill search + filter pills */
@@ -175,8 +175,8 @@ function sa_meeting_label(?string $dt): string
     .sa-search .fa-magnifying-glass { color:#9ca3af; font-size:13px; }
     .sa-filters { display:flex; gap:4px; flex-wrap:wrap; }
     .filter-btn { padding:7px 14px; border-radius:8px; border:1px solid #e0e2db; background:#fff; color:#374151; font-size:12px; font-weight:500; cursor:pointer; line-height:1.2; }
-    .filter-btn:hover { border-color:#0e6332; color:#0e6332; }
-    .filter-btn.active { background:#0e6332; color:#fff; border-color:#0e6332; }
+    .filter-btn:hover { border-color:#1e5c3a; color:#1e5c3a; }
+    .filter-btn.active { background:#1e5c3a; color:#fff; border-color:#1e5c3a; }
 
     /* Applications table */
     .sa-table { margin:0; }
@@ -195,13 +195,13 @@ function sa_meeting_label(?string $dt): string
     .sa-dt-foot .dataTables_info { color:#6b7280; padding:0; }
     .sa-dt-foot .dataTables_paginate { margin:0; }
     .sa-dt-foot .pagination { margin:0; }
-    .sa-dt-foot .page-link { color:#0e6332; font-size:12.5px; }
-    .sa-dt-foot .page-item.active .page-link { background:#0e6332; border-color:#0e6332; color:#fff; }
+    .sa-dt-foot .page-link { color:#1e5c3a; font-size:12.5px; }
+    .sa-dt-foot .page-item.active .page-link { background:#1e5c3a; border-color:#1e5c3a; color:#fff; }
     .sa-dt-foot .page-item.disabled .page-link { color:#c0c4bd; }
 
     .sa-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
     .sa-doc { position:relative; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
-    .sa-doc:hover { border-color:#147d41; box-shadow:0 2px 10px rgba(14, 99, 50,.14); }
+    .sa-doc:hover { border-color:#27764b; box-shadow:0 2px 10px rgba(14, 99, 50,.14); }
     .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:5px 8px; font-size:10.5px; font-weight:700; border-bottom:1px solid #f1f5f9; }
     .sa-doc .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .sa-doc .cap .sa-doc-pop { color:inherit; }
@@ -220,7 +220,7 @@ function sa_meeting_label(?string $dt): string
     .sa-section { border:1px solid #e5e7eb; border-radius:14px; padding:16px; }
     .sa-section h6 { font-weight:800; margin-bottom:12px; }
     .sa-done-pill { font-size:11px; font-weight:800; color:#166534; background:#dcfce9; border-radius:999px; padding:3px 10px; }
-    .filter-btn.active { background:#0e6332; color:#fff; border-color:#0e6332; }
+    .filter-btn.active { background:#1e5c3a; color:#fff; border-color:#1e5c3a; }
 
     /* Inline accordion (replaces the old workspace modal) */
     .sa-open .sa-caret { transition:transform .18s ease; margin-left:5px; font-size:10px; }

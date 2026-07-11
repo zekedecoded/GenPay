@@ -40,7 +40,8 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=3">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div class="merchant-layout">
@@ -149,9 +150,14 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                 </button>
 
                 <div class="pos-qr-box" id="posQrBox">
-                    <strong>Ready for student scan</strong>
-                    <span>Ask the student to open Scan &amp; Pay and scan this QR.</span>
-                    <img id="posQrImage" alt="Payment QR">
+                    <div class="pos-qr-status is-pending" id="posQrStatus">Waiting for payment&hellip;</div>
+                    <strong id="posQrTitle">Ready for student scan</strong>
+                    <span id="posQrHint">Ask the student to open Scan &amp; Pay and scan this QR, or type the manual code.</span>
+                    <div class="pos-qr-canvas" id="posQrCanvas"></div>
+                    <div class="pos-qr-manual">
+                        <span>Manual entry code</span>
+                        <strong id="posQrShortCode">----</strong>
+                    </div>
                     <span id="posQrSummary"></span>
                 </div>
 
@@ -259,6 +265,7 @@ function renderCart() {
         list.innerHTML = '<div id="cartEmpty" style="text-align:center;color:#9ca3af;padding:30px 0;font-size:13px">Tap products to add them here</div>';
         document.getElementById('cartTotal').innerHTML = gcPriceHtml(0, true);
         document.getElementById('chargeBtn').disabled = true;
+        stopStatusPolling();
         document.getElementById('posQrBox').style.display = 'none';
         return;
     }
@@ -283,14 +290,17 @@ function renderCart() {
     list.innerHTML = html;
     document.getElementById('cartTotal').innerHTML = gcPriceHtml(total, true);
     document.getElementById('chargeBtn').disabled = !(merchantWalletId && total > 0);
+    stopStatusPolling();
     document.getElementById('posQrBox').style.display = 'none';
 }
 
 function clearCart() {
     Object.keys(cart).forEach(k => delete cart[k]);
     document.querySelectorAll('.pos-product-card').forEach(c => c.classList.remove('in-cart'));
+    stopStatusPolling();
     document.getElementById('posQrBox').style.display = 'none';
-    document.getElementById('posQrImage').removeAttribute('src');
+    document.getElementById('posQrCanvas').innerHTML = '';
+    document.getElementById('posQrShortCode').textContent = '----';
     document.getElementById('posQrSummary').textContent = '';
     renderCart();
 }
@@ -299,6 +309,76 @@ function orderTotals() {
     const items = Object.values(cart).map(i => ({ id: i.id, qty: i.qty, price: i.price }));
     const total = items.reduce((s, i) => s + i.price * i.qty, 0);
     return { items, total };
+}
+
+const POS_CSRF = <?= json_encode(gjc_csrf_token(), JSON_UNESCAPED_SLASHES) ?>;
+let posStatusTimer = null;
+
+function setQrStatus(state, text) {
+    const pill = document.getElementById('posQrStatus');
+    pill.className = 'pos-qr-status is-' + state;
+    pill.textContent = text;
+}
+
+function stopStatusPolling() {
+    if (posStatusTimer) {
+        clearInterval(posStatusTimer);
+        posStatusTimer = null;
+    }
+}
+
+// Rendered locally (qrcodejs) so the single-use token never leaves the
+// terminal \u2014 the old external QR image API received it as a URL param.
+function renderPosQr(payload) {
+    const box = document.getElementById('posQrCanvas');
+    box.innerHTML = '';
+    new QRCode(box, {
+        text: payload,
+        width: 220,
+        height: 220,
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+function startStatusPolling(orderId) {
+    stopStatusPolling();
+    posStatusTimer = setInterval(async () => {
+        try {
+            const form = new FormData();
+            form.append('action', 'check_order_status');
+            form.append('order_id', orderId);
+
+            const response = await fetch('api/pos.php', { method: 'POST', body: form });
+            const data = await response.json();
+            if (!data.success) {
+                return;
+            }
+
+            if (data.status === 'paid') {
+                stopStatusPolling();
+                // Order done: reset the cart but keep the box visible in its
+                // paid state (renderCart hides it) so the cashier sees the ref.
+                Object.keys(cart).forEach(k => delete cart[k]);
+                document.querySelectorAll('.pos-product-card').forEach(c => c.classList.remove('in-cart'));
+                renderCart();
+                setQrStatus('paid', 'Paid \u2713 ' + (data.paid_ref || ''));
+                document.getElementById('posQrTitle').textContent = 'Payment received';
+                document.getElementById('posQrHint').textContent = 'The student\u2019s wallet has been charged. You can start the next order.';
+                document.getElementById('posQrCanvas').innerHTML = '';
+                document.getElementById('posQrShortCode').textContent = '----';
+                document.getElementById('posQrBox').style.display = 'block';
+            } else if (data.status === 'expired' || data.status === 'voided') {
+                stopStatusPolling();
+                setQrStatus('expired', 'Expired \u2014 generate a new QR');
+                document.getElementById('posQrTitle').textContent = 'This QR is no longer valid';
+                document.getElementById('posQrHint').textContent = 'Tap Generate Payment QR again for a fresh code.';
+                document.getElementById('posQrCanvas').innerHTML = '';
+                document.getElementById('posQrShortCode').textContent = '----';
+            }
+        } catch (error) {
+            // Transient network error - keep polling.
+        }
+    }, 3000);
 }
 
 async function generatePaymentQr() {
@@ -314,6 +394,7 @@ async function generatePaymentQr() {
     try {
         const form = new FormData();
         form.append('action', 'create_qr_order');
+        form.append('csrf_token', POS_CSRF);
         form.append('total', total.toFixed(2));
         form.append('items', JSON.stringify(items));
 
@@ -328,10 +409,14 @@ async function generatePaymentQr() {
             return;
         }
 
-        document.getElementById('posQrImage').src =
-            'https://api.qrserver.com/v1/create-qr-code/?size=320x320&ecc=H&margin=20&data=' + encodeURIComponent(result.qr_payload);
+        renderPosQr(result.qr_payload);
+        document.getElementById('posQrTitle').textContent = 'Ready for student scan';
+        document.getElementById('posQrHint').textContent = 'Ask the student to open Scan & Pay and scan this QR, or type the manual code.';
+        document.getElementById('posQrShortCode').textContent = result.short_code || '----';
         document.getElementById('posQrSummary').textContent = result.summary || `Total: ${gcAmount(total)} GC (\u2248 \u20b1${total.toFixed(2)})`;
+        setQrStatus('pending', 'Waiting for payment\u2026');
         document.getElementById('posQrBox').style.display = 'block';
+        startStatusPolling(result.order_id);
     } catch (error) {
         alert('Unable to create payment QR. Please try again.');
     } finally {

@@ -18,6 +18,11 @@ $ownerMerchId   = gjc_merchant_owner_id($db, $merchantUserId);
 
 try {
     if ($action === 'create_qr_order') {
+        if (!gjc_csrf_verify()) {
+            echo json_encode(['success' => false, 'message' => 'Security check failed. Refresh the page and try again.']);
+            exit;
+        }
+
         $totalAmt = round((float) ($_POST['total'] ?? 0), 2);
         $itemsJson = (string) ($_POST['items'] ?? '[]');
         $items = json_decode($itemsJson, true);
@@ -85,15 +90,16 @@ try {
             $validatedItems
         ));
         $token = bin2hex(random_bytes(16));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
-        $merchantName = gjc_current_user($db)['name'] ?? 'Merchant';
+        $shortCode = gjc_generate_order_short_code($db);
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
         $db->prepare(
             "INSERT INTO merchant_qr_orders
-                (token, merchant_user_id, merchant_wallet_id, description, items_json, amount, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+                (token, short_code, merchant_user_id, merchant_wallet_id, description, items_json, amount, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )->execute([
             $token,
+            $shortCode,
             $ownerMerchId,
             (int) $merchantWallet['id'],
             $description,
@@ -102,24 +108,58 @@ try {
             $expiresAt,
         ]);
 
+        // Token-only payload: the student side resolves merchant/item/amount
+        // server-side (student/api/validate_qr.php), so the QR itself leaks
+        // nothing and amounts can never be tampered with client-side.
         $qrPayload = [
             'type' => 'payment',
-            'source' => 'pos',
             'token' => $token,
-            'merchant' => $merchantName,
-            'merchant_wallet_id' => (int) $merchantWallet['id'],
-            'price' => number_format($serverTotal, 2, '.', ''),
-            'amount' => number_format($serverTotal, 2, '.', ''),
-            'desc' => $description,
-            'expires_at' => $expiresAt,
         ];
 
         echo json_encode([
             'success' => true,
             'order_id' => (int) $db->lastInsertId(),
             'qr_payload' => json_encode($qrPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'short_code' => substr($shortCode, 0, 4) . '-' . substr($shortCode, 4),
             'summary' => 'Total: ' . gjc_gc_amount($serverTotal) . ' GC (PHP ' . number_format($serverTotal, 2) . ') - ' . count($validatedItems) . ' item type(s)',
             'expires_at' => $expiresAt,
+        ]);
+        exit;
+    }
+
+    // ── PAYMENT STATUS (polled by the POS QR panel every few seconds) ───────────
+    if ($action === 'check_order_status') {
+        $orderId = (int) ($_POST['order_id'] ?? 0);
+        if ($orderId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid order id.']);
+            exit;
+        }
+
+        $stmt = $db->prepare(
+            "SELECT id, status, paid_ref, paid_at, expires_at
+               FROM merchant_qr_orders
+              WHERE id = ? AND merchant_user_id = ?
+              LIMIT 1"
+        );
+        $stmt->execute([$orderId, $ownerMerchId]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$order) {
+            echo json_encode(['success' => false, 'message' => 'Order not found.']);
+            exit;
+        }
+
+        if ($order['status'] === 'pending' && strtotime((string) $order['expires_at']) < time()) {
+            $db->prepare("UPDATE merchant_qr_orders SET status = 'expired' WHERE id = ? AND status = 'pending'")
+                ->execute([$orderId]);
+            $order['status'] = 'expired';
+        }
+
+        echo json_encode([
+            'success' => true,
+            'status' => (string) $order['status'],
+            'paid_ref' => $order['paid_ref'],
+            'paid_at' => $order['paid_at'],
         ]);
         exit;
     }

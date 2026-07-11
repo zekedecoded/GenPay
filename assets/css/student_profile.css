@@ -1,0 +1,334 @@
+/* Shared pf-* form primitives (alerts, fields, buttons, pills, notes) for the
+   sd-* forest-green shell — used by student/profile.php, student/topup_request.php,
+   and future form pages. Hero styles at the bottom are profile-specific. */
+
+/* ===== ALERTS ===== */
+.pf-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.pf-alert.is-error {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* ===== HERO (matches the sd-balance card treatment) ===== */
+.pf-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-radius: var(--sd-radius);
+  background:
+    radial-gradient(circle at 85% -20%, rgba(240, 165, 0, 0.18), transparent 45%),
+    radial-gradient(circle at -10% 120%, rgba(74, 222, 128, 0.14), transparent 45%),
+    linear-gradient(135deg, var(--sd-forest-900), var(--sd-forest-700));
+  color: #fff;
+  padding: 26px 28px;
+}
+
+.pf-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.pf-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pf-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--sd-forest-850);
+  border: 2px solid rgba(240, 165, 0, 0.55);
+  color: var(--sd-gold);
+  font-size: 32px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.pf-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-avatar-edit {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f6b81f, var(--sd-gold));
+  color: var(--sd-forest-950);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: 2px solid var(--sd-forest-900);
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.pf-identity {
+  min-width: 0;
+}
+
+.pf-identity > span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 4px;
+}
+
+.pf-identity h2 {
+  font-size: 23px;
+  font-weight: 800;
+  margin: 0 0 3px;
+  color: #fff;
+}
+
+.pf-identity p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.pf-photo-msg {
+  font-size: 12px;
+  margin-top: 6px;
+  min-height: 16px;
+}
+
+/* Right: wallet summary */
+.pf-wallet-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.pf-wallet-box > span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pf-wallet-box h3 {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+  color: #fff;
+}
+
+.pf-wallet-box p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+
+/* ===== TWO-COLUMN GRID ===== */
+.pf-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ===== FORMS ===== */
+.pf-form {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.pf-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sd-muted);
+  margin-bottom: 6px;
+}
+
+.pf-field input {
+  width: 100%;
+  border: 1.5px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sd-ink);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pf-field input:focus {
+  outline: none;
+  border-color: var(--sd-gold);
+  box-shadow: 0 0 0 3px var(--sd-gold-soft);
+}
+
+.pf-field input:disabled {
+  background: var(--sd-mint);
+  color: var(--sd-muted);
+  cursor: not-allowed;
+}
+
+.pf-field small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11.5px;
+  color: var(--sd-muted);
+}
+
+.pf-btn {
+  align-self: flex-start;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 28px;
+  font-weight: 800;
+  font-size: 14px;
+  background: linear-gradient(135deg, var(--sd-forest-700), var(--sd-forest-900));
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pf-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(18, 53, 36, 0.25);
+}
+
+.pf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pf-btn--block {
+  align-self: stretch;
+  width: 100%;
+  text-align: center;
+}
+
+.pf-alert.is-warn {
+  background: var(--sd-gold-soft);
+  border-color: rgba(240, 165, 0, 0.4);
+  color: #8a6100;
+}
+
+/* ===== ACCOUNT STATUS LIST ===== */
+.pf-status-list {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf-status-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  font-size: 13.5px;
+  color: var(--sd-ink);
+  font-weight: 600;
+}
+
+.pf-status-list > div + div {
+  border-top: 1px dashed var(--sd-line);
+}
+
+.pf-pill {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pf-pill.green { background: #dcfce7; color: #15803d; }
+.pf-pill.gray  { background: var(--sd-mint); color: var(--sd-muted); }
+.pf-pill.gold  { background: var(--sd-gold-soft); color: #8a6100; }
+.pf-pill.red   { background: #fee2e2; color: #b91c1c; }
+
+.pf-note {
+  margin-top: 14px;
+  background: #fdf6dd;
+  border: 1px solid #f0e2ae;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #7a6420;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 767.98px) {
+  .pf-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px 18px;
+  }
+
+  .pf-hero-left {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .pf-wallet-box {
+    align-items: center;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 14px;
+    width: 100%;
+  }
+
+  .pf-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-btn {
+    align-self: stretch;
+    text-align: center;
+  }
+}

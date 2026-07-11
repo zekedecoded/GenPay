@@ -1,0 +1,625 @@
+/* Scan & Pay page (student/scan.php) — sp-* styles layered on the sd-*
+   forest-green shell from student_dashboard.css. Desktop: two-column
+   scanner + guide per the approved design. Mobile (<768px): full-screen
+   dark scanner with the gold reticle, manual-entry pill, and bottom nav. */
+
+.sp-mobile-only {
+  display: none !important;
+}
+
+/* The scan-feedback toast only exists on the mobile full-screen scanner;
+   the desktop layout shows the same message in the Scan Result strip. */
+@media (min-width: 768px) {
+  .sp-mobile-toast {
+    display: none !important;
+  }
+}
+
+/* ===== SCANNER + GUIDE GRID ===== */
+.sp-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ===== STATUS BADGE (panel header) ===== */
+.sp-status {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--sd-gold-soft);
+  color: #8a6100;
+  white-space: nowrap;
+}
+
+.sp-status.is-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sp-status.is-blocked {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* ===== CAMERA FRAME ===== */
+.sp-frame {
+  position: relative;
+  margin-top: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(240, 165, 0, 0.35);
+  background: var(--sd-forest-950);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+.sp-frame video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sp-corner {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  border: 3px solid var(--sd-gold);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.sp-corner.tl { top: 14px; left: 14px; border-right: 0; border-bottom: 0; border-top-left-radius: 12px; }
+.sp-corner.tr { top: 14px; right: 14px; border-left: 0; border-bottom: 0; border-top-right-radius: 12px; }
+.sp-corner.bl { bottom: 14px; left: 14px; border-right: 0; border-top: 0; border-bottom-left-radius: 12px; }
+.sp-corner.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; border-bottom-right-radius: 12px; }
+
+.sp-scanline {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 20%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--sd-gold), transparent);
+  box-shadow: 0 0 12px rgba(240, 165, 0, 0.55);
+  animation: spScan 2.6s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes spScan {
+  0%   { top: 18%; }
+  50%  { top: 78%; }
+  100% { top: 18%; }
+}
+
+.sp-frame.is-paused .sp-scanline {
+  animation-play-state: paused;
+}
+
+/* Overlay message layer (opening camera / access denied / unsupported) */
+.sp-frame-msg {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 24px;
+  background: rgba(13, 36, 24, 0.9);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+}
+
+.sp-frame-msg strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.sp-frame-msg.is-error strong {
+  color: #ff9d9d;
+}
+
+.sp-frame-msg small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+
+.sp-retry-btn {
+  margin-top: 14px;
+  border: 1px solid rgba(240, 165, 0, 0.6);
+  background: var(--sd-gold);
+  color: var(--sd-forest-950);
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 9px 22px;
+  cursor: pointer;
+}
+
+.sp-retry-btn:hover {
+  filter: brightness(1.06);
+}
+
+/* ===== TOOLBAR ===== */
+.sp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sp-btn {
+  border: 1px solid var(--sd-line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--sd-ink);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.sp-btn:hover {
+  border-color: var(--sd-forest-700);
+  transform: translateY(-1px);
+}
+
+.sp-btn--gold {
+  background: var(--sd-gold-soft);
+  border-color: rgba(240, 165, 0, 0.45);
+  color: #8a6100;
+}
+
+.sp-btn--gold:hover {
+  border-color: var(--sd-gold);
+}
+
+/* ===== SCAN RESULT STRIP ===== */
+.sp-result {
+  margin-top: 14px;
+  background: var(--sd-mint);
+  border: 1px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.sp-result-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--sd-muted);
+  margin-bottom: 3px;
+}
+
+.sp-result-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--sd-ink);
+}
+
+.sp-result-text.is-error {
+  color: var(--sd-red);
+}
+
+.sp-result-text.is-ok {
+  color: var(--sd-green);
+}
+
+/* ===== PAYMENT GUIDE ===== */
+.sp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--sd-mint);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--sd-ink);
+  line-height: 1.5;
+}
+
+.sp-step strong {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f6b81f, var(--sd-gold));
+  color: var(--sd-forest-950);
+  font-size: 13px;
+}
+
+.sp-note {
+  margin-top: 12px;
+  background: #fdf6dd;
+  border: 1px solid #f0e2ae;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #7a6420;
+}
+
+/* ===== RECENT PAYMENTS (extends .sd-txn rows) ===== */
+.sp-txn-merchant {
+  font-size: 12px;
+  color: var(--sd-muted);
+}
+
+/* ===== CONFIRM MODAL ===== */
+.sp-modal .modal-content {
+  border: none;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.sp-pay-rows {
+  background: var(--sd-mint);
+  border: 1px solid var(--sd-line);
+  border-radius: 14px;
+  padding: 6px 16px;
+}
+
+.sp-pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0;
+  font-size: 13.5px;
+}
+
+.sp-pay-row + .sp-pay-row {
+  border-top: 1px dashed var(--sd-line);
+}
+
+.sp-pay-row label {
+  color: var(--sd-muted);
+  font-weight: 600;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.sp-pay-row strong {
+  color: var(--sd-ink);
+  text-align: right;
+  word-break: break-word;
+}
+
+.sp-pay-amount {
+  text-align: center;
+  margin: 14px 0 4px;
+}
+
+.sp-pay-amount span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--sd-muted);
+}
+
+.sp-pay-amount strong {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--sd-forest-900);
+}
+
+.sp-pay-error {
+  display: none;
+  margin-top: 12px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sp-success {
+  text-align: center;
+  padding: 10px 0 4px;
+}
+
+.sp-success-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 30px;
+}
+
+.sp-success h4 {
+  font-weight: 800;
+  color: var(--sd-forest-900);
+  margin-bottom: 2px;
+}
+
+.sp-success p {
+  color: var(--sd-muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.sp-success-ref {
+  display: inline-block;
+  background: var(--sd-mint);
+  border: 1px solid var(--sd-line);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: var(--sd-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sd-forest-900);
+  letter-spacing: 0.5px;
+}
+
+/* Modal action buttons */
+.sp-btn-pay {
+  border: none;
+  border-radius: 999px;
+  padding: 11px 26px;
+  font-weight: 800;
+  font-size: 14px;
+  background: linear-gradient(135deg, var(--sd-forest-700), var(--sd-forest-900));
+  color: #fff;
+  cursor: pointer;
+}
+
+.sp-btn-pay:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sp-btn-cancel {
+  border: 1px solid var(--sd-line);
+  border-radius: 999px;
+  padding: 11px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  background: #fff;
+  color: var(--sd-ink);
+  cursor: pointer;
+}
+
+/* ===== MANUAL CODE MODAL ===== */
+.sp-code-input {
+  width: 100%;
+  border: 1.5px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--sd-mono);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--sd-forest-900);
+}
+
+.sp-code-input:focus {
+  outline: none;
+  border-color: var(--sd-gold);
+  box-shadow: 0 0 0 3px var(--sd-gold-soft);
+}
+
+.sp-code-error {
+  display: none;
+  margin-top: 10px;
+  color: var(--sd-red);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ===== MOBILE (<768px): full-screen dark scanner ===== */
+@media (max-width: 767.98px) {
+  body.sp-page .sd-topbar,
+  body.sp-page .sd-balance,
+  body.sp-page .sp-guide,
+  body.sp-page .sp-recent {
+    display: none;
+  }
+
+  .sp-mobile-only {
+    display: flex !important;
+  }
+
+  .sp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Full-screen takeover applies only to pages that opt in with body.sp-page
+     (Scan & Pay, Shop Cart); pages reusing sp-frame/sp-btn without it stay
+     stacked cards. */
+  body.sp-page .sp-scanner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    z-index: 40;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: linear-gradient(180deg, var(--sd-forest-950), var(--sd-forest-900));
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  /* Desktop chrome hidden inside the full-screen scanner */
+  body.sp-page .sp-scanner .sd-panel-head,
+  body.sp-page .sp-scanner .sp-toolbar,
+  body.sp-page .sp-scanner .sp-result {
+    display: none;
+  }
+
+  .sp-mobile-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 6;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px calc(14px + 0px);
+    background: linear-gradient(180deg, rgba(13, 36, 24, 0.9), rgba(13, 36, 24, 0));
+  }
+
+  .sp-mobile-bar h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .sp-mobile-iconbtn {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  body.sp-page .sp-frame {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    aspect-ratio: auto;
+    background: var(--sd-forest-950);
+  }
+
+  /* Center the gold reticle as a floating square instead of frame corners */
+  body.sp-page .sp-corner {
+    width: 42px;
+    height: 42px;
+  }
+
+  body.sp-page .sp-corner.tl { top: calc(50% - 130px); left: calc(50% - 110px); }
+  body.sp-page .sp-corner.tr { top: calc(50% - 130px); right: calc(50% - 110px); }
+  body.sp-page .sp-corner.bl { bottom: calc(50% - 90px); left: calc(50% - 110px); }
+  body.sp-page .sp-corner.br { bottom: calc(50% - 90px); right: calc(50% - 110px); }
+
+  body.sp-page .sp-scanline {
+    left: calc(50% - 100px);
+    right: calc(50% - 100px);
+    animation-name: spScanFull;
+  }
+
+  @keyframes spScanFull {
+    0%   { top: calc(50% - 118px); }
+    50%  { top: calc(50% + 78px); }
+    100% { top: calc(50% - 118px); }
+  }
+
+  .sp-mobile-caption {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 132px;
+    z-index: 5;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2px;
+    pointer-events: none;
+  }
+
+  .sp-mobile-caption strong {
+    color: #fff;
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  .sp-mobile-caption span {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+  }
+
+  .sp-mobile-pill {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 64px;
+    z-index: 6;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 11px 22px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Result feedback floats as a toast above the pill */
+  .sp-mobile-toast {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 118px;
+    z-index: 6;
+    display: none;
+    justify-content: center;
+  }
+
+  .sp-mobile-toast.is-visible {
+    display: flex;
+  }
+
+  .sp-mobile-toast div {
+    background: rgba(13, 36, 24, 0.92);
+    border: 1px solid rgba(240, 165, 0, 0.4);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 9px 16px;
+    text-align: center;
+  }
+
+  .sp-mobile-toast.is-error div {
+    border-color: rgba(220, 38, 38, 0.55);
+    color: #ffb4b4;
+  }
+}

@@ -82,8 +82,10 @@ if (gjc_table_exists($db, 'topup_requests')) {
 usort($transactions, function (array $a, array $b): int {
     return strcmp($b['created_at'], $a['created_at']);
 });
-?>
 
+$e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$currentPage = 'history';
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -97,183 +99,118 @@ usort($transactions, function (array $a, array $b): int {
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
 </head>
 
-<body>
+<body class="sd-body">
 
-    <div class="student-layout">
+    <div class="sd-layout">
 
-        <aside class="student-sidebar" id="studentSidebar">
+        <?php require __DIR__ . '/../includes/partials/sidebar_student.php'; ?>
 
-            <div class="student-brand">
-                <div class="student-brand-logo">
-                    <img src="<?= ICONS_URL ?>/GenDeJesusFavicon.png" alt="GJC Logo">
-                </div>
+        <main class="sd-main">
 
-                <div class="student-brand-text">
-                    <h4>GenPay</h4>
-                    <span>Student Portal</span>
-                </div>
-            </div>
-
-            <nav class="student-menu">
-                <a href="<?= DASHBOARD_URL ?>">
-                    <i class="fa-solid fa-gauge-high student-nav-icon"></i>
-                    <span class="student-nav-text">Dashboard</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/cart.php">
-                    <i class="fa-solid fa-cart-shopping student-nav-icon"></i>
-                    <span class="student-nav-text">Shop Cart</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/transfer.php">
-                    <i class="fa-solid fa-money-bill-transfer student-nav-icon"></i>
-                    <span class="student-nav-text">Send GenCoin</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/withdraw.php">
-                    <i class="fa-solid fa-money-bill-wave student-nav-icon"></i>
-                    <span class="student-nav-text">Withdraw</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/topup_request.php">
-                    <i class="fa-solid fa-circle-plus student-nav-icon"></i>
-                    <span class="student-nav-text">Top-Up</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/history.php" class="active">
-                    <i class="fa-solid fa-receipt student-nav-icon"></i>
-                    <span class="student-nav-text">History</span>
-                </a>
-
-                <a href="<?= STUDENT_URL ?>/profile.php">
-                    <i class="fa-solid fa-user student-nav-icon"></i>
-                    <span class="student-nav-text">Profile</span>
-                </a>
-            </nav>
-
-            <a href="<?= BASE_URL ?>/logout.php" class="student-logout"
-               onclick="openLogoutModal(event);">
-                <i class="fa-solid fa-arrow-right-from-bracket student-logout-icon"></i>
-                <span>Logout</span>
-            </a>
-
-        </aside>
-        <?php require __DIR__ . '/../includes/partials/logout_modal.php'; ?>
-
-        <main class="student-main">
-
-            <header class="student-topbar">
-                <button class="student-menu-btn" onclick="toggleStudentSidebar()">&#9776;</button>
-
-                <div>
+            <header class="sd-topbar">
+                <div class="sd-topbar-greet">
                     <h1>Transaction History</h1>
                     <p>Track all your wallet activity and payments.</p>
                 </div>
-
-                <div class="student-user">
-                    <span><?php echo gjc_e($studentName); ?></span>
-                    <div class="student-avatar">
-                        <?php echo gjc_e(strtoupper(substr($studentName, 0, 1))); ?>
-                    </div>
+                <div class="sd-topbar-tools">
+                    <button type="button" class="sd-bell" aria-label="Notifications">
+                        <i class="fa-regular fa-bell"></i>
+                    </button>
+                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
                 </div>
             </header>
 
-            <section class="student-history-stats mb-4">
+            <div class="sd-content">
 
-                <div class="history-stat-card">
-                    <span>Current Balance</span>
-                    <h2 id="historyBalanceValue"><?php echo gjc_money($currentBalance); ?></h2>
-                </div>
+                <!-- Wallet totals -->
+                <section class="sd-stats">
+                    <div class="sd-stat">
+                        <div class="sd-stat-top">
+                            <span>Current Balance</span>
+                            <span class="sd-stat-icon is-txns"><i class="fa-solid fa-wallet"></i></span>
+                        </div>
+                        <h2 class="sd-num" id="historyBalanceValue"><?= gjc_gc_amount($currentBalance) ?> GC</h2>
+                        <p id="historyBalancePhp">&#8776; &#8369;<?= number_format($currentBalance, 2) ?> in your wallet</p>
+                    </div>
+                    <div class="sd-stat">
+                        <div class="sd-stat-top">
+                            <span>Total Received</span>
+                            <span class="sd-stat-icon is-spent"><i class="fa-solid fa-arrow-down"></i></span>
+                        </div>
+                        <h2 class="sd-num" id="historyReceivedValue"><?= gjc_gc_amount($totalReceived) ?> GC</h2>
+                        <p id="historyReceivedPhp">&#8776; &#8369;<?= number_format($totalReceived, 2) ?> in top-ups and refunds</p>
+                    </div>
+                    <div class="sd-stat sd-stat--wide">
+                        <div class="sd-stat-top">
+                            <span>Total Spent</span>
+                            <span class="sd-stat-icon is-amber"><i class="fa-solid fa-arrow-trend-up"></i></span>
+                        </div>
+                        <h2 class="sd-num" id="historySpentValue"><?= gjc_gc_amount($totalSpent) ?> GC</h2>
+                        <p id="historySpentPhp">&#8776; &#8369;<?= number_format($totalSpent, 2) ?> in payments made</p>
+                    </div>
+                </section>
 
-                <div class="history-stat-card">
-                    <span>Total Received</span>
-                    <h2 id="historyReceivedValue"><?php echo gjc_money($totalReceived); ?></h2>
-                </div>
-
-                <div class="history-stat-card">
-                    <span>Total Spent</span>
-                    <h2 id="historySpentValue"><?php echo gjc_money($totalSpent); ?></h2>
-                </div>
-
-            </section>
-
-            <section class="student-premium-panel">
-
-                <div class="student-panel-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3>All Transactions</h3>
-                        <p>Complete list of your wallet activity.</p>
+                <!-- Full ledger -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
+                        <div>
+                            <h3>All Transactions</h3>
+                            <p>Complete list of your wallet activity.</p>
+                        </div>
+                        <span class="sd-count"><?= count($transactions) ?> Records</span>
                     </div>
 
-                    <span class="student-count">
-                        <?php echo count($transactions); ?> Records
-                    </span>
-                </div>
-
-                <?php if (empty($transactions)): ?>
-                <div class="student-empty-state">
-                    <div class="student-empty-icon">
-                        <img src="<?= ICONS_URL ?>/wallet.png" alt="">
+                    <?php if (empty($transactions)): ?>
+                    <div class="sd-empty">
+                        <i class="fa-regular fa-folder-open"></i>
+                        No transactions yet. Start using your wallet to see activity here.
                     </div>
+                    <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table sd-table align-middle js-datatable" id="studentHistoryTable" data-page-length="10">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($transactions as $t): ?>
+                                <tr>
+                                    <td class="sd-cell-mono"><?= $e($t['ref']) ?></td>
+                                    <td><?= $e($t['desc']) ?></td>
+                                    <td><span class="sd-type-pill"><?= $e($t['type']) ?></span></td>
+                                    <td><?= gjc_gc_price((float) $t['amount']) ?></td>
+                                    <td><span class="sd-status-pill is-<?= $e(gjc_transaction_status_slug($t['status'])) ?>"><?= $e($t['status']) ?></span></td>
+                                    <td><?= $e($t['date']) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </section>
 
-                    <h3>No transactions yet</h3>
-                    <p>Start using your wallet to see activity here.</p>
-                </div>
-
-                <?php else: ?>
-
-                <div class="table-responsive">
-                    <table class="table student-premium-table align-middle js-datatable" id="studentHistoryTable" data-page-length="10">
-                        <thead>
-                            <tr>
-                                <th>Reference</th>
-                                <th>Description</th>
-                                <th>Type</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <?php foreach ($transactions as $t): ?>
-                            <tr>
-                                <td><?php echo gjc_e($t['ref']); ?></td>
-                                <td><?php echo gjc_e($t['desc']); ?></td>
-                                <td><span class="student-type-pill"><?php echo gjc_e($t['type']); ?></span></td>
-                                <td><?php echo gjc_money($t['amount']); ?></td>
-                                <td><span class="student-status"><?php echo gjc_e($t['status']); ?></span></td>
-                                <td><?php echo gjc_e($t['date']); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-
-                <?php endif; ?>
-
-            </section>
+            </div>
 
         </main>
 
     </div>
 
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
+
+    <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
     <script>
-    function toggleStudentSidebar() {
-        document.getElementById("studentSidebar").classList.toggle("collapsed");
-    }
-
-    document.querySelector(".student-menu a.active")?.scrollIntoView({ inline: "center", block: "nearest" });
-
     // ── Live wallet stats — balance/received/spent stay current without a
     // manual reload. The transaction table itself is left to a normal reload
     // since it's a DataTables instance; swapping its rows via raw innerHTML
@@ -281,6 +218,11 @@ usort($transactions, function (array $a, array $b): int {
     const historyBalanceValue = document.getElementById("historyBalanceValue");
     const historyReceivedValue = document.getElementById("historyReceivedValue");
     const historySpentValue = document.getElementById("historySpentValue");
+
+    const sdMoney = n => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+    // Smart GC formatting: whole numbers stay whole ("2"), otherwise up to 2 decimals.
+    const sdGc = pesos => (+((pesos / PESOS_PER_GC).toFixed(2))).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
     async function refreshHistoryStats() {
         try {
@@ -290,9 +232,12 @@ usort($transactions, function (array $a, array $b): int {
             const data = await res.json();
             if (!data.success) return;
 
-            historyBalanceValue.innerHTML = "&#8369;" + Number(data.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            historyReceivedValue.innerHTML = "&#8369;" + Number(data.total_received).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            historySpentValue.innerHTML = "&#8369;" + Number(data.total_spent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            historyBalanceValue.textContent = sdGc(data.balance) + " GC";
+            document.getElementById("historyBalancePhp").textContent = "≈ ₱" + sdMoney(data.balance) + " in your wallet";
+            historyReceivedValue.textContent = sdGc(data.total_received) + " GC";
+            document.getElementById("historyReceivedPhp").textContent = "≈ ₱" + sdMoney(data.total_received) + " in top-ups and refunds";
+            historySpentValue.textContent = sdGc(data.total_spent) + " GC";
+            document.getElementById("historySpentPhp").textContent = "≈ ₱" + sdMoney(data.total_spent) + " in payments made";
         } catch (error) {
             // Keep showing the last known values on a transient network error.
         }

@@ -15,6 +15,13 @@ require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['student']);
+
+if (!gjc_csrf_verify()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'code' => 'csrf', 'message' => 'Security check failed. Please refresh the page and try again.']);
+    exit;
+}
+
 gjc_ensure_cart_orders_schema($db);
 gjc_ensure_parent_schema($db);
 
