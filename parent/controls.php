@@ -60,40 +60,24 @@ $currentPage = '';
     <title>Wallet Controls — <?= htmlspecialchars($studentName) ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=3">
 </head>
 <body>
-<div class="student-layout">
+<div class="parent-layout">
 
     <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
 
-    <main class="student-main">
+    <main class="parent-main">
 
-        <header class="student-topbar">
-            <button class="student-menu-btn" onclick="toggleParentSidebar()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <div>
-                <h1>Wallet Controls</h1>
-                <p>Spending controls for <?= htmlspecialchars($studentName) ?>'s wallet.</p>
-            </div>
-            <div class="student-user">
-                <span><?= htmlspecialchars($currentUser['name']) ?></span>
-                <div class="student-avatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
-                    <?php if ($profilePhotoUrl): ?>
-                        <img src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
-                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
-                    <?php else: ?>
-                        <?= strtoupper(substr($currentUser['name'], 0, 1)) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Wallet Controls';
+        $topbarSubtitle = "Spending controls for " . htmlspecialchars($studentName) . "'s wallet.";
+        require __DIR__ . '/../includes/partials/topbar_parent.php';
+        ?>
 
-        <div style="padding: 24px 28px; max-width: 680px;">
+        <div class="parent-content" style="max-width: 680px;">
 
             <a href="<?= PARENT_URL ?>/dashboard.php" class="back-link">
                 <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
@@ -119,7 +103,7 @@ $currentPage = '';
 
             <!-- Freeze toggle -->
             <div class="control-card">
-                <h5><i class="fa-solid fa-lock me-2" style="color:var(--gjc-danger)"></i>Freeze Wallet</h5>
+                <h5><i class="fa-solid fa-lock me-2" style="color:var(--gp-danger)"></i>Freeze Wallet</h5>
                 <p>When frozen, the student cannot make any POS purchases or token transfers. Cash top-ups by Finance are still allowed.</p>
                 <div class="control-row">
                     <div class="toggle-wrap">
@@ -137,7 +121,7 @@ $currentPage = '';
 
             <!-- Daily spending limit -->
             <div class="control-card">
-                <h5><i class="fa-solid fa-gauge me-2" style="color:#117039"></i>Daily Spending Limit</h5>
+                <h5><i class="fa-solid fa-gauge me-2" style="color:var(--gp-green-700)"></i>Daily Spending Limit</h5>
                 <p>Limits how much the student can spend in a single day across POS purchases and token transfers. Set to ₱0.00 to disable the limit.</p>
                 <form class="limit-form" id="limitForm">
                     <div>
@@ -147,7 +131,7 @@ $currentPage = '';
                     </div>
                     <button type="submit" class="btn-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save Limit</button>
                 </form>
-                <p style="margin-top:10px;margin-bottom:0;font-size:12px;color:#94a3b8;">
+                <p style="margin-top:10px;margin-bottom:0;font-size:12px;color:var(--gp-muted);">
                     Today's spending is tracked in real time. The limit resets at midnight.
                 </p>
             </div>
@@ -155,17 +139,17 @@ $currentPage = '';
             <!-- View ledger link -->
             <div class="control-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
                 <div>
-                    <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:#117039"></i>Transaction Ledger</h5>
+                    <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:var(--gp-green-700)"></i>Transaction Ledger</h5>
                     <p style="margin:0;">View the full read-only transaction history for this wallet.</p>
                 </div>
-                <a href="<?= PARENT_URL ?>/student.php?uid=<?= $targetUid ?>" class="btn-save" style="text-decoration:none;padding:9px 18px;font-size:13px;border-radius:8px;display:inline-block;">
+                <a href="<?= PARENT_URL ?>/student.php?uid=<?= $targetUid ?>" class="btn-save" style="text-decoration:none;padding:9px 18px;font-size:13px;display:inline-block;">
                     <i class="fa-solid fa-eye me-1"></i>View Ledger
                 </a>
             </div>
 
             <!-- Unlink student -->
-            <div class="control-card" style="border-color:var(--gjc-danger-border);">
-                <h5 style="color:var(--gjc-danger);"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
+            <div class="control-card" style="border-color:#f0b8b2;">
+                <h5 style="color:var(--gp-danger);"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
                 <p>Remove your link to this student. You will no longer be able to view their wallet or apply controls. <strong>Existing controls (freeze, daily limit) will remain set</strong> on the wallet until a Finance administrator changes them.</p>
                 <button class="unlink-btn" onclick="unlinkStudent()"><i class="fa-solid fa-trash me-1"></i>Unlink <?= htmlspecialchars($student['first_name']) ?></button>
             </div>

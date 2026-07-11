@@ -42,7 +42,7 @@ $stageColors = [
     'compliance_review' => '#f59e0b',
     'exec_review'       => '#8b5cf6',
     'approved'          => '#10b981',
-    'rejected'          => 'var(--gjc-alert)',
+    'rejected'          => 'var(--gp-red)',
 ];
 ?>
 <!DOCTYPE html>
@@ -57,11 +57,11 @@ $stageColors = [
     <meta name="description" content="Multi-stage merchant vendor application pipeline for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_onboarding.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_onboarding.css?v=2">
 </head>
-<body>
+<body class="gp-theme">
 <div class="admin-layout">
     <?php require_once __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 

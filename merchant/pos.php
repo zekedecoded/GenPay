@@ -38,12 +38,13 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=4">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body>
+<body class="gp-theme">
 <div class="merchant-layout">
     <?php require __DIR__ .
         "/../includes/partials/" .
@@ -88,7 +89,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                 </div>
 
                 <?php if (empty($products)): ?>
-                <div style="text-align:center;padding:60px 20px;color:#9ca3af;">
+                <div style="text-align:center;padding:60px 20px;color:var(--gp-muted);">
                     <p style="font-size:15px">No products available in inventory.</p>
                     <p style="font-size:13px">Ask your Merchant Admin to add items first.</p>
                 </div>
@@ -132,7 +133,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                 <h4>&#128722; Current Order</h4>
 
                 <div class="cart-items-list" id="cartList">
-                    <div id="cartEmpty" style="text-align:center;color:#9ca3af;padding:30px 0;font-size:13px">
+                    <div id="cartEmpty" style="text-align:center;color:var(--gp-muted);padding:30px 0;font-size:13px">
                         Tap products to add them here
                     </div>
                 </div>
@@ -153,12 +154,23 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                     <div class="pos-qr-status is-pending" id="posQrStatus">Waiting for payment&hellip;</div>
                     <strong id="posQrTitle">Ready for student scan</strong>
                     <span id="posQrHint">Ask the student to open Scan &amp; Pay and scan this QR, or type the manual code.</span>
-                    <div class="pos-qr-canvas" id="posQrCanvas"></div>
+                    <div class="pos-qr-frame">
+                        <div class="pos-qr-canvas" id="posQrCanvas"></div>
+                        <span class="pos-qr-corner tl"></span>
+                        <span class="pos-qr-corner tr"></span>
+                        <span class="pos-qr-corner bl"></span>
+                        <span class="pos-qr-corner br"></span>
+                    </div>
                     <div class="pos-qr-manual">
                         <span>Manual entry code</span>
                         <strong id="posQrShortCode">----</strong>
                     </div>
                     <span id="posQrSummary"></span>
+                    <div class="pos-qr-guide">
+                        <div class="pos-qr-guide-step"><strong>1</strong><span>Show this QR to the student.</span></div>
+                        <div class="pos-qr-guide-step"><strong>2</strong><span>They scan it in Scan &amp; Pay, or type the manual code above.</span></div>
+                        <div class="pos-qr-guide-step"><strong>3</strong><span>Wait for the status to flip to Paid before handing over the order.</span></div>
+                    </div>
                 </div>
 
                 <button class="btn btn-outline-secondary btn-sm mt-3 w-100" onclick="clearCart()">
@@ -262,7 +274,7 @@ function renderCart() {
     const keys  = Object.keys(cart);
 
     if (keys.length === 0) {
-        list.innerHTML = '<div id="cartEmpty" style="text-align:center;color:#9ca3af;padding:30px 0;font-size:13px">Tap products to add them here</div>';
+        list.innerHTML = '<div id="cartEmpty" style="text-align:center;color:var(--gp-muted);padding:30px 0;font-size:13px">Tap products to add them here</div>';
         document.getElementById('cartTotal').innerHTML = gcPriceHtml(0, true);
         document.getElementById('chargeBtn').disabled = true;
         stopStatusPolling();
@@ -431,33 +443,33 @@ async function generatePaymentQr() {
     <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
         <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none">
 
-            <div class="modal-header border-0 pb-0" style="background:#f0fdf6;padding:20px 24px 12px">
+            <div class="modal-header border-0 pb-0" style="background:var(--gp-success-bg);padding:20px 24px 12px">
                 <div style="flex:1">
-                    <h5 class="modal-title fw-bold" style="color:var(--gjc-green-600);font-size:18px">
+                    <h5 class="modal-title fw-bold" style="color:var(--gp-green-700);font-size:18px">
                         <i class="fa-solid fa-coins me-2"></i>Send GenCoin
                     </h5>
                     <div style="display:flex;gap:6px;margin-top:10px;align-items:center" id="lw-steps">
                         <div class="lw-dot lw-dot--active" data-step="1"></div>
-                        <div style="flex:1;height:2px;background:#d1fae5;max-width:40px"></div>
+                        <div style="flex:1;height:2px;background:var(--gp-success-bg);max-width:40px"></div>
                         <div class="lw-dot" data-step="2"></div>
-                        <div style="flex:1;height:2px;background:#d1fae5;max-width:40px"></div>
+                        <div style="flex:1;height:2px;background:var(--gp-success-bg);max-width:40px"></div>
                         <div class="lw-dot" data-step="3"></div>
-                        <span id="lw-step-label" style="margin-left:8px;font-size:12px;color:#6b7280;font-weight:600">Step 1 of 3</span>
+                        <span id="lw-step-label" style="margin-left:8px;font-size:12px;color:var(--gp-muted);font-weight:600">Step 1 of 3</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" style="margin-top:-16px"></button>
             </div>
 
-            <div class="modal-body" style="background:#f0fdf6;padding:20px 24px 24px">
+            <div class="modal-body" style="background:var(--gp-success-bg);padding:20px 24px 24px">
 
                 <!-- STEP 1: Student ID -->
                 <div id="lw-step-1">
-                    <p style="font-size:13px;color:#374151;margin-bottom:14px">Enter the Student ID of the wallet to load.</p>
+                    <p style="font-size:13px;color:var(--gp-ink);margin-bottom:14px">Enter the Student ID of the wallet to load.</p>
                     <div style="position:relative">
                         <input type="text" id="lw-school-id" class="form-control" placeholder="e.g. GJC2026-0001"
                                autocomplete="off"
-                               style="border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;border:1.5px solid #d1fae5">
-                        <i class="fa-solid fa-magnifying-glass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none"></i>
+                               style="border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;border:1.5px solid #a8dcbe">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gp-muted);pointer-events:none"></i>
                     </div>
                     <div id="lw-lookup-result" style="margin-top:10px;min-height:36px"></div>
                     <div style="display:flex;justify-content:flex-end;margin-top:16px">
@@ -472,43 +484,43 @@ async function generatePaymentQr() {
                 <!-- STEP 2: Cash amount -->
                 <div id="lw-step-2" style="display:none">
                     <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 14px;margin-bottom:16px">
-                        <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d4;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gjc-green-600);font-size:15px" id="lw-avatar"></div>
+                        <div style="width:36px;height:36px;border-radius:50%;background:var(--gp-success-bg);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gp-green-700);font-size:15px" id="lw-avatar"></div>
                         <div>
-                            <div style="font-weight:700;font-size:14px;color:#111" id="lw-name-2"></div>
-                            <div style="font-size:11px;color:#6b7280" id="lw-id-2"></div>
+                            <div style="font-weight:700;font-size:14px;color:var(--gp-ink)" id="lw-name-2"></div>
+                            <div style="font-size:11px;color:var(--gp-muted)" id="lw-id-2"></div>
                         </div>
                     </div>
 
-                    <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (₱)</label>
+                    <label style="font-size:12px;font-weight:600;color:var(--gp-ink);margin-bottom:4px;display:block">Amount (₱)</label>
                     <div style="position:relative;margin-bottom:6px">
                         <input type="number" id="lw-gc" class="form-control" min="1" step="0.01"
                                placeholder="e.g. 50"
-                               style="border-radius:12px;padding:12px 60px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
-                        <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:#9ca3af">₱</span>
+                               style="border-radius:12px;padding:12px 60px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #a8dcbe">
+                        <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:var(--gp-muted)">₱</span>
                     </div>
-                    <div id="lw-gc-equiv" style="font-size:12px;color:var(--gjc-green-600);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
+                    <div id="lw-gc-equiv" style="font-size:12px;color:var(--gp-green-700);font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
 
                     <!-- Fee breakdown -->
-                    <div id="lw-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:12px 14px;font-size:12px;border:1px solid #d1fae5;margin-bottom:14px">
+                    <div id="lw-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:12px 14px;font-size:12px;border:1px solid #a8dcbe;margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                            <span style="color:#6b7280">Cash value (GC × ₱10)</span>
-                            <span id="lw-fp-cash" style="font-weight:600;color:#111"></span>
+                            <span style="color:var(--gp-muted)">Cash value (GC × ₱10)</span>
+                            <span id="lw-fp-cash" style="font-weight:600;color:var(--gp-ink)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                            <span style="color:var(--gjc-alert)">Service fee (3%)</span>
-                            <span id="lw-fp-fee" style="font-weight:600;color:var(--gjc-alert)"></span>
+                            <span style="color:var(--gp-red)">Service fee (3%)</span>
+                            <span id="lw-fp-fee" style="font-weight:600;color:var(--gp-red)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px;padding-left:12px">
-                            <span style="color:#6b7280;font-size:11px">↳ Your cut (1%)</span>
-                            <span id="lw-fp-mcut" style="font-size:11px;font-weight:600;color:#059669"></span>
+                            <span style="color:var(--gp-muted);font-size:11px">↳ Your cut (1%)</span>
+                            <span id="lw-fp-mcut" style="font-size:11px;font-weight:600;color:var(--gp-success)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px;padding-left:12px">
-                            <span style="color:#6b7280;font-size:11px">↳ System (2%)</span>
-                            <span id="lw-fp-sfee" style="font-size:11px;font-weight:600;color:#6b7280"></span>
+                            <span style="color:var(--gp-muted);font-size:11px">↳ System (2%)</span>
+                            <span id="lw-fp-sfee" style="font-size:11px;font-weight:600;color:var(--gp-muted)"></span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;border-top:1px solid #d1fae5;padding-top:8px;margin-top:4px">
-                            <span style="color:var(--gjc-green-600);font-weight:700">Credited to student</span>
-                            <span id="lw-fp-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
+                        <div style="display:flex;justify-content:space-between;border-top:1px solid #a8dcbe;padding-top:8px;margin-top:4px">
+                            <span style="color:var(--gp-green-700);font-weight:700">Credited to student</span>
+                            <span id="lw-fp-credited" style="font-weight:800;color:var(--gp-green-700)"></span>
                         </div>
                     </div>
 
@@ -526,30 +538,30 @@ async function generatePaymentQr() {
 
                 <!-- STEP 3: Confirm -->
                 <div id="lw-step-3" style="display:none">
-                    <p style="font-size:13px;color:#374151;font-weight:600;margin-bottom:14px">Review before loading.</p>
+                    <p style="font-size:13px;color:var(--gp-ink);font-weight:600;margin-bottom:14px">Review before loading.</p>
                     <div style="background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:18px;font-size:13px">
                         <div style="display:flex;flex-direction:column;gap:7px">
-                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Student</span><strong id="lw-prev-name"></strong></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Student ID</span><span id="lw-prev-id" style="font-family:monospace"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">Student</span><strong id="lw-prev-name"></strong></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">Student ID</span><span id="lw-prev-id" style="font-family:monospace"></span></div>
                         </div>
-                        <div style="border-top:1px dashed #d1fae5;margin:12px 0;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
-                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">GenCoins</span><span id="lw-prev-gc-count" style="font-weight:600;color:var(--gjc-green-600)"></span></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:#6b7280">Cash value</span><span id="lw-prev-cash" style="font-weight:600"></span></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gjc-alert)">Service fee (3%)</span><span id="lw-prev-fee" style="font-weight:600;color:var(--gjc-alert)"></span></div>
-                            <div style="display:flex;justify-content:space-between;padding-left:10px"><span style="color:#6b7280;font-size:11px">↳ Your cut (1%)</span><span id="lw-prev-mcut" style="font-size:11px;font-weight:600;color:#059669"></span></div>
-                            <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid #d1fae5;padding-top:8px;margin-top:2px">
-                                <span style="color:var(--gjc-green-600);font-weight:700">Credited to student</span>
-                                <span id="lw-prev-credited" style="font-weight:800;color:var(--gjc-green-600)"></span>
+                        <div style="border-top:1px dashed #a8dcbe;margin:12px 0;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">GenCoins</span><span id="lw-prev-gc-count" style="font-weight:600;color:var(--gp-green-700)"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">Cash value</span><span id="lw-prev-cash" style="font-weight:600"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-red)">Service fee (3%)</span><span id="lw-prev-fee" style="font-weight:600;color:var(--gp-red)"></span></div>
+                            <div style="display:flex;justify-content:space-between;padding-left:10px"><span style="color:var(--gp-muted);font-size:11px">↳ Your cut (1%)</span><span id="lw-prev-mcut" style="font-size:11px;font-weight:600;color:var(--gp-success)"></span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid #a8dcbe;padding-top:8px;margin-top:2px">
+                                <span style="color:var(--gp-green-700);font-weight:700">Credited to student</span>
+                                <span id="lw-prev-credited" style="font-weight:800;color:var(--gp-green-700)"></span>
                             </div>
                         </div>
                     </div>
 
-                    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #d1fae5">
-                        <input type="checkbox" id="lw-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:var(--gjc-success);cursor:pointer">
-                        <span style="font-size:13px;color:#374151;line-height:1.5">I confirm I have received the cash and want to load <strong id="lw-confirm-credited"></strong> to <strong id="lw-confirm-name"></strong>'s wallet.</span>
+                    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #a8dcbe">
+                        <input type="checkbox" id="lw-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:var(--gp-success);cursor:pointer">
+                        <span style="font-size:13px;color:var(--gp-ink);line-height:1.5">I confirm I have received the cash and want to load <strong id="lw-confirm-credited"></strong> to <strong id="lw-confirm-name"></strong>'s wallet.</span>
                     </label>
 
-                    <div id="lw-send-error" style="margin-top:10px;font-size:13px;color:var(--gjc-alert);min-height:18px"></div>
+                    <div id="lw-send-error" style="margin-top:10px;font-size:13px;color:var(--gp-red);min-height:18px"></div>
 
                     <div style="display:flex;justify-content:space-between;margin-top:16px">
                         <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px" onclick="lwGoStep(2)">
@@ -565,14 +577,14 @@ async function generatePaymentQr() {
 
                 <!-- SUCCESS -->
                 <div id="lw-success" style="display:none;text-align:center;padding:16px 0">
-                    <div style="width:64px;height:64px;background:var(--gjc-success-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-                        <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--gjc-success)"></i>
+                    <div style="width:64px;height:64px;background:var(--gp-success-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                        <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--gp-success)"></i>
                     </div>
-                    <div style="font-size:18px;font-weight:700;color:var(--gjc-green-600);margin-bottom:4px">Sent!</div>
-                    <div style="font-size:13px;color:#6b7280" id="lw-success-msg"></div>
-                    <div style="margin-top:10px;display:inline-block;background:#f0fdf6;border:1px solid #bbf7d4;border-radius:8px;padding:6px 14px">
-                        <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
-                        <span id="lw-success-ref" style="font-size:13px;font-weight:700;color:var(--gjc-green-600);font-family:monospace;letter-spacing:.5px"></span>
+                    <div style="font-size:18px;font-weight:700;color:var(--gp-green-700);margin-bottom:4px">Sent!</div>
+                    <div style="font-size:13px;color:var(--gp-muted)" id="lw-success-msg"></div>
+                    <div style="margin-top:10px;display:inline-block;background:var(--gp-success-bg);border:1px solid #a8dcbe;border-radius:8px;padding:6px 14px">
+                        <span style="font-size:11px;color:var(--gp-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
+                        <span id="lw-success-ref" style="font-size:13px;font-weight:700;color:var(--gp-green-700);font-family:monospace;letter-spacing:.5px"></span>
                     </div>
                     <button type="button" class="btn btn-success mt-4 d-block mx-auto" data-bs-dismiss="modal"
                             style="border-radius:12px;padding:10px 32px;font-weight:600">Done</button>
@@ -668,7 +680,7 @@ async function lwLookup() {
     const nextBtn  = document.getElementById('lw-next-1');
     if (!schoolId) return;
 
-    resultEl.innerHTML = '<span style="font-size:12px;color:#6b7280">Looking up…</span>';
+    resultEl.innerHTML = '<span style="font-size:12px;color:var(--gp-muted)">Looking up…</span>';
     nextBtn.disabled = true;
     lwWalletId = 0;
 
@@ -683,11 +695,11 @@ async function lwLookup() {
             lwStudentName = data.name;
             lwSchoolId    = schoolId;
             resultEl.innerHTML = `
-                <div style="display:flex;align-items:center;gap:8px;background:var(--gjc-info-bg);border-radius:10px;padding:8px 12px">
-                    <i class="fa-solid fa-circle-check" style="color:#0ea5e9"></i>
+                <div style="display:flex;align-items:center;gap:8px;background:var(--gp-info-bg);border-radius:10px;padding:8px 12px">
+                    <i class="fa-solid fa-circle-check" style="color:var(--gp-info)"></i>
                     <div>
-                        <strong style="font-size:13px;color:#0369a1">${data.name}</strong>
-                        <div style="font-size:11px;color:#6b7280">${schoolId}</div>
+                        <strong style="font-size:13px;color:var(--gp-info)">${data.name}</strong>
+                        <div style="font-size:11px;color:var(--gp-muted)">${schoolId}</div>
                     </div>
                 </div>`;
             nextBtn.disabled = false;
@@ -695,10 +707,10 @@ async function lwLookup() {
             document.getElementById('lw-name-2').textContent  = data.name;
             document.getElementById('lw-id-2').textContent    = schoolId;
         } else {
-            resultEl.innerHTML = `<div style="font-size:12px;color:var(--gjc-alert);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error||'Student not found.'}</div>`;
+            resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error||'Student not found.'}</div>`;
         }
     } catch {
-        resultEl.innerHTML = '<div style="font-size:12px;color:var(--gjc-alert)">Network error. Try again.</div>';
+        resultEl.innerHTML = '<div style="font-size:12px;color:var(--gp-red)">Network error. Try again.</div>';
     }
 }
 

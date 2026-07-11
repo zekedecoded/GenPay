@@ -1,16 +1,25 @@
+@import url("theme.css?v=2");
+
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Local token names kept exactly as-is (nothing that consumes them below
+   needs to change) — only their values now alias the shared gp-* palette,
+   confirmed against actual usage in this file rather than assumed:
+   green-7/green-1/green-0 are used as a soft brand accent (not a status
+   color) despite the "green" name, amber is used only as a warning hint
+   (not a CTA color), and the gray scale is left untouched since it's a
+   true neutral scale with no brand-accent finding against it. */
 :root {
-    --forest:   #0d2818;
-    --green-8:  #0e6332;
-    --green-7:  #15803d;
-    --green-5:  #22c55e;
+    --forest:   var(--gp-green-950);
+    --green-8:  var(--gp-green-850);
+    --green-7:  var(--gp-success);
+    --green-5:  var(--gp-green);
     --green-4:  #4ade80;
-    --green-1:  #dcfce9;
-    --green-0:  #f0fdf6;
-    --amber:    #d97706;
-    --red-6:    #dc2626;
-    --red-1:    #fee2e2;
+    --green-1:  var(--gp-success-bg);
+    --green-0:  var(--gp-success-bg);
+    --amber:    var(--gp-warning);
+    --red-6:    var(--gp-red);
+    --red-1:    var(--gp-danger-bg);
     --gray-9:   #111827;
     --gray-7:   #374151;
     --gray-6:   #4b5563;
@@ -23,7 +32,7 @@
 
 body {
     font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
-    background: #eef3ee;
+    background: var(--gp-cream);
     color: var(--gray-9);
     min-height: 100vh;
     margin: 0;
@@ -86,13 +95,13 @@ body {
 .form-section {
     background: #fff;
     border-radius: 14px;
-    border: 1px solid #dde8dd;
+    border: 1px solid var(--gp-line);
     margin-bottom: 12px;
     overflow: hidden;
 }
 .form-section-head {
     padding: 16px 20px 14px;
-    border-bottom: 1px solid #f0f4f0;
+    border-bottom: 1px solid var(--gp-line);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -322,7 +331,7 @@ body {
 .form-submit-wrap {
     background: #fff;
     border-radius: 14px;
-    border: 1px solid #dde8dd;
+    border: 1px solid var(--gp-line);
     padding: 20px;
     margin-top: 12px;
 }
@@ -351,7 +360,7 @@ body {
 .success-card {
     background: #fff;
     border-radius: 16px;
-    border: 1px solid #dde8dd;
+    border: 1px solid var(--gp-line);
     padding: 48px 32px;
     text-align: center;
 }
@@ -372,12 +381,12 @@ body {
 /* ── General alert ──────────────────────────────────────────── */
 .alert-error {
     background: var(--red-1);
-    border: 1px solid #fca5a5;
+    border: 1px solid #f0b8b2;
     border-radius: 10px;
     padding: 12px 16px;
     font-size: 13px;
     font-weight: 500;
-    color: #7f1d1d;
+    color: var(--gp-danger);
     display: flex;
     align-items: flex-start;
     gap: 8px;

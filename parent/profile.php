@@ -103,40 +103,24 @@ $currentPage = 'profile';
     <title>My Profile | GenPay Parent Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=3">
 </head>
 <body>
-<div class="student-layout">
+<div class="parent-layout">
 
     <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
 
-    <main class="student-main">
+    <main class="parent-main">
 
-        <header class="student-topbar">
-            <button class="student-menu-btn" onclick="toggleParentSidebar()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <div>
-                <h1>My Profile</h1>
-                <p>Manage your account details and security.</p>
-            </div>
-            <div class="student-user">
-                <span><?= htmlspecialchars($fullName) ?></span>
-                <div class="student-avatar" id="topbarAvatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
-                    <?php if ($profilePhotoUrl): ?>
-                        <img id="topbarAvatarImg" src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
-                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
-                    <?php else: ?>
-                        <span id="topbarAvatarInitial"><?= htmlspecialchars($initial) ?></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'My Profile';
+        $topbarSubtitle = 'Manage your account details and security.';
+        require __DIR__ . '/../includes/partials/topbar_parent.php';
+        ?>
 
-        <div style="padding: 24px 28px; max-width: 680px;">
+        <div class="parent-content" style="max-width: 680px;">
 
             <?php if ($notice): ?>
             <div class="flash ok"><i class="fa-solid fa-circle-check me-1"></i><?= htmlspecialchars($notice) ?></div>
@@ -175,7 +159,7 @@ $currentPage = 'profile';
 
             <!-- Edit profile -->
             <div class="pcard">
-                <h5><i class="fa-solid fa-pen me-2" style="color:#117039"></i>Edit Profile</h5>
+                <h5><i class="fa-solid fa-pen me-2" style="color:var(--gp-green-700)"></i>Edit Profile</h5>
                 <p>Update your name and contact number.</p>
                 <form method="POST">
                     <input type="hidden" name="profile_action" value="profile">
@@ -204,7 +188,7 @@ $currentPage = 'profile';
 
             <!-- Change password -->
             <div class="pcard">
-                <h5><i class="fa-solid fa-lock me-2" style="color:#117039"></i>Change Password</h5>
+                <h5><i class="fa-solid fa-lock me-2" style="color:var(--gp-green-700)"></i>Change Password</h5>
                 <p>Keep your account secure by updating your password regularly.</p>
                 <form method="POST">
                     <input type="hidden" name="profile_action" value="password">
@@ -293,11 +277,11 @@ document.getElementById('photoInput').addEventListener('change', async function(
             setTimeout(() => { msg.innerHTML = ''; }, 3000);
         } else {
             msg.innerHTML = data.error || 'Upload failed.';
-            msg.style.color = 'var(--gjc-danger-border)';
+            msg.style.color = 'var(--gp-danger)';
         }
     } catch(err) {
         msg.innerHTML = 'Network error. Please try again.';
-        msg.style.color = 'var(--gjc-danger-border)';
+        msg.style.color = 'var(--gp-danger)';
     }
     this.value = '';
 });

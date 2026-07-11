@@ -31,14 +31,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #0f172a;
+  color: var(--gp-green-950);
   font-size: 20px;
   font-weight: 900;
 }
 
 .settings-panel-header h3 i {
   font-size: 18px;
-  color: var(--gjc-green-600);
+  color: #27764b;
 }
 
 .settings-form {
@@ -101,7 +101,7 @@
 }
 
 .settings-field input:focus {
-  border-color: var(--gjc-green-800);
+  border-color: var(--gp-green-850);
   box-shadow: 0 0 0 4px rgba(14, 99, 50, 0.08);
 }
 
@@ -120,7 +120,7 @@
   min-width: 44px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: #ffffff;
   font-weight: 900;
 }
@@ -202,7 +202,7 @@
 }
 
 .gateway-card input:checked + .switch {
-  background: var(--gjc-green-800);
+  background: var(--gp-green-850);
 }
 
 .gateway-card input:checked + .switch::after {
@@ -213,8 +213,8 @@
   padding: 14px 16px;
   margin-bottom: 22px;
   border-radius: 14px;
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.4;
@@ -225,7 +225,7 @@
   padding: 0 20px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: #ffffff;
   font-size: 14px;
   font-weight: 900;
@@ -279,8 +279,8 @@
   padding: 0 12px;
   border-radius: 10px;
   align-items: center;
-  background: var(--gjc-warning-bg);
-  color: var(--gjc-warning) !important;
+  background: var(--gp-warning-bg);
+  color: var(--gp-warning) !important;
   font-size: 12px !important;
 }
 

@@ -3,52 +3,129 @@
 .pos-product-card {
     background:#fff; border-radius:12px; padding:14px 12px; cursor:pointer;
     border:2px solid transparent; transition:all .2s;
-    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    box-shadow:0 1px 2px rgba(16,32,24,.04);
 }
-.pos-product-card:hover { border-color:#10b981; box-shadow:0 4px 12px rgba(16,185,129,.15); transform:translateY(-2px); }
-.pos-product-card.in-cart { border-color:#10b981; background:#f0fdf6; }
+.pos-product-card:hover { border-color:var(--gp-gold); box-shadow:0 4px 12px rgba(240,165,0,.15); transform:translateY(-2px); }
+.pos-product-card.in-cart { border-color:var(--gp-green-700); background:var(--gp-cream); }
 .pos-product-card .product-name { font-weight:700; font-size:13px; margin:0 0 4px; }
-.pos-product-card .product-price { font-size:16px; font-weight:800; color:#0e6332; }
-.pos-product-card .product-stock { font-size:11px; color:#9ca3af; margin-top:3px; }
+.pos-product-card .product-price { font-size:16px; font-weight:800; color:var(--gp-green-850); }
+.pos-product-card .product-stock { font-size:11px; color:var(--gp-muted); margin-top:3px; }
 .pos-product-card .product-cat { font-size:10px; text-transform:uppercase; letter-spacing:.05em;
-    color:#6b7280; background:#f3f4f6; padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:6px; }
+    color:var(--gp-muted); background:var(--gp-cream); padding:2px 6px; border-radius:4px; display:inline-block; margin-bottom:6px; }
 
-.pos-cart-panel { background:#fff; border-radius:16px; padding:20px; box-shadow:0 2px 12px rgba(0,0,0,.08);
+.pos-cart-panel { background:#fff; border-radius:var(--gp-radius); padding:20px; border:1px solid var(--gp-line);
+    box-shadow:0 1px 2px rgba(16,32,24,.04);
     position:sticky; top:20px; display:flex; flex-direction:column; max-height:calc(100vh - 120px); }
-.pos-cart-panel h4 { font-weight:800; font-size:16px; margin:0 0 14px; }
+.pos-cart-panel h4 { font-weight:800; font-size:16px; margin:0 0 14px; color:var(--gp-ink); }
 .cart-items-list { flex:1; overflow-y:auto; min-height:100px; }
-.cart-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; }
-.cart-item-name { flex:1; font-size:13px; font-weight:600; }
+.cart-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #eef3ee; }
+.cart-item-name { flex:1; font-size:13px; font-weight:600; color:var(--gp-ink); }
 .cart-item-qty { display:flex; align-items:center; gap:4px; }
-.cart-item-qty button { width:24px;height:24px;border-radius:6px;border:1px solid #e5e7eb;
+.cart-item-qty button { width:24px;height:24px;border-radius:6px;border:1px solid var(--gp-line);
     background:#f9fafb;font-weight:700;font-size:13px;cursor:pointer;line-height:1; }
 .cart-item-qty span { min-width:24px;text-align:center;font-weight:700; }
-.cart-item-price { font-weight:700; font-size:13px; color:#0e6332; min-width:70px; text-align:right; }
+.cart-item-price { font-family:var(--gp-mono); font-weight:700; font-size:13px; color:var(--gp-green-850); min-width:70px; text-align:right; }
 .cart-total-row { display:flex; justify-content:space-between; align-items:center;
-    padding:12px 0 4px; font-weight:800; font-size:18px; border-top:2px solid #e5e7eb; margin-top:8px; }
+    padding:12px 0 4px; font-weight:800; font-size:18px; border-top:2px solid var(--gp-line); margin-top:8px; }
+
+/* ── Payment QR panel — echoes the student Scan & Pay confirm card:
+   cream panel, gold corner-frame around the code, numbered guide steps. ── */
 .pos-qr-box {
-    display:none; margin-top:14px; padding:14px; border-radius:14px;
-    background:#f8fafc; border:1px solid #e5e7eb; text-align:center;
+    display:none; margin-top:14px; padding:16px; border-radius:var(--gp-radius);
+    background:var(--gp-cream); border:1px solid var(--gp-gold-line); text-align:center;
 }
 .pos-qr-box img { width:220px; height:220px; max-width:100%; }
-.pos-qr-box strong { display:block; margin-bottom:4px; color:#0e6332; }
-.pos-qr-box span { display:block; color:#6b7280; font-size:12px; }
-.pos-charge-btn { margin-top:14px; width:100%; padding:14px; font-size:16px; font-weight:800;
-    background:linear-gradient(135deg,#10b981,#0e6332); color:#fff; border:none; border-radius:12px; cursor:pointer;
+.pos-qr-box strong { display:block; margin-bottom:4px; color:var(--gp-ink); }
+.pos-qr-box span { display:block; color:var(--gp-muted); font-size:12px; }
+
+.pos-qr-status { display:inline-flex; align-items:center; gap:6px; margin-bottom:8px;
+    padding:4px 14px; border-radius:999px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+.pos-qr-status.is-pending { background:var(--gp-warning-bg); color:var(--gp-warning); }
+.pos-qr-status.is-paid { background:var(--gp-success-bg); color:var(--gp-success); }
+.pos-qr-status.is-expired { background:var(--gp-danger-bg); color:var(--gp-danger); }
+
+/* Gold corner-frame around the generated code (student sp-frame's reticle,
+   adapted for a static QR instead of a live camera feed). */
+.pos-qr-frame {
+    position: relative;
+    width: fit-content;
+    margin: 12px auto 0;
+    padding: 12px;
+    background: #fff;
+    border-radius: 14px;
+}
+.pos-qr-corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--gp-gold);
+    pointer-events: none;
+}
+.pos-qr-corner.tl { top: -3px; left: -3px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
+.pos-qr-corner.tr { top: -3px; right: -3px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
+.pos-qr-corner.bl { bottom: -3px; left: -3px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
+.pos-qr-corner.br { bottom: -3px; right: -3px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
+
+.pos-qr-canvas { display:flex; justify-content:center; align-items:center; width:220px; height:220px; margin:0 auto; }
+.pos-qr-canvas:empty { display:none; }
+.pos-qr-canvas img, .pos-qr-canvas canvas { width:220px !important; height:220px !important; }
+.pos-qr-frame:has(.pos-qr-canvas:empty) { display:none; }
+
+.pos-qr-manual { margin-top:10px; }
+.pos-qr-manual span { display:block; font-size:10.5px; color:var(--gp-muted); text-transform:uppercase; letter-spacing:.6px; }
+.pos-qr-manual strong { display:block; margin-bottom:0; font-size:20px; letter-spacing:3px;
+    color:var(--gp-green-850); font-family:var(--gp-mono); }
+#posQrSummary { margin-top:8px; }
+
+/* Compact "show this to the student" guide — appears with the QR */
+.pos-qr-guide {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gp-gold-line);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+.pos-qr-guide-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--gp-ink);
+    line-height: 1.4;
+}
+.pos-qr-guide-step strong {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, var(--gp-gold-light), var(--gp-gold));
+    color: var(--gp-green-950);
+    font-size: 11px;
+    font-weight: 800;
+    margin: 0;
+}
+.pos-qr-guide-step span { color: var(--gp-ink); font-size: 12px; }
+
+.pos-charge-btn { margin-top:14px; width:100%; padding:14px; font-size:15px; font-weight:800;
+    background:var(--gp-grad-forest-btn); color:#fff; border:none; border-radius:999px; cursor:pointer;
     transition:all .2s; }
-.pos-charge-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(14, 99, 50,.25); }
+.pos-charge-btn:hover:not(:disabled) { transform:translateY(-2px); filter:brightness(1.1); }
 .pos-charge-btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 .cat-filter { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
-.cat-btn { padding:4px 12px; border-radius:20px; border:1px solid #e5e7eb; background:#fff;
-    font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
-.cat-btn.active { background:#0e6332; color:#fff; border-color:#0e6332; }
+.cat-btn { padding:4px 12px; border-radius:20px; border:1px solid var(--gp-line); background:#fff;
+    font-size:12px; font-weight:600; color:var(--gp-ink); cursor:pointer; transition:all .15s; }
+.cat-btn.active { background:var(--gp-green-850); color:#fff; border-color:var(--gp-green-850); }
 .pos-product-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
 .pos-search-input {
-    width:100%; border:1px solid #d1d5db; border-radius:10px; padding:10px 12px;
-    font-size:14px; background:#fff; outline:none; transition:border-color .15s, box-shadow .15s;
+    width:100%; border:1px solid var(--gp-line); border-radius:10px; padding:10px 12px;
+    font-size:14px; background:#fff; color:var(--gp-ink); outline:none; transition:border-color .15s, box-shadow .15s;
 }
-.pos-search-input:focus { border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.14); }
-.pos-empty-filter { display:none; text-align:center; padding:36px 20px; color:#9ca3af; font-size:13px; }
+.pos-search-input:focus { border-color:var(--gp-gold); box-shadow:0 0 0 3px var(--gp-gold-soft); }
+.pos-empty-filter { display:none; text-align:center; padding:36px 20px; color:var(--gp-muted); font-size:13px; }
 
 @media (max-width: 768px) {
     .pos-layout { grid-template-columns:1fr; }
@@ -56,22 +133,6 @@
 }
 
 /* POS modal/secondary styles (moved from a second inline <style> block) */
-.lw-dot{width:10px;height:10px;border-radius:50%;background:#d1fae5;transition:background .2s;flex-shrink:0}
-.lw-dot--active{background:var(--gjc-success)}
-.lw-dot--done{background:var(--gjc-success-border)}
-
-/* ── Scan & Pay payment QR panel (client-rendered QR + live status) ── */
-.pos-qr-canvas { display:flex; justify-content:center; width:fit-content; margin:12px auto 0;
-    padding:12px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; }
-.pos-qr-canvas:empty { display:none; }
-.pos-qr-canvas img, .pos-qr-canvas canvas { width:220px !important; height:220px !important; }
-.pos-qr-status { display:inline-flex; align-items:center; gap:6px; margin-bottom:8px;
-    padding:4px 14px; border-radius:999px; font-size:12px; font-weight:700; }
-.pos-qr-status.is-pending { background:#fef9c3; color:#a16207; }
-.pos-qr-status.is-paid { background:#dcfce7; color:#15803d; }
-.pos-qr-status.is-expired { background:#fee2e2; color:#b91c1c; }
-.pos-qr-manual { margin-top:10px; }
-.pos-qr-manual span { display:block; font-size:10.5px; color:#6b7280; text-transform:uppercase; letter-spacing:.6px; }
-.pos-qr-manual strong { display:block; margin-bottom:0; font-size:20px; letter-spacing:3px;
-    color:#0e6332; font-family:Consolas, "IBM Plex Mono", monospace; }
-#posQrSummary { margin-top:8px; }
+.lw-dot{width:10px;height:10px;border-radius:50%;background:var(--gp-success-bg);transition:background .2s;flex-shrink:0}
+.lw-dot--active{background:var(--gp-success)}
+.lw-dot--done{background:#a8dcbe}

@@ -123,9 +123,9 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=1">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=2">
 </head>
 
@@ -137,15 +137,11 @@ $csrfToken = gjc_csrf_token();
 
         <main class="sd-main">
 
-            <header class="sd-topbar">
-                <div class="sd-topbar-greet">
-                    <h1>Withdraw</h1>
-                    <p>Cash out your GenCoins at the cashier.</p>
-                </div>
-                <div class="sd-topbar-tools">
-                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
-                </div>
-            </header>
+            <?php
+            $topbarTitle = 'Withdraw';
+            $topbarSubtitle = 'Cash out your GenCoins at the cashier.';
+            require __DIR__ . '/../includes/partials/topbar_student.php';
+            ?>
 
             <div class="sd-content">
 

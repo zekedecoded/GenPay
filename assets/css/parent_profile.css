@@ -1,6 +1,9 @@
+/* Parent Profile page-specific components. Shell components
+   (.parent-card, buttons, badges) live in parent_shell.css. */
+
 .profile-hero {
-    background: linear-gradient(135deg, #0e6332, #117039);
-    border-radius: 16px;
+    background: var(--gp-grad-hero);
+    border-radius: var(--gp-radius);
     padding: 28px;
     color: #fff;
     display: flex;
@@ -23,28 +26,28 @@
     position: absolute; bottom: 0; right: 0;
     width: 28px; height: 28px;
     border-radius: 50%;
-    background: #fff; color: #117039;
+    background: #fff; color: var(--gp-green-700);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; border: 2px solid rgba(255,255,255,.6);
     font-size: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.3);
 }
 .profile-hero-info h2 { font-size: 20px; font-weight: 800; margin: 0 0 2px; }
 .profile-hero-info p  { font-size: 13px; opacity: .75; margin: 0 0 8px; }
-.hero-badge { background: rgba(255,255,255,.15); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: inline-block; }
-.pcard { background: #fff; border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 24px 26px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
-.pcard h5 { font-size: 15px; font-weight: 700; color: #0d1f15; margin: 0 0 4px; }
-.pcard p  { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+.hero-badge { background: var(--gp-gold-soft); border: 1px solid var(--gp-gold-line); color: var(--gp-gold); border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; display: inline-block; }
+.pcard { background: #fff; border-radius: var(--ad-radius); border: 1px solid var(--ad-line); padding: 20px 22px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(16, 32, 24, 0.04); }
+.pcard h5 { font-size: 15px; font-weight: 800; color: var(--gp-ink); margin: 0 0 4px; }
+.pcard p  { font-size: 13px; color: var(--gp-muted); margin: 0 0 18px; }
 .pfield { margin-bottom: 14px; }
-.pfield label { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 5px; }
-.pfield input { width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; font-size: 14px; font-weight: 500; outline: none; transition: border .15s; }
-.pfield input:focus { border-color: #117039; box-shadow: 0 0 0 3px rgba(17, 112, 57,.1); }
-.pfield input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
-.pfield small { font-size: 11px; color: #94a3b8; display: block; margin-top: 4px; }
+.pfield label { font-size: 12px; font-weight: 700; color: var(--gp-muted); text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 5px; }
+.pfield input { width: 100%; border: 1.5px solid var(--ad-line); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 500; outline: none; transition: border .15s, box-shadow .15s; }
+.pfield input:focus { border-color: #9fc9ae; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12); }
+.pfield input:disabled { background: var(--gp-cream); color: var(--gp-muted); cursor: not-allowed; }
+.pfield small { font-size: 11px; color: var(--gp-muted); display: block; margin-top: 4px; }
 .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media(max-width:540px) { .pgrid { grid-template-columns: 1fr; } }
-.btn-primary-save { background: linear-gradient(135deg,#0e6332,#117039); color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+.btn-primary-save { background: var(--gp-grad-forest-btn); color: #fff; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
 .btn-primary-save:hover { filter: brightness(1.1); }
-.flash { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
-.flash.ok  { background: #f0fdf6; color: var(--gjc-green-600); border: 1px solid var(--gjc-success-border); }
-.flash.err { background: #fef2f2; color: var(--gjc-danger); border: 1px solid var(--gjc-danger-border); }
+.flash { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+.flash.ok  { background: var(--gp-success-bg); color: var(--gp-success); border: 1px solid #a8dcbe; }
+.flash.err { background: var(--gp-danger-bg); color: var(--gp-danger); border: 1px solid #f0b8b2; }
 #photoMsg { font-size: 12px; margin-top: 6px; min-height: 16px; }

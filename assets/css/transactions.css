@@ -69,7 +69,7 @@
 .transactions-panel-header h3,
 .transactions-table-header h3 {
   margin: 0;
-  color: var(--gjc-ink);
+  color: var(--gp-ink);
   font-size: 22px;
   font-weight: 850;
 }
@@ -77,7 +77,7 @@
 .transactions-panel-header p,
 .transactions-table-header p {
   margin: 5px 0 0;
-  color: var(--gjc-muted);
+  color: var(--gp-muted);
   font-size: 14px;
 }
 
@@ -101,7 +101,7 @@
 .transactions-page .premium-field label {
   display: block;
   margin-bottom: 6px;
-  color: var(--gjc-green-800);
+  color: var(--gp-green-850);
   font-size: 12px;
   font-weight: 850;
   text-transform: uppercase;
@@ -123,7 +123,7 @@
   min-width: 120px;
   border: none;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: white;
   font-weight: 900;
 }
@@ -138,7 +138,7 @@
 
 .transactions-table thead th {
   background: transparent;
-  color: var(--gjc-green-800);
+  color: var(--gp-green-850);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -154,7 +154,7 @@
 .transactions-table tbody td {
   padding: 18px 16px;
   border: none;
-  color: var(--gjc-ink);
+  color: var(--gp-ink);
   font-size: 14px;
   font-weight: 650;
 }
@@ -169,7 +169,7 @@
 
 .reference-text,
 .transaction-amount {
-  color: var(--gjc-green-800) !important;
+  color: var(--gp-green-850) !important;
   font-weight: 900 !important;
 }
 
@@ -183,7 +183,7 @@
   width: 42px;
   height: 42px;
   border-radius: 8px;
-  background: var(--gjc-green-800);
+  background: var(--gp-green-850);
   color: white;
   display: grid;
   place-items: center;
@@ -204,19 +204,19 @@
 }
 
 .type-pill {
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
 }
 
 .transaction-status.completed {
-  background: var(--gjc-success-bg);
-  color: var(--gjc-green-800);
+  background: var(--gp-success-bg);
+  color: var(--gp-green-850);
 }
 
 .transaction-status.pending,
 .transaction-status.processing {
-  background: var(--gjc-gold-100);
-  color: var(--gjc-warning);
+  background: var(--gp-gold-soft);
+  color: var(--gp-warning);
 }
 
 .transaction-status.rejected {
@@ -228,8 +228,8 @@
   min-height: 36px;
   padding: 0 13px;
   border-radius: 13px;
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
   text-decoration: none;
   font-size: 13px;
   font-weight: 850;
@@ -238,7 +238,7 @@
 }
 
 .details-btn:hover {
-  background: var(--gjc-green-800);
+  background: var(--gp-green-850);
   color: white;
 }
 

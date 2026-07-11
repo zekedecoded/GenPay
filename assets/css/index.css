@@ -1,3 +1,5 @@
+@import url("theme.css?v=2");
+
 body {
     font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
     background-color: #f8fbf7;
@@ -20,7 +22,7 @@ body {
 }
 .navbar-brand {
     font-weight: 800;
-    color: #0e6332 !important;
+    color: var(--gp-green-700) !important;
     font-size: 24px;
     display: flex;
     align-items: center;
@@ -43,8 +45,8 @@ body {
     padding: 10px 22px;
     font-size: 15px;
     background: transparent;
-    border: 2px solid #0e6332;
-    color: #0e6332;
+    border: 2px solid var(--gp-green-700);
+    color: var(--gp-green-700);
     box-shadow: none;
 }
 .nav-actions .btn-login {
@@ -86,7 +88,7 @@ body {
 }
 .btn-primary-custom {
     background: linear-gradient(135deg, #4ade80, #22c55e);
-    color: #0e6332;
+    color: var(--gp-green-700);
     padding: 15px 40px;
     font-size: 18px;
     font-weight: 800;
@@ -100,7 +102,7 @@ body {
 .btn-primary-custom:hover {
     transform: translateY(-3px);
     box-shadow: 0 15px 25px rgba(34, 197, 94, 0.4);
-    color: #0e6332;
+    color: var(--gp-green-700);
 }
 .features {
     padding: 80px 20px;
@@ -134,7 +136,7 @@ body {
 }
 .feature-icon i {
     font-size: 34px;
-    color: var(--gjc-green-600);
+    color: #27764b;
 }
 .feature-card h3 {
     font-size: 22px;
@@ -178,7 +180,7 @@ body {
     height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, #4ade80, #22c55e);
-    color: #0e6332;
+    color: var(--gp-green-700);
     font-weight: 800;
     font-size: 18px;
     display: flex;
@@ -208,7 +210,7 @@ body {
 .requirements-box h4 {
     font-size: 20px;
     font-weight: 800;
-    color: #0e6332;
+    color: var(--gp-green-700);
     margin-bottom: 20px;
 }
 .requirements-list {

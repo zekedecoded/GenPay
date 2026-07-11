@@ -31,15 +31,15 @@ $currentPage = 'transactions';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/transactions.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/transactions.css?v=6">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 </head>
 
-<body>
+<body class="gp-theme">
 
     <div class="admin-layout">
 

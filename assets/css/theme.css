@@ -1,0 +1,426 @@
+/* ============================================================
+   GenPay shared theme — the Scan & Pay design language.
+   Extracted from student_dashboard.css / student_scan.css so every
+   role shell (student, admin, …) derives its visuals from ONE file.
+
+   Usage:
+     1. Tokens: reference var(--gp-*) from any role stylesheet.
+     2. Components: use the gp-* classes directly in markup.
+     3. Bootstrap bridge: add class "gp-theme" to <body> to opt a
+        page's Bootstrap controls (inputs, modals, tables) into the
+        theme. Pages without it are untouched.
+   ============================================================ */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&display=swap");
+
+:root {
+  /* ---- Forest greens (dark surfaces: sidebar, topbar, hero cards) */
+  --gp-green-950: #0d2418;
+  --gp-green-900: #123524;
+  --gp-green-850: #17402c;
+  --gp-green-700: #1e5c3a;
+
+  /* ---- Gold / amber (accents: active nav, key numbers, primary) */
+  --gp-gold: #f0a500;
+  --gp-gold-light: #f6b81f;
+  --gp-gold-soft: rgba(240, 165, 0, 0.14);
+  --gp-gold-line: rgba(240, 165, 0, 0.45);
+  --gp-gold-deep: #8a6a10; /* gold as TEXT on light surfaces (contrast-safe) */
+
+  /* ---- Surfaces */
+  --gp-cream: #eef4ef;      /* page background */
+  --gp-card: #ffffff;       /* content cards */
+  --gp-line: #e2eae3;       /* hairline borders */
+
+  /* ---- Text */
+  --gp-ink: #14251b;
+  --gp-muted: #6b7a70;
+
+  /* ---- Status tints (badge bg + text pairs) */
+  --gp-success: #15803d;
+  --gp-success-bg: #dcf3e4;
+  --gp-warning: #b45309;
+  --gp-warning-bg: #fdf1d8;
+  --gp-danger: #b42318;
+  --gp-danger-bg: #fde2e2;
+  --gp-info: #2563eb;
+  --gp-info-bg: #e3edfd;
+
+  /* ---- Semantic accents (amount colours, alerts) */
+  --gp-green: #16a34a;      /* positive / money-in */
+  --gp-red: #dc2626;        /* negative / destructive */
+
+  /* ---- Shape & type */
+  --gp-radius: 16px;
+  --gp-radius-sm: 14px;
+  --gp-mono: "IBM Plex Mono", Consolas, monospace;
+
+  /* ---- Composite gradients & shadows */
+  --gp-grad-hero:
+    radial-gradient(circle at 85% -20%, rgba(240, 165, 0, 0.18), transparent 45%),
+    radial-gradient(circle at -10% 120%, rgba(74, 222, 128, 0.14), transparent 45%),
+    linear-gradient(135deg, var(--gp-green-900), var(--gp-green-700));
+  --gp-grad-shell: linear-gradient(180deg, var(--gp-green-950), var(--gp-green-900));
+  --gp-grad-forest-btn: linear-gradient(135deg, var(--gp-green-700), var(--gp-green-900));
+  --gp-shadow-hero: 0 18px 40px rgba(13, 36, 24, 0.22);
+  --gp-shadow-card: 0 1px 2px rgba(16, 32, 24, 0.04);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+/* Plain white content card */
+.gp-card {
+  background: var(--gp-card);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius);
+  padding: 20px 22px;
+  box-shadow: var(--gp-shadow-card);
+}
+
+/* Card / section header: title + subtitle, optional action on the right */
+.gp-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gp-card-head h3 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--gp-ink);
+}
+
+.gp-card-head p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--gp-muted);
+}
+
+/* Dark gradient hero (balance-card look) */
+.gp-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--gp-radius);
+  background: var(--gp-grad-hero);
+  color: #fff;
+  padding: 26px 28px;
+  box-shadow: var(--gp-shadow-hero);
+}
+
+.gp-hero-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.gp-hero-value {
+  font-family: var(--gp-mono);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 8px 0 12px;
+}
+
+/* Gold chip used on dark surfaces (≈ ₱ badge, role badge) */
+.gp-hero-badge {
+  display: inline-block;
+  background: rgba(240, 165, 0, 0.16);
+  border: 1px solid var(--gp-gold-line);
+  border-radius: 999px;
+  color: var(--gp-gold);
+  font-family: var(--gp-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 4px 12px;
+}
+
+/* White stat tile (label + icon chip + number + caption) */
+.gp-stat {
+  background: var(--gp-card);
+  border: 1px solid var(--gp-line);
+  border-radius: var(--gp-radius-sm);
+  padding: 18px 20px;
+}
+
+.gp-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gp-stat-top span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gp-muted);
+}
+
+.gp-stat h2 {
+  margin: 10px 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gp-ink);
+}
+
+.gp-stat p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gp-muted);
+}
+
+.gp-stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.gp-stat-icon.is-success { background: var(--gp-success-bg); color: var(--gp-success); }
+.gp-stat-icon.is-warning { background: var(--gp-warning-bg); color: var(--gp-warning); }
+.gp-stat-icon.is-danger  { background: var(--gp-danger-bg);  color: var(--gp-danger); }
+.gp-stat-icon.is-info    { background: var(--gp-info-bg);    color: var(--gp-info); }
+.gp-stat-icon.is-gold    { background: var(--gp-gold-soft);  color: var(--gp-gold); }
+
+/* ============================================================
+   BUTTONS — pill-shaped, from the Scan & Pay confirm dialogs
+   ============================================================ */
+
+.gp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 11px 26px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.gp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gp-btn--block {
+  width: 100%;
+}
+
+/* Primary commit: dark forest gradient (the "Pay" button) */
+.gp-btn--forest {
+  background: var(--gp-grad-forest-btn);
+  color: #fff;
+}
+
+.gp-btn--forest:hover:not(:disabled) { color: #fff; filter: brightness(1.12); }
+
+/* Gold action: for dark surfaces and key CTAs */
+.gp-btn--gold {
+  background: linear-gradient(135deg, var(--gp-gold-light), var(--gp-gold));
+  color: var(--gp-green-950);
+}
+
+.gp-btn--gold:hover:not(:disabled) { color: var(--gp-green-950); filter: brightness(1.06); }
+
+/* Neutral outline: the "Cancel" button */
+.gp-btn--outline {
+  background: #fff;
+  border-color: var(--gp-line);
+  color: var(--gp-ink);
+  font-weight: 700;
+}
+
+.gp-btn--outline:hover:not(:disabled) { background: var(--gp-cream); color: var(--gp-ink); }
+
+/* Ghost: translucent, only on dark surfaces */
+.gp-btn--ghost {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-weight: 700;
+  padding: 9px 18px;
+  font-size: 13px;
+}
+
+.gp-btn--ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* ============================================================
+   BADGES / PILLS
+   ============================================================ */
+
+.gp-badge {
+  display: inline-block;
+  background: #eef1ef;
+  border-radius: 999px;
+  color: #5b6b61;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.gp-badge--success { background: var(--gp-success-bg); color: var(--gp-success); }
+.gp-badge--warning { background: var(--gp-warning-bg); color: var(--gp-warning); }
+.gp-badge--danger  { background: var(--gp-danger-bg);  color: var(--gp-danger); }
+.gp-badge--info    { background: var(--gp-info-bg);    color: var(--gp-info); }
+.gp-badge--gold    { background: var(--gp-gold-soft);  color: var(--gp-gold-deep); border: 1px solid var(--gp-gold-line); }
+
+/* Soft count chip ("12 Records") */
+.gp-count {
+  background: var(--gp-success-bg);
+  border-radius: 999px;
+  color: var(--gp-success);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 7px 16px;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.gp-empty {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--gp-muted);
+  font-size: 13.5px;
+}
+
+.gp-empty i {
+  display: block;
+  font-size: 26px;
+  margin-bottom: 10px;
+  color: #b9c9be;
+}
+
+/* ============================================================
+   TABLES — scannable, on white cards
+   ============================================================ */
+
+.gp-table {
+  width: 100%;
+  margin-bottom: 0;
+  color: var(--gp-ink);
+}
+
+.gp-table thead th {
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: none;
+  padding: 12px 14px;
+  white-space: nowrap;
+}
+
+.gp-table tbody td {
+  padding: 13px 14px;
+  font-size: 13.5px;
+  border-bottom: 1px solid #eef3ee;
+  vertical-align: middle;
+}
+
+.gp-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.gp-table tbody tr:hover td {
+  background: #f7faf7;
+}
+
+.gp-mono {
+  font-family: var(--gp-mono);
+}
+
+/* ============================================================
+   BOOTSTRAP BRIDGE — only under body.gp-theme
+   ============================================================ */
+
+body.gp-theme {
+  background: var(--gp-cream);
+  color: var(--gp-ink);
+}
+
+body.gp-theme .form-control,
+body.gp-theme .form-select {
+  border: 1px solid var(--gp-line);
+  border-radius: 12px;
+  color: var(--gp-ink);
+  font-weight: 600;
+}
+
+body.gp-theme .form-control:focus,
+body.gp-theme .form-select:focus {
+  border-color: var(--gp-gold);
+  box-shadow: 0 0 0 3px var(--gp-gold-soft);
+}
+
+body.gp-theme .form-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gp-ink);
+}
+
+body.gp-theme .modal-content {
+  border: none;
+  border-radius: var(--gp-radius);
+  box-shadow: 0 24px 60px rgba(13, 36, 24, 0.25);
+}
+
+body.gp-theme .btn-primary,
+body.gp-theme .btn-success {
+  background: var(--gp-grad-forest-btn);
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+  padding: 9px 22px;
+}
+
+body.gp-theme .btn-primary:hover,
+body.gp-theme .btn-success:hover {
+  background: var(--gp-green-900);
+}
+
+body.gp-theme .btn-outline-secondary,
+body.gp-theme .btn-secondary {
+  background: #fff;
+  border: 1px solid var(--gp-line);
+  border-radius: 999px;
+  color: var(--gp-ink);
+  font-weight: 700;
+}
+
+body.gp-theme .btn-outline-secondary:hover,
+body.gp-theme .btn-secondary:hover {
+  background: var(--gp-cream);
+  color: var(--gp-ink);
+}
+
+body.gp-theme .btn-danger {
+  background: var(--gp-red);
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+body.gp-theme .badge.bg-success   { background: var(--gp-success-bg) !important; color: var(--gp-success) !important; }
+body.gp-theme .badge.bg-warning   { background: var(--gp-warning-bg) !important; color: var(--gp-warning) !important; }
+body.gp-theme .badge.bg-danger    { background: var(--gp-danger-bg)  !important; color: var(--gp-danger)  !important; }
+body.gp-theme .badge.bg-primary,
+body.gp-theme .badge.bg-info      { background: var(--gp-info-bg)    !important; color: var(--gp-info)    !important; }
+body.gp-theme .badge.bg-secondary { background: #eef1ef              !important; color: #5b6b61           !important; }

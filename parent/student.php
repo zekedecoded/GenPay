@@ -88,11 +88,15 @@ foreach ($txns as $t) {
     }
 }
 
+// Colors match the student side's own transaction-type mapping exactly
+// (assets/css/student_dashboard.css .sd-txn--*) so a parent viewing this
+// ledger sees the same type-per-color coding their child sees on their
+// own dashboard/history pages.
 $typeLabels = [
-    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => 'var(--gjc-green-600)', 'bg' => '#f0fdf6'],
-    'payment'       => ['label' => 'POS',       'icon' => 'fa-store',          'color' => '#0369a1', 'bg' => '#f0f9ff'],
-    'p2p_transfer'  => ['label' => 'Transfer',  'icon' => 'fa-money-bill-transfer', 'color' => '#7c3aed', 'bg' => '#f5f3ff'],
-    'voucher_payment' => ['label' => 'Voucher', 'icon' => 'fa-ticket',         'color' => '#b45309', 'bg' => '#fffbeb'],
+    'cash_in'       => ['label' => 'Top-Up',   'icon' => 'fa-circle-plus',    'color' => '#15803d', 'bg' => '#dcf3e4'],
+    'payment'       => ['label' => 'POS',       'icon' => 'fa-store',          'color' => '#b45309', 'bg' => '#fdf1d8'],
+    'p2p_transfer'  => ['label' => 'Transfer',  'icon' => 'fa-money-bill-transfer', 'color' => '#2563eb', 'bg' => '#e3edfd'],
+    'voucher_payment' => ['label' => 'Voucher', 'icon' => 'fa-ticket',         'color' => '#7c3aed', 'bg' => '#efe7fb'],
 ];
 
 $currentPage = '';
@@ -106,40 +110,24 @@ $currentPage = '';
     <title><?= htmlspecialchars($studentName) ?> — Ledger | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=3">
 </head>
 <body>
-<div class="student-layout">
+<div class="parent-layout">
 
     <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
 
-    <main class="student-main">
+    <main class="parent-main">
 
-        <header class="student-topbar">
-            <button class="student-menu-btn" onclick="toggleParentSidebar()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <div>
-                <h1>Transaction Ledger</h1>
-                <p>Read-only view of <?= htmlspecialchars($studentName) ?>'s wallet activity.</p>
-            </div>
-            <div class="student-user">
-                <span><?= htmlspecialchars($currentUser['name']) ?></span>
-                <div class="student-avatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
-                    <?php if ($profilePhotoUrl): ?>
-                        <img src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
-                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
-                    <?php else: ?>
-                        <?= strtoupper(substr($currentUser['name'], 0, 1)) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Transaction Ledger';
+        $topbarSubtitle = 'Read-only view of ' . htmlspecialchars($studentName) . "'s wallet activity.";
+        require __DIR__ . '/../includes/partials/topbar_parent.php';
+        ?>
 
-        <div style="padding: 24px 28px; max-width: 900px;">
+        <div class="parent-content">
 
             <a href="<?= PARENT_URL ?>/dashboard.php" class="back-link">
                 <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
@@ -189,22 +177,22 @@ $currentPage = '';
             <div class="table-responsive">
                 <table class="txn-table">
                     <thead>
-                        <tr style="color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
-                            <th style="padding:6px 16px;">Date &amp; Time</th>
-                            <th style="padding:6px 16px;">Type</th>
-                            <th style="padding:6px 16px;">Description</th>
-                            <th style="padding:6px 16px;text-align:right;">Amount</th>
-                            <th style="padding:6px 16px;text-align:right;">Balance</th>
+                        <tr>
+                            <th>Date &amp; Time</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th class="num">Amount</th>
+                            <th class="num">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($txnsWithBalance as $t):
                             $isCredit = $t['transaction_type'] === 'cash_in';
-                            $meta = $typeLabels[$t['transaction_type']] ?? ['label' => ucfirst($t['transaction_type']), 'icon' => 'fa-circle', 'color' => '#475569', 'bg' => '#f8fafc'];
+                            $meta = $typeLabels[$t['transaction_type']] ?? ['label' => ucfirst($t['transaction_type']), 'icon' => 'fa-circle', 'color' => '#5b6b61', 'bg' => '#eef1ef'];
                         ?>
                         <tr class="txn-row">
                             <td><?= htmlspecialchars(date('M j, Y', strtotime($t['created_at']))) ?><br>
-                                <small style="color:#94a3b8;"><?= htmlspecialchars(date('g:i A', strtotime($t['created_at']))) ?></small>
+                                <small class="txn-time"><?= htmlspecialchars(date('g:i A', strtotime($t['created_at']))) ?></small>
                             </td>
                             <td>
                                 <span class="type-chip" style="background:<?= $meta['bg'] ?>;color:<?= $meta['color'] ?>">
@@ -212,13 +200,13 @@ $currentPage = '';
                                     <?= $meta['label'] ?>
                                 </span>
                             </td>
-                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569;">
+                            <td class="txn-desc">
                                 <?= htmlspecialchars($t['notes'] ?? $t['reference_no']) ?>
                             </td>
-                            <td class="txn-amount <?= $isCredit ? 'credit' : 'debit' ?>" style="text-align:right;">
+                            <td class="txn-amount <?= $isCredit ? 'credit' : 'debit' ?>">
                                 <?= $isCredit ? '+' : '−' ?>&#8369;<?= number_format((float)$t['amount'], 2) ?>
                             </td>
-                            <td style="text-align:right;font-weight:700;color:#1e293b;">
+                            <td class="txn-balance">
                                 &#8369;<?= number_format($t['running_balance'], 2) ?>
                             </td>
                         </tr>

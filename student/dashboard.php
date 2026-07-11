@@ -66,8 +66,18 @@ if ($wallet['id'] > 0 && $wallet['source'] === 'student_wallets') {
 }
 $accountStatus = $isFrozen ? 'Frozen' : 'Active';
 
-$hour = (int) date('G');
-$greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
+date_default_timezone_set('Asia/Manila');
+$hour = (int) date('H');
+// $greeting = $hour < 12 ? 'Good morning'  : ($hour > 18 ? 'Good afternoon' : 'Good evening');
+
+if ($hour < 12){
+    $greeting = "Good Morning";
+}
+elseif ($hour <= 18 ){
+    $greeting = "Good Afternoon";
+}else{
+    $greeting = "Good Evening";
+}
 
 $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $currentPage = 'dashboard';
@@ -86,7 +96,7 @@ $currentPage = 'dashboard';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
 </head>
 
 <body class="sd-body">
@@ -97,18 +107,12 @@ $currentPage = 'dashboard';
 
         <main class="sd-main">
 
-            <header class="sd-topbar">
-                <div class="sd-topbar-greet">
-                    <h1><?= $e($greeting) ?>, <?= $e($studentName) ?> &#128075;</h1>
-                    <p>Here's what's happening with your wallet today.</p>
-                </div>
-                <div class="sd-topbar-tools">
-                    <button type="button" class="sd-bell" aria-label="Notifications">
-                        <i class="fa-regular fa-bell"></i>
-                    </button>
-                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
-                </div>
-            </header>
+            <?php
+            $topbarTitle = $e($greeting) . ', ' . $e($studentName) . ' &#128075;';
+            $topbarSubtitle = "Here's what's happening with your wallet today.";
+            $topbarShowBell = true;
+            require __DIR__ . '/../includes/partials/topbar_student.php';
+            ?>
 
             <div class="sd-content">
 

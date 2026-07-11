@@ -45,7 +45,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=2">
     <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=4">
 
@@ -60,15 +60,11 @@ $csrfToken = gjc_csrf_token();
 
         <main class="sd-main">
 
-            <header class="sd-topbar">
-                <div class="sd-topbar-greet">
-                    <h1>Shop Cart</h1>
-                    <p>Scan each item&rsquo;s barcode, submit your order, then pay at the counter by scanning the shop&rsquo;s Wallet QR.</p>
-                </div>
-                <div class="sd-topbar-tools">
-                    <div class="sd-avatar"><?= $e(strtoupper(substr($studentName, 0, 1))) ?></div>
-                </div>
-            </header>
+            <?php
+            $topbarTitle = 'Shop Cart';
+            $topbarSubtitle = 'Scan each item&rsquo;s barcode, submit your order, then pay at the counter by scanning the shop&rsquo;s Wallet QR.';
+            require __DIR__ . '/../includes/partials/topbar_student.php';
+            ?>
 
             <div class="sd-content">
 

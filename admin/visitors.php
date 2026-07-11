@@ -31,8 +31,8 @@ $currentPage = 'visitors';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/visitors.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/visitors.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -40,7 +40,7 @@ $currentPage = 'visitors';
         rel="stylesheet">
 </head>
 
-<body>
+<body class="gp-theme">
 
     <div class="admin-layout">
 
@@ -188,7 +188,7 @@ $currentPage = 'visitors';
                                     <?php if($v['minutes_until_expiry'] > 0): ?>
                                     <br><small style="color:#22c55e"><?= $v['minutes_until_expiry'] ?>m left</small>
                                     <?php else: ?>
-                                    <br><small style="color:var(--gjc-alert)">Past Expiry</small>
+                                    <br><small style="color:var(--gp-red)">Past Expiry</small>
                                     <?php endif; ?>
                                 </td>
 

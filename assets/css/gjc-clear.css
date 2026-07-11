@@ -1,43 +1,49 @@
 /* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
+@import url("theme.css?v=2");
 
 :root {
-  /* Primary green scale — canonical palette across all roles */
-  --gjc-green-950: #052916;
-  --gjc-green-900: #084724;
-  --gjc-green-800: #0e6332;
-  --gjc-green-700: #117039;
-  --gjc-green-600: #147d41;
+  /* Primary green scale — aliases of the shared gp-* theme
+     (assets/css/theme.css, the Scan & Pay design language). theme.css is
+     the single source of truth for the palette; these --gjc-* names stay
+     defined (many older rules across the app still reference them) but
+     no longer carry independent values. */
+  --gjc-green-950: var(--gp-green-950);
+  --gjc-green-900: var(--gp-green-900);
+  --gjc-green-800: var(--gp-green-850);
+  --gjc-green-700: var(--gp-green-700);
+  --gjc-green-600: #27764b;
 
   /* Gold scale */
-  --gjc-gold-600: #c89b1f;
-  --gjc-gold-500: #e0b83a;
+  --gjc-gold-600: var(--gp-gold);
+  --gjc-gold-500: var(--gp-gold-light);
   --gjc-gold-100: #fff5cc;
 
   /* Text */
-  --gjc-ink: #102018;
-  --gjc-muted: #66756c;
+  --gjc-ink: var(--gp-ink);
+  --gjc-muted: var(--gp-muted);
 
   /* Surface */
-  --gjc-line: #dfe8e2;
-  --gjc-page: #f4f7f1;
-  --gjc-panel: #ffffff;
-  --gjc-soft: #eaf5ef;
+  --gjc-line: var(--gp-line);
+  --gjc-page: var(--gp-cream);
+  --gjc-panel: var(--gp-card);
+  --gjc-soft: var(--gp-cream);
   --gjc-soft-2: #f4faf7;
-  --gjc-sidebar: #0d1f15;
+  --gjc-sidebar: var(--gp-green-950);
 
-  /* Semantic / status (canonical = GenPay-native soft family) */
-  --gjc-danger: #b42318;
-  --gjc-danger-bg: #fde2e2;
+  /* Semantic / status — aliased to the same gp-* status tokens used
+     everywhere else in the app (success/warning/danger/info). */
+  --gjc-danger: var(--gp-danger);
+  --gjc-danger-bg: var(--gp-danger-bg);
   --gjc-danger-border: #f0b8b2;
-  --gjc-success: #117039;
-  --gjc-success-bg: #dff3e8;
+  --gjc-success: var(--gp-success);
+  --gjc-success-bg: var(--gp-success-bg);
   --gjc-success-border: #a8dcbe;
-  --gjc-warning: #7a5a00;
-  --gjc-warning-bg: #fff4cc;
-  --gjc-info: #1d4ed8;
-  --gjc-info-bg: #dbeafe;
-  --gjc-alert: #ef4444;
+  --gjc-warning: var(--gp-warning);
+  --gjc-warning-bg: var(--gp-warning-bg);
+  --gjc-info: var(--gp-info);
+  --gjc-info-bg: var(--gp-info-bg);
+  --gjc-alert: var(--gp-red);
   --gjc-slate: #3f4b45;
 
   /* Spacing scale (4px base) */

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // the *next* page, so a clicked tab shows nothing until that page finishes
 // loading — which reads as a lag. Paint the highlight immediately on click.
 document.addEventListener('click', function (e) {
-    var link = e.target.closest('.sidebar-menu > a, .merchant-menu > a, .student-menu > a');
+    var link = e.target.closest('.sidebar-menu > a, .merchant-menu > a, .student-menu > a, .parent-menu > a');
     if (!link || link.classList.contains('active')) return;
     // Leave new-tab / middle-click / modified clicks to the browser.
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

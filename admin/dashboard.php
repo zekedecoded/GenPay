@@ -55,7 +55,7 @@ $currentPage = "dashboard";
     <title>Admin Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,7 +66,7 @@ $currentPage = "dashboard";
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
+<body class="gp-theme">
 
     <div class="admin-layout">
 
@@ -609,7 +609,7 @@ $currentPage = "dashboard";
     </script>
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
-    <script src="<?= JS_URL ?>/dashboard_chart.js"></script>
+    <script src="<?= JS_URL ?>/dashboard_chart.js?v=2"></script>
     <?php if ($isSuperAdmin): ?>
     <script src="<?= JS_URL ?>/admin_stall_directory.js?v=2"></script>
     <?php endif; ?>

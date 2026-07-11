@@ -9,15 +9,15 @@ if (merchantCtx) {
         {
           label: "Sales",
           data: [0, 0, 0, 0, 0, 0, 0],
-          borderColor: "#0e6332",
-          backgroundColor: "rgba(14, 99, 50, 0.12)",
+          borderColor: "#1e5c3a",
+          backgroundColor: "rgba(30, 92, 58, 0.12)",
           borderWidth: 3,
           tension: 0.42,
           fill: true,
           pointRadius: 5,
           pointHoverRadius: 7,
-          pointBackgroundColor: "#d9a928",
-          pointBorderColor: "#0e6332",
+          pointBackgroundColor: "#f0a500",
+          pointBorderColor: "#1e5c3a",
           pointBorderWidth: 2,
         },
       ],
@@ -28,7 +28,7 @@ if (merchantCtx) {
       plugins: {
         legend: {
           labels: {
-            color: "#0e6332",
+            color: "#14251b",
             font: {
               weight: "700",
             },
@@ -38,19 +38,19 @@ if (merchantCtx) {
       scales: {
         x: {
           ticks: {
-            color: "#66756c",
+            color: "#6b7a70",
           },
           grid: {
-            color: "rgba(15, 23, 42, 0.06)",
+            color: "rgba(13, 36, 24, 0.06)",
           },
         },
         y: {
           beginAtZero: true,
           ticks: {
-            color: "#66756c",
+            color: "#6b7a70",
           },
           grid: {
-            color: "rgba(15, 23, 42, 0.06)",
+            color: "rgba(13, 36, 24, 0.06)",
           },
         },
       },

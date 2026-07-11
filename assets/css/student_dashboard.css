@@ -2,24 +2,27 @@
    Scoped under sd-* so gjc-clear.css's student-* !important overrides never
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
-@import url("gjc-clear.css?v=10");
+@import url("gjc-clear.css?v=11");
+@import url("theme.css?v=2");
 
+/* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
+   — theme.css is the single source of truth for the palette. */
 :root {
-  --sd-forest-950: #0d2418;
-  --sd-forest-900: #123524;
-  --sd-forest-850: #17402c;
-  --sd-forest-700: #1e5c3a;
-  --sd-mint: #eef4ef;
-  --sd-gold: #f0a500;
-  --sd-gold-soft: rgba(240, 165, 0, 0.14);
-  --sd-line: #e2eae3;
-  --sd-ink: #14251b;
-  --sd-muted: #6b7a70;
-  --sd-green: #16a34a;
-  --sd-red: #dc2626;
-  --sd-radius: 16px;
-  --sd-radius-sm: 14px;
-  --sd-mono: "IBM Plex Mono", Consolas, monospace;
+  --sd-forest-950: var(--gp-green-950);
+  --sd-forest-900: var(--gp-green-900);
+  --sd-forest-850: var(--gp-green-850);
+  --sd-forest-700: var(--gp-green-700);
+  --sd-mint: var(--gp-cream);
+  --sd-gold: var(--gp-gold);
+  --sd-gold-soft: var(--gp-gold-soft);
+  --sd-line: var(--gp-line);
+  --sd-ink: var(--gp-ink);
+  --sd-muted: var(--gp-muted);
+  --sd-green: var(--gp-green);
+  --sd-red: var(--gp-red);
+  --sd-radius: var(--gp-radius);
+  --sd-radius-sm: var(--gp-radius-sm);
+  --sd-mono: var(--gp-mono);
 }
 
 body.sd-body {

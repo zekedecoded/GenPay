@@ -36,7 +36,7 @@
   min-height: 48px;
   padding: 0 20px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: white;
   text-decoration: none;
   font-weight: 850;
@@ -83,7 +83,7 @@
 .premium-field label {
   display: block;
   margin-bottom: 6px;
-  color: var(--gjc-green-800);
+  color: var(--gp-green-850);
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 0.3px;
@@ -116,7 +116,7 @@
   padding: 0 24px;
   border: none;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: #ffffff;
   font-weight: 900;
   box-shadow: var(--gjc-shadow-lg);
@@ -124,7 +124,7 @@
 }
 
 .filter-btn:hover {
-  background: linear-gradient(135deg, var(--gjc-green-900), var(--gjc-green-800));
+  background: linear-gradient(135deg, var(--gp-green-900), var(--gp-green-850));
   color: #ffffff;
   transform: translateY(-2px);
 }
@@ -137,7 +137,7 @@
 
 .users-table thead th {
   background: transparent;
-  color: var(--gjc-green-800);
+  color: var(--gp-green-850);
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
@@ -177,7 +177,7 @@
   width: 42px;
   height: 42px;
   border-radius: 15px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: white;
   display: grid;
   place-items: center;
@@ -187,13 +187,13 @@
 
 .user-cell strong {
   display: block;
-  color: var(--gjc-ink);
+  color: var(--gp-ink);
   font-weight: 850;
 }
 
 .user-cell small {
   display: block;
-  color: var(--gjc-muted);
+  color: var(--gp-muted);
   font-size: 12px;
   margin-top: 2px;
 }
@@ -213,18 +213,18 @@
 }
 
 .role-pill {
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
 }
 
 .status-pill.active {
-  background: var(--gjc-success-bg);
-  color: var(--gjc-green-800);
+  background: var(--gp-success-bg);
+  color: var(--gp-green-850);
 }
 
 .status-pill.pending {
-  background: var(--gjc-gold-100);
-  color: var(--gjc-warning);
+  background: var(--gp-gold-soft);
+  color: var(--gp-warning);
 }
 
 .status-pill.blocked,
@@ -234,7 +234,7 @@
 }
 
 .balance-text {
-  color: var(--gjc-green-800) !important;
+  color: var(--gp-green-850) !important;
   font-weight: 900 !important;
 }
 
@@ -250,14 +250,14 @@
   padding: 0 14px;
   border: 1px solid rgba(14, 99, 50, 0.18);
   border-radius: 13px;
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
   font-size: 13px;
   font-weight: 850;
 }
 
 .premium-action-btn:hover {
-  background: var(--gjc-green-800);
+  background: var(--gp-green-850);
   color: white;
 }
 
@@ -266,8 +266,8 @@
   padding: 0 14px;
   border: none;
   border-radius: 13px;
-  background: linear-gradient(135deg, var(--gjc-gold-100), #f7d76d);
-  color: var(--gjc-green-950);
+  background: linear-gradient(135deg, var(--gp-gold-soft), #f7d76d);
+  color: var(--gp-green-950);
   font-size: 13px;
   font-weight: 850;
 }
@@ -288,8 +288,8 @@
 }
 
 .premium-dropdown .dropdown-item:hover {
-  background: var(--gjc-soft);
-  color: var(--gjc-green-800);
+  background: var(--gp-cream);
+  color: var(--gp-green-850);
 }
 
 /* ADD USER MODAL */
@@ -320,7 +320,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: var(--gjc-green-700);
+  color: var(--gp-green-700);
   font-size: 22px;
   font-weight: 900;
 }
@@ -361,7 +361,7 @@
 }
 
 .add-user-input:focus {
-  border-color: var(--gjc-green-800);
+  border-color: var(--gp-green-850);
   box-shadow: 0 0 0 4px rgba(14, 99, 50, 0.08);
 }
 
@@ -399,7 +399,7 @@
   padding: 0 22px;
   border: none;
   border-radius: 13px;
-  background: linear-gradient(135deg, var(--gjc-green-800), var(--gjc-green-700));
+  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: #ffffff;
   font-weight: 900;
   box-shadow: 0 12px 24px rgba(14, 99, 50, 0.18);

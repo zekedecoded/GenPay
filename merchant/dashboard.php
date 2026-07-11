@@ -84,7 +84,7 @@ $currentPage = 'dashboard';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -94,7 +94,7 @@ $currentPage = 'dashboard';
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body>
+<body class="gp-theme">
 
     <div class="merchant-layout">
 
@@ -538,7 +538,7 @@ $currentPage = 'dashboard';
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
-    <script src="<?= JS_URL ?>/merchant_chart.js?v=10"></script>
+    <script src="<?= JS_URL ?>/merchant_chart.js?v=11"></script>
 
     <script>
     function toggleMerchantSidebar() {

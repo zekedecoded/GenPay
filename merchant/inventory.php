@@ -37,10 +37,11 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=29">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="gp-theme">
 <div class="merchant-layout">
     <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
@@ -138,9 +139,9 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                 <?php if ($item['is_available'] && !$item['is_restricted']): ?>
                                     <span class="merchant-type-pill">Available</span>
                                 <?php elseif ($item['is_restricted']): ?>
-                                    <span style="color:var(--gjc-alert);font-weight:700;font-size:12px">Blocked</span>
+                                    <span style="color:var(--gp-red);font-weight:700;font-size:12px">Blocked</span>
                                 <?php else: ?>
-                                    <span style="color:#9ca3af;font-size:12px">Unavailable</span>
+                                    <span style="color:var(--gp-muted);font-size:12px">Unavailable</span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-nowrap">
@@ -153,7 +154,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                         Stock
                                     </button>
                                     <?php endif; ?>
-                                    <button class="btn btn-sm btn-outline-success"
+                                    <button class="btn btn-sm btn-outline-success rounded-0"
                                         <?= $item['sku'] ? '' : 'disabled title="Add a SKU first — the QR encodes the SKU."' ?>
                                         onclick='openItemQr(<?= json_encode([
                                             "sku" => $item["sku"],
@@ -164,11 +165,11 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                                         <i class="fa-solid fa-qrcode"></i> QR
                                     </button>
                                     <?php if ($isMerchAdmin): ?>
-                                    <button class="btn btn-sm btn-outline-secondary"
+                                    <button class="btn btn-sm btn-outline-primary rounded-0"
                                         onclick="editProduct(<?= htmlspecialchars(json_encode($item), ENT_QUOTES) ?>)">
                                         Edit
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger"
+                                    <button class="btn btn-sm btn-outline-danger rounded-0"
                                         onclick='askDeleteProduct(<?= (int) $item['id'] ?>, <?= htmlspecialchars(json_encode($item['product_name']), ENT_QUOTES) ?>)'
                                         title="Delete product">
                                         <i class="fa-solid fa-trash-can"></i>
@@ -362,7 +363,7 @@ function openItemQr(item) {
     document.getElementById('itemQrImage').src = qrUrl;
     document.getElementById('itemQrName').textContent = item.name;
     document.getElementById('itemQrPrice').innerHTML =
-        `<strong style="color:#0e6332">${currentItemQrGc} GC</strong><br><small>≈ ₱${item.price}</small>`;
+        `<strong style="color:var(--gp-green-850)">${currentItemQrGc} GC</strong><br><small>≈ ₱${item.price}</small>`;
     new bootstrap.Modal(document.getElementById('itemQrModal')).show();
 }
 

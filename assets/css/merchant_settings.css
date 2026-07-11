@@ -6,7 +6,7 @@
 .profile-logo-fallback {
     width: 96px; height: 96px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #0e6332, #15803d);
+    background: linear-gradient(135deg, #1e5c3a, #27764b);
     color: #fff; font-weight: 800; font-size: 32px;
 }
 .wallet-qr-print-card {
@@ -19,7 +19,7 @@
     background: #fff; padding: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
 .wallet-qr-caption { display: flex; flex-direction: column; gap: 4px; }
-.wallet-qr-caption strong { font-size: 18px; color: #0e6332; }
+.wallet-qr-caption strong { font-size: 18px; color: #1e5c3a; }
 .wallet-qr-caption span { font-size: 13px; color: #6b7280; }
 
 @media print {

@@ -55,40 +55,24 @@ $currentPage = 'dashboard';
     <title>Parent Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student.css?v=58">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=3">
 </head>
 <body>
-<div class="student-layout">
+<div class="parent-layout">
 
     <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
 
-    <main class="student-main">
+    <main class="parent-main">
 
-        <header class="student-topbar">
-            <button class="student-menu-btn" onclick="toggleParentSidebar()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            <div>
-                <h1>Parent Dashboard</h1>
-                <p>Monitor your child's GenPay wallet and set spending controls.</p>
-            </div>
-            <div class="student-user">
-                <span><?= htmlspecialchars($currentUser['name']) ?></span>
-                <div class="student-avatar" style="<?= $profilePhotoUrl ? 'padding:0;overflow:hidden;' : '' ?>">
-                    <?php if ($profilePhotoUrl): ?>
-                        <img src="<?= htmlspecialchars($profilePhotoUrl) ?>" alt=""
-                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">
-                    <?php else: ?>
-                        <?= strtoupper(substr($currentUser['name'], 0, 1)) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Parent Dashboard';
+        $topbarSubtitle = "Monitor your child's GenPay wallet and set spending controls.";
+        require __DIR__ . '/../includes/partials/topbar_parent.php';
+        ?>
 
-        <div style="padding: 24px 28px; max-width: 900px;">
+        <div class="parent-content">
 
             <?php if ($linkSuccess): ?>
             <div class="flash-msg success"><i class="fa-solid fa-circle-check me-1"></i> <?= htmlspecialchars($linkSuccess) ?></div>
@@ -98,10 +82,10 @@ $currentPage = 'dashboard';
 
             <!-- Link a Student -->
             <div class="parent-card">
-                <div class="parent-card-header">
-                    <h5><i class="fa-solid fa-link me-2" style="color:#117039"></i>Link a Student</h5>
+                <div class="parent-card-head">
+                    <h5><i class="fa-solid fa-link me-2" style="color:var(--gp-green-700)"></i>Link a Student</h5>
                 </div>
-                <p style="font-size:13px;color:#64748b;margin-bottom:12px;">Enter your child's school-issued student ID (e.g. <code>GJC2026-0001</code>) to link their wallet to your account.</p>
+                <p style="font-size:13px;color:var(--gp-muted);margin-bottom:12px;">Enter your child's school-issued student ID (e.g. <code>GJC2026-0001</code>) to link their wallet to your account.</p>
                 <form class="link-form" id="linkForm">
                     <input type="text" id="linkSchoolId" placeholder="Student School ID" maxlength="30" autocomplete="off">
                     <button type="submit" class="btn-link"><i class="fa-solid fa-link me-1"></i>Link Student</button>
@@ -111,8 +95,8 @@ $currentPage = 'dashboard';
 
             <!-- Linked Students -->
             <div class="parent-card">
-                <div class="parent-card-header">
-                    <h5><i class="fa-solid fa-user-graduate me-2" style="color:#117039"></i>Linked Students</h5>
+                <div class="parent-card-head">
+                    <h5><i class="fa-solid fa-user-graduate me-2" style="color:var(--gp-green-700)"></i>Linked Students</h5>
                 </div>
                 <?php if (empty($linkedStudents)): ?>
                 <div class="empty-state">
@@ -145,39 +129,39 @@ $currentPage = 'dashboard';
 
             <!-- Low Balance Alerts (AJAX) -->
             <div class="parent-card">
-                <div class="parent-card-header">
+                <div class="parent-card-head">
                     <h5>
-                        <i class="fa-solid fa-bell me-2" style="color:#c2410c"></i>Low Balance Alerts
+                        <i class="fa-solid fa-bell me-2" style="color:var(--gp-warning)"></i>Low Balance Alerts
                         <span class="alert-badge" id="alertBadge" style="display:none;"></span>
                     </h5>
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <button id="markReadBtn" onclick="markAlertsRead()" style="display:none;background:none;border:none;font-size:12px;color:#117039;font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
-                        <button onclick="fetchAlerts()" title="Refresh alerts" style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px 4px;font-size:13px;line-height:1;" id="refreshBtn">
+                        <button id="markReadBtn" onclick="markAlertsRead()" style="display:none;background:none;border:none;font-size:12px;color:var(--gp-green-700);font-weight:600;cursor:pointer;padding:0;">Mark all read</button>
+                        <button onclick="fetchAlerts()" title="Refresh alerts" style="background:none;border:none;color:var(--gp-muted);cursor:pointer;padding:2px 4px;font-size:13px;line-height:1;" id="refreshBtn">
                             <i class="fa-solid fa-rotate-right" id="refreshIcon"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Threshold setting -->
-                <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
-                    <p style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;">Alert Settings</p>
+                <div class="alert-settings-box">
+                    <p>Alert Settings</p>
                     <form class="threshold-form" id="thresholdForm">
                         <div>
                             <label>Alert me when balance drops below (₱)</label>
                             <input type="number" id="thresholdInput" min="0" step="1" value="<?= number_format($alertThreshold, 2, '.', '') ?>" placeholder="50.00">
                         </div>
                         <button type="submit" class="btn-save">Save</button>
-                        <span id="thresholdMsg" style="font-size:12px;color:var(--gjc-green-600);align-self:center;"></span>
+                        <span id="thresholdMsg" style="font-size:12px;color:var(--gp-success);align-self:center;"></span>
                     </form>
                 </div>
 
                 <div id="alertsContainer">
                     <div style="text-align:center;padding:20px 0;">
-                        <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:#cbd5e1;"></i>
-                        <p style="margin-top:8px;color:#94a3b8;font-size:13px;">Loading alerts...</p>
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:22px;color:var(--gp-line);"></i>
+                        <p style="margin-top:8px;color:var(--gp-muted);font-size:13px;">Loading alerts...</p>
                     </div>
                 </div>
-                <p id="alertsTimestamp" style="font-size:11px;color:#cbd5e1;text-align:right;margin:8px 0 0;"></p>
+                <p id="alertsTimestamp" style="font-size:11px;color:var(--gp-muted);text-align:right;margin:8px 0 0;"></p>
             </div>
 
         </div>
@@ -200,7 +184,7 @@ document.getElementById('linkForm').addEventListener('submit', async function(e)
     e.preventDefault();
     const sid = document.getElementById('linkSchoolId').value.trim();
     const msg = document.getElementById('linkMsg');
-    if (!sid) { msg.innerHTML = '<span style="color:var(--gjc-danger)">Please enter a school ID.</span>'; return; }
+    if (!sid) { msg.innerHTML = '<span style="color:var(--gp-danger)">Please enter a school ID.</span>'; return; }
     msg.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Linking...';
     try {
         const res = await fetch(LINK_API, {
@@ -210,13 +194,13 @@ document.getElementById('linkForm').addEventListener('submit', async function(e)
         });
         const data = await res.json();
         if (data.success) {
-            msg.innerHTML = '<span style="color:var(--gjc-green-600)"><i class="fa-solid fa-check me-1"></i>' + data.message + '</span>';
+            msg.innerHTML = '<span style="color:var(--gp-success)"><i class="fa-solid fa-check me-1"></i>' + data.message + '</span>';
             setTimeout(() => location.reload(), 1000);
         } else {
-            msg.innerHTML = '<span style="color:var(--gjc-danger)">' + (data.error || 'Failed.') + '</span>';
+            msg.innerHTML = '<span style="color:var(--gp-danger)">' + (data.error || 'Failed.') + '</span>';
         }
     } catch(err) {
-        msg.innerHTML = '<span style="color:var(--gjc-danger)">Request failed.</span>';
+        msg.innerHTML = '<span style="color:var(--gp-danger)">Request failed.</span>';
     }
 });
 
@@ -233,7 +217,7 @@ document.getElementById('thresholdForm').addEventListener('submit', async functi
         });
         const data = await res.json();
         msg.textContent  = data.success ? 'Saved!' : (data.error || 'Error');
-        msg.style.color  = data.success ? 'var(--gjc-green-600)' : 'var(--gjc-danger)';
+        msg.style.color  = data.success ? 'var(--gp-success)' : 'var(--gp-danger)';
         setTimeout(() => { msg.textContent = ''; }, 2500);
     } catch(err) { msg.textContent = 'Error'; }
 });
@@ -252,7 +236,7 @@ function showToast(msg) {
     if (!t) {
         t = document.createElement('div');
         t.id = 'alertToast';
-        t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;max-width:300px;';
+        t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--gp-green-950);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;max-width:300px;';
         document.body.appendChild(t);
     }
     t.textContent = msg;
@@ -288,7 +272,7 @@ function renderAlerts(data) {
 
     if (!data.alerts || data.alerts.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center;padding:24px 16px;color:#94a3b8;">
+            <div style="text-align:center;padding:24px 16px;color:var(--gp-muted);">
                 <i class="fa-solid fa-bell-slash" style="font-size:28px;margin-bottom:8px;display:block;"></i>
                 <span style="font-size:13px;">No alerts yet. Alerts appear when a linked student's balance drops below your threshold.</span>
             </div>`;
@@ -299,14 +283,14 @@ function renderAlerts(data) {
         const name   = ((a.first_name || '') + ' ' + (a.last_name || '')).trim();
         const unread = parseInt(a.is_read) === 0;
         return `
-        <div class="alert-row" style="${unread ? 'background:#fffbeb;border-radius:8px;padding:10px 12px;margin-bottom:4px;' : ''}">
+        <div class="alert-row" style="${unread ? 'background:var(--gp-warning-bg);border-radius:8px;padding:10px 12px;margin-bottom:4px;' : ''}">
             <div class="alert-icon${unread ? '' : ' read'}">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="alert-text">
                 <strong>${name}'s balance dropped to &#8369;${parseFloat(a.balance_at_alert).toFixed(2)}</strong>
                 <small>${fmtDate(a.created_at)} &bull; Threshold: &#8369;${parseFloat(a.threshold).toFixed(2)}
-                    ${unread ? '<span style="margin-left:6px;background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;">NEW</span>' : ''}
+                    ${unread ? '<span style="margin-left:6px;background:var(--gp-warning-bg);color:var(--gp-warning);padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700;">NEW</span>' : ''}
                 </small>
             </div>
         </div>`;
@@ -330,13 +314,13 @@ async function fetchAlerts() {
             renderAlerts(data);
         } else {
             document.getElementById('alertsContainer').innerHTML =
-                `<div style="text-align:center;padding:20px;color:var(--gjc-danger);font-size:13px;"><i class="fa-solid fa-circle-xmark me-1"></i>${data.error || 'Could not load alerts.'}</div>`;
+                `<div style="text-align:center;padding:20px;color:var(--gp-danger);font-size:13px;"><i class="fa-solid fa-circle-xmark me-1"></i>${data.error || 'Could not load alerts.'}</div>`;
         }
     } catch(err) {
         const container = document.getElementById('alertsContainer');
         if (container.querySelector('.fa-spinner')) {
             container.innerHTML =
-                `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;"><i class="fa-solid fa-wifi me-1"></i>Could not reach alerts service. Will retry shortly.</div>`;
+                `<div style="text-align:center;padding:20px;color:var(--gp-muted);font-size:13px;"><i class="fa-solid fa-wifi me-1"></i>Could not reach alerts service. Will retry shortly.</div>`;
         }
     } finally {
         setRefreshSpinning(false);

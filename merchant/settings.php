@@ -56,11 +56,12 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ec
     <title>Business Profile | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=28">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=3">
 </head>
-<body>
+<body class="gp-theme">
 <div class="merchant-layout">
     <?php require __DIR__ . '/../includes/partials/sidebar_merchant_admin.php'; ?>
 

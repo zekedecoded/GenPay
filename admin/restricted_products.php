@@ -36,10 +36,10 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="gp-theme">
 <div class="admin-layout">
     <?php require_once __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
@@ -57,7 +57,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
         </header>
 
         <!-- Info Banner -->
-        <div style="background:linear-gradient(135deg,#0e6332 0%,#0d7a3e 100%);color:#fff;padding:20px 28px;border-radius:16px;margin-bottom:24px;">
+        <div style="background:linear-gradient(135deg,var(--gp-green-850) 0%,#0d7a3e 100%);color:#fff;padding:20px 28px;border-radius:16px;margin-bottom:24px;">
             <h4 style="margin:0 0 6px;font-weight:800;"><i class="fa-solid fa-utensils"></i> Nutritional Compliance Registry</h4>
             <p style="margin:0;opacity:.85;">Items listed here are cross-checked when merchants add products to their inventory. Matching items are automatically blocked and flagged with the reason on file &mdash; including disguised spellings (e.g. <code style="color:#fff">C0br4</code>), spacing/punctuation tricks, look-alike characters, and close misspellings.</p>
         </div>
@@ -86,10 +86,10 @@ if (gjc_table_exists($db, 'restricted_products')) {
                 </div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="metric-card" style="border-left:4px solid var(--gjc-alert)">
+                <div class="metric-card" style="border-left:4px solid var(--gp-red)">
                     <div class="metric-icon"><i class="fa-solid fa-ban"></i></div>
                     <span>Active Blocks</span>
-                    <h2 style="color:var(--gjc-alert)"><?= $activeCount ?></h2>
+                    <h2 style="color:var(--gp-red)"><?= $activeCount ?></h2>
                     <p>Currently enforced</p>
                 </div>
             </div>

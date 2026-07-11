@@ -559,7 +559,7 @@ function maintenance_send_guardian_credentials(string $email, string $name, stri
 
     $body = '
             <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
-                <h2 style="color:#0e6332;margin-top:0">Your GenPay Parent Account</h2>
+                <h2 style="color:var(--gp-green-850);margin-top:0">Your GenPay Parent Account</h2>
                 <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
                 <p style="color:#374151;line-height:1.7">A GenPay parent account has been created so you can monitor and manage your child\'s wallet.</p>
                 <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce9">
@@ -1120,13 +1120,13 @@ $vacantStalls = $db->query(
     <title>Maintenance | GenPay Admin</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=4">
 </head>
-<body>
+<body class="gp-theme">
 <div class="admin-layout">
     <?php require __DIR__ . '/../includes/partials/sidebar_admin.php'; ?>
 
@@ -1192,7 +1192,7 @@ $vacantStalls = $db->query(
                         </div>
                     </div>
                     <?php if ((int) ($importSummary['parents_email_failed'] ?? 0) > 0): ?>
-                        <p style="margin:10px 0 0;color:var(--gjc-danger);font-size:12px">
+                        <p style="margin:10px 0 0;color:var(--gp-danger);font-size:12px">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             <?= (int) $importSummary['parents_email_failed'] ?> credential email(s) could not be sent.
                             Those guardians' temporary passwords are still saved and can be retrieved from the import registry.
@@ -1251,9 +1251,9 @@ $vacantStalls = $db->query(
                     <div class="modal-header border-0" style="padding:20px 24px 6px">
                         <div>
                             <h5 class="modal-title fw-bold" style="font-size:17px">
-                                <i class="fa-solid fa-file-csv me-2" style="color:var(--gjc-success)"></i>Import Preview
+                                <i class="fa-solid fa-file-csv me-2" style="color:var(--gp-success)"></i>Import Preview
                             </h5>
-                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">
+                            <p style="font-size:12px;color:var(--gp-muted);margin:3px 0 0">
                                 <?= maintenance_e($previewFileName ?: 'Uploaded CSV') ?> — <?= (int) $rc['total'] ?> parsed row<?= $rc['total'] !== 1 ? 's' : '' ?>, reviewed before anything is written.
                             </p>
                         </div>
@@ -1309,7 +1309,7 @@ $vacantStalls = $db->query(
                                         <td>
                                             <?php if ($entry['parent_action'] === 'link'): ?>
                                                 <span title="<?= maintenance_e($r['parent_email']) ?>">
-                                                    <i class="fa-solid fa-user-shield" style="color:var(--gjc-success)"></i>
+                                                    <i class="fa-solid fa-user-shield" style="color:var(--gp-success)"></i>
                                                     <?= maintenance_e($r['parent_name'] ?: $r['parent_email']) ?>
                                                 </span>
                                             <?php elseif ($entry['parent_action'] === 'skip'): ?>
@@ -1365,9 +1365,9 @@ $vacantStalls = $db->query(
                     <div class="modal-header border-0" style="padding:20px 24px 0">
                         <div>
                             <h5 class="modal-title fw-bold" style="font-size:17px">
-                                <i class="fa-solid fa-store me-2" style="color:var(--gjc-success)"></i>Add Merchant
+                                <i class="fa-solid fa-store me-2" style="color:var(--gp-success)"></i>Add Merchant
                             </h5>
-                            <p style="font-size:12px;color:var(--gjc-muted);margin:3px 0 0">Same details as the public application, but approved instantly — the account is created and ready to use right away.</p>
+                            <p style="font-size:12px;color:var(--gp-muted);margin:3px 0 0">Same details as the public application, but approved instantly — the account is created and ready to use right away.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -1468,7 +1468,7 @@ $vacantStalls = $db->query(
         <section class="rp-section">
             <div class="rp-section-header">
                 <div class="rp-section-title">
-                    <i class="fa-solid fa-ban" style="font-size:16px;color:var(--gjc-alert)"></i>
+                    <i class="fa-solid fa-ban" style="font-size:16px;color:var(--gp-red)"></i>
                     <h3>Prohibited Products</h3>
                     <span class="rp-count-badge" id="rp-count">
                         <?= count($restrictedProducts) ?> item<?= count($restrictedProducts) !== 1 ? 's' : '' ?>
@@ -1554,7 +1554,7 @@ $vacantStalls = $db->query(
                 <div class="modal-content" style="border-radius:16px;border:none">
                     <div class="modal-header border-0 pb-0" style="padding:20px 24px 10px">
                         <div>
-                            <h5 class="modal-title fw-bold" style="color:var(--gjc-alert)">
+                            <h5 class="modal-title fw-bold" style="color:var(--gp-red)">
                                 <i class="fa-solid fa-ban me-2"></i>Flag Prohibited Product
                             </h5>
                             <p style="font-size:12px;color:#6b7280;margin:4px 0 0">Flagged products will be blocked from being sold on the platform.</p>
@@ -1701,12 +1701,12 @@ $vacantStalls = $db->query(
                 <div class="modal-content" style="border-radius:16px;border:none">
                     <div class="modal-header border-0" style="padding:20px 24px 0">
                         <h5 class="modal-title fw-bold" style="font-size:17px">
-                            <i class="fa-solid fa-link-slash me-2" style="color:var(--gjc-danger)"></i>Remove Link
+                            <i class="fa-solid fa-link-slash me-2" style="color:var(--gp-danger)"></i>Remove Link
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body" style="padding:14px 24px 24px">
-                        <p style="font-size:13px;color:var(--gjc-muted);line-height:1.55;margin-bottom:18px">
+                        <p style="font-size:13px;color:var(--gp-muted);line-height:1.55;margin-bottom:18px">
                             Unlink <strong id="unlinkStudentName">this student</strong> from
                             <strong id="unlinkParentName">this parent</strong>? The parent will no longer see this
                             student's wallet, ledger, or spending controls.
@@ -1811,7 +1811,7 @@ async function rpFlagProduct() {
     const btn       = document.getElementById('rp-flag-btn');
 
     if (!name || !reason) {
-        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">Product name and reason are required.</div>';
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Product name and reason are required.</div>';
         return;
     }
 
@@ -1830,16 +1830,16 @@ async function rpFlagProduct() {
         const res  = await fetch(RP_API, { method: 'POST', body: f });
         const data = await res.json();
         if (data.success) {
-            alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-success-bg);color:var(--gjc-green-600)"><i class="fa-solid fa-circle-check me-1"></i>Product flagged successfully.</div>';
+            alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-success-bg);color:#27764b"><i class="fa-solid fa-circle-check me-1"></i>Product flagged successfully.</div>';
             document.getElementById('rp-name').value   = '';
             document.getElementById('rp-reason').value = '';
             rpInjectCard({ product_name: name, category, match_type: matchType, reason, is_active: 1 });
             rpUpdateCount(1);
         } else {
-            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">${data.message || 'Failed.'}</div>`;
+            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">${data.message || 'Failed.'}</div>`;
         }
     } catch {
-        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gjc-danger-bg);color:var(--gjc-danger)">Network error.</div>';
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Network error.</div>';
     }
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-ban me-1"></i> Flag This Product';
@@ -1951,7 +1951,7 @@ function rpUpdateCount(delta) {
             if (!hidden.value) {
                 e.preventDefault();
                 input.focus();
-                selected.style.color = 'var(--gjc-danger)';
+                selected.style.color = 'var(--gp-danger)';
                 selected.textContent = 'Please pick a parent from the search results.';
                 selected.style.display = 'block';
             }
