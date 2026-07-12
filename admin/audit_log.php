@@ -23,6 +23,7 @@ $actions = [
     "MERCHANT_ONBOARDING",
     "PRODUCT_RESTRICTION",
     "LOGIN_FAILED",
+    "FEE_WAIVER_STATUS_CHANGE",
 ];
 
 $userRole = (string) ($_GET["user_role"] ?? "");
@@ -650,7 +651,8 @@ $currentPage = "audit_log";
         USER_ACCOUNT: 'A user account was created or deactivated.',
         MERCHANT_ONBOARDING: 'A merchant application moved through the onboarding pipeline.',
         PRODUCT_RESTRICTION: 'A restricted product entry was flagged or updated.',
-        LOGIN_FAILED: 'A login attempt failed due to an incorrect password.'
+        LOGIN_FAILED: 'A login attempt failed due to an incorrect password.',
+        FEE_WAIVER_STATUS_CHANGE: 'A student\'s Fee Waiver Credit changed status.'
     };
 
     function auditSetText(id, value) {

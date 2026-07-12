@@ -7,6 +7,8 @@ require_once __DIR__ . '/../connection/mailer.php';
 
 gjc_require_role(['finance']);
 gjc_ensure_audit_table($db);
+gjc_ensure_fee_waiver_credits_schema($db);
+gjc_backfill_fee_waiver_credits($db);
 
 $currentUser = gjc_current_user($db);
 $currentPage = 'maintenance';
@@ -652,17 +654,24 @@ $importError = '';
 $importSummary = null;
 $merchantError = '';
 $merchantSuccess = null;
-$parentLinkError = '';
-$parentLinkSuccess = '';
 
 $restrictedProducts = $db->query(
     "SELECT * FROM restricted_products ORDER BY is_active DESC, category ASC, product_name ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
+$studentWaiverRows = $db->query(
+    "SELECT u.userID AS student_user_id, u.first_name, u.last_name, si.studentID,
+            fwc.amount AS waiver_amount, fwc.status AS waiver_status
+       FROM users u
+       LEFT JOIN student_info si ON si.userID = u.userID
+       LEFT JOIN fee_waiver_credits fwc ON fwc.student_user_id = u.userID
+      WHERE u.roleID = 1
+      ORDER BY u.last_name ASC, u.first_name ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = (string) ($_POST['student_import_action'] ?? '');
     $merchantAction = (string) ($_POST['merchant_bypass_action'] ?? '');
-    $parentLinkAction = (string) ($_POST['parent_link_action'] ?? '');
 
     try {
         maintenance_ensure_student_registry($db);
@@ -760,6 +769,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         $userId   = maintenance_insert_student_user($db, $row);
                         $studentInfoInsert->execute([$userId, $studentId, $courseId]);
                         gjc_student_wallet($db, $userId);
+
+                        // Fee Waiver Credit: freshly-created student only, never touched again on
+                        // re-import. INSERT IGNORE is belt-and-suspenders — $userId is always a
+                        // brand-new AUTO_INCREMENT id here, so the unique key can't actually collide.
+                        $db->prepare("INSERT IGNORE INTO fee_waiver_credits (student_user_id, status) VALUES (?, 'empty')")
+                           ->execute([$userId]);
 
                         $summary['imported']++;
                         $createdUserIds[] = $userId;
@@ -968,111 +983,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             ];
         }
 
-        if ($parentLinkAction === 'link') {
-            $parentUserId    = (int) ($_POST['parent_user_id'] ?? 0);
-            $studentSchoolId = strtoupper(trim((string) ($_POST['student_school_id'] ?? '')));
-            if ($parentUserId <= 0 || $studentSchoolId === '') {
-                throw new RuntimeException('Choose a parent account and enter a student school ID.');
-            }
-
-            // The selected account must still be a parent (roleID 7).
-            $parentChk = $db->prepare("SELECT userID FROM users WHERE userID = ? AND roleID = 7 LIMIT 1");
-            $parentChk->execute([$parentUserId]);
-            if (!$parentChk->fetchColumn()) {
-                throw new RuntimeException('That parent account no longer exists.');
-            }
-
-            // Resolve the student by their school ID (same key parents self-link with).
-            $studentStmt = $db->prepare(
-                "SELECT u.userID, u.first_name, u.last_name
-                   FROM users u
-                   JOIN student_info si ON si.userID = u.userID
-                  WHERE si.studentID = ? AND u.roleID = 1
-                  LIMIT 1"
-            );
-            $studentStmt->execute([$studentSchoolId]);
-            $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$student) {
-                throw new RuntimeException("No student found with school ID {$studentSchoolId}.");
-            }
-            $studentUserId = (int) $student['userID'];
-            $studentName   = trim($student['first_name'] . ' ' . $student['last_name']);
-
-            // Ensure the parents row exists, then read its id (parent_student_links.parent_id).
-            $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$parentUserId]);
-            $pidStmt = $db->prepare("SELECT id FROM parents WHERE user_id = ? LIMIT 1");
-            $pidStmt->execute([$parentUserId]);
-            $parentRowId = (int) $pidStmt->fetchColumn();
-
-            $dupStmt = $db->prepare("SELECT id FROM parent_student_links WHERE parent_id = ? AND student_user_id = ?");
-            $dupStmt->execute([$parentRowId, $studentUserId]);
-            if ($dupStmt->fetchColumn()) {
-                throw new RuntimeException($studentName . ' is already linked to that parent.');
-            }
-
-            $db->prepare("INSERT INTO parent_student_links (parent_id, student_user_id) VALUES (?, ?)")
-               ->execute([$parentRowId, $studentUserId]);
-
-            logAudit(
-                $db,
-                (int) $currentUser['id'],
-                gjc_current_role(),
-                'USER_ACCOUNT',
-                'parent_student_links',
-                null,
-                [
-                    'event' => 'parent_link',
-                    'parent_user_id' => $parentUserId,
-                    'parent_id' => $parentRowId,
-                    'student_user_id' => $studentUserId,
-                    'student_school_id' => $studentSchoolId,
-                ]
-            );
-
-            $parentLinkSuccess = "Linked {$studentName} ({$studentSchoolId}) to the selected parent.";
-        }
-
-        if ($parentLinkAction === 'unlink') {
-            $linkId = (int) ($_POST['link_id'] ?? 0);
-            if ($linkId <= 0) {
-                throw new RuntimeException('Invalid link.');
-            }
-
-            // Capture who was linked before deleting, for the audit trail.
-            $infoStmt = $db->prepare(
-                "SELECT psl.parent_id, p.user_id AS parent_user_id, psl.student_user_id
-                   FROM parent_student_links psl
-                   JOIN parents p ON p.id = psl.parent_id
-                  WHERE psl.id = ?
-                  LIMIT 1"
-            );
-            $infoStmt->execute([$linkId]);
-            $linkRow = $infoStmt->fetch(PDO::FETCH_ASSOC);
-
-            $db->prepare("DELETE FROM parent_student_links WHERE id = ?")->execute([$linkId]);
-
-            if ($linkRow) {
-                logAudit(
-                    $db,
-                    (int) $currentUser['id'],
-                    gjc_current_role(),
-                    'USER_ACCOUNT',
-                    'parent_student_links',
-                    $linkRow,
-                    ['event' => 'parent_unlink', 'link_id' => $linkId]
-                );
-            }
-
-            $parentLinkSuccess = 'Parent–student link removed.';
-        }
     } catch (Throwable $error) {
         if ($db->inTransaction()) {
             $db->rollBack();
         }
         if ($merchantAction === 'create') {
             $merchantError = $error->getMessage();
-        } elseif ($parentLinkAction !== '') {
-            $parentLinkError = $error->getMessage();
         } else {
             $importError = $error->getMessage();
         }
@@ -1083,27 +999,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // operator always sees an up-to-date verdict (works on POST preview and on any
 // later page reload while a preview is held in the session).
 $previewReport = $previewRows ? maintenance_validate_student_rows($db, $previewRows) : null;
-
-// Parent accounts available to link, and the links that already exist.
-$parentAccounts = $db->query(
-    "SELECT u.userID, u.first_name, u.last_name, u.email
-       FROM users u
-      WHERE u.roleID = 7
-      ORDER BY u.last_name, u.first_name"
-)->fetchAll(PDO::FETCH_ASSOC);
-
-$parentLinks = $db->query(
-    "SELECT psl.id AS link_id, psl.linked_at,
-            pu.first_name AS p_first, pu.last_name AS p_last, pu.email AS p_email,
-            su.first_name AS s_first, su.last_name AS s_last,
-            si.studentID
-       FROM parent_student_links psl
-       JOIN parents p  ON p.id = psl.parent_id
-       JOIN users  pu  ON pu.userID = p.user_id
-       JOIN users  su  ON su.userID = psl.student_user_id
-       LEFT JOIN student_info si ON si.userID = su.userID
-      ORDER BY psl.linked_at DESC, psl.id DESC"
-)->fetchAll(PDO::FETCH_ASSOC);
 
 $vacantStalls = $db->query(
     "SELECT stall_id, label, monthly_rate FROM stalls WHERE status = 'vacant' ORDER BY label ASC"
@@ -1124,7 +1019,7 @@ $vacantStalls = $db->query(
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=11">
 </head>
 <body class="gp-theme">
 <div class="admin-layout">
@@ -1603,124 +1498,195 @@ $vacantStalls = $db->query(
             </div>
         </div>
 
-        <!-- Section D: Link Parent to Student -->
-        <section class="maintenance-placeholder" style="margin-top:14px">
-            <span class="section-tag">Section D</span>
-            <h3>Link Parent to Student</h3>
+        <!-- Section D: Fee Waiver Credits -->
+        <section class="rp-section">
+            <div class="rp-section-header">
+                <div class="rp-section-title">
+                    <i class="fa-solid fa-hand-holding-dollar" style="font-size:16px;color:var(--gp-success)"></i>
+                    <h3>Fee Waiver Credits</h3>
+                    <span class="rp-count-badge">
+                        <?= count($studentWaiverRows) ?> student<?= count($studentWaiverRows) !== 1 ? 's' : '' ?>
+                    </span>
+                </div>
+            </div>
             <p class="maintenance-help">
-                Connect an existing parent account to a student by the student's school ID. Parents can also self-link
-                from their own dashboard — this is the admin shortcut for accounts made via Add User or bulk import.
+                A misc. credit finance creates to be applied against a student's tuition — separate from the
+                GenCoin wallet, and separate from tuition fee itself, which this system does not manage.
             </p>
 
-            <?php if ($parentLinkError !== ''): ?>
-            <div class="maintenance-alert error"><?= maintenance_e($parentLinkError) ?></div>
-            <?php endif; ?>
-            <?php if ($parentLinkSuccess !== ''): ?>
-            <div class="maintenance-alert success"><?= maintenance_e($parentLinkSuccess) ?></div>
-            <?php endif; ?>
-
-            <?php if (empty($parentAccounts)): ?>
-            <div class="maintenance-alert" style="background:#f8fafc;border:1px solid #e5e7eb;color:#475569">
-                No parent accounts exist yet. Create one via <strong>Users → Add User</strong> (role: Parent),
-                or import students with the <strong>parent_*</strong> columns filled in.
-            </div>
-            <?php else: ?>
-            <form class="merchant-bypass-form" method="POST">
-                <input type="hidden" name="parent_link_action" value="link">
-                <div class="maintenance-form-grid">
-                    <div class="full parent-search-wrap">
-                        <label for="parent_search">Parent Account</label>
-                        <input type="text" id="parent_search" placeholder="Search parent by name or email…" autocomplete="off">
-                        <input type="hidden" name="parent_user_id" id="parent_user_id" value="">
-                        <div id="parent_results" class="parent-search-results" style="display:none"></div>
-                        <div id="parent_selected" class="parent-search-selected" style="display:none"></div>
-                    </div>
-                    <div class="full">
-                        <label for="student_school_id">Student School ID</label>
-                        <input type="text" id="student_school_id" name="student_school_id"
-                               placeholder="e.g. GJC2026-2001" maxlength="30" required autocomplete="off">
-                    </div>
-                </div>
-                <div class="maintenance-btn-row">
-                    <button class="maintenance-btn primary" type="submit">
-                        <i class="fa-solid fa-link" style="margin-right:6px"></i>Link Parent to Student
-                    </button>
-                </div>
-            </form>
-            <?php endif; ?>
-
-            <div class="student-preview" style="margin-top:16px">
-                <div class="student-preview-head">
-                    <span>Existing Links</span>
-                    <span><?= count($parentLinks) ?> link<?= count($parentLinks) !== 1 ? 's' : '' ?></span>
-                </div>
-                <?php if (empty($parentLinks)): ?>
-                <div style="padding:14px 12px"><p class="maintenance-help" style="margin:0">No parent–student links yet.</p></div>
-                <?php else: ?>
-                <div class="table-responsive" style="max-height:360px;overflow:auto">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th>Parent</th>
-                                <th>Parent Email</th>
-                                <th>Student</th>
-                                <th>Student ID</th>
-                                <th>Linked</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($parentLinks as $lk): ?>
-                            <tr>
-                                <td><?= maintenance_e(trim($lk['p_first'] . ' ' . $lk['p_last']) ?: '—') ?></td>
-                                <td><?= maintenance_e($lk['p_email']) ?></td>
-                                <td><?= maintenance_e(trim($lk['s_first'] . ' ' . $lk['s_last']) ?: '—') ?></td>
-                                <td><?= maintenance_e($lk['studentID'] ?? '—') ?></td>
-                                <td style="font-size:12px;white-space:nowrap"><?= maintenance_e($lk['linked_at']) ?></td>
-                                <td>
-                                    <button type="button" class="maintenance-btn muted js-unlink-btn" style="padding:4px 10px" title="Unlink"
-                                            data-link-id="<?= (int) $lk['link_id'] ?>"
-                                            data-parent="<?= maintenance_e(trim($lk['p_first'] . ' ' . $lk['p_last']) ?: 'this parent') ?>"
-                                            data-student="<?= maintenance_e(trim($lk['s_first'] . ' ' . $lk['s_last']) ?: 'this student') ?>"
-                                            data-bs-toggle="modal" data-bs-target="#unlinkModal">
-                                        <i class="fa-solid fa-link-slash"></i>
+            <div class="table-responsive">
+                <table class="table rp-table align-middle js-datatable" id="fwc-datatable" data-page-length="10" data-empty-message="No students found.">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Student ID</th>
+                            <th>Waiver Credit</th>
+                            <th>Status</th>
+                            <th data-orderable="false">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($studentWaiverRows as $sf): ?>
+                        <?php
+                        $sid = (int) $sf['student_user_id'];
+                        $status = (string) ($sf['waiver_status'] ?: 'empty');
+                        $statusBadgeClass = match ($status) {
+                            'posted'  => 'bg-success',
+                            'pending' => 'bg-warning text-dark',
+                            default   => 'bg-secondary',
+                        };
+                        ?>
+                        <tr id="fwc-row-<?= $sid ?>">
+                            <td><strong><?= maintenance_e(trim($sf['first_name'] . ' ' . $sf['last_name'])) ?></strong></td>
+                            <td><?= maintenance_e($sf['studentID'] ?: '—') ?></td>
+                            <td>
+                                <?= $status === 'posted' ? '₱' . maintenance_e(number_format((float) $sf['waiver_amount'], 2)) : '—' ?>
+                            </td>
+                            <td>
+                                <span class="rp-status-badge badge <?= $statusBadgeClass ?>" style="text-transform:uppercase">
+                                    <?= maintenance_e(ucfirst($status)) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fwc-actions">
+                                <?php if ($status === 'empty'): ?>
+                                    <button class="fwc-action-btn fwc-action-btn--primary" title="Enter waiver amount" onclick="fwcOpenAmountModal(<?= $sid ?>)">
+                                        <i class="fa-solid fa-plus"></i>Enter Amount
                                     </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
+                                <?php elseif ($status === 'pending'): ?>
+                                    <button class="fwc-action-btn fwc-action-btn--primary" title="Upload signed waiver" onclick="fwcOpenUploadModal(<?= $sid ?>)">
+                                        <i class="fa-solid fa-upload"></i>Upload Waiver
+                                    </button>
+                                    <a class="rp-icon-btn" title="Download blank waiver form" href="<?= ADMIN_URL ?>/print_fee_waiver.php?student_user_id=<?= $sid ?>" target="_blank">
+                                        <i class="fa-solid fa-print"></i>
+                                    </a>
+                                    <button class="rp-remove-btn" title="Cancel and reset" onclick="fwcCancel(<?= $sid ?>)">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <button class="fwc-action-btn fwc-action-btn--muted" title="View log &amp; details" onclick="fwcOpenDetailModal(<?= $sid ?>)">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>View Log
+                                    </button>
+                                <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         </section>
 
-        <!-- Unlink Confirmation Modal -->
-        <div class="modal fade" id="unlinkModal" tabindex="-1" aria-hidden="true">
+        <!-- Fee Waiver: Set Amount Modal -->
+        <div class="modal fade" id="fwcAmountModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" style="max-width:420px">
                 <div class="modal-content" style="border-radius:16px;border:none">
-                    <div class="modal-header border-0" style="padding:20px 24px 0">
-                        <h5 class="modal-title fw-bold" style="font-size:17px">
-                            <i class="fa-solid fa-link-slash me-2" style="color:var(--gp-danger)"></i>Remove Link
+                    <div class="modal-header border-0 pb-0" style="padding:20px 24px 10px">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="color:var(--gp-success)">
+                                <i class="fa-solid fa-hand-holding-dollar me-2"></i>Fee Waiver Credit Amount
+                            </h5>
+                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">
+                                Enter the approved waiver amount. The credit moves to Pending until the signed waiver is uploaded.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:16px 24px 24px">
+                        <input type="hidden" id="fwc-amount-student-id">
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Amount (₱) *</label>
+                            <input type="number" id="fwc-amount-input" class="rp-modal-input" min="0.01" max="50000" step="0.01" placeholder="e.g. 500.00">
+                        </div>
+                        <div id="fwc-amount-alert"></div>
+                        <button type="button" id="fwc-amount-btn" class="rp-add-btn w-100 justify-content-center mt-2"
+                                style="border-radius:10px;padding:11px" onclick="fwcSubmitAmount()">
+                            <i class="fa-solid fa-check me-1"></i> Save Amount
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fee Waiver: Upload Signed Waiver Modal -->
+        <div class="modal fade" id="fwcUploadModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:460px">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0 pb-0" style="padding:20px 24px 10px">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="color:var(--gp-success)">
+                                <i class="fa-solid fa-upload me-2"></i>Upload Signed Waiver
+                            </h5>
+                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">JPG, PNG, or PDF, up to 5&nbsp;MB.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:16px 24px 24px">
+                        <input type="hidden" id="fwc-upload-student-id">
+                        <p style="margin:0 0 14px">
+                            <a id="fwc-upload-blank-link" href="#" target="_blank"
+                               style="font-size:12.5px;color:var(--gp-success);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+                                <i class="fa-solid fa-print"></i>Download blank waiver
+                            </a>
+                        </p>
+                        <div class="rp-modal-field">
+                            <label class="rp-modal-label">Signed Waiver File *</label>
+                            <input type="file" id="fwc-upload-input" class="rp-modal-input" accept=".jpg,.jpeg,.png,.pdf">
+                        </div>
+                        <div id="fwc-upload-alert"></div>
+                        <button type="button" id="fwc-upload-btn" class="rp-add-btn w-100 justify-content-center mt-2"
+                                style="border-radius:10px;padding:11px" onclick="fwcSubmitUpload()">
+                            <i class="fa-solid fa-upload me-1"></i> Upload &amp; Post
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fee Waiver: Detail / Log History Modal -->
+        <div class="modal fade" id="fwcDetailModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content" style="border-radius:16px;border:none">
+                    <div class="modal-header border-0" style="padding:20px 24px 6px">
+                        <div>
+                            <h5 class="modal-title fw-bold" style="font-size:17px">
+                                <i class="fa-solid fa-clock-rotate-left me-2" style="color:var(--gp-success)"></i>Fee Waiver Credit — Detail
+                            </h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="padding:12px 24px 8px">
+                        <div class="import-summary-grid" id="fwc-detail-summary"></div>
+                        <div class="table-responsive mt-3" style="max-height:40vh;overflow:auto">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr><th>When</th><th>Change</th><th>Amount</th><th>By</th></tr>
+                                </thead>
+                                <tbody id="fwc-detail-logs"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0" style="padding:8px 24px 22px">
+                        <a id="fwc-detail-waiver-link" href="#" onclick="return gjcViewWaiver(this.href);" class="maintenance-btn primary" style="display:none">
+                            <i class="fa-solid fa-file-lines me-1"></i>View Signed Waiver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fee Waiver: Signed Waiver Viewer (inline, no new tab/window) -->
+        <div class="modal fade" id="gjcWaiverModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden">
+                    <div class="modal-header border-0" style="padding:16px 20px">
+                        <h5 class="modal-title fw-bold" style="font-size:15px">
+                            <i class="fa-solid fa-file-lines me-2"></i>Signed Waiver
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body" style="padding:14px 24px 24px">
-                        <p style="font-size:13px;color:var(--gp-muted);line-height:1.55;margin-bottom:18px">
-                            Unlink <strong id="unlinkStudentName">this student</strong> from
-                            <strong id="unlinkParentName">this parent</strong>? The parent will no longer see this
-                            student's wallet, ledger, or spending controls.
-                        </p>
-                        <form method="POST" style="margin:0">
-                            <input type="hidden" name="parent_link_action" value="unlink">
-                            <input type="hidden" name="link_id" id="unlinkLinkId" value="">
-                            <div class="maintenance-btn-row" style="justify-content:flex-end">
-                                <button type="button" class="maintenance-btn muted" data-bs-dismiss="modal">Cancel</button>
-                                <button type="submit" class="maintenance-btn warning">
-                                    <i class="fa-solid fa-link-slash" style="margin-right:6px"></i>Unlink
-                                </button>
-                            </div>
-                        </form>
+                    <div class="modal-body" style="padding:0">
+                        <iframe id="gjcWaiverFrame" src="" style="width:100%;height:70vh;border:0;display:block"></iframe>
                     </div>
                 </div>
             </div>
@@ -1870,94 +1836,223 @@ function rpUpdateCount(delta) {
     badge.textContent = next + ' item' + (next !== 1 ? 's' : '');
 }
 
-// ── Parent → Student linking ────────────────────────────────────────────────
-// Populate the shared unlink modal with the row that triggered it.
-(function () {
-    const modal = document.getElementById('unlinkModal');
-    if (!modal) return;
-    modal.addEventListener('show.bs.modal', function (event) {
-        const btn = event.relatedTarget;
-        if (!btn) return;
-        document.getElementById('unlinkLinkId').value        = btn.getAttribute('data-link-id') || '';
-        document.getElementById('unlinkStudentName').textContent = btn.getAttribute('data-student') || 'this student';
-        document.getElementById('unlinkParentName').textContent  = btn.getAttribute('data-parent') || 'this parent';
-    });
-})();
+// ── Fee Waiver Credits ───────────────────────────────────────────────────────
+const FWC_API = '<?= ADMIN_URL ?>/api/fee_waiver_credits.php';
+const FWC_DOC_BASE = '<?= ADMIN_URL ?>/doc.php?f=';
 
-// Type-to-search parent picker (client-side over the loaded parent list).
-(function () {
-    const input = document.getElementById('parent_search');
-    if (!input) return;
-    const hidden   = document.getElementById('parent_user_id');
-    const results  = document.getElementById('parent_results');
-    const selected = document.getElementById('parent_selected');
-    const PARENTS  = <?= json_encode(array_map(static fn($pa) => [
-        'id'    => (int) $pa['userID'],
-        'name'  => trim($pa['first_name'] . ' ' . $pa['last_name']) ?: 'Parent',
-        'email' => (string) $pa['email'],
-    ], $parentAccounts), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+function fwcOpenAmountModal(studentId) {
+    document.getElementById('fwc-amount-student-id').value = studentId;
+    document.getElementById('fwc-amount-input').value = '';
+    document.getElementById('fwc-amount-alert').innerHTML = '';
+    document.getElementById('fwc-amount-btn').disabled = false;
+    new bootstrap.Modal(document.getElementById('fwcAmountModal')).show();
+}
 
-    const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
-
-    function clearSelection() {
-        hidden.value = '';
-        selected.style.display = 'none';
-        selected.textContent = '';
+async function fwcSubmitAmount() {
+    const studentId = document.getElementById('fwc-amount-student-id').value;
+    const amount = parseFloat(document.getElementById('fwc-amount-input').value);
+    const alertEl = document.getElementById('fwc-amount-alert');
+    const btn = document.getElementById('fwc-amount-btn');
+    if (!amount || amount <= 0) {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Enter a valid amount.</div>';
+        return;
     }
-
-    function closeResults() { results.style.display = 'none'; results.innerHTML = ''; }
-
-    input.addEventListener('input', function () {
-        clearSelection();
-        const q = input.value.trim().toLowerCase();
-        if (q === '') { closeResults(); return; }
-        const matches = PARENTS.filter(p =>
-            p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
-        ).slice(0, 8);
-        if (!matches.length) {
-            results.innerHTML = '<div class="parent-search-empty">No parents match “' + esc(input.value.trim()) + '”.</div>';
+    btn.disabled = true;
+    const f = new FormData();
+    f.append('action', 'set_amount');
+    f.append('student_user_id', studentId);
+    f.append('amount', amount.toFixed(2));
+    try {
+        const res = await fetch(FWC_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
         } else {
-            results.innerHTML = matches.map(p =>
-                '<div class="parent-search-item" data-id="' + p.id + '">' +
-                    '<strong>' + esc(p.name) + '</strong><span>' + esc(p.email) + '</span>' +
-                '</div>'
-            ).join('');
+            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">${data.message || 'Failed.'}</div>`;
+            btn.disabled = false;
         }
-        results.style.display = 'block';
-    });
+    } catch {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Network error.</div>';
+        btn.disabled = false;
+    }
+}
 
-    results.addEventListener('click', function (e) {
-        const item = e.target.closest('.parent-search-item');
-        if (!item) return;
-        const p = PARENTS.find(x => String(x.id) === item.getAttribute('data-id'));
-        if (!p) return;
-        hidden.value = String(p.id);
-        input.value  = p.name + ' — ' + p.email;
-        closeResults();
-        selected.style.color = '';
-        selected.textContent = '✓ Selected ' + p.name;
-        selected.style.display = 'block';
-    });
+function fwcOpenUploadModal(studentId) {
+    document.getElementById('fwc-upload-student-id').value = studentId;
+    document.getElementById('fwc-upload-input').value = '';
+    document.getElementById('fwc-upload-alert').innerHTML = '';
+    document.getElementById('fwc-upload-btn').disabled = false;
+    document.getElementById('fwc-upload-blank-link').href = '<?= ADMIN_URL ?>/print_fee_waiver.php?student_user_id=' + studentId;
+    new bootstrap.Modal(document.getElementById('fwcUploadModal')).show();
+}
 
-    // Close the dropdown when clicking outside the picker.
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('.parent-search-wrap')) closeResults();
-    });
+async function fwcSubmitUpload() {
+    const studentId = document.getElementById('fwc-upload-student-id').value;
+    const fileInput = document.getElementById('fwc-upload-input');
+    const alertEl = document.getElementById('fwc-upload-alert');
+    const btn = document.getElementById('fwc-upload-btn');
+    if (!fileInput.files.length) {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Choose a file to upload.</div>';
+        return;
+    }
+    btn.disabled = true;
+    const f = new FormData();
+    f.append('action', 'upload_waiver');
+    f.append('student_user_id', studentId);
+    f.append('waiver', fileInput.files[0]);
+    try {
+        const res = await fetch(FWC_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alertEl.innerHTML = `<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">${data.message || 'Failed.'}</div>`;
+            btn.disabled = false;
+        }
+    } catch {
+        alertEl.innerHTML = '<div class="rp-modal-alert" style="background:var(--gp-danger-bg);color:var(--gp-danger)">Network error.</div>';
+        btn.disabled = false;
+    }
+}
 
-    // Require a chosen parent before the form can submit.
-    const form = input.closest('form');
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            if (!hidden.value) {
-                e.preventDefault();
-                input.focus();
-                selected.style.color = 'var(--gp-danger)';
-                selected.textContent = 'Please pick a parent from the search results.';
-                selected.style.display = 'block';
-            }
+async function fwcCancel(studentId) {
+    if (!confirm('Cancel this pending Fee Waiver Credit and reset it?')) return;
+    const f = new FormData();
+    f.append('action', 'cancel');
+    f.append('student_user_id', studentId);
+    try {
+        const res = await fetch(FWC_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to cancel.');
+        }
+    } catch { alert('Network error.'); }
+}
+
+// Show the signed waiver inline in a modal instead of opening a new tab/window.
+function gjcViewWaiver(url) {
+    document.getElementById('gjcWaiverFrame').src = url;
+    new bootstrap.Modal(document.getElementById('gjcWaiverModal')).show();
+    return false;
+}
+document.getElementById('gjcWaiverModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('gjcWaiverFrame').src = '';
+});
+
+async function fwcOpenDetailModal(studentId) {
+    const summaryEl = document.getElementById('fwc-detail-summary');
+    const logsEl = document.getElementById('fwc-detail-logs');
+    const linkEl = document.getElementById('fwc-detail-waiver-link');
+    summaryEl.innerHTML = '<p class="text-muted">Loading…</p>';
+    logsEl.innerHTML = '';
+    linkEl.style.display = 'none';
+    new bootstrap.Modal(document.getElementById('fwcDetailModal')).show();
+
+    const f = new FormData();
+    f.append('action', 'detail');
+    f.append('student_user_id', studentId);
+    try {
+        const res = await fetch(FWC_API, { method: 'POST', body: f });
+        const data = await res.json();
+        if (!data.success) {
+            summaryEl.innerHTML = `<p class="text-danger">${data.message || 'Failed to load.'}</p>`;
+            return;
+        }
+        const c = data.credit;
+        summaryEl.innerHTML = `
+            <div class="import-summary-card"><span>Status</span><strong>${c.status.charAt(0).toUpperCase() + c.status.slice(1)}</strong></div>
+            <div class="import-summary-card"><span>Amount</span><strong>${c.amount !== null ? '₱' + Number(c.amount).toFixed(2) : '—'}</strong></div>
+        `;
+        if (c.status === 'posted' && c.waiver_file) {
+            linkEl.href = FWC_DOC_BASE + encodeURIComponent(c.waiver_file);
+            linkEl.style.display = 'inline-flex';
+        }
+        if (!data.logs.length) {
+            logsEl.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No transitions recorded yet.</td></tr>';
+        } else {
+            logsEl.innerHTML = data.logs.map(function (log) {
+                const when = new Date(log.changed_at.replace(' ', 'T')).toLocaleString();
+                const amt = log.amount !== null ? '₱' + Number(log.amount).toFixed(2) : '—';
+                return `<tr><td style="font-size:12px">${when}</td><td>${log.old_status} → ${log.new_status}</td><td>${amt}</td><td>${log.changed_by_role}</td></tr>`;
+            }).join('');
+        }
+    } catch {
+        summaryEl.innerHTML = '<p class="text-danger">Network error.</p>';
+    }
+}
+
+// ── Fixed table header: glued to the viewport once the real thead scrolls
+// past it, instead of scrolling away with the table. A CSS "sticky" thead
+// doesn't work here (Bootstrap's .table-responsive forces overflow-y: auto,
+// which hijacks the sticky positioning context), so this measures the real
+// header cells and mirrors them into a position:fixed bar.
+function rpInitFixedHeader(tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const headerRow = table.querySelector('thead tr');
+    if (!headerRow) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'rp-fixed-header-bar';
+    Array.from(headerRow.children).forEach(function (th) {
+        const cell = document.createElement('div');
+        cell.className = 'rp-fhb-cell';
+        cell.textContent = th.textContent.trim();
+        bar.appendChild(cell);
+    });
+    document.body.appendChild(bar);
+    const barCells = Array.from(bar.children);
+
+    function reposition() {
+        const rect = table.getBoundingClientRect();
+        const headerHeight = headerRow.getBoundingClientRect().height || 40;
+        const shouldShow = rect.top < 0 && rect.bottom > headerHeight;
+
+        if (!shouldShow) {
+            bar.style.display = 'none';
+            return;
+        }
+
+        bar.style.display = 'flex';
+        bar.style.left = rect.left + 'px';
+        bar.style.width = rect.width + 'px';
+        bar.style.height = headerHeight + 'px';
+
+        Array.from(headerRow.children).forEach(function (th, i) {
+            const w = th.getBoundingClientRect().width;
+            barCells[i].style.width = w + 'px';
+            barCells[i].style.minWidth = w + 'px';
+            barCells[i].style.maxWidth = w + 'px';
         });
     }
-})();
+
+    let ticking = false;
+    function onScrollOrResize() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+            reposition();
+            ticking = false;
+        });
+    }
+
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
+
+    // Column widths can change on sort/redraw even while scroll position
+    // doesn't — re-measure then too, not just on scroll.
+    if (window.jQuery && jQuery.fn.DataTable && jQuery.fn.DataTable.isDataTable('#' + tableId)) {
+        jQuery('#' + tableId).on('draw.dt order.dt', function () {
+            setTimeout(reposition, 0);
+        });
+    }
+
+    reposition();
+}
+
+rpInitFixedHeader('fwc-datatable');
 </script>
 </body>
 </html>

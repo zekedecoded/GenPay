@@ -11,7 +11,8 @@ require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['finance']);
+gjc_require_role(['finance', 'student', 'parent']);
+$docRole = gjc_current_role();
 
 $relPath = (string) ($_GET['f'] ?? '');
 
@@ -26,6 +27,43 @@ if (strpos($relPath, '..') !== false || strpos($relPath, "\0") !== false) {
 if (!str_starts_with($relPath, 'uploads/')) {
     http_response_code(403);
     exit('Access denied.');
+}
+
+// Finance can view anything under uploads/ (existing behaviour). Student and
+// parent sessions may ONLY reach their own (or their linked student's) signed
+// Fee Waiver Credit — everything else under uploads/ stays 403 for them, since
+// this proxy has no per-file ownership model beyond this one carve-out.
+if ($docRole !== 'finance') {
+    if (!str_starts_with($relPath, 'uploads/fee_waiver_credits/')) {
+        http_response_code(403);
+        exit('Access denied.');
+    }
+
+    gjc_ensure_fee_waiver_credits_schema($db);
+    $ownerStmt = $db->prepare("SELECT student_user_id FROM fee_waiver_credits WHERE waiver_file = ? LIMIT 1");
+    $ownerStmt->execute([$relPath]);
+    $ownerStudentId = (int) ($ownerStmt->fetchColumn() ?: 0);
+
+    $allowed = false;
+    if ($ownerStudentId > 0) {
+        if ($docRole === 'student') {
+            $allowed = $ownerStudentId === gjc_user_id();
+        } elseif ($docRole === 'parent') {
+            $linkStmt = $db->prepare(
+                "SELECT 1 FROM parents p
+                   JOIN parent_student_links psl ON psl.parent_id = p.id
+                  WHERE p.user_id = ? AND psl.student_user_id = ?
+                  LIMIT 1"
+            );
+            $linkStmt->execute([gjc_user_id(), $ownerStudentId]);
+            $allowed = (bool) $linkStmt->fetchColumn();
+        }
+    }
+
+    if (!$allowed) {
+        http_response_code(403);
+        exit('Access denied.');
+    }
 }
 
 $baseUploads = realpath(BASE_PATH . '/uploads');

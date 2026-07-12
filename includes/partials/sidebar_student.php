@@ -36,6 +36,10 @@ $currentPage = $currentPage ?? '';
             <i class="fa-solid fa-circle-plus"></i>
             <span>Top-Up</span>
         </a>
+        <a href="<?= STUDENT_URL ?>/fees.php" class="<?= $currentPage === 'fees' ? 'active' : '' ?>">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+            <span>Fee Waiver Credit</span>
+        </a>
         <a href="<?= STUDENT_URL ?>/history.php" class="<?= $currentPage === 'history' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i>
             <span>History</span>

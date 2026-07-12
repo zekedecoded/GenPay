@@ -2589,3 +2589,82 @@ function gjc_check_parent_balance_alert(PDO $db, int $walletId): void
         }
     }
 }
+
+/**
+ * School-managed Fee Waiver Credit: a non-wallet, non-GenCoin misc. credit
+ * that finance creates (amount + signed parent waiver upload) to be applied
+ * against a student's tuition by whichever system actually owns tuition fee
+ * — GenPay does not track or manage tuition fee itself, only this credit.
+ * This never touches CirculationEngine, student_wallets, or system_settings
+ * — do not confuse with the separate (and currently unimplemented) GenCoin
+ * tuition-credit concept.
+ */
+function gjc_ensure_fee_waiver_credits_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS fee_waiver_credits (
+            id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            student_user_id INT UNSIGNED NOT NULL,
+            amount          DECIMAL(10,2) NULL,
+            status          ENUM('empty', 'pending', 'posted') NOT NULL DEFAULT 'empty',
+            waiver_file     VARCHAR(255) NULL,
+            created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_fee_waiver_student (student_user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+
+    // Append-only transition history — no updates/deletes, ever.
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS fee_waiver_credit_logs (
+            id                    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            fee_waiver_credit_id  INT UNSIGNED NOT NULL,
+            old_status            VARCHAR(20) NOT NULL,
+            new_status            VARCHAR(20) NOT NULL,
+            amount                DECIMAL(10,2) NULL,
+            changed_by_user_id    INT UNSIGNED NOT NULL,
+            changed_by_role       VARCHAR(20) NOT NULL,
+            changed_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_fwcl_credit (fee_waiver_credit_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+}
+
+/**
+ * Backfills fee_waiver_credits for students who existed before this feature
+ * shipped (the CSV import hook only creates rows for students created from
+ * here on). Idempotent — INSERT IGNORE against the unique student_user_id
+ * key, so already-populated rows are never touched.
+ */
+function gjc_backfill_fee_waiver_credits(PDO $db): void
+{
+    $db->exec(
+        "INSERT IGNORE INTO fee_waiver_credits (student_user_id, status)
+         SELECT u.userID, 'empty' FROM users u
+          WHERE u.roleID = 1
+            AND NOT EXISTS (SELECT 1 FROM fee_waiver_credits fwc WHERE fwc.student_user_id = u.userID)"
+    );
+}
+
+/**
+ * The Fee Waiver Credit for one student — reused as-is by the admin,
+ * student, and parent views so nobody re-implements this lookup
+ * differently. GenPay does not own tuition fee, so this returns only the
+ * credit itself (amount, status, signed file), not any tuition total.
+ */
+function gjc_student_waiver_credit(PDO $db, int $studentUserId): array
+{
+    gjc_ensure_fee_waiver_credits_schema($db);
+
+    $stmt = $db->prepare(
+        "SELECT amount, status, waiver_file FROM fee_waiver_credits WHERE student_user_id = ? LIMIT 1"
+    );
+    $stmt->execute([$studentUserId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['amount' => null, 'status' => 'empty', 'waiver_file' => null];
+
+    return [
+        'status'      => (string) $row['status'],
+        'amount'      => $row['amount'] !== null ? (float) $row['amount'] : null,
+        'waiver_file' => $row['waiver_file'],
+    ];
+}

@@ -83,6 +83,22 @@ function gjc_ensure_audit_table(PDO $pdo): void
                  MODIFY user_role ENUM('Finance', 'Student', 'Merchant', 'Vendor/Staff') NOT NULL"
             );
         }
+
+        // Fee Waiver Credit: widen action_type from whatever labels are live right
+        // now (not a hardcoded list) so this never clobbers a label added by a
+        // later migration that this function doesn't know about.
+        $actionColumn = $pdo->query("SHOW COLUMNS FROM systemic_audit_trail LIKE 'action_type'")->fetch(PDO::FETCH_ASSOC);
+        $liveActionType = (string) ($actionColumn['Type'] ?? '');
+        if ($actionColumn && strpos($liveActionType, "'FEE_WAIVER_STATUS_CHANGE'") === false) {
+            preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $liveActionType, $labelMatches);
+            $labels = $labelMatches[1] ?? [];
+            $labels[] = 'FEE_WAIVER_STATUS_CHANGE';
+            $enumSql = implode(', ', array_map(
+                static fn(string $label): string => "'" . str_replace("'", "\\'", $label) . "'",
+                $labels
+            ));
+            $pdo->exec("ALTER TABLE systemic_audit_trail MODIFY action_type ENUM({$enumSql}) NOT NULL");
+        }
     } catch (Throwable) {
     }
 }
@@ -179,7 +195,7 @@ function logAudit(
             return;
         }
 
-        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED'];
+        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED', 'FEE_WAIVER_STATUS_CHANGE'];
         $action_type = strtoupper(trim($action_type));
         if (!in_array($action_type, $allowedActions, true)) {
             return;

@@ -262,6 +262,45 @@
 }
 .rp-table tbody tr { transition: background .12s; }
 .rp-table tbody tr:hover { background: #fafafa; }
+
+/* Fixed-width columns: content (e.g. a long student name) must never resize
+   a column — every row, on every sort/page, uses the exact same layout. */
+#fwc-datatable { table-layout: fixed; width: 100%; }
+#fwc-datatable th:nth-child(1), #fwc-datatable td:nth-child(1) { width: 24%; }
+#fwc-datatable th:nth-child(2), #fwc-datatable td:nth-child(2) { width: 18%; }
+#fwc-datatable th:nth-child(3), #fwc-datatable td:nth-child(3) { width: 14%; }
+#fwc-datatable th:nth-child(4), #fwc-datatable td:nth-child(4) { width: 14%; }
+#fwc-datatable th:nth-child(5), #fwc-datatable td:nth-child(5) { width: 30%; }
+#fwc-datatable td:nth-child(1), #fwc-datatable td:nth-child(2) {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Same footprint as .rp-remove-btn, but a neutral hover — for secondary
+   icon actions (e.g. downloading a form) that aren't destructive and
+   shouldn't turn red like Cancel/Remove do. */
+.rp-icon-btn {
+    width: 28px; height: 28px; border: none; border-radius: 8px;
+    background: #f1f5f9; color: #94a3b8; cursor: pointer; font-size: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color .15s, color .15s;
+    vertical-align: middle; text-decoration: none;
+}
+.rp-icon-btn:hover { background: #e2e8f0; color: #374151; }
+
+/* Fixed header clone: shown/positioned by JS once the real thead has
+   scrolled above the viewport, so it stays glued to the screen instead of
+   scrolling away with the table (a plain position:fixed thead can't line up
+   with the table's columns on its own, hence the JS-measured clone). */
+.rp-fixed-header-bar {
+    position: fixed; top: 0; z-index: 1050; display: none;
+    background: #fff; border-bottom: 2px solid #f3f4f6;
+    box-shadow: 0 2px 10px rgba(16, 24, 20, .08);
+}
+.rp-fixed-header-bar .rp-fhb-cell {
+    padding: 10px 12px; box-sizing: border-box;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #6b7280; white-space: nowrap; overflow: hidden;
+}
 .rp-table tbody td { padding: 12px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 
 .rp-toggle-btn {
@@ -275,10 +314,26 @@
 .rp-remove-btn {
     width: 28px; height: 28px; border: none; border-radius: 8px;
     background: #f1f5f9; color: #94a3b8; cursor: pointer; font-size: 12px;
-    display: inline-flex; align-items: center; justify-content: center; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color .15s, color .15s;
     vertical-align: middle;
 }
 .rp-remove-btn:hover { background: var(--gp-danger-bg); color: var(--gp-red); }
+
+/* ── Fee Waiver Credit action buttons: short label + icon, so the Actions
+   column reads clearly without the old long labels crowding it ── */
+.fwc-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fwc-action-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 11px; border: none; border-radius: 8px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    cursor: pointer; transition: background-color .15s, color .15s; vertical-align: middle;
+    text-decoration: none;
+}
+.fwc-action-btn--primary { background: var(--gp-success-bg); color: #27764b; }
+.fwc-action-btn--primary:hover { background: #bbf7d4; }
+.fwc-action-btn--muted { background: #f1f5f9; color: #6b7280; }
+.fwc-action-btn--muted:hover { background: #e2e8f0; color: #374151; }
 
 /* ── Parent search (Link Parent to Student) ─────────────────────────── */
 .parent-search-wrap { position: relative; }

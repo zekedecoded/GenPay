@@ -1,0 +1,307 @@
+:root {
+    --green: #0e6332;
+    --green-2: #117039;
+    --gold: #d9a928;
+    --ink: #111827;
+    --muted: #647067;
+    --line: #dfe8e2;
+    --paper: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 40px 20px;
+    background: #eef2ef;
+    color: var(--ink);
+    font-family: Arial, sans-serif;
+}
+
+.print-actions {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    display: flex;
+    gap: 10px;
+}
+
+.print-actions button,
+.print-actions a {
+    min-height: 40px;
+    border: 0;
+    border-radius: 8px;
+    padding: 0 14px;
+    background: var(--green);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.print-actions .secondary {
+    background: #ffffff;
+    color: var(--green);
+    border: 1px solid rgba(14, 99, 50, 0.18);
+}
+
+.waiver {
+    width: min(100%, 720px);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 22px 60px rgba(5, 41, 22, 0.14);
+}
+
+/* ── Letterhead ── */
+.waiver-letterhead {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 26px 34px 22px;
+    border-bottom: 3px solid var(--green);
+}
+
+.waiver-logo {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    flex: none;
+}
+
+.waiver-letterhead-text h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: var(--ink);
+}
+
+.waiver-letterhead-text p {
+    margin: 3px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+/* ── Document title bar ── */
+.waiver-title-bar {
+    padding: 14px 34px;
+    background: #f6faf7;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+}
+
+.waiver-title-bar h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green-2);
+}
+
+.waiver-body {
+    padding: 30px 34px 32px;
+}
+
+.waiver-intro {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--ink);
+    margin: 0 0 28px;
+}
+
+/* ── Document sections (Particulars / Terms / Signatures) ── */
+.waiver-section {
+    margin-bottom: 28px;
+}
+
+.waiver-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.waiver-section h3 {
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--green-2);
+}
+
+/* ── Field grid, styled like a bordered form table ── */
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.field {
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--line);
+}
+
+.field:nth-child(odd) {
+    border-right: 1px solid var(--line);
+}
+
+.field:nth-last-child(-n+2) {
+    border-bottom: none;
+}
+
+.field span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.field strong {
+    display: block;
+    color: var(--ink);
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+/* ── Terms and Conditions ── */
+.waiver-terms {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--ink);
+}
+
+.waiver-terms li {
+    margin-bottom: 12px;
+}
+
+.waiver-terms li:last-child {
+    margin-bottom: 0;
+}
+
+.waiver-terms strong {
+    color: var(--green-2);
+}
+
+.signatures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 34px;
+}
+
+.sig-rule {
+    display: block;
+    border-top: 1px solid var(--ink);
+    margin-bottom: 8px;
+    padding-top: 34px;
+}
+
+.sig-label {
+    display: block;
+    color: var(--muted);
+    font-size: 11.5px;
+}
+
+.sig-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.sig-blank {
+    display: inline-block;
+    min-width: 100px;
+    border-bottom: 1px solid var(--line);
+    font-style: normal;
+}
+
+.waiver-footer {
+    margin: 30px 0 0;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line);
+    font-size: 10.5px;
+    color: #9aa79e;
+    text-align: center;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 14mm;
+    }
+
+    body {
+        min-height: auto;
+        padding: 0;
+        background: #ffffff;
+    }
+
+    .print-actions {
+        display: none;
+    }
+
+    .waiver {
+        width: 100%;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 720px) {
+    body {
+        padding: 14px;
+        align-items: start;
+    }
+
+    .print-actions {
+        position: static;
+        width: 100%;
+        margin-bottom: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .waiver-letterhead {
+        padding: 22px 20px 18px;
+    }
+
+    .waiver-body {
+        padding: 22px 20px 26px;
+    }
+
+    .field-grid,
+    .signatures {
+        grid-template-columns: 1fr;
+    }
+
+    .field:nth-child(odd) {
+        border-right: none;
+    }
+
+    .field:nth-last-child(-n+2) {
+        border-bottom: 1px solid var(--line);
+    }
+
+    .field:last-child {
+        border-bottom: none;
+    }
+}

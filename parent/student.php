@@ -55,6 +55,7 @@ if (!$student) {
 
 $walletId    = (int) ($student['wallet_id'] ?? 0);
 $studentName = trim($student['first_name'] . ' ' . $student['last_name']);
+$credit      = gjc_student_waiver_credit($db, $targetUid);
 
 // Transaction type filter
 $filterType = trim($_GET['type'] ?? 'all');
@@ -150,6 +151,52 @@ $currentPage = '';
                 </div>
             </div>
 
+            <!-- Fee Waiver Credit — school-managed, not GenCoin. GenPay doesn't
+                 track tuition fee itself; this credit is applied against it
+                 by the finance office. -->
+            <div class="parent-card" style="margin-bottom:22px;">
+                <div class="parent-card-head">
+                    <h5><i class="fa-solid fa-hand-holding-dollar me-2" style="color:var(--gp-green-700)"></i>Fee Waiver Credit</h5>
+                    <?php if ($credit['status'] === 'pending'): ?>
+                        <span class="parent-badge parent-badge--warning">Pending</span>
+                    <?php elseif ($credit['status'] === 'posted'): ?>
+                        <span class="parent-badge parent-badge--success">Posted</span>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($credit['status'] === 'pending'): ?>
+                <p style="font-size:13px;color:var(--gp-muted);margin-bottom:14px;">
+                    A Fee Waiver Credit of &#8369;<?= number_format((float) $credit['amount'], 2) ?> is awaiting
+                    the signed waiver. Download the blank form, have it signed, and return it to finance to post the credit.
+                </p>
+                <p style="margin-bottom:14px;">
+                    <a href="<?= ADMIN_URL ?>/print_fee_waiver.php?student_user_id=<?= $targetUid ?>" target="_blank"
+                       style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-print"></i>Download Blank Waiver
+                    </a>
+                </p>
+                <?php elseif ($credit['status'] === 'posted'): ?>
+                <div style="margin-bottom:14px;">
+                    <small style="display:block;color:var(--gp-muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Amount</small>
+                    <strong style="font-size:18px;color:var(--gp-success);">&#8369;<?= number_format((float) $credit['amount'], 2) ?></strong>
+                </div>
+                <?php else: ?>
+                <p style="font-size:13px;color:var(--gp-muted);margin:0;">
+                    No Fee Waiver Credit has been requested for this student yet.
+                </p>
+                <?php endif; ?>
+
+                <?php if ($credit['status'] === 'posted' && $credit['waiver_file']): ?>
+                <p style="margin:0;">
+                    <a href="<?= ADMIN_URL ?>/doc.php?f=<?= urlencode($credit['waiver_file']) ?>"
+                       onclick="return gjcViewWaiver(this.href);"
+                       style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fa-solid fa-file-lines"></i>View Signed Waiver
+                    </a>
+                </p>
+                <?php endif; ?>
+            </div>
+
             <!-- Filter tabs -->
             <?php
             $tabs = [
@@ -219,11 +266,39 @@ $currentPage = '';
         </div>
     </main>
 </div>
+
+<!-- Signed Waiver Viewer (inline, no new tab/window) -->
+<div class="modal fade" id="gjcWaiverModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden">
+            <div class="modal-header border-0" style="padding:16px 20px">
+                <h5 class="modal-title fw-bold" style="font-size:15px">
+                    <i class="fa-solid fa-file-lines me-2"></i>Signed Waiver
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:0">
+                <iframe id="gjcWaiverFrame" src="" style="width:100%;height:70vh;border:0;display:block"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
 function toggleParentSidebar() {
     document.getElementById('parentSidebar').classList.toggle('collapsed');
 }
+
+// Show the signed waiver inline in a modal instead of opening a new tab/window.
+function gjcViewWaiver(url) {
+    document.getElementById('gjcWaiverFrame').src = url;
+    new bootstrap.Modal(document.getElementById('gjcWaiverModal')).show();
+    return false;
+}
+document.getElementById('gjcWaiverModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('gjcWaiverFrame').src = '';
+});
 </script>
 </body>
 </html>
