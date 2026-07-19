@@ -4,6 +4,7 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
+gjc_enforce_graduate_lock($db);
 gjc_ensure_operational_tables($db);
 
 $currentUser = gjc_current_user($db);
@@ -13,12 +14,24 @@ $currentBalance = (float) $wallet['balance'];
 $notice = '';
 $error = '';
 
+$isGraduated = gjc_student_graduated($db, (int) $currentUser['id']);
+$isFrozen = false;
+if ($wallet['id'] > 0) {
+    $fz = $db->prepare("SELECT is_frozen FROM student_wallets WHERE id = ?");
+    $fz->execute([$wallet['id']]);
+    $isFrozen = (int) $fz->fetchColumn() === 1;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $amount = filter_var($_POST['amount'] ?? '', FILTER_VALIDATE_FLOAT);
     $method = trim((string) ($_POST['payment_method'] ?? 'Cash at Cashier'));
 
     if (!gjc_csrf_verify()) {
         $error = 'Security check failed. Please reload the page and try again.';
+    } elseif ($isGraduated) {
+        $error = 'Account locked: graduated.';
+    } elseif ($isFrozen) {
+        $error = 'Your wallet is frozen by a parent or guardian. Top-up requests are disabled.';
     } elseif (!$amount || $amount <= 0) {
         $error = 'Enter a valid top-up amount.';
     } elseif ($wallet['id'] <= 0) {
@@ -92,8 +105,8 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
 </head>
 
@@ -161,6 +174,18 @@ $csrfToken = gjc_csrf_token();
                             </div>
                         </div>
 
+                        <?php if ($isGraduated): ?>
+                        <div class="pf-alert is-error" style="margin-bottom:14px">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                            Account locked: graduated. Top-up requests are disabled.
+                        </div>
+                        <?php elseif ($isFrozen): ?>
+                        <div class="pf-alert is-error" style="margin-bottom:14px">
+                            <i class="fa-solid fa-snowflake"></i>
+                            Your wallet is currently frozen by a parent or guardian, so top-up requests are disabled.
+                        </div>
+                        <?php endif; ?>
+
                         <form method="POST" class="pf-form">
                             <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
 
@@ -169,7 +194,7 @@ $csrfToken = gjc_csrf_token();
                                 <div class="tu-money-input">
                                     <span>&#8369;</span>
                                     <input type="number" name="amount" id="topupAmount" placeholder="0.00" min="1"
-                                        step="0.01" required>
+                                        step="0.01" <?= ($isGraduated || $isFrozen) ? 'disabled' : '' ?> required>
                                 </div>
                                 <div class="tu-equiv" id="tuEquiv"></div>
                             </div>
@@ -222,7 +247,7 @@ $csrfToken = gjc_csrf_token();
                                 </div>
                             </div>
 
-                            <button type="submit" class="pf-btn">
+                            <button type="submit" class="pf-btn" <?= ($isGraduated || $isFrozen) ? 'disabled' : '' ?>>
                                 <i class="fa-solid fa-circle-plus me-1"></i> Submit Top-Up Request
                             </button>
                         </form>

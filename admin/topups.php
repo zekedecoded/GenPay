@@ -51,7 +51,10 @@ $currentPage = 'topups';
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=11">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=12">
+    <style>
+        .sgc-parent-choice--active { border-color: var(--gp-success) !important; background: var(--gp-success-bg); }
+    </style>
 </head>
 
 <body class="gp-theme">
@@ -246,9 +249,21 @@ $currentPage = 'topups';
 
                 <div class="modal-body" style="padding:20px 24px 24px;background:#f0fdf6">
 
-                    <!-- STEP 1: Student ID -->
+                    <!-- STEP 1: Recipient type + Student ID -->
                     <div id="sgc-step-1">
-                        <p style="font-size:13px;color:#374151;margin-bottom:16px">Enter the Student ID of the recipient.</p>
+                        <div style="display:flex;gap:8px;margin-bottom:14px">
+                            <button type="button" id="sgc-toggle-student"
+                                    style="flex:1;border:1.5px solid var(--gp-success);border-radius:12px;padding:9px;font-size:13px;font-weight:700;background:var(--gp-success);color:#fff"
+                                    onclick="sgcSetMode('student')">
+                                <i class="fa-solid fa-user-graduate me-1"></i>Student
+                            </button>
+                            <button type="button" id="sgc-toggle-parent"
+                                    style="flex:1;border:1.5px solid #d1fae5;border-radius:12px;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#111"
+                                    onclick="sgcSetMode('parent')">
+                                <i class="fa-solid fa-people-roof me-1"></i>Parent
+                            </button>
+                        </div>
+                        <p id="sgc-step1-hint" style="font-size:13px;color:#374151;margin-bottom:16px">Enter the Student ID of the recipient.</p>
                         <div style="position:relative">
                             <input type="text" id="sgc-school-id" class="form-control"
                                    placeholder="e.g. 2024-00123" autocomplete="off"
@@ -435,7 +450,8 @@ $currentPage = 'topups';
 
     // ── Send GenCoin ────────────────────────────────────────────────────────
     const SGC_API = '<?= ADMIN_URL ?>/api/economy.php';
-    let sgcWalletId = null, sgcStudentName = '', sgcSchoolId = '';
+    let sgcWalletId = null, sgcParentId = null, sgcStudentName = '', sgcSchoolId = '';
+    let sgcMode = 'student'; // 'student' | 'parent'
 
     function openSendGenCoin() {
         sgcReset();
@@ -443,7 +459,8 @@ $currentPage = 'topups';
     }
 
     function sgcReset() {
-        sgcWalletId = null; sgcStudentName = ''; sgcSchoolId = '';
+        sgcWalletId = null; sgcParentId = null; sgcStudentName = ''; sgcSchoolId = '';
+        sgcSetMode('student');
         document.getElementById('sgc-school-id').value = '';
         document.getElementById('sgc-lookup-result').innerHTML = '';
         document.getElementById('sgc-next-1').disabled = true;
@@ -460,6 +477,40 @@ $currentPage = 'topups';
         });
         document.getElementById('sgc-step-1').style.display = '';
         sgcUpdateStepUI(1);
+    }
+
+    function sgcSetMode(mode) {
+        sgcMode = mode;
+        sgcWalletId = null; sgcParentId = null; sgcStudentName = '';
+        document.getElementById('sgc-school-id').value = '';
+        document.getElementById('sgc-lookup-result').innerHTML = '';
+        document.getElementById('sgc-next-1').disabled = true;
+
+        const studentBtn = document.getElementById('sgc-toggle-student');
+        const parentBtn  = document.getElementById('sgc-toggle-parent');
+        const isStudent  = mode === 'student';
+        studentBtn.style.background  = isStudent ? 'var(--gp-success)' : '#fff';
+        studentBtn.style.color       = isStudent ? '#fff' : '#111';
+        studentBtn.style.borderColor = isStudent ? 'var(--gp-success)' : '#d1fae5';
+        parentBtn.style.background   = isStudent ? '#fff' : 'var(--gp-success)';
+        parentBtn.style.color        = isStudent ? '#111' : '#fff';
+        parentBtn.style.borderColor  = isStudent ? '#d1fae5' : 'var(--gp-success)';
+
+        document.getElementById('sgc-step1-hint').textContent = isStudent
+            ? 'Enter the Student ID of the recipient.'
+            : 'Enter the Student ID of a linked student to find their parent.';
+    }
+
+    function sgcSelectParent(parentId, name) {
+        sgcParentId = parentId;
+        sgcStudentName = name; // reused as the generic "recipient name"
+        document.getElementById('sgc-next-1').disabled = false;
+        document.getElementById('sgc-recipient-avatar').textContent = name.charAt(0).toUpperCase();
+        document.getElementById('sgc-recipient-name-2').textContent = name;
+        document.getElementById('sgc-recipient-id-2').textContent = sgcSchoolId;
+        document.querySelectorAll('.sgc-parent-choice').forEach(el => {
+            el.classList.toggle('sgc-parent-choice--active', el.dataset.parentId == parentId);
+        });
     }
 
     function sgcUpdateStepUI(step) {
@@ -524,32 +575,71 @@ $currentPage = 'topups';
         resultEl.innerHTML = '<span style="font-size:12px;color:#6b7280">Looking up…</span>';
         nextBtn.disabled = true;
         sgcWalletId = null;
+        sgcParentId = null;
+        sgcSchoolId = schoolId;
 
+        if (sgcMode === 'student') {
+            try {
+                const res  = await fetch(SGC_API, {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({action:'lookup_student', school_id: schoolId}),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    sgcWalletId    = data.wallet_id;
+                    sgcStudentName = data.name;
+                    resultEl.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:8px;background:var(--gp-success-bg);border-radius:10px;padding:8px 12px">
+                            <i class="fa-solid fa-circle-check" style="color:var(--gp-success)"></i>
+                            <div>
+                                <strong style="font-size:13px;color:#27764b">${data.name}</strong>
+                                <div style="font-size:11px;color:#6b7280">${schoolId}</div>
+                            </div>
+                        </div>`;
+                    nextBtn.disabled = false;
+                    // prefill step 2 recipient pill
+                    document.getElementById('sgc-recipient-avatar').textContent = data.name.charAt(0).toUpperCase();
+                    document.getElementById('sgc-recipient-name-2').textContent = data.name;
+                    document.getElementById('sgc-recipient-id-2').textContent   = schoolId;
+                } else {
+                    resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'Student not found.'}</div>`;
+                }
+            } catch {
+                resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red)">Network error. Try again.</div>`;
+            }
+            return;
+        }
+
+        // Parent mode — parents have no school ID of their own, resolved
+        // through the linked student's school ID instead.
         try {
-            const res  = await fetch(SGC_API, {
+            const res = await fetch(SGC_API, {
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({action:'lookup_student', school_id: schoolId}),
+                body: JSON.stringify({action:'lookup_parent_by_student', school_id: schoolId}),
             });
             const data = await res.json();
-            if (data.success) {
-                sgcWalletId    = data.wallet_id;
-                sgcStudentName = data.name;
-                sgcSchoolId    = schoolId;
-                resultEl.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:8px;background:var(--gp-success-bg);border-radius:10px;padding:8px 12px">
-                        <i class="fa-solid fa-circle-check" style="color:var(--gp-success)"></i>
-                        <div>
-                            <strong style="font-size:13px;color:#27764b">${data.name}</strong>
-                            <div style="font-size:11px;color:#6b7280">${schoolId}</div>
-                        </div>
-                    </div>`;
-                nextBtn.disabled = false;
-                // prefill step 2 recipient pill
-                document.getElementById('sgc-recipient-avatar').textContent = data.name.charAt(0).toUpperCase();
-                document.getElementById('sgc-recipient-name-2').textContent = data.name;
-                document.getElementById('sgc-recipient-id-2').textContent   = schoolId;
+            if (data.success && data.parents && data.parents.length) {
+                if (data.parents.length === 1) {
+                    const p = data.parents[0];
+                    resultEl.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:8px;background:var(--gp-success-bg);border-radius:10px;padding:8px 12px">
+                            <i class="fa-solid fa-circle-check" style="color:var(--gp-success)"></i>
+                            <div>
+                                <strong style="font-size:13px;color:#27764b">${p.name}</strong>
+                                <div style="font-size:11px;color:#6b7280">Parent of ${schoolId}</div>
+                            </div>
+                        </div>`;
+                    sgcSelectParent(p.parent_id, p.name);
+                } else {
+                    resultEl.innerHTML = '<div style="font-size:12px;color:#374151;margin-bottom:6px">Multiple parents linked — choose one:</div>' +
+                        data.parents.map(p => `
+                            <div class="sgc-parent-choice" data-parent-id="${p.parent_id}" onclick="sgcSelectParent(${p.parent_id}, '${p.name.replace(/'/g, "\\'")}')"
+                                 style="cursor:pointer;padding:8px 12px;border-radius:10px;border:1.5px solid #d1fae5;margin-bottom:6px;font-size:13px;font-weight:600;color:#111">
+                                ${p.name}
+                            </div>`).join('');
+                }
             } else {
-                resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'Student not found.'}</div>`;
+                resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red);padding:4px 2px"><i class="fa-solid fa-triangle-exclamation me-1"></i>${data.error || 'No parent found.'}</div>`;
             }
         } catch {
             resultEl.innerHTML = `<div style="font-size:12px;color:var(--gp-red)">Network error. Try again.</div>`;
@@ -598,15 +688,14 @@ $currentPage = 'topups';
         sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…';
         errorEl.textContent = '';
 
+        const payload = sgcMode === 'student'
+            ? { action: 'topup', student_wallet_id: sgcWalletId, amount: amount, notes: msg || null }
+            : { action: 'topup_parent', parent_id: sgcParentId, amount: amount, notes: msg || null };
+
         try {
             const res  = await fetch(SGC_API, {
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    action: 'topup',
-                    student_wallet_id: sgcWalletId,
-                    amount: amount,
-                    notes: msg || null,
-                }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (data.success) {

@@ -37,7 +37,8 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -46,14 +47,11 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
     <main class="merchant-main">
-        <header class="merchant-topbar">
-            <button class="merchant-menu-btn" onclick="document.getElementById('merchantSidebar').classList.toggle('collapsed')">&#9776;</button>
-            <div><h1>Product Inventory</h1><p><?= $isMerchAdmin ? 'Manage your full product catalog.' : 'Update stock levels for available items.' ?></p></div>
-            <div class="merchant-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Product Inventory';
+        $topbarSubtitle = $isMerchAdmin ? 'Manage your full product catalog.' : 'Update stock levels for available items.';
+        require __DIR__ . '/../includes/partials/topbar_merchant.php';
+        ?>
 
         <section class="merchant-premium-panel">
             <div class="merchant-panel-header d-flex justify-content-between align-items-center">
@@ -326,6 +324,56 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
         </div>
     </div>
 </div>
+
+<!-- Restricted Product Blocked Modal (strikes below the risk threshold) -->
+<div class="modal fade" id="restrictedWarnModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal" style="border-top:4px solid var(--gp-warning)">
+            <div class="modal-header">
+                <h5 class="modal-title" style="color:var(--gp-warning)"><i class="fa-solid fa-triangle-exclamation me-2"></i>Restricted Product Blocked</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">This item cannot be added to your catalog:</p>
+                <p class="fw-bold fs-5 mb-2" id="rvProductName">--</p>
+                <div class="alert alert-warning" style="border-radius:10px;font-size:13px">
+                    <i class="fa-solid fa-ban me-1"></i><span id="rvReasonText">--</span>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="small fw-semibold">Blocked attempts on this account</span>
+                        <span class="small fw-bold" style="color:var(--gp-danger)" id="rvStrikeLabel">--</span>
+                    </div>
+                    <div id="rvStrikePips" class="d-flex gap-1"></div>
+                </div>
+                <div class="alert alert-danger d-none" style="border-radius:10px;font-size:13px" id="rvEscalation"></div>
+                <p class="text-muted small mb-3"><i class="fa-solid fa-circle-info me-1"></i>Every blocked attempt is logged and visible to the GenPay finance team.</p>
+                <button type="button" class="login-btn w-100" data-bs-dismiss="modal">I Understand</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Suspended Modal (fires when the strike limit is hit) -->
+<div class="modal fade" id="accountRiskModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal" style="border-top:4px solid var(--gp-danger)">
+            <div class="modal-body text-center pt-4">
+                <div style="width:64px;height:64px;border-radius:50%;background:var(--gp-danger-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                    <i class="fa-solid fa-user-lock" style="font-size:26px;color:var(--gp-danger)"></i>
+                </div>
+                <h4 class="fw-bold mb-2" style="color:var(--gp-danger)">Account Temporarily Suspended</h4>
+                <p class="mb-2">"<span class="fw-semibold" id="arProductName">--</span>" is a restricted product and was not saved.</p>
+                <p class="mb-3">This account reached <strong id="arStrikeCount">--</strong> blocked attempts to list restricted products. <strong>Your merchant account — including staff logins and stall sales — is now suspended for <span id="arSuspendDays">3</span> days</strong>, until <strong id="arSuspendUntil">--</strong>.</p>
+                <div class="alert alert-danger text-start" style="border-radius:10px;font-size:13px">
+                    <i class="fa-solid fa-ban me-1"></i><span id="arReasonText">--</span>
+                </div>
+                <p class="text-muted small mb-3">The GenPay finance team has been notified and may lift the suspension early. You will be logged out now and can log back in once the suspension ends.</p>
+                <button type="button" class="btn btn-danger w-100" id="arLogoutBtn"><i class="fa-solid fa-right-from-bracket me-1"></i>Log Out</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
@@ -428,10 +476,62 @@ document.getElementById('productForm').addEventListener('submit', async function
     if (d.success) {
         msg.innerHTML = `<div class="alert alert-success">${d.message} Reloading...</div>`;
         setTimeout(() => location.reload(), 1300);
+    } else if (d.blocked) {
+        msg.innerHTML = '';
+        btn.disabled = false; btn.textContent = 'Save Product';
+        showViolationModal(d);
     } else {
         msg.innerHTML = `<div class="alert alert-danger">${d.message}</div>`;
         btn.disabled = false; btn.textContent = 'Save Product';
     }
+});
+
+// ── Restricted-product strike modals ─────────────────────────────────────────
+// Below the risk threshold: warning modal with the strike meter (escalation
+// note from warn_at up). Hitting risk_at: the account-suspended modal — the
+// server has already frozen the stall for suspend_days, so the only exit is
+// Log Out. Thresholds come from the API so policy lives server-side.
+function showViolationModal(d) {
+    const count  = parseInt(d.violation_count) || 0;
+    const warnAt = parseInt(d.warn_at) || 3;
+    const riskAt = parseInt(d.risk_at) || 5;
+
+    if (count >= riskAt) {
+        document.getElementById('arProductName').textContent = d.attempted_name || '';
+        document.getElementById('arStrikeCount').textContent = count;
+        document.getElementById('arReasonText').textContent = d.reason || d.message;
+        document.getElementById('arSuspendDays').textContent = d.suspend_days || 3;
+        const until = d.suspended_until ? new Date(d.suspended_until.replace(' ', 'T')) : null;
+        document.getElementById('arSuspendUntil').textContent = (until && !isNaN(until))
+            ? until.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+            : `${d.suspend_days || 3} days from now`;
+    } else {
+        document.getElementById('rvProductName').textContent = d.attempted_name || '';
+        document.getElementById('rvReasonText').textContent = d.reason || d.message;
+        document.getElementById('rvStrikeLabel').textContent = `${count} of ${riskAt}`;
+        document.getElementById('rvStrikePips').innerHTML = Array.from({length: riskAt}, (_, i) =>
+            `<span style="flex:1;height:6px;border-radius:3px;background:${i < count ? 'var(--gp-danger)' : 'var(--gp-line)'}"></span>`
+        ).join('');
+        const esc = document.getElementById('rvEscalation');
+        if (count >= warnAt) {
+            const left = riskAt - count;
+            esc.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i><strong>${left} more blocked attempt${left === 1 ? '' : 's'}</strong> and this account will be suspended for ${d.suspend_days || 3} days.`;
+            esc.classList.remove('d-none');
+        } else {
+            esc.classList.add('d-none');
+        }
+    }
+
+    const nextId = count >= riskAt ? 'accountRiskModal' : 'restrictedWarnModal';
+    const productModalEl = document.getElementById('addProductModal');
+    productModalEl.addEventListener('hidden.bs.modal', () => {
+        new bootstrap.Modal(document.getElementById(nextId)).show();
+    }, { once: true });
+    bootstrap.Modal.getOrCreateInstance(productModalEl).hide();
+}
+
+document.getElementById('arLogoutBtn').addEventListener('click', () => {
+    window.location.href = '<?= BASE_URL ?>/logout.php';
 });
 
 // ── Delete product ────────────────────────────────────────────────────────────
@@ -482,5 +582,6 @@ document.getElementById('stockForm').addEventListener('submit', async function(e
     }
 });
 </script>
+<?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 </html>

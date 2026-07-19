@@ -97,14 +97,14 @@ class VoucherEngine
                 "INSERT INTO transactions
                     (reference_no, transaction_type, initiated_by, voucher_id,
                      amount, vault_before, vault_after, total_in_circulation,
-                     status, notes)
+                     status, notes, school_year_id)
                  VALUES (?, 'voucher_create', ?, ?, ?, ?, ?,
                     (SELECT cashier_vault_points +
                         COALESCE((SELECT SUM(balance) FROM student_wallets),0) +
                         COALESCE((SELECT SUM(balance) FROM merchant_wallets),0) +
                         COALESCE((SELECT SUM(remaining_balance) FROM vouchers WHERE status='active'),0)
                      FROM system_settings WHERE id=1),
-                    'completed', ?)"
+                    'completed', ?, ?)"
             )->execute([
                         $ref,
                         $issuedBy,
@@ -113,6 +113,7 @@ class VoucherEngine
                         (float) $settings['cashier_vault_points'],
                         (float) $settings['cashier_vault_points'] - $amount,
                         "Voucher {$voucherCode} issued to {$visitorName} - exp {$expiresAt}",
+                        gjc_active_school_year_id($this->db),
                     ]);
 
             $this->db->commit();
@@ -456,14 +457,14 @@ class VoucherEngine
             $this->db->prepare(
                 "INSERT INTO transactions
                     (reference_no, transaction_type, initiated_by, voucher_id,
-                     amount, vault_before, vault_after, total_in_circulation, status, notes)
+                     amount, vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
                  VALUES (?, 'voucher_expire', ?, ?, ?, ?, ?,
                     (SELECT cashier_vault_points +
                         COALESCE((SELECT SUM(balance) FROM student_wallets),0)+
                         COALESCE((SELECT SUM(balance) FROM merchant_wallets),0)+
                         COALESCE((SELECT SUM(remaining_balance) FROM vouchers WHERE status='active'),0)
                      FROM system_settings WHERE id=1),
-                    'completed', ?)"
+                    'completed', ?, ?)"
             )->execute([
                         $ref,
                         $triggeredBy,
@@ -474,6 +475,7 @@ class VoucherEngine
                         "LAZY EXPIRY: Voucher #{$voucherId} ({$voucher['voucher_code']}) expired. " .
                         "Recycled Php {$recycled} to vault. Non-refundable: " .
                         ($voucher['is_refundable'] ? 'No' : 'Yes'),
+                        gjc_active_school_year_id($this->db),
                     ]);
 
             $this->db->commit();

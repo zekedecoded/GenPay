@@ -60,10 +60,18 @@ try {
                         'matched_reason' => $restrictionReason,
                     ]
                 );
+                $violationCount = gjc_record_product_violation($db, $merchantUserId, $restrictionReason);
                 echo json_encode([
                     'success' => false,
                     'blocked' => true,
                     'message' => "\"{$productName}\" is a banned product and cannot be added: {$restrictionReason}",
+                    'attempted_name' => $productName,
+                    'reason' => $restrictionReason,
+                    'violation_count' => $violationCount,
+                    'warn_at' => GJC_VIOLATION_WARN_AT,
+                    'risk_at' => GJC_VIOLATION_RISK_AT,
+                    'suspend_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'suspended_until' => gjc_merchant_suspended_until($db, $merchantUserId),
                 ]);
                 exit;
             }
@@ -177,10 +185,18 @@ try {
                         'matched_reason' => $restrictionReason,
                     ]
                 );
+                $violationCount = gjc_record_product_violation($db, $merchantUserId, $restrictionReason);
                 echo json_encode([
                     'success' => false,
                     'blocked' => true,
                     'message' => "\"{$productName}\" is a banned product and cannot be saved: {$restrictionReason}",
+                    'attempted_name' => $productName,
+                    'reason' => $restrictionReason,
+                    'violation_count' => $violationCount,
+                    'warn_at' => GJC_VIOLATION_WARN_AT,
+                    'risk_at' => GJC_VIOLATION_RISK_AT,
+                    'suspend_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'suspended_until' => gjc_merchant_suspended_until($db, $merchantUserId),
                 ]);
                 exit;
             }

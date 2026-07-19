@@ -1,5 +1,4 @@
-.users-command-panel,
-.users-table-panel {
+.users-command-panel {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(14, 99, 50, 0.08);
   border-radius: 28px;
@@ -7,8 +6,7 @@
   padding: 26px;
 }
 
-.users-panel-header,
-.users-table-header {
+.users-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -16,16 +14,14 @@
   margin-bottom: 22px;
 }
 
-.users-panel-header h3,
-.users-table-header h3 {
+.users-panel-header h3 {
   margin: 0;
   color: #102018;
   font-size: 22px;
   font-weight: 850;
 }
 
-.users-panel-header p,
-.users-table-header p {
+.users-panel-header p {
   margin: 5px 0 0;
   color: #66756c;
   font-size: 14px;
@@ -69,6 +65,7 @@
   grid-template-columns: 2fr 1fr 1fr auto;
   gap: 16px;
   align-items: end;
+  margin-bottom: 26px;
 }
 
 .premium-field {
@@ -422,8 +419,7 @@
 }
 
 @media (max-width: 768px) {
-  .users-panel-header,
-  .users-table-header {
+  .users-panel-header {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -114,24 +114,21 @@ $currentPage = 'users';
                 </div>
             </header>
 
-            <section class="users-command-panel mb-4">
+            <section class="users-command-panel">
 
                 <div class="users-panel-header">
                     <div>
-                        <h3>Users Directory</h3>
-                        <p>Search and filter accounts across the GenPay system.</p>
+                        <h3>All Users</h3>
+                        <p>Search, filter, and manage every account's wallet access and status.</p>
                     </div>
-
-                    <button type="button" class="add-user-btn" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="fa-solid fa-user-plus"></i> Add User
-                    </button>
                 </div>
 
                 <form class="users-filter-grid" method="GET" action="<?= ADMIN_URL ?>/users.php">
 
                     <div class="premium-field search-field">
                         <label>Search User</label>
-                        <input type="text" name="search" placeholder="Name, email, school ID, or student">
+                        <input type="text" id="usersSearchInput" placeholder="Name, email, school ID, or student"
+                            onkeydown="if (event.key === 'Enter') { event.preventDefault(); }">
                     </div>
 
                     <div class="premium-field">
@@ -161,19 +158,8 @@ $currentPage = 'users';
 
                 </form>
 
-            </section>
-
-            <section class="users-table-panel">
-
-                <div class="users-table-header">
-                    <div>
-                        <h3>All Users</h3>
-                        <p>Account list with wallet balance and management actions.</p>
-                    </div>
-                </div>
-
                 <div class="table-responsive">
-                    <table class="table users-table align-middle js-datatable" id="usersTable" data-page-length="10">
+                    <table class="table users-table align-middle js-datatable" id="usersTable" data-page-length="10" data-hide-filter="true">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -253,92 +239,6 @@ $currentPage = 'users';
 
     </div>
 
-    
-    <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content add-user-modal">
-
-                <div class="modal-header add-user-modal-header">
-                    <h5 class="modal-title">
-                        <span class="modal-title-icon"><i class="fa-solid fa-user-plus"></i></span>
-                        Create New User
-                    </h5>
-
-                    <button type="button" class="btn-close add-user-close" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
-                </div>
-
-                <form action="<?= ADMIN_URL ?>/add_user.php" method="POST">
-
-                    <div class="modal-body add-user-modal-body">
-
-                        <div class="row g-4">
-
-                            <div class="col-md-6">
-                                <label class="add-user-label">First Name *</label>
-                                <input type="text" name="first_name" class="add-user-input" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="add-user-label">Last Name *</label>
-                                <input type="text" name="last_name" class="add-user-input" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="add-user-label">Email *</label>
-                                <input type="email" name="email" class="add-user-input" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="add-user-label">Phone</label>
-                                <input type="text" name="phone" class="add-user-input" placeholder="09XX-XXX-XXXX">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="add-user-label">Role *</label>
-                                <select name="role" class="add-user-input" required>
-                                    <option value="student">Student</option>
-                                    <option value="merchant">Merchant</option>
-                                    <option value="finance">Finance</option>
-                                    <option value="parent">Parent</option>
-                                    <option value="visitor">Visitor</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-6" id="student-id-field" style="display:none">
-                                <label class="add-user-label">Student ID</label>
-                                <div style="padding:10px 14px;background:#f0fdf6;border:1.5px solid #bbf7d4;border-radius:8px;font-size:13px;color:#27764b;font-weight:600">
-                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
-                                    Auto-generated as <strong>GJC<?= date('Y') ?>-XXXX</strong>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="add-user-label">Initial Password *</label>
-                                <input type="password" name="password" class="add-user-input" required>
-                                <p class="add-user-help">User should change this on first login.</p>
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="modal-footer add-user-modal-footer">
-                        <button type="button" class="modal-cancel-btn" data-bs-dismiss="modal">
-                            Cancel
-                        </button>
-
-                        <button type="submit" class="modal-create-btn">
-                            Create Account
-                        </button>
-                    </div>
-
-                </form>
-
-            </div>
-        </div>
-    </div>
-
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
@@ -347,16 +247,19 @@ $currentPage = 'users';
         document.getElementById("sidebar").classList.toggle("collapsed");
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const roleSelect = document.querySelector('[name="role"]');
-        const studentIdField = document.getElementById('student-id-field');
-        if (roleSelect && studentIdField) {
-            function toggleStudentId() {
-                studentIdField.style.display = roleSelect.value === 'student' ? '' : 'none';
-            }
-            roleSelect.addEventListener('change', toggleStudentId);
-            toggleStudentId();
+    // The filter-row "Search User" field drives the users table's own
+    // DataTables search directly, instead of the table showing its own
+    // auto-rendered search box too (data-hide-filter="true" above suppresses
+    // that one) — one search field instead of two.
+    jQuery(function ($) {
+        const $input = $("#usersSearchInput");
+        const $table = $("#usersTable");
+        if (!$input.length || !$table.length) {
+            return;
         }
+        $input.on("input", function () {
+            $table.DataTable().search(this.value).draw();
+        });
     });
     </script>
 

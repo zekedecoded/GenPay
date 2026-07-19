@@ -1,4 +1,4 @@
-@import url("gjc-clear.css?v=11");
+@import url("gjc-clear.css?v=12");
 @import url("theme.css?v=2");
 
 :root {
@@ -1247,6 +1247,7 @@ a.mini-metric-card:focus-visible {
 .ce-pool-students  { background: var(--gp-gold); }
 .ce-pool-merchants { background: var(--gjc-slate); }
 .ce-pool-vouchers  { background: var(--gp-green-700); }
+.ce-pool-parents   { background: var(--gp-info); }
 
 /* ── Pool grid section intro ─────────────────────────────── */
 .ce-flow-title { font-size: 16px; font-weight: 800; color: var(--gp-green-950); }
@@ -1255,7 +1256,7 @@ a.mini-metric-card:focus-visible {
 /* ── 4 Pool cards — calm detail readout under the colourful bar ── */
 .ce-pool-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
 }
 
@@ -1286,12 +1287,15 @@ a.mini-metric-card:focus-visible {
 .ce-pool-card.ce-pool-merchants .ce-pool-icon       { color: var(--gjc-slate); }
 .ce-pool-card.ce-pool-vouchers .ce-pool-icon-wrap  { background: rgba(17, 106, 56, 0.1); }
 .ce-pool-card.ce-pool-vouchers .ce-pool-icon        { color: var(--gp-green-700); }
+.ce-pool-card.ce-pool-parents .ce-pool-icon-wrap   { background: rgba(37, 99, 235, 0.12); }
+.ce-pool-card.ce-pool-parents .ce-pool-icon         { color: var(--gp-info); }
 
 /* the card itself is now a neutral surface, not a colour swatch */
 .ce-pool-card.ce-pool-vault,
 .ce-pool-card.ce-pool-students,
 .ce-pool-card.ce-pool-merchants,
-.ce-pool-card.ce-pool-vouchers {
+.ce-pool-card.ce-pool-vouchers,
+.ce-pool-card.ce-pool-parents {
   background: var(--gjc-panel);
 }
 

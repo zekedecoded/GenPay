@@ -15,6 +15,7 @@ class CirculationEngine
     const TXN_VOUCHER_CREATE = "voucher_create";
     const TXN_VOUCHER_EXPIRE = "voucher_expire";
     const TXN_CAP_INCREASE = "cap_increase";
+    const TXN_ALLOWANCE = "allowance";
 
     // Service-fee rates per top-up source
     const FEE_SYSTEM_RATE = 0.002; // 2 % → stays in vault (both routes)
@@ -183,6 +184,129 @@ class CirculationEngine
                 $settings["cashier_vault_points"],
                 $vaultAfter,
                 studentWalletId: $studentWalletId,
+                merchantWalletId: $merchantFee > 0 ? $merchantWalletId : null,
+                notes: $feeNote,
+                topUpSource: $source,
+                baseAmount: $cashAmount,
+                feeAmount: $systemFee + $merchantFee,
+                creditedAmount: $credited,
+            );
+
+            $this->logFeeRevenue(
+                $ref,
+                $source,
+                $cashAmount,
+                $systemFee,
+                $merchantFee,
+                $merchantFee > 0 ? $merchantWalletId : null,
+                $initiatedBy,
+            );
+
+            $this->db->commit();
+            return [
+                "success" => true,
+                "reference" => $ref,
+                "vault_after" => $vaultAfter,
+                "cash_amount" => $cashAmount,
+                "system_fee" => $systemFee,
+                "merchant_fee" => $merchantFee,
+                "fee_amount" => $systemFee + $merchantFee,
+                "credited_amount" => $credited,
+            ];
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Parent-wallet top-up with the same tiered service fee as cashInWithFee().
+     * Reuses TXN_CASH_IN (not a new enum value) — ownership is disambiguated
+     * by parent_wallet_id being set instead of student_wallet_id on the row,
+     * same convention as the existing merchant-fee attribution.
+     */
+    public function cashInParent(
+        int $parentWalletId,
+        float $cashAmount,
+        string $source,
+        int $initiatedBy,
+        int $merchantWalletId = 0,
+        string $notes = "",
+    ): array {
+        $this->assertPositive($cashAmount);
+
+        if (!in_array($source, ["finance", "merchant"], true)) {
+            throw new \InvalidArgumentException(
+                "Invalid top-up source: {$source}",
+            );
+        }
+
+        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
+        $merchantFee =
+            $source === "merchant"
+                ? round($cashAmount * self::FEE_MERCHANT_RATE, 2)
+                : 0.0;
+        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
+        $vaultDrain = $credited + $merchantFee;
+
+        $this->db->beginTransaction();
+        try {
+            $settings = $this->lockSettings();
+
+            if ($settings["cashier_vault_points"] < $vaultDrain) {
+                throw new \RuntimeException(
+                    "VAULT_INSUFFICIENT: Vault has ₱" .
+                        number_format($settings["cashier_vault_points"], 2) .
+                        " — cannot load ₱" .
+                        number_format($cashAmount, 2) .
+                        " (needs ₱" .
+                        number_format($vaultDrain, 2) .
+                        " after fees).",
+                );
+            }
+
+            $this->db
+                ->prepare(
+                    "UPDATE system_settings
+                    SET cashier_vault_points = cashier_vault_points - ?
+                  WHERE id = 1",
+                )
+                ->execute([$vaultDrain]);
+
+            $this->db
+                ->prepare(
+                    "UPDATE parent_wallets SET balance = balance + ? WHERE id = ?",
+                )
+                ->execute([$credited, $parentWalletId]);
+
+            if ($merchantFee > 0 && $merchantWalletId > 0) {
+                $this->db
+                    ->prepare(
+                        "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?",
+                    )
+                    ->execute([$merchantFee, $merchantWalletId]);
+            }
+
+            $vaultAfter = $settings["cashier_vault_points"] - $vaultDrain;
+
+            $this->validateCirculation($settings["total_circulation_cap"]);
+
+            $feeNote =
+                "Parent top-up via {$source}. Cash: ₱{$cashAmount}, " .
+                "System fee (2%): ₱{$systemFee}" .
+                ($merchantFee > 0
+                    ? ", Merchant fee (1%): ₱{$merchantFee}"
+                    : "") .
+                ", Credited: ₱{$credited}." .
+                ($notes !== "" ? " Note: {$notes}" : "");
+
+            $ref = $this->logTransaction(
+                self::TXN_CASH_IN,
+                $initiatedBy,
+                $credited,
+                $settings["cashier_vault_points"],
+                $vaultAfter,
+                parentWalletId: $parentWalletId,
                 merchantWalletId: $merchantFee > 0 ? $merchantWalletId : null,
                 notes: $feeNote,
                 topUpSource: $source,
@@ -390,6 +514,196 @@ class CirculationEngine
                 "merchant_fee" => $merchantFee,
                 "fee_amount" => $systemFee + $merchantFee,
                 "credited_amount" => $credited,
+            ];
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Instant, merchant-wallet-funded parent top-up. Mirrors merchantSendToStudent(). */
+    public function merchantSendToParent(
+        int $merchantWalletId,
+        int $parentWalletId,
+        float $cashAmount,
+        int $initiatedBy,
+        string $notes = "",
+    ): array {
+        $this->assertPositive($cashAmount);
+
+        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
+        $merchantFee = round($cashAmount * self::FEE_MERCHANT_RATE, 2);
+        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
+
+        $this->db->beginTransaction();
+        try {
+            $settings = $this->lockSettings();
+
+            $mStmt = $this->db->prepare(
+                "SELECT balance FROM merchant_wallets WHERE id = ? FOR UPDATE",
+            );
+            $mStmt->execute([$merchantWalletId]);
+            $mRow = $mStmt->fetch();
+
+            if (!$mRow || (float) $mRow["balance"] < $cashAmount) {
+                throw new \RuntimeException(
+                    sprintf(
+                        "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — cannot send ₱%s.",
+                        number_format((float) ($mRow["balance"] ?? 0), 2),
+                        number_format($cashAmount, 2),
+                    ),
+                );
+            }
+
+            $this->db
+                ->prepare(
+                    "UPDATE merchant_wallets SET balance = balance - ? WHERE id = ?",
+                )
+                ->execute([$cashAmount, $merchantWalletId]);
+
+            $this->db
+                ->prepare(
+                    "UPDATE parent_wallets SET balance = balance + ? WHERE id = ?",
+                )
+                ->execute([$credited, $parentWalletId]);
+
+            $this->db
+                ->prepare(
+                    "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?",
+                )
+                ->execute([$merchantFee, $merchantWalletId]);
+
+            $this->db
+                ->prepare(
+                    "UPDATE system_settings SET cashier_vault_points = cashier_vault_points + ? WHERE id = 1",
+                )
+                ->execute([$systemFee]);
+
+            $vaultAfter = $settings["cashier_vault_points"] + $systemFee;
+
+            $this->validateCirculation($settings["total_circulation_cap"]);
+
+            $feeNote =
+                "Merchant send to parent. Sent: ₱{$cashAmount}, " .
+                "System fee (2%): ₱{$systemFee}, " .
+                "Merchant cut (1%): ₱{$merchantFee}, " .
+                "Credited: ₱{$credited}." .
+                ($notes !== "" ? " Note: {$notes}" : "");
+
+            $ref = $this->logTransaction(
+                self::TXN_CASH_IN,
+                $initiatedBy,
+                $credited,
+                $settings["cashier_vault_points"],
+                $vaultAfter,
+                parentWalletId: $parentWalletId,
+                merchantWalletId: $merchantWalletId,
+                notes: $feeNote,
+                topUpSource: "merchant",
+                baseAmount: $cashAmount,
+                feeAmount: $systemFee + $merchantFee,
+                creditedAmount: $credited,
+            );
+
+            $this->logFeeRevenue(
+                $ref,
+                "merchant",
+                $cashAmount,
+                $systemFee,
+                $merchantFee,
+                $merchantWalletId,
+                $initiatedBy,
+            );
+
+            $this->db->commit();
+            return [
+                "success" => true,
+                "reference" => $ref,
+                "cash_amount" => $cashAmount,
+                "system_fee" => $systemFee,
+                "merchant_fee" => $merchantFee,
+                "fee_amount" => $systemFee + $merchantFee,
+                "credited_amount" => $credited,
+            ];
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * One-time parent → student transfer. Internal move, cap unchanged, no
+     * fee (fees were already taken at cash-in). A single transactions row
+     * carries both parent_wallet_id and student_wallet_id, so it's visible
+     * in both the parent's sent-history and the student's own ledger — see
+     * the plan's note on why p2p_transfer's single-sender-row shape isn't
+     * repeated here.
+     */
+    public function allowanceTransfer(
+        int $parentWalletId,
+        int $studentWalletId,
+        float $amount,
+        int $initiatedByUserId,
+        string $notes = "",
+    ): array {
+        $this->assertPositive($amount);
+
+        $this->db->beginTransaction();
+        try {
+            $settings = $this->lockSettings();
+
+            $pStmt = $this->db->prepare(
+                "SELECT balance FROM parent_wallets WHERE id = ? FOR UPDATE",
+            );
+            $pStmt->execute([$parentWalletId]);
+            $parentRow = $pStmt->fetch();
+
+            if (!$parentRow || (float) $parentRow["balance"] < $amount) {
+                throw new \RuntimeException(
+                    "PARENT_INSUFFICIENT_BALANCE: Wallet has ₱" .
+                        number_format((float) ($parentRow["balance"] ?? 0), 2) .
+                        " — cannot send ₱" .
+                        number_format($amount, 2) .
+                        ".",
+                );
+            }
+
+            $sStmt = $this->db->prepare(
+                "SELECT id FROM student_wallets WHERE id = ? FOR UPDATE",
+            );
+            $sStmt->execute([$studentWalletId]);
+            if (!$sStmt->fetch()) {
+                throw new \RuntimeException("STUDENT_WALLET_NOT_FOUND: Recipient wallet does not exist.");
+            }
+
+            $this->db
+                ->prepare("UPDATE parent_wallets SET balance = balance - ? WHERE id = ?")
+                ->execute([$amount, $parentWalletId]);
+
+            $this->db
+                ->prepare("UPDATE student_wallets SET balance = balance + ? WHERE id = ?")
+                ->execute([$amount, $studentWalletId]);
+
+            // Cap doesn't move — vault is untouched, this is an internal transfer.
+            $vaultUnchanged = (float) $settings["cashier_vault_points"];
+
+            $this->validateCirculation($settings["total_circulation_cap"]);
+
+            $ref = $this->logTransaction(
+                self::TXN_ALLOWANCE,
+                $initiatedByUserId,
+                $amount,
+                $vaultUnchanged,
+                $vaultUnchanged,
+                studentWalletId: $studentWalletId,
+                parentWalletId: $parentWalletId,
+                notes: $notes !== "" ? $notes : "Allowance transfer",
+            );
+
+            $this->db->commit();
+            return [
+                "success" => true,
+                "reference" => $ref,
             ];
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -855,6 +1169,7 @@ class CirculationEngine
                 (SELECT cashier_vault_points FROM system_settings WHERE id = 1)
                 + COALESCE((SELECT SUM(balance) FROM student_wallets), 0)
                 + COALESCE((SELECT SUM(balance) FROM merchant_wallets), 0)
+                + COALESCE((SELECT SUM(balance) FROM parent_wallets), 0)
                 + COALESCE((SELECT SUM(remaining_balance)
                             FROM vouchers WHERE status = 'active'), 0)
              AS total_in_circulation",
@@ -909,11 +1224,13 @@ class CirculationEngine
                 ss.cashier_vault_points AS vault,
                 COALESCE((SELECT SUM(balance) FROM student_wallets), 0) AS student_wallets_total,
                 COALESCE((SELECT SUM(balance) FROM merchant_wallets), 0) AS merchant_wallets_total,
+                COALESCE((SELECT SUM(balance) FROM parent_wallets), 0) AS parent_wallets_total,
                 COALESCE((SELECT SUM(remaining_balance) FROM vouchers WHERE status = 'active'), 0) AS active_vouchers_total,
                 (
                     ss.cashier_vault_points
                     + COALESCE((SELECT SUM(balance) FROM student_wallets), 0)
                     + COALESCE((SELECT SUM(balance) FROM merchant_wallets), 0)
+                    + COALESCE((SELECT SUM(balance) FROM parent_wallets), 0)
                     + COALESCE((SELECT SUM(remaining_balance) FROM vouchers WHERE status = 'active'), 0)
                 ) AS total_in_circulation,
                 (
@@ -921,6 +1238,7 @@ class CirculationEngine
                     - ss.cashier_vault_points
                     - COALESCE((SELECT SUM(balance) FROM student_wallets), 0)
                     - COALESCE((SELECT SUM(balance) FROM merchant_wallets), 0)
+                    - COALESCE((SELECT SUM(balance) FROM parent_wallets), 0)
                     - COALESCE((SELECT SUM(remaining_balance) FROM vouchers WHERE status = 'active'), 0)
                 ) AS circulation_drift,
                 ss.updated_at AS as_of
@@ -947,6 +1265,7 @@ class CirculationEngine
         float $baseAmount = null,
         float $feeAmount = null,
         float $creditedAmount = null,
+        int $parentWalletId = null,
     ): string {
         $total = (float) $this->db
             ->query(
@@ -954,6 +1273,7 @@ class CirculationEngine
                 (SELECT cashier_vault_points FROM system_settings WHERE id = 1)
                 + COALESCE((SELECT SUM(balance) FROM student_wallets), 0)
                 + COALESCE((SELECT SUM(balance) FROM merchant_wallets), 0)
+                + COALESCE((SELECT SUM(balance) FROM parent_wallets), 0)
                 + COALESCE((SELECT SUM(remaining_balance)
                             FROM vouchers WHERE status = 'active'), 0)",
             )
@@ -970,8 +1290,8 @@ class CirculationEngine
                 "INSERT INTO transactions
                 (reference_no, transaction_type, initiated_by, student_wallet_id,
                  merchant_wallet_id, voucher_id, amount, vault_before, vault_after,
-                 total_in_circulation, status, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)",
+                 total_in_circulation, status, notes, school_year_id, parent_wallet_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)",
             )
             ->execute([
                 $ref,
@@ -985,6 +1305,8 @@ class CirculationEngine
                 $vaultAfter,
                 $total,
                 $notes,
+                gjc_active_school_year_id($this->db),
+                $parentWalletId,
             ]);
 
         // Persist fee fields if the migration has already added the columns

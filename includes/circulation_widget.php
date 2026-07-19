@@ -12,6 +12,7 @@ $cap = max((float) ($snap["cap"] ?? 1), 0.01);
 $vault = (float) ($snap["vault"] ?? 0);
 $students = (float) ($snap["student_wallets_total"] ?? 0);
 $merchants = (float) ($snap["merchant_wallets_total"] ?? 0);
+$parents = (float) ($snap["parent_wallets_total"] ?? 0);
 $vouchers = (float) ($snap["active_vouchers_total"] ?? 0);
 $circulation = (float) ($snap["total_in_circulation"] ?? 0);
 $drift = abs((float) ($snap["circulation_drift"] ?? 0));
@@ -30,6 +31,7 @@ $walletUsersList = gjc_wallet_users_list($db);
 $vaultPct = round(($vault / $cap) * 100, 1);
 $studPct = round(($students / $cap) * 100, 1);
 $merchPct = round(($merchants / $cap) * 100, 1);
+$parentPct = round(($parents / $cap) * 100, 1);
 $vchPct = round(($vouchers / $cap) * 100, 1);
 $mintUsedPct = (float) $monthly["soft_limit_used_pct"];
 $minted = (float) $monthly["minted_this_month"];
@@ -103,10 +105,11 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
         </div>
 
         <div class="ce-ledger-bar" role="img"
-             aria-label="Circulation breakdown: Cashier Vault <?= $vaultPct ?>%, Student Wallets <?= $studPct ?>%, Merchant Wallets <?= $merchPct ?>%, Active Vouchers <?= $vchPct ?>%">
+             aria-label="Circulation breakdown: Cashier Vault <?= $vaultPct ?>%, Student Wallets <?= $studPct ?>%, Merchant Wallets <?= $merchPct ?>%, Parent Wallets <?= $parentPct ?>%, Active Vouchers <?= $vchPct ?>%">
             <div class="ce-ledger-seg ce-pool-vault"     style="width:<?= $vaultPct ?>%"></div>
             <div class="ce-ledger-seg ce-pool-students"  style="width:<?= $studPct ?>%"></div>
             <div class="ce-ledger-seg ce-pool-merchants" style="width:<?= $merchPct ?>%"></div>
+            <div class="ce-ledger-seg ce-pool-parents"   style="width:<?= $parentPct ?>%"></div>
             <div class="ce-ledger-seg ce-pool-vouchers"  style="width:<?= $vchPct ?>%"></div>
         </div>
 
@@ -114,6 +117,7 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
             <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-vault"></span>Cashier Vault <b><?= $vaultPct ?>%</b></li>
             <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-students"></span>Student Wallets <b><?= $studPct ?>%</b></li>
             <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-merchants"></span>Merchant Wallets <b><?= $merchPct ?>%</b></li>
+            <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-parents"></span>Parent Wallets <b><?= $parentPct ?>%</b></li>
             <li class="ce-legend-item"><span class="ce-legend-dot ce-pool-vouchers"></span>Active Vouchers <b><?= $vchPct ?>%</b></li>
         </ul>
 
@@ -134,6 +138,17 @@ $limitHit = (bool) $monthly["soft_limit_exceeded"];
                 <span class="ce-pool-label">Cashier Vault</span>
                 <div class="ce-pool-amt"><?= gjc_token_display($vault) ?></div>
                 <small class="ce-pool-share">Available to load</small>
+            </div>
+        </div>
+
+        <div class="ce-pool-card ce-pool-parents">
+            <div class="ce-pool-icon-wrap">
+                <i class="fa-solid fa-people-roof ce-pool-icon"></i>
+            </div>
+            <div class="ce-pool-info">
+                <span class="ce-pool-label">Parent Wallets</span>
+                <div class="ce-pool-amt"><?= gjc_token_display($parents) ?></div>
+                <small class="ce-pool-share"><?= $parentPct ?>% of total</small>
             </div>
         </div>
 

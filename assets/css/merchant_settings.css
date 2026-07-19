@@ -23,7 +23,7 @@
 .wallet-qr-caption span { font-size: 13px; color: #6b7280; }
 
 @media print {
-    .merchant-sidebar, .merchant-topbar, .merchant-premium-panel:not(#walletQrPanel) {
+    .sd-sidebar, .sd-topbar, .sd-bottomnav, .merchant-premium-panel:not(#walletQrPanel) {
         display: none !important;
     }
     #walletQrPanel .merchant-panel-header button { display: none; }

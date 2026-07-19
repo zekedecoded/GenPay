@@ -16,6 +16,18 @@ $currentPage = $currentPage ?? '';
             <i class="fa-solid fa-gauge-high parent-nav-icon"></i>
             <span class="parent-nav-text">Dashboard</span>
         </a>
+        <a href="<?= PARENT_URL ?>/wallet.php" class="<?= $currentPage === 'wallet' ? 'active' : '' ?>">
+            <i class="fa-solid fa-wallet parent-nav-icon"></i>
+            <span class="parent-nav-text">Wallet &amp; Top-Up</span>
+        </a>
+        <a href="<?= PARENT_URL ?>/allowance.php" class="<?= $currentPage === 'allowance' ? 'active' : '' ?>">
+            <i class="fa-solid fa-hand-holding-dollar parent-nav-icon"></i>
+            <span class="parent-nav-text">Send Allowance</span>
+        </a>
+        <a href="<?= PARENT_URL ?>/activity.php" class="<?= $currentPage === 'activity' ? 'active' : '' ?>">
+            <i class="fa-solid fa-list-check parent-nav-icon"></i>
+            <span class="parent-nav-text">Activity Trail</span>
+        </a>
         <a href="<?= PARENT_URL ?>/profile.php" class="<?= $currentPage === 'profile' ? 'active' : '' ?>">
             <i class="fa-solid fa-user parent-nav-icon"></i>
             <span class="parent-nav-text">Profile</span>

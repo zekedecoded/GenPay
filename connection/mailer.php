@@ -231,7 +231,7 @@ function gjc_send_stall_meeting_reschedule_email(
             <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
                 <p style="margin:0;color:#92400e;line-height:1.6"><strong>Important:</strong> Please bring the <strong>original copies</strong> of all documents you uploaded (business permit, sanitary permit, GJC requirements, and clearance) so they can be verified against your submission.</p>
             </div>
-            <p style="color:#374151;line-height:1.7">If you cannot attend the new schedule, your application will be cancelled and you are welcome to submit a new one.</p>
+            <p style="color:#374151;line-height:1.7">If you cannot attend the new schedule, your application will expire and you are welcome to submit a new one.</p>
             <p style="font-size:12px;color:#6b7280">GenPay Team</p>
         </div>';
     $altBody = "Dear {$toName},\n\n"
@@ -239,7 +239,7 @@ function gjc_send_stall_meeting_reschedule_email(
         . "New meeting schedule:\nDate: {$newDate}\nTime: {$newTime}\nLocation: {$location}\n\n"
         . "Previous schedule: {$oldPretty}\n\n"
         . "IMPORTANT: Please bring the ORIGINAL copies of all uploaded documents (business permit, sanitary permit, GJC requirements, and clearance) for verification."
-        . "\n\nIf you cannot attend the new schedule, your application will be cancelled and you may submit a new one.\n\nGenPay Team";
+        . "\n\nIf you cannot attend the new schedule, your application will expire and you may submit a new one.\n\nGenPay Team";
 
     $queued = gjc_queue_email(
         $toEmail,
@@ -249,4 +249,34 @@ function gjc_send_stall_meeting_reschedule_email(
         $altBody
     );
     return ['sent' => $queued, 'error' => $queued ? '' : 'Could not queue the reschedule email.'];
+}
+
+/**
+ * Queues the "your application didn't go through, please re-apply" email —
+ * shared by an admin's explicit reject and the automatic no-show expiry.
+ * Moved here (from admin/api/stall_applications.php) so both call sites use
+ * one template instead of two copies drifting apart.
+ */
+function gjc_send_stall_application_termination_email(array $app, string $heading, string $intro, string $reason): void
+{
+    $safeName   = htmlspecialchars($app['proprietor_name'], ENT_QUOTES, 'UTF-8');
+    $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+    $applyUrl   = BASE_URL . '/apply';
+    $body = '
+        <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fef2f2;border-radius:14px">
+            <h3 style="color:#b91c1c;margin-top:0">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h3>
+            <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+            <p style="color:#374151;line-height:1.7">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>
+            <div style="background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
+                <p style="margin:0;color:#374151">' . $safeReason . '</p>
+            </div>
+            <p style="color:#374151;line-height:1.7">You are welcome to submit a brand-new application anytime. A new verification meeting will be scheduled automatically at submission.</p>
+            <p style="color:#374151"><a href="' . $applyUrl . '" style="color:#059669;font-weight:700">Submit a new application</a></p>
+            <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
+        </div>';
+    $altBody = "Dear {$app['proprietor_name']},\n\n{$intro}\n\nReason: {$reason}\n\n"
+        . "You may submit a brand-new application anytime at {$applyUrl}. A new meeting will be auto-scheduled.\n\nGenPay Team";
+
+    gjc_queue_email($app['email'], $app['proprietor_name'], 'GenPay - Stall Application Update', $body, $altBody);
 }

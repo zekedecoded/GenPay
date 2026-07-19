@@ -120,8 +120,7 @@ img {
 
 /* Layout */
 .admin-layout,
-.student-layout,
-.merchant-layout {
+.student-layout {
   background: var(--gjc-page) !important;
 }
 
@@ -132,24 +131,21 @@ img {
 }
 
 .admin-sidebar,
-.student-sidebar,
-.merchant-sidebar {
+.student-sidebar {
   background: var(--gjc-sidebar) !important;
   box-shadow: 4px 0 18px rgba(6, 55, 29, 0.18) !important;
   border-right: 4px solid var(--gjc-gold-500);
 }
 
 .brand-box,
-.student-brand,
-.merchant-brand {
+.student-brand {
   padding: 0 4px 18px;
   margin-bottom: 18px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .brand-logo,
-.student-brand-logo,
-.merchant-brand-logo {
+.student-brand-logo {
   width: 70px !important;
   min-width: 70px !important;
   height: 70px !important;
@@ -161,35 +157,30 @@ img {
 }
 
 .brand-logo img,
-.student-brand-logo img,
-.merchant-brand-logo img {
+.student-brand-logo img {
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;
 }
 
 .brand-box h4,
-.student-brand h4,
-.merchant-brand h4 {
+.student-brand h4 {
   font-size: 18px !important;
   font-weight: 800 !important;
 }
 
 .brand-box span,
-.student-brand span,
-.merchant-brand span {
+.student-brand span {
   color: rgba(255, 255, 255, 0.78) !important;
 }
 
 .sidebar-menu,
-.student-menu,
-.merchant-menu {
+.student-menu {
   gap: 6px !important;
 }
 
 .sidebar-menu a,
-.student-menu a,
-.merchant-menu a {
+.student-menu a {
   height: 46px !important;
   border-radius: var(--gjc-radius) !important;
   color: rgba(255, 255, 255, 0.88) !important;
@@ -199,9 +190,7 @@ img {
 .sidebar-menu a:hover,
 .sidebar-menu a.active,
 .student-menu a:hover,
-.student-menu a.active,
-.merchant-menu a:hover,
-.merchant-menu a.active {
+.student-menu a.active {
   background: var(--gjc-gold-500) !important;
   color: var(--gjc-green-950) !important;
   box-shadow: none !important;
@@ -210,8 +199,7 @@ img {
 /* Logout: quiet neutral chip at rest (gold is reserved for active nav),
    danger red on hover to match the modal's confirm button. */
 .logout-btn,
-.student-logout,
-.merchant-logout {
+.student-logout {
   height: 46px !important;
   border-radius: var(--gjc-radius) !important;
   background: rgba(255, 255, 255, 0.06) !important;
@@ -224,36 +212,31 @@ img {
 }
 
 .logout-btn i,
-.student-logout i,
-.merchant-logout i {
+.student-logout i {
   transition: transform 0.18s ease;
 }
 
 .logout-btn:hover,
-.student-logout:hover,
-.merchant-logout:hover {
+.student-logout:hover {
   background: var(--gjc-danger) !important;
   border-color: var(--gjc-danger) !important;
   color: #fff !important;
 }
 
 .logout-btn:hover i,
-.student-logout:hover i,
-.merchant-logout:hover i {
+.student-logout:hover i {
   transform: translateX(3px);
 }
 
 .logout-btn:focus-visible,
-.student-logout:focus-visible,
-.merchant-logout:focus-visible {
+.student-logout:focus-visible {
   outline: 2px solid var(--gjc-gold-500);
   outline-offset: 2px;
 }
 
 /* Top bars */
 .topbar,
-.student-topbar,
-.merchant-topbar {
+.student-topbar {
   min-height: 76px !important;
   padding: 16px 18px !important;
   background: var(--gjc-panel) !important;
@@ -265,23 +248,20 @@ img {
 }
 
 .topbar h1,
-.student-topbar h1,
-.merchant-topbar h1 {
+.student-topbar h1 {
   color: var(--gjc-green-950) !important;
   font-size: 24px !important;
   font-weight: 800 !important;
 }
 
 .topbar p,
-.student-topbar p,
-.merchant-topbar p {
+.student-topbar p {
   color: var(--gjc-muted) !important;
   font-size: 14px !important;
 }
 
 .menu-btn,
-.student-menu-btn,
-.merchant-menu-btn {
+.student-menu-btn {
   width: 42px !important;
   height: 42px !important;
   border-radius: var(--gjc-radius) !important;
@@ -291,8 +271,7 @@ img {
 }
 
 .avatar,
-.student-avatar,
-.merchant-avatar {
+.student-avatar {
   width: 40px !important;
   height: 40px !important;
   border-radius: var(--gjc-radius) !important;
@@ -312,7 +291,6 @@ img {
 .student-premium-panel,
 .merchant-premium-panel,
 .users-command-panel,
-.users-table-panel,
 .transactions-command-panel,
 .transactions-table-panel,
 .topup-panel,
@@ -346,7 +324,6 @@ img {
 .student-panel-header h3,
 .merchant-panel-header h3,
 .users-panel-header h3,
-.users-table-header h3,
 .transactions-panel-header h3,
 .transactions-table-header h3,
 .topup-panel-header h3,
@@ -360,7 +337,6 @@ img {
 .student-panel-header p,
 .merchant-panel-header p,
 .users-panel-header p,
-.users-table-header p,
 .transactions-panel-header p,
 .transactions-table-header p,
 .topup-panel-header p,
@@ -925,8 +901,8 @@ img {
 /* Circulation widget (admin/economy.php via includes/circulation_widget.php)
    The widget's own CSS in admin.css now owns this component's look (flat
    white panels, ledger bar, neutral pool cards) - nothing left to override
-   here. .ce-pool-vault/.ce-pool-students/.ce-pool-merchants/.ce-pool-vouchers
-   are colour identifiers consumed directly by admin.css, not full-card
+   here. .ce-pool-vault/.ce-pool-students/.ce-pool-merchants/.ce-pool-vouchers/
+   .ce-pool-parents are colour identifiers consumed directly by admin.css, not full-card
    background painters, so no !important fight is needed any more. */
 
 /* economy.php's non-namespaced mint/budget panels - same flat treatment
@@ -1134,8 +1110,7 @@ footer {
   }
 
   .topbar,
-  .student-topbar,
-  .merchant-topbar {
+  .student-topbar {
     align-items: flex-start !important;
   }
 }
@@ -1148,8 +1123,7 @@ footer {
   }
 
   .topbar h1,
-  .student-topbar h1,
-  .merchant-topbar h1 {
+  .student-topbar h1 {
     font-size: 20px !important;
   }
 
@@ -1277,8 +1251,7 @@ footer {
   .logout-modal-overlay,
   .logout-modal,
   .logout-btn, .logout-btn i,
-  .student-logout, .student-logout i,
-  .merchant-logout, .merchant-logout i {
+  .student-logout, .student-logout i {
     transition: none !important;
   }
 }

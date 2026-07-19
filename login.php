@@ -24,6 +24,13 @@ $error = $message ?: $error;
 if (!$error && ($_GET['reason'] ?? '') === 'deactivated') {
     $error = 'Your account has been deactivated. Please contact your merchant admin.';
 }
+
+if (!$error && ($_GET['reason'] ?? '') === 'suspended') {
+    $untilTs = strtotime((string) ($_GET['until'] ?? ''));
+    $error = 'Your merchant account is temporarily suspended'
+        . ($untilTs ? ' until ' . date('M d, Y g:i A', $untilTs) : '')
+        . ' due to repeated attempts to list restricted products.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

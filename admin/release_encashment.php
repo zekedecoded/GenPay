@@ -91,6 +91,21 @@ try {
         ]
     );
 
+    $merchOwnerStmt = $db->prepare("SELECT user_id FROM merchant_wallets WHERE id = ?");
+    $merchOwnerStmt->execute([$requestWalletId]);
+    $merchOwnerUserId = (int) $merchOwnerStmt->fetchColumn();
+    if ($merchOwnerUserId > 0) {
+        gjc_notify(
+            $db,
+            $merchOwnerUserId,
+            'encashment',
+            'Encashment Approved',
+            gjc_money_plain($requestAmount) . ' has been released to you by the cashier.',
+            'money-bill-wave',
+            MERCHANT_URL . '/encash.php'
+        );
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'PHP ' . number_format($requestAmount, 2) . ' settled. Points returned to vault.',

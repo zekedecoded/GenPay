@@ -61,6 +61,10 @@ try {
             throw new RuntimeException('This Wallet QR belongs to a different stall than your pending order.');
         }
 
+        if (gjc_merchant_suspended_until($db, (int) $order['merchant_user_id']) !== null) {
+            throw new RuntimeException('This stall is temporarily suspended and cannot accept payments right now. Please cancel this order.');
+        }
+
         $lines = json_decode((string) $order['items_json'], true);
         if (!is_array($lines) || empty($lines)) {
             throw new RuntimeException('This order has no item details recorded.');
@@ -88,6 +92,10 @@ try {
         }
 
         $total = round((float) $order['amount'], 2);
+
+        if (gjc_student_graduated($db, $studentUserId)) {
+            throw new \RuntimeException('Account locked: graduated.');
+        }
 
         // ── Parent wallet controls ──────────────────────────────────────────
         $wcStmt = $db->prepare("SELECT is_frozen, daily_spend_limit FROM student_wallets WHERE id = ?");
@@ -157,8 +165,8 @@ try {
         $db->prepare(
             "INSERT INTO transactions
                 (reference_no, transaction_type, initiated_by, student_wallet_id, merchant_wallet_id,
-                 amount, vault_before, vault_after, total_in_circulation, status, notes)
-             VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?)"
+                 amount, vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
+             VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?)"
         )->execute([
             $refNo,
             $studentUserId,
@@ -169,6 +177,7 @@ try {
             $vaultBefore,
             $totalCirc,
             $order['description'],
+            gjc_active_school_year_id($db),
         ]);
 
         $db->prepare(
@@ -194,6 +203,26 @@ try {
                 'items' => $lines,
                 'status' => 'completed',
             ]
+        );
+
+        gjc_notify(
+            $db,
+            $studentUserId,
+            'payment',
+            'Payment Successful',
+            sprintf('You paid %s at %s.', gjc_money_plain($total), gjc_user_label($db, (int) $order['merchant_user_id'])),
+            'cart-shopping',
+            STUDENT_URL . '/history.php'
+        );
+
+        gjc_notify(
+            $db,
+            (int) $order['merchant_user_id'],
+            'sale',
+            'Payment Received',
+            sprintf('%s paid %s at your stall.', gjc_user_label($db, $studentUserId), gjc_money_plain($total)),
+            'cart-shopping',
+            MERCHANT_URL . '/history.php'
         );
 
         echo json_encode([

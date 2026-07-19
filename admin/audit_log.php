@@ -24,6 +24,10 @@ $actions = [
     "PRODUCT_RESTRICTION",
     "LOGIN_FAILED",
     "FEE_WAIVER_STATUS_CHANGE",
+    "SCHOOL_YEAR_CREATED",
+    "SCHOOL_YEAR_ROLLOVER",
+    "STUDENT_GRADUATED",
+    "SY_TXN_BACKFILL",
 ];
 
 $userRole = (string) ($_GET["user_role"] ?? "");
@@ -652,7 +656,11 @@ $currentPage = "audit_log";
         MERCHANT_ONBOARDING: 'A merchant application moved through the onboarding pipeline.',
         PRODUCT_RESTRICTION: 'A restricted product entry was flagged or updated.',
         LOGIN_FAILED: 'A login attempt failed due to an incorrect password.',
-        FEE_WAIVER_STATUS_CHANGE: 'A student\'s Fee Waiver Credit changed status.'
+        FEE_WAIVER_STATUS_CHANGE: 'A student\'s Fee Waiver Credit changed status.',
+        SCHOOL_YEAR_CREATED: 'A new school year was created.',
+        SCHOOL_YEAR_ROLLOVER: 'The active school year was rolled over and student balances were snapshotted.',
+        STUDENT_GRADUATED: 'A student was marked as graduated and their wallet was frozen.',
+        SY_TXN_BACKFILL: 'Legacy transactions were backfilled with a school year.'
     };
 
     function auditSetText(id, value) {

@@ -28,6 +28,11 @@
       const searching = $table.data("searching") !== false;
       const paging = $table.data("paging") !== false;
       const info = $table.data("info") !== false;
+      // Some pages drive DataTables' search from their own filter-row input
+      // instead of the auto-rendered search box, to avoid showing two search
+      // fields on the same page. Searching stays enabled either way — this
+      // only hides the built-in box, driven via $('#id').DataTable().search().
+      const hideFilter = $table.data("hide-filter") === true;
       const defaultEmptyMessage =
         $table.data("empty-message") || "No records found";
 
@@ -54,7 +59,9 @@
           },
         },
         dom:
-          "<'gjc-datatable-top d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3'<'gjc-datatable-meta'f><'gjc-datatable-meta'i>>" +
+          "<'gjc-datatable-top d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3'" +
+          (hideFilter ? "" : "<'gjc-datatable-meta'f>") +
+          "<'gjc-datatable-meta'i>>" +
           "t" +
           "<'gjc-datatable-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mt-3'<'gjc-datatable-meta'l><'gjc-datatable-meta'p>>",
       });

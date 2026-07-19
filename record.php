@@ -47,6 +47,15 @@ class Record
                         return 'Access Denied: Your account has been deactivated. Please contact your merchant admin.';
                     }
 
+                    // A stall auto-suspended over restricted-product strikes blocks
+                    // the owner and every staff account for the duration.
+                    $suspendedUntil = \gjc_merchant_suspended_until($this->con, (int) ($user['id'] ?? $user['userID'] ?? 0));
+                    if ($suspendedUntil !== null) {
+                        return 'Access Denied: This merchant account is temporarily suspended until '
+                            . date('M d, Y g:i A', strtotime($suspendedUntil))
+                            . ' due to repeated attempts to list restricted products.';
+                    }
+
                     $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
                     $roleId = (int) ($user['roleID'] ?? 0);
 
@@ -54,6 +63,10 @@ class Record
                     // shared with the remember-me auto-login in app.php.
                     \gjc_establish_login_session($user);
                     $subRole = (string) $_SESSION['sub_role'];
+
+                    if ($roleId === 1) {
+                        \gjc_notify_welcome_if_new($this->con, $userId);
+                    }
 
                     $mustChangePassword =
                         !empty($user['force_password_change']) ||

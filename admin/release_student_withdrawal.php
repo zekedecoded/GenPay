@@ -17,6 +17,10 @@ if (!$sessionUserId || !in_array($sessionRole, $allowedRoles, true)) {
     exit;
 }
 
+// Must run before any transaction starts — this is DDL, and MySQL implicitly
+// commits an open transaction the instant it sees a DDL statement.
+gjc_ensure_transaction_types($db, ['student_withdraw']);
+
 $withdrawalId    = filter_input(INPUT_POST, 'withdrawal_id', FILTER_VALIDATE_INT);
 $studentWalletId = filter_input(INPUT_POST, 'student_wallet_id', FILTER_VALIDATE_INT);
 $amount          = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
@@ -89,6 +93,16 @@ try {
             'amount' => $requestAmount,
             'reference_no' => $result['reference'],
         ]
+    );
+
+    gjc_notify_wallet(
+        $db,
+        $requestWalletId,
+        'withdraw',
+        'Withdrawal Released',
+        gjc_money_plain($requestAmount) . ' cash withdrawal has been released by the cashier.',
+        'money-bill-wave',
+        STUDENT_URL . '/history.php'
     );
 
     echo json_encode([

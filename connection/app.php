@@ -16,8 +16,28 @@ function gjc_money($amount): string
     return '&#8369;' . number_format((float) $amount, 2);
 }
 
+/**
+ * Same formatting as gjc_money(), but the real ₱ character instead of an
+ * HTML entity — for contexts that don't render raw HTML (JSON payloads,
+ * notification/SMS text, log messages). Using gjc_money() there stores the
+ * literal "&#8369;" text, which then gets HTML-escaped a second time by
+ * whatever renders it and shows up as visible entity text instead of ₱.
+ */
+function gjc_money_plain($amount): string
+{
+    return '₱' . number_format((float) $amount, 2);
+}
+
 // GenCoin conversion rate: ₱10 = 1 GC (same rate the POS wallet-load flow uses).
 define('GJC_PESOS_PER_GC', 10);
+
+// Restricted-product strike policy: warn the merchant at 3 blocked attempts;
+// hitting 5 auto-suspends the whole stall (owner + staff logins, student
+// purchases) for 3 days and restarts the count. Finance can lift a suspension
+// early from admin/restricted_products.php.
+define('GJC_VIOLATION_WARN_AT', 3);
+define('GJC_VIOLATION_RISK_AT', 5);
+define('GJC_VIOLATION_SUSPEND_DAYS', 3);
 
 function gjc_gc_amount($pesos): string
 {
@@ -76,10 +96,10 @@ function gjc_table_exists(PDO $db, string $table): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
-function gjc_table_columns(PDO $db, string $table): array
+function gjc_table_columns(PDO $db, string $table, bool $refresh = false): array
 {
     static $cache = [];
-    if (isset($cache[$table])) {
+    if (!$refresh && isset($cache[$table])) {
         return $cache[$table];
     }
 
@@ -336,6 +356,182 @@ function gjc_enforce_restrictions_on_inventory(PDO $db): int
     return $disabled;
 }
 
+/**
+ * Idempotent self-healer for the restricted-product violation counter —
+ * see references/schema.md's gjc_ensure_<feature>_schema() convention.
+ */
+function gjc_ensure_product_violation_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, 'users')) {
+        return;
+    }
+    $cols = gjc_table_columns($db, 'users');
+    $altered = false;
+    if (!in_array('restricted_violation_count', $cols, true)) {
+        try {
+            $db->exec("ALTER TABLE users ADD COLUMN restricted_violation_count INT UNSIGNED NOT NULL DEFAULT 0");
+            $altered = true;
+        } catch (\Throwable $ignored) {}
+    }
+    if (!in_array('restricted_violation_last_at', $cols, true)) {
+        try {
+            $db->exec("ALTER TABLE users ADD COLUMN restricted_violation_last_at DATETIME NULL");
+            $altered = true;
+        } catch (\Throwable $ignored) {}
+    }
+    if (!in_array('restricted_suspended_until', $cols, true)) {
+        try {
+            $db->exec("ALTER TABLE users ADD COLUMN restricted_suspended_until DATETIME NULL");
+            $altered = true;
+        } catch (\Throwable $ignored) {}
+    }
+    if ($altered) {
+        // The per-request column cache was filled pre-ALTER; refresh it so
+        // checks later in this same request see the new columns.
+        gjc_table_columns($db, 'users', true);
+    }
+}
+
+/**
+ * Returns the datetime until which this merchant account — or, for staff
+ * accounts, their owner's whole stall — is suspended over restricted-product
+ * strikes, or null when not suspended. Resolves merchant_owner_id from the
+ * DB row (not the session) so it works at login time and for student-facing
+ * checks alike, and lazily clears suspensions that already served their days
+ * (no cron needed) so admin views never show stale ones.
+ */
+function gjc_merchant_suspended_until(PDO $db, int $userId): ?string
+{
+    if ($userId <= 0 || !gjc_table_exists($db, 'users')) {
+        return null;
+    }
+    $cols = gjc_table_columns($db, 'users');
+    if (!in_array('restricted_suspended_until', $cols, true)) {
+        return null;
+    }
+    $idCol = gjc_column($db, 'users', ['id', 'userID']);
+    if (!$idCol) {
+        return null;
+    }
+
+    // Staff inherit their owner's suspension — the whole stall is frozen.
+    if (in_array('merchant_owner_id', $cols, true)) {
+        $stmt = $db->prepare("SELECT merchant_owner_id FROM users WHERE {$idCol} = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $ownerId = (int) $stmt->fetchColumn();
+        if ($ownerId > 0) {
+            $userId = $ownerId;
+        }
+    }
+
+    $stmt = $db->prepare("SELECT restricted_suspended_until FROM users WHERE {$idCol} = ? LIMIT 1");
+    $stmt->execute([$userId]);
+    $until = $stmt->fetchColumn();
+    if (!$until) {
+        return null;
+    }
+    if (strtotime((string) $until) <= time()) {
+        $db->prepare("UPDATE users SET restricted_suspended_until = NULL WHERE {$idCol} = ?")->execute([$userId]);
+        return null;
+    }
+    return (string) $until;
+}
+
+/**
+ * Records one blocked-restricted-product attempt (add or edit — both call
+ * this) against the merchant admin who tried it. At GJC_VIOLATION_WARN_AT
+ * strikes the merchant gets an "approaching suspension" warning; hitting
+ * GJC_VIOLATION_RISK_AT auto-suspends the whole stall for
+ * GJC_VIOLATION_SUSPEND_DAYS days (owner + staff logins, student purchases —
+ * enforced via gjc_merchant_suspended_until), notifies the merchant plus
+ * every finance/admin user, and spends the strikes: the counter restarts at
+ * 0 so reinstatement gets a clean slate. The full history stays in the
+ * PRODUCT_RESTRICTION audit trail, and finance can lift a live suspension
+ * early from admin/restricted_products.php. Returns the count reached by
+ * this attempt — the inventory UI escalates its blocked-attempt modals off it.
+ */
+function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reason): int
+{
+    gjc_ensure_product_violation_schema($db);
+
+    $db->prepare(
+        "UPDATE users
+            SET restricted_violation_count = restricted_violation_count + 1,
+                restricted_violation_last_at = NOW()
+          WHERE userID = ?"
+    )->execute([$merchantUserId]);
+
+    $stmt = $db->prepare("SELECT restricted_violation_count FROM users WHERE userID = ?");
+    $stmt->execute([$merchantUserId]);
+    $count = (int) $stmt->fetchColumn();
+
+    if ($count === GJC_VIOLATION_WARN_AT) {
+        $strikesLeft = GJC_VIOLATION_RISK_AT - GJC_VIOLATION_WARN_AT;
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'compliance',
+            'Warning: restricted product attempts',
+            "You've now had " . GJC_VIOLATION_WARN_AT . " blocked attempts to list restricted products ({$reason}). "
+                . "{$strikesLeft} more and your merchant account will be suspended for " . GJC_VIOLATION_SUSPEND_DAYS . " days — please check the Restricted Products list before adding new items.",
+            'triangle-exclamation'
+        );
+    }
+
+    if ($count >= GJC_VIOLATION_RISK_AT) {
+        $db->prepare(
+            "UPDATE users
+                SET restricted_suspended_until = DATE_ADD(NOW(), INTERVAL " . GJC_VIOLATION_SUSPEND_DAYS . " DAY),
+                    restricted_violation_count = 0
+              WHERE userID = ?"
+        )->execute([$merchantUserId]);
+
+        $untilStmt = $db->prepare("SELECT restricted_suspended_until FROM users WHERE userID = ?");
+        $untilStmt->execute([$merchantUserId]);
+        $untilLabel = date('M d, Y g:i A', strtotime((string) $untilStmt->fetchColumn()));
+
+        $merchantName = gjc_user_label($db, $merchantUserId);
+
+        if (function_exists('logAudit')) {
+            logAudit(
+                $db, $merchantUserId, gjc_current_role(),
+                'PRODUCT_RESTRICTION', 'users', null,
+                [
+                    'event' => 'auto_suspended',
+                    'merchant_user_id' => $merchantUserId,
+                    'strikes' => $count,
+                    'suspended_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'suspended_until' => $untilLabel,
+                ]
+            );
+        }
+
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'compliance',
+            'Your account has been suspended',
+            "You reached " . GJC_VIOLATION_RISK_AT . " blocked attempts to list restricted products ({$reason}). Your merchant account — including staff logins and stall sales — is suspended for " . GJC_VIOLATION_SUSPEND_DAYS . " days, until {$untilLabel}. The GenPay finance team can lift it earlier.",
+            'triangle-exclamation'
+        );
+
+        $financeIds = $db->query("SELECT userID FROM users WHERE roleID IN (3, 4)")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($financeIds as $financeId) {
+            gjc_notify(
+                $db,
+                (int) $financeId,
+                'compliance',
+                'Merchant account suspended',
+                "{$merchantName} hit " . GJC_VIOLATION_RISK_AT . " blocked attempts to list restricted products and has been auto-suspended until {$untilLabel}. You can lift the suspension early from the Restricted Products page.",
+                'triangle-exclamation',
+                ADMIN_URL . '/restricted_products.php'
+            );
+        }
+    }
+
+    return $count;
+}
+
 function gjc_column(PDO $db, string $table, array $candidates): ?string
 {
     $columns = gjc_table_columns($db, $table);
@@ -513,6 +709,223 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
 }
 
 /**
+ * Lazy expiry (same idea as VoucherEngine's lazy voucher expiry — there is no
+ * background cron in this app, so every touch point re-checks). A
+ * pending_verification application whose one-stop meeting time has already
+ * passed with no award/reject decision means the applicant never showed up;
+ * flip it to 'expired' so it stops blocking that email/name/business from a
+ * fresh re-application (see apply.php's duplicate check) and stops occupying
+ * the meeting slot.
+ *
+ * Cutoff is the *calendar date*, not the exact time-of-day: a meeting slot
+ * only marks its hour, and finance may still be mid-walk-in (uploading the
+ * contract, recording payment) well after that hour on the same day. Waiting
+ * until the day is over avoids yanking an application out from under an
+ * admin who is actively awarding/rejecting it.
+ *
+ * $triggeredBy is whoever's page load caught it (0 from the public apply
+ * form, which has no logged-in admin) — logAudit() already no-ops for a
+ * non-positive user id, so passing 0 just means the transition happens
+ * without an audit entry in that case.
+ */
+function gjc_expire_overdue_stall_applications(PDO $db, int $triggeredBy = 0): int
+{
+    if (!gjc_table_exists($db, "stall_applications")) {
+        return 0;
+    }
+
+    $overdue = $db
+        ->query(
+            "SELECT id, proprietor_name, business_name, email, meetup_scheduled_at
+               FROM stall_applications
+              WHERE status = 'pending_verification'
+                AND meetup_scheduled_at IS NOT NULL
+                AND DATE(meetup_scheduled_at) < CURDATE()",
+        )
+        ->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$overdue) {
+        return 0;
+    }
+
+    $update = $db->prepare(
+        "UPDATE stall_applications
+            SET status = 'expired', reviewed_by = ?, reviewed_at = NOW(), rejection_reason = ?
+          WHERE id = ? AND status = 'pending_verification'",
+    );
+
+    $expiredCount = 0;
+    foreach ($overdue as $app) {
+        $meetingAt = new DateTime($app["meetup_scheduled_at"]);
+        $reason = "Applicant did not attend the scheduled verification meeting on "
+            . $meetingAt->format("M j, Y g:i A") . ".";
+
+        $update->execute([$triggeredBy > 0 ? $triggeredBy : null, $reason, $app["id"]]);
+        if ($update->rowCount() === 0) {
+            continue; // already expired by a concurrent request
+        }
+        $expiredCount++;
+
+        logAudit(
+            $db,
+            $triggeredBy,
+            gjc_current_role(),
+            "STALL_UPDATE",
+            "stall_applications",
+            ["id" => $app["id"], "status" => "pending_verification", "meetup_scheduled_at" => $app["meetup_scheduled_at"]],
+            ["id" => $app["id"], "status" => "expired", "event" => "auto_expired_no_show"],
+        );
+
+        gjc_send_stall_application_termination_email(
+            $app,
+            "Application Expired",
+            "You did not attend your scheduled verification meeting, so your stall application has expired.",
+            $reason,
+        );
+    }
+
+    return $expiredCount;
+}
+
+/**
+ * Per-field validation rules for apply.php's 5 upload tiles — the single
+ * source of truth shared by apply.php's final form submit and
+ * apply_upload.php's eager per-file AJAX upload, so both enforce identical
+ * whitelists.
+ */
+function gjc_stall_application_upload_rules(): array
+{
+    $docMimes = ["image/jpeg", "image/png", "application/pdf"];
+    $docExt   = ["jpg", "jpeg", "png", "pdf"];
+    $imgMimes = ["image/jpeg", "image/png"];
+    $imgExt   = ["jpg", "jpeg", "png"];
+
+    return [
+        "profile_picture"  => ["label" => "Profile Picture",  "mimes" => $imgMimes, "exts" => $imgExt],
+        "business_permit"  => ["label" => "Business Permit",  "mimes" => $docMimes, "exts" => $docExt],
+        "sanitary_permit"  => ["label" => "Sanitary Permit",  "mimes" => $docMimes, "exts" => $docExt],
+        "gjc_requirements" => ["label" => "GJC Requirements", "mimes" => $docMimes, "exts" => $docExt],
+        "clearance"        => ["label" => "Clearance",        "mimes" => $docMimes, "exts" => $docExt],
+    ];
+}
+
+/**
+ * A not-yet-submitted stall application has no id to key an upload folder on,
+ * so each visitor gets a random per-session token (not the raw PHP session
+ * id, to avoid tying a filesystem name to the session identity) the first
+ * time they attach a file. Every file attached before the final submit lands
+ * under this same folder, so it survives a page refresh or a validation
+ * error on some other field — apply.php renames the whole folder to the
+ * real `uploads/stall_applications/<id>/` once the row is actually inserted.
+ */
+function gjc_stall_application_draft_token(): string
+{
+    if (empty($_SESSION["apply_draft_token"])) {
+        $_SESSION["apply_draft_token"] = "draft_" . bin2hex(random_bytes(8));
+    }
+    return $_SESSION["apply_draft_token"];
+}
+
+function gjc_stall_application_draft_dir(): string
+{
+    return BASE_PATH . "/uploads/stall_applications/" . gjc_stall_application_draft_token();
+}
+
+/** Files already attached in this session's draft, keyed by field name. */
+function gjc_stall_application_draft_files(): array
+{
+    return $_SESSION["apply_draft_files"] ?? [];
+}
+
+/**
+ * Validate one uploaded file against $rule and, if valid, move it into this
+ * session's draft folder immediately (replacing whatever was previously
+ * staged for the same field) and record it in the session. Used by both
+ * apply.php's full-form submit and apply_upload.php's eager per-file upload.
+ *
+ * @return array{success:bool,message?:string,name?:string}
+ */
+function gjc_stage_stall_application_upload(string $field, ?array $file, array $rule): array
+{
+    if (!$file || ($file["error"] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE || empty($file["tmp_name"])) {
+        return ["success" => false, "message" => $rule["label"] . " is required."];
+    }
+    if ($file["error"] !== UPLOAD_ERR_OK) {
+        return ["success" => false, "message" => $rule["label"] . " upload error (code " . $file["error"] . ")."];
+    }
+    if ($file["size"] > 5 * 1024 * 1024) { // house limit — 5MB, same cap used everywhere else in this app
+        return ["success" => false, "message" => $rule["label"] . " exceeds the 5 MB limit."];
+    }
+    $ext = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
+    if (!in_array($ext, $rule["exts"], true)) {
+        return ["success" => false, "message" => $rule["label"] . " must be " . implode(", ", array_map("strtoupper", $rule["exts"])) . "."];
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file["tmp_name"]);
+    if (!in_array($mime, $rule["mimes"], true)) {
+        return ["success" => false, "message" => $rule["label"] . " has an invalid file type."];
+    }
+
+    $draftDir = gjc_stall_application_draft_dir();
+    if (!is_dir($draftDir) && !mkdir($draftDir, 0755, true)) {
+        return ["success" => false, "message" => "Could not save " . $rule["label"] . ". Please try again."];
+    }
+    $fname = $field . "_" . time() . mt_rand(1000, 9999) . "." . $ext;
+    if (!move_uploaded_file($file["tmp_name"], $draftDir . "/" . $fname)) {
+        return ["success" => false, "message" => "Could not save " . $rule["label"] . ". Please try again."];
+    }
+
+    $staged = gjc_stall_application_draft_files();
+    if (isset($staged[$field]["fname"])) {
+        @unlink($draftDir . "/" . $staged[$field]["fname"]);
+    }
+    $staged[$field] = ["fname" => $fname, "orig" => $file["name"]];
+    $_SESSION["apply_draft_files"] = $staged;
+
+    return ["success" => true, "name" => $file["name"]];
+}
+
+/**
+ * Discards whatever is currently staged for this visitor. Called when the
+ * browser tells us this page load is a fresh arrival at apply.php — not a
+ * refresh of the form the visitor was already filling in — so documents
+ * attached on an earlier, abandoned visit don't silently reappear (and don't
+ * get silently reused for fields the visitor doesn't re-attach this time).
+ */
+function gjc_clear_stall_application_draft(): void
+{
+    if (!empty($_SESSION["apply_draft_token"])) {
+        $dir = BASE_PATH . "/uploads/stall_applications/" . $_SESSION["apply_draft_token"];
+        if (is_dir($dir)) {
+            array_map("unlink", glob($dir . "/*") ?: []);
+            @rmdir($dir);
+        }
+    }
+    unset($_SESSION["apply_draft_files"], $_SESSION["apply_draft_token"]);
+}
+
+/**
+ * Opportunistic cleanup for draft folders whose visitor never finished
+ * submitting (closed the tab, session expired) — there is no cron in this
+ * app, so apply.php sweeps this on every load, same lazy-check philosophy as
+ * gjc_expire_overdue_stall_applications(). A draft older than 48 hours is
+ * treated as abandoned.
+ */
+function gjc_cleanup_stale_stall_application_drafts(): void
+{
+    $base = BASE_PATH . "/uploads/stall_applications";
+    if (!is_dir($base)) {
+        return;
+    }
+    $cutoff = time() - 48 * 3600;
+    foreach (glob($base . "/draft_*", GLOB_ONLYDIR) ?: [] as $dir) {
+        if (filemtime($dir) < $cutoff) {
+            array_map("unlink", glob($dir . "/*") ?: []);
+            @rmdir($dir);
+        }
+    }
+}
+
+/**
  * Archive table for applications declined during Step 1 (Review) or
  * Step 2 (Meeting). Kept separate from the live pipeline so finance staff
  * can reference or reactivate a declined application later.
@@ -543,6 +956,40 @@ function gjc_ensure_archived_rejections_schema(PDO $db): void
             KEY idx_ar_email    (email)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
     );
+}
+
+/**
+ * Optional job title for merchant staff accounts (e.g. "Cashier", "Cook").
+ * Purely descriptive — has no effect on permissions, which stay keyed off
+ * roleID/sub_role.
+ *
+ * Also widens middle_name/suffix to nullable: those columns predate this
+ * feature as NOT NULL DEFAULT '', which rejects the NULL the staff form now
+ * sends when an admin leaves them blank.
+ */
+function gjc_ensure_staff_position_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, "users")) {
+        return;
+    }
+
+    $columns = gjc_table_columns($db, "users");
+    if (!in_array("position", $columns, true)) {
+        $db->exec("ALTER TABLE users ADD COLUMN position VARCHAR(60) NULL DEFAULT NULL AFTER sub_role");
+    }
+
+    $stmt = $db->prepare(
+        "SELECT COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'
+           AND COLUMN_NAME IN ('middle_name', 'suffix') AND IS_NULLABLE = 'NO'",
+    );
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        try {
+            $db->exec("ALTER TABLE users MODIFY {$row['COLUMN_NAME']} {$row['COLUMN_TYPE']} NULL DEFAULT NULL");
+        } catch (Throwable $ignored) {
+        }
+    }
 }
 
 function gjc_ensure_first_login_schema(PDO $db): void
@@ -822,6 +1269,19 @@ function gjc_require_role(array $roles): void
                     }
                 }
             }
+
+            // A stall auto-suspended over restricted-product strikes locks out
+            // the owner and their staff for the duration — see
+            // gjc_record_product_violation().
+            if ($role === 'merchant') {
+                $suspendedUntil = gjc_merchant_suspended_until($db, $userId);
+                if ($suspendedUntil !== null) {
+                    session_unset();
+                    session_destroy();
+                    header("Location: " . BASE_URL . "/login.php?reason=suspended&until=" . urlencode($suspendedUntil));
+                    exit();
+                }
+            }
         }
     }
 
@@ -1012,7 +1472,12 @@ function gjc_ensure_fee_schema(PDO $db): void
 
 function gjc_generate_student_id(PDO $db): string
 {
-    $year = date('Y');
+    // Tied to the active school year (e.g. "2026-2027" -> "2026"), not just
+    // today's real-world calendar year, so IDs stay meaningful across a
+    // year rollover. Falls back to today's year if no school year is active.
+    $activeYearName = gjc_active_school_year_name($db);
+    $year = $activeYearName !== null ? substr($activeYearName, 0, 4) : date('Y');
+
     $stmt = $db->query(
         "SELECT MAX(CAST(SUBSTRING_INDEX(studentID, '-', -1) AS UNSIGNED))
            FROM student_info
@@ -1222,6 +1687,28 @@ function gjc_cart_snapshot(PDO $db): array
     $total = 0.0;
     $merchantUserId = $cart['merchant_user_id'] ?? null;
 
+    // A stall suspended over restricted-product strikes can't sell at all —
+    // empty the cart with the reason so the student isn't left holding an
+    // order they can never check out.
+    if ($merchantUserId && gjc_merchant_suspended_until($db, (int) $merchantUserId) !== null) {
+        $stallLabel = gjc_merchant_display_name($db, (int) $merchantUserId) ?: 'This stall';
+        foreach ($cart['items'] as $itemId => $qty) {
+            $row = $rowsById[(int) $itemId] ?? null;
+            $dropped[] = [
+                'name' => $row ? $row['product_name'] : "Item #{$itemId}",
+                'reason' => "{$stallLabel} is temporarily suspended and cannot take orders.",
+            ];
+        }
+        $_SESSION['cart'] = ['merchant_user_id' => null, 'items' => []];
+        return [
+            'merchant_user_id' => null,
+            'merchant_label' => null,
+            'lines' => [],
+            'total' => 0.0,
+            'dropped' => $dropped,
+        ];
+    }
+
     foreach ($cart['items'] as $itemId => $qty) {
         $row = $rowsById[(int) $itemId] ?? null;
 
@@ -1300,34 +1787,59 @@ function gjc_merchant_display_name(PDO $db, int $merchantUserId): ?string
 }
 
 /**
- * Widens transactions.transaction_type to include 'refund' (used when a
- * merchant issues a Return). Existing rows/values are untouched — this only
- * adds a new label to the ENUM, mirroring the pattern already used for
- * systemic_audit_trail.action_type in connection/audit_logger.php.
+ * Widens transactions.transaction_type to include every label in
+ * $requiredTypes, by reading the CURRENT live enum and rebuilding the
+ * MODIFY with the union — never a hardcoded replacement list, which would
+ * silently drop any label added by a migration this function doesn't know
+ * about (that was the bug in the old gjc_ensure_transaction_refund_type()).
+ * Call this from a page/dispatcher BEFORE any beginTransaction() — it's DDL,
+ * and MySQL implicitly commits an open transaction the instant it sees DDL.
  */
-function gjc_ensure_transaction_refund_type(PDO $db): void
+function gjc_ensure_transaction_types(PDO $db, array $requiredTypes): void
 {
     try {
         $column = $db->query("SHOW COLUMNS FROM transactions LIKE 'transaction_type'")->fetch(PDO::FETCH_ASSOC);
         $type = (string) ($column['Type'] ?? '');
-        if ($column && strpos($type, "'refund'") === false) {
-            $db->exec(
-                "ALTER TABLE transactions
-                 MODIFY transaction_type ENUM(
-                    'cash_in',
-                    'payment',
-                    'voucher_payment',
-                    'merchant_settle',
-                    'voucher_create',
-                    'voucher_expire',
-                    'cap_increase',
-                    'refund'
-                 ) NOT NULL"
-            );
+        if (!$column) {
+            return;
         }
+
+        $missing = false;
+        foreach ($requiredTypes as $required) {
+            if (strpos($type, "'{$required}'") === false) {
+                $missing = true;
+                break;
+            }
+        }
+        if (!$missing) {
+            return;
+        }
+
+        preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $type, $labelMatches);
+        $labels = $labelMatches[1] ?? [];
+        foreach ($requiredTypes as $required) {
+            if (!in_array($required, $labels, true)) {
+                $labels[] = $required;
+            }
+        }
+        $enumSql = implode(', ', array_map(
+            static fn(string $label): string => "'" . str_replace("'", "\\'", $label) . "'",
+            $labels
+        ));
+        $db->exec("ALTER TABLE transactions MODIFY transaction_type ENUM({$enumSql}) NOT NULL");
     } catch (\Throwable $e) {
         // Leave the ENUM as-is; the insert below will surface the failure clearly.
     }
+}
+
+/**
+ * Widens transactions.transaction_type to include 'refund' (used when a
+ * merchant issues a Return). Kept as its own function since
+ * merchant/api/returns.php already calls it by this name.
+ */
+function gjc_ensure_transaction_refund_type(PDO $db): void
+{
+    gjc_ensure_transaction_types($db, ['refund']);
 }
 
 /**
@@ -1820,6 +2332,7 @@ function gjc_transaction_type_options(): array
         "voucher_expire" => "Voucher Expiry",
         "cap_increase" => "Cap Increase",
         "refund" => "Refund",
+        "allowance" => "Allowance",
     ];
 }
 
@@ -1851,6 +2364,7 @@ function gjc_transaction_type_label(string $type): string
         "refund" => "Refund",
         "topup" => "Top-up",
         "encashment" => "Encashment",
+        "allowance" => "Allowance",
     ];
 
     return $labels[$type] ?? ucwords(str_replace("_", " ", $type));
@@ -1879,12 +2393,14 @@ function gjc_student_txn_meta(string $type): array
         "payment" => "payment",
         "voucher_payment" => "voucher",
         "p2p_transfer" => "transfer",
+        "allowance" => "allowance",
     ];
     $icons = [
         "topup" => "fa-circle-plus",
         "payment" => "fa-bag-shopping",
         "voucher" => "fa-credit-card",
         "transfer" => "fa-paper-plane",
+        "allowance" => "fa-hand-holding-dollar",
         "other" => "fa-receipt",
     ];
     $slug = $slugs[$type] ?? "other";
@@ -1892,7 +2408,7 @@ function gjc_student_txn_meta(string $type): array
     return [
         "slug" => $slug,
         "icon" => $icons[$slug],
-        "incoming" => $slug === "topup",
+        "incoming" => in_array($slug, ["topup", "allowance"], true),
         "label" => gjc_transaction_type_label($type),
     ];
 }
@@ -2591,6 +3107,109 @@ function gjc_check_parent_balance_alert(PDO $db, int $walletId): void
 }
 
 /**
+ * Parent wallet: parents top up with cash (Finance or a merchant), then send
+ * one-time allowance transfers to a linked student. Keyed on parents.id (not
+ * users.userID directly) because the rest of the parent portal already
+ * resolves identity through that table — see gjc_parent_id_for_user().
+ */
+function gjc_ensure_parent_wallet_schema(PDO $db): void
+{
+    // DDL — must run before any transaction starts (MySQL implicitly commits
+    // an open transaction the instant it sees DDL).
+    gjc_ensure_transaction_types($db, ['allowance']);
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS parent_wallets (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            parent_id  INT UNSIGNED NOT NULL UNIQUE,
+            balance    DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS parent_topup_requests (
+            id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            parent_id       INT UNSIGNED NOT NULL,
+            amount          DECIMAL(15,2) NOT NULL,
+            source          VARCHAR(20) NOT NULL DEFAULT 'finance',
+            merchant_id     INT UNSIGNED NULL,
+            status          VARCHAR(20) NOT NULL DEFAULT 'pending',
+            reference_no    VARCHAR(40) NULL UNIQUE,
+            fee_amount      DECIMAL(15,2) NULL,
+            credited_amount DECIMAL(15,2) NULL,
+            requested_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            processed_at    DATETIME NULL,
+            processed_by    INT UNSIGNED NULL,
+            INDEX idx_parent_status (parent_id, status)
+        ) ENGINE=InnoDB"
+    );
+
+    if (gjc_table_exists($db, 'transactions')) {
+        $cols = gjc_table_columns($db, 'transactions');
+        if (!in_array('parent_wallet_id', $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE transactions ADD COLUMN parent_wallet_id INT UNSIGNED NULL");
+            } catch (\Throwable $ignored) {}
+        }
+        $hasIndex = (bool) $db->query(
+            "SHOW INDEX FROM transactions WHERE Key_name = 'idx_txn_parent_wallet'"
+        )->fetchColumn();
+        if (!$hasIndex) {
+            try {
+                $db->exec("ALTER TABLE transactions ADD INDEX idx_txn_parent_wallet (parent_wallet_id, id)");
+            } catch (\Throwable $ignored) {}
+        }
+    }
+}
+
+/** Get-or-create the parents row for a logged-in parent user, return its id. */
+function gjc_parent_id_for_user(PDO $db, int $userId): int
+{
+    if (!$userId) {
+        return 0;
+    }
+
+    $stmt = $db->prepare("SELECT id FROM parents WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        $db->prepare("INSERT IGNORE INTO parents (user_id) VALUES (?)")->execute([$userId]);
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    return $row ? (int) $row['id'] : 0;
+}
+
+/** Get-or-create a parent_wallets row by parents.id — mirrors gjc_student_wallet(). */
+function gjc_parent_wallet(PDO $db, int $parentId): array
+{
+    if ($parentId && gjc_table_exists($db, 'parent_wallets')) {
+        $stmt = $db->prepare("SELECT * FROM parent_wallets WHERE parent_id = ? LIMIT 1");
+        $stmt->execute([$parentId]);
+        $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$wallet) {
+            $db->prepare(
+                "INSERT IGNORE INTO parent_wallets (parent_id, balance) VALUES (?, 0)"
+            )->execute([$parentId]);
+            $stmt->execute([$parentId]);
+            $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if ($wallet) {
+            return [
+                "id" => (int) $wallet["id"],
+                "balance" => (float) $wallet["balance"],
+                "source" => "parent_wallets",
+            ];
+        }
+    }
+
+    return ["id" => 0, "balance" => 0.0, "source" => "none"];
+}
+
+/**
  * School-managed Fee Waiver Credit: a non-wallet, non-GenCoin misc. credit
  * that finance creates (amount + signed parent waiver upload) to be applied
  * against a student's tuition by whichever system actually owns tuition fee
@@ -2667,4 +3286,259 @@ function gjc_student_waiver_credit(PDO $db, int $studentUserId): array
         'amount'      => $row['amount'] !== null ? (float) $row['amount'] : null,
         'waiver_file' => $row['waiver_file'],
     ];
+}
+
+/**
+ * Student notification feed (wallet events + a one-time welcome message).
+ * Role-agnostic by design — `user_id` is just a `users` row — but today only
+ * student pages read from it.
+ */
+function gjc_ensure_notifications_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS notifications (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL,
+            type       VARCHAR(40) NOT NULL DEFAULT 'general',
+            icon       VARCHAR(40) NOT NULL DEFAULT 'bell',
+            title      VARCHAR(150) NOT NULL,
+            message    VARCHAR(500) NOT NULL,
+            link       VARCHAR(255) NULL,
+            is_read    TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_notifications_user (user_id, created_at),
+            INDEX idx_notifications_user_unread (user_id, is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+}
+
+function gjc_notify(PDO $db, int $userId, string $type, string $title, string $message, string $icon = 'bell', ?string $link = null): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+    gjc_ensure_notifications_schema($db);
+    $db->prepare(
+        "INSERT INTO notifications (user_id, type, icon, title, message, link) VALUES (?, ?, ?, ?, ?, ?)"
+    )->execute([$userId, $type, $icon, $title, $message, $link]);
+}
+
+/** Same as gjc_notify(), but resolves a student_wallets.id into its owning user first. */
+function gjc_notify_wallet(PDO $db, int $studentWalletId, string $type, string $title, string $message, string $icon = 'bell', ?string $link = null): void
+{
+    $stmt = $db->prepare("SELECT user_id FROM student_wallets WHERE id = ? LIMIT 1");
+    $stmt->execute([$studentWalletId]);
+    $userId = (int) $stmt->fetchColumn();
+    if ($userId > 0) {
+        gjc_notify($db, $userId, $type, $title, $message, $icon, $link);
+    }
+}
+
+/** Fires once ever, the moment a user's very first notification would be created. */
+function gjc_notify_welcome_if_new(PDO $db, int $userId): void
+{
+    gjc_ensure_notifications_schema($db);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    if ((int) $stmt->fetchColumn() === 0) {
+        gjc_notify(
+            $db,
+            $userId,
+            'welcome',
+            'Welcome to GenPay!',
+            'Your wallet is ready. Top up, pay at the canteen, or send GenCoin to a friend — every action shows up here.',
+            'hand-sparkles'
+        );
+    }
+}
+
+function gjc_notifications_unread_count(PDO $db, int $userId): int
+{
+    gjc_ensure_notifications_schema($db);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
+    $stmt->execute([$userId]);
+    return (int) $stmt->fetchColumn();
+}
+
+function gjc_notifications_recent(PDO $db, int $userId, int $limit = 20): array
+{
+    gjc_ensure_notifications_schema($db);
+    $limit = max(1, min(100, $limit));
+    $stmt = $db->prepare(
+        "SELECT id, type, icon, title, message, link, is_read, created_at
+           FROM notifications WHERE user_id = ?
+          ORDER BY created_at DESC, id DESC LIMIT {$limit}"
+    );
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/** Pass $id to mark one notification read (only if it belongs to $userId); omit to mark all read. */
+function gjc_notifications_mark_read(PDO $db, int $userId, ?int $id = null): void
+{
+    gjc_ensure_notifications_schema($db);
+    if ($id !== null) {
+        $db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?")->execute([$id, $userId]);
+    } else {
+        $db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0")->execute([$userId]);
+    }
+}
+
+/**
+ * School Year Cycles & Balance Lifecycle. school_year_balances is the sole
+ * record of a year-end carry-over — rollover() in admin/api/school_years.php
+ * never touches CirculationEngine, student_wallets, or system_settings.
+ */
+function gjc_ensure_school_year_schema(PDO $db): void
+{
+    // CREATE/ALTER TABLE are DDL — MySQL implicitly commits any open
+    // transaction the instant it sees one, before the statement even runs.
+    // This must never execute from inside a CirculationEngine transaction
+    // (or any other beginTransaction()/commit() block). The static cache
+    // below also means it only actually runs once per request either way.
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    $ensured = true;
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS school_years (
+            id               INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            school_year_name VARCHAR(9) NOT NULL,
+            start_date       DATE NULL,
+            end_date         DATE NULL,
+            is_active        TINYINT(1) NOT NULL DEFAULT 0,
+            created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_sy_name (school_year_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS school_year_balances (
+            id                   INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            student_user_id      INT NOT NULL,
+            school_year_id       INT NOT NULL,
+            starting_balance     DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+            final_ending_balance DECIMAL(10,2) NULL,
+            archived_at          TIMESTAMP NULL,
+            created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_student_sy (student_user_id, school_year_id),
+            INDEX idx_syb_year (school_year_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+    );
+
+    if (gjc_table_exists($db, 'transactions')) {
+        $cols = gjc_table_columns($db, 'transactions');
+        if (!in_array('school_year_id', $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE transactions ADD COLUMN school_year_id INT NULL");
+            } catch (\Throwable $ignored) {}
+        }
+        $hasIndex = (bool) $db->query(
+            "SHOW INDEX FROM transactions WHERE Key_name = 'idx_txn_sy'"
+        )->fetchColumn();
+        if (!$hasIndex) {
+            try {
+                $db->exec("ALTER TABLE transactions ADD INDEX idx_txn_sy (school_year_id, id)");
+            } catch (\Throwable $ignored) {}
+        }
+    }
+
+    if (gjc_table_exists($db, 'student_info')) {
+        $cols = gjc_table_columns($db, 'student_info');
+        if (!in_array('graduated_at', $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE student_info ADD COLUMN graduated_at DATETIME NULL");
+            } catch (\Throwable $ignored) {}
+        }
+    }
+}
+
+/** '2025-2026' format, second year must be first + 1. No DB CHECK — validated here only. */
+function gjc_validate_school_year_name(string $name): bool
+{
+    if (!preg_match('/^(\d{4})-(\d{4})$/', $name, $m)) {
+        return false;
+    }
+    return ((int) $m[2]) === ((int) $m[1]) + 1;
+}
+
+/**
+ * The one active school_years.id, or null if none has been activated yet
+ * (or the table doesn't exist yet — this deliberately does NOT call
+ * gjc_ensure_school_year_schema(), since this is called from inside
+ * CirculationEngine::logTransaction() on every money-moving transaction, and
+ * running DDL there would implicitly commit the ambient transaction (see the
+ * comment on gjc_ensure_school_year_schema()). Schema creation happens
+ * separately, from non-transactional pages (admin/school_years.php,
+ * student/history.php, parent/student.php). Cached per request.
+ */
+function gjc_active_school_year_id(PDO $db): ?int
+{
+    static $cached = false;
+    static $cachedId = null;
+
+    if ($cached) {
+        return $cachedId;
+    }
+    $cached = true;
+
+    if (!gjc_table_exists($db, 'school_years')) {
+        return $cachedId = null;
+    }
+
+    $id = $db->query("SELECT id FROM school_years WHERE is_active = 1 LIMIT 1")->fetchColumn();
+    return $cachedId = ($id !== false ? (int) $id : null);
+}
+
+/** Display name of the active school year, or null if none is active. Safe to call from any context — see gjc_active_school_year_id(). */
+function gjc_active_school_year_name(PDO $db): ?string
+{
+    if (!gjc_table_exists($db, 'school_years')) {
+        return null;
+    }
+    $name = $db->query("SELECT school_year_name FROM school_years WHERE is_active = 1 LIMIT 1")->fetchColumn();
+    return $name !== false ? (string) $name : null;
+}
+
+/**
+ * True once a student has been marked graduated (student_info.graduated_at
+ * set) — every student money path must reject on this in addition to
+ * student_wallets.is_frozen, so unfreezing via parent controls can never
+ * re-open a graduate's wallet.
+ */
+function gjc_student_graduated(PDO $db, int $studentUserId): bool
+{
+    if ($studentUserId <= 0) {
+        return false;
+    }
+    $stmt = $db->prepare("SELECT graduated_at FROM student_info WHERE userID = ? LIMIT 1");
+    $stmt->execute([$studentUserId]);
+    $value = $stmt->fetchColumn();
+    return $value !== false && $value !== null;
+}
+
+/**
+ * Full lockout for graduated students: every student-facing HTML page is
+ * off-limits except withdraw.php (their only remaining action — cashing out
+ * whatever balance is left). Call this right after gjc_require_role(['student'])
+ * on every such page. Do NOT call this on JSON API endpoints (student/api/*.php,
+ * pay_qr.php) — a redirect there would break the fetch() caller; those pages
+ * already check gjc_student_graduated() directly and return a JSON error.
+ */
+function gjc_enforce_graduate_lock(PDO $db): void
+{
+    if (gjc_current_role() !== 'student') {
+        return;
+    }
+    if (!gjc_student_graduated($db, gjc_user_id())) {
+        return;
+    }
+    $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    if (str_ends_with($script, '/withdraw.php')) {
+        return;
+    }
+    header('Location: ' . STUDENT_URL . '/withdraw.php');
+    exit();
 }

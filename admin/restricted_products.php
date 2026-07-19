@@ -12,6 +12,25 @@ $currentPage = 'restricted_products';
 // items that slipped in before a rule existed or before matching was tightened
 // (e.g. an obfuscated "C0br4"). Idempotent: only newly-matching items are touched.
 $autoDisabled = gjc_enforce_restrictions_on_inventory($db);
+gjc_ensure_product_violation_schema($db);
+
+$violators = [];
+if (in_array('restricted_violation_count', gjc_table_columns($db, 'users'), true)) {
+    // Suspensions that already served their days clear lazily here, so the
+    // table below only ever badges live ones.
+    try {
+        $db->exec("UPDATE users SET restricted_suspended_until = NULL WHERE restricted_suspended_until IS NOT NULL AND restricted_suspended_until <= NOW()");
+    } catch (\Throwable $ignored) {}
+    $violators = $db->query(
+        "SELECT u.userID, u.first_name, u.last_name, u.restricted_violation_count, u.restricted_violation_last_at,
+                u.restricted_suspended_until,
+                m.stall_name, m.stall_id
+           FROM users u
+      LEFT JOIN merchant m ON m.userID = u.userID
+          WHERE u.restricted_violation_count > 0 OR u.restricted_suspended_until IS NOT NULL
+          ORDER BY (u.restricted_suspended_until IS NOT NULL) DESC, u.restricted_violation_count DESC, u.restricted_violation_last_at DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $products = [];
 if (gjc_table_exists($db, 'restricted_products')) {
@@ -102,6 +121,62 @@ if (gjc_table_exists($db, 'restricted_products')) {
                 </div>
             </div>
         </section>
+
+        <!-- Merchants at Risk -->
+        <?php if (!empty($violators)): ?>
+        <section class="premium-panel mb-4">
+            <div class="panel-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h3>Merchants at Risk</h3>
+                    <p>Blocked attempts to add or rename a product into a restricted one, per merchant admin. Hitting <?= GJC_VIOLATION_RISK_AT ?> strikes auto-suspends the whole stall for <?= GJC_VIOLATION_SUSPEND_DAYS ?> days and restarts the count; the full history stays in the audit log.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table premium-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Merchant / Stall</th>
+                            <th>Violations</th>
+                            <th>Last Attempt</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($violators as $v): ?>
+                        <tr>
+                            <td>
+                                <strong><?= gjc_e($v['stall_name'] ?: trim($v['first_name'] . ' ' . $v['last_name'])) ?></strong>
+                                <?php if ($v['stall_id']): ?><div class="text-muted" style="font-size:12px">Stall <?= gjc_e($v['stall_id']) ?></div><?php endif; ?>
+                            </td>
+                            <td><strong><?= (int) $v['restricted_violation_count'] ?></strong></td>
+                            <td><small><?= $v['restricted_violation_last_at'] ? date('M d, Y g:i A', strtotime($v['restricted_violation_last_at'])) : '—' ?></small></td>
+                            <td>
+                                <?php if (!empty($v['restricted_suspended_until'])): ?>
+                                    <span class="badge-danger">Suspended</span>
+                                    <div class="text-muted" style="font-size:12px">until <?= date('M d, g:i A', strtotime($v['restricted_suspended_until'])) ?></div>
+                                <?php elseif ((int) $v['restricted_violation_count'] >= GJC_VIOLATION_WARN_AT): ?>
+                                    <span class="badge-danger">At Risk</span>
+                                <?php else: ?>
+                                    <span class="badge-warning">Watch</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($v['restricted_suspended_until'])): ?>
+                                    <button class="btn btn-sm btn-outline-success" onclick="liftSuspension(<?= (int) $v['userID'] ?>, this)">
+                                        <i class="fa-solid fa-unlock me-1"></i>Lift Suspension
+                                    </button>
+                                <?php else: ?>
+                                    <span class="text-muted" style="font-size:12px">—</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
 
         <!-- Products Table -->
         <section class="premium-panel">
@@ -241,6 +316,18 @@ async function toggleRestriction(id, newStatus) {
     const data = await resp.json();
     if (data.success) location.reload();
     else alert('Error: ' + data.message);
+}
+
+async function liftSuspension(userId, btn) {
+    if (!confirm('Lift this merchant\'s suspension early? They and their staff will be able to log in and sell again immediately.')) return;
+    btn.disabled = true;
+    const f = new FormData();
+    f.append('action', 'lift_suspension');
+    f.append('user_id', userId);
+    const resp = await fetch('<?= ADMIN_URL ?>/api/restricted_products.php', { method: 'POST', body: f });
+    const data = await resp.json();
+    if (data.success) location.reload();
+    else { alert('Error: ' + data.message); btn.disabled = false; }
 }
 </script>
 </body>

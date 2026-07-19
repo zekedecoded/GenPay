@@ -127,6 +127,38 @@ try {
             break;
         }
 
+        case 'lift_suspension': {
+            $userId = (int) ($_POST['user_id'] ?? 0);
+            if (!$userId) {
+                echo json_encode(['success' => false, 'message' => 'Invalid merchant.']);
+                exit;
+            }
+
+            $until = gjc_merchant_suspended_until($db, $userId);
+            if ($until === null) {
+                echo json_encode(['success' => false, 'message' => 'This merchant is not currently suspended.']);
+                exit;
+            }
+
+            $db->prepare("UPDATE users SET restricted_suspended_until = NULL WHERE userID = ?")->execute([$userId]);
+
+            logAudit(
+                $db, $adminId, gjc_current_role(),
+                'PRODUCT_RESTRICTION', 'users',
+                ['userID' => $userId, 'restricted_suspended_until' => $until],
+                ['event' => 'suspension_lifted', 'merchant_user_id' => $userId, 'lifted_by' => $adminId]
+            );
+
+            gjc_notify(
+                $db, $userId, 'compliance', 'Suspension lifted',
+                'A GenPay finance admin lifted your restricted-product suspension early. You and your staff can log in and sell again — please review the Restricted Products list before adding new items.',
+                'circle-check'
+            );
+
+            echo json_encode(['success' => true, 'message' => 'Suspension lifted. The merchant can log in again.']);
+            break;
+        }
+
         default:
             echo json_encode(['success' => false, 'message' => 'Unknown action.']);
     }

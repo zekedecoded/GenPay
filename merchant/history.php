@@ -51,7 +51,8 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -67,29 +68,19 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
 
         <main class="merchant-main">
 
-            <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">Menu</button>
-
-                <div>
-                    <h1>Sales History</h1>
-                    <p>View all completed payments and merchant wallet transactions.</p>
-                </div>
-
-                <div class="merchant-user">
-                    <span><?= gjc_e($currentUser['name']) ?></span>
-                    <div class="merchant-avatar">
-                        <i class="fa-solid fa-store"></i>
-                    </div>
-                </div>
-            </header>
+            <?php
+            $topbarTitle = 'Sales History';
+            $topbarSubtitle = 'View all completed payments and merchant wallet transactions.';
+            require __DIR__ . '/../includes/partials/topbar_merchant.php';
+            ?>
 
             <section class="history-summary-grid mb-4">
 
-                <div class="history-balance-card">
+                <div class="sd-balance">
                     <div>
-                        <span>Current Balance</span>
-                        <h2><?php echo gjc_money($currentBalance); ?></h2>
-                        <p>Available merchant wallet balance</p>
+                        <span class="sd-balance-label">Current Balance</span>
+                        <h2 class="sd-balance-amount"><?php echo gjc_money($currentBalance); ?></h2>
+                        <p class="sd-gc-rate">Available merchant wallet balance</p>
                     </div>
 
                     <div class="history-balance-icon">
@@ -228,10 +219,6 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <script>
-    function toggleMerchantSidebar() {
-        document.getElementById("merchantSidebar").classList.toggle("collapsed");
-    }
-
     const RETURNS_API = '<?= MERCHANT_URL ?>/api/returns.php';
     const returnModalEl = document.getElementById('returnModal');
     const returnModal = bootstrap.Modal.getOrCreateInstance(returnModalEl);
@@ -281,6 +268,7 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
     });
     </script>
 
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 
 </html>

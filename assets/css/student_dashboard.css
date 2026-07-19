@@ -2,7 +2,7 @@
    Scoped under sd-* so gjc-clear.css's student-* !important overrides never
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
-@import url("gjc-clear.css?v=11");
+@import url("gjc-clear.css?v=12");
 @import url("theme.css?v=2");
 
 /* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
@@ -162,6 +162,19 @@ body.sd-body {
   color: #fff;
 }
 
+.sd-sy-chip {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  vertical-align: middle;
+}
+
 .sd-topbar-greet p {
   margin: 2px 0 0;
   font-size: 12.5px;
@@ -189,16 +202,154 @@ body.sd-body {
   cursor: pointer;
 }
 
-.sd-bell::after {
-  content: "";
+/* ===== NOTIFICATION BELL + DROPDOWN ===== */
+.sd-notif {
+  position: relative;
+}
+
+.sd-notif-badge {
   position: absolute;
-  top: 9px;
-  right: 10px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #4ade80;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--sd-red);
   border: 1.5px solid var(--sd-forest-950);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.sd-notif-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(15, 40, 25, 0.22);
+  border: 1px solid var(--sd-line);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index: 60;
+}
+
+.sd-notif-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.sd-notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--sd-line);
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--sd-ink);
+}
+
+.sd-notif-head button {
+  border: 0;
+  background: none;
+  color: var(--sd-forest-700);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.sd-notif-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.sd-notif-empty {
+  padding: 28px 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--sd-muted);
+}
+
+.sd-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--sd-line);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sd-notif-item:last-child {
+  border-bottom: 0;
+}
+
+.sd-notif-item:hover {
+  background: var(--sd-mint);
+}
+
+.sd-notif-item.is-unread {
+  background: rgba(240, 165, 0, 0.06);
+}
+
+.sd-notif-item-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--sd-mint);
+  color: var(--sd-forest-700);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.sd-notif-item.is-unread .sd-notif-item-icon {
+  background: var(--sd-gold-soft);
+  color: #8a6100;
+}
+
+.sd-notif-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sd-notif-item-body strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sd-ink);
+}
+
+.sd-notif-item-body span {
+  font-size: 12px;
+  color: var(--sd-muted);
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.sd-notif-item-body em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--sd-muted);
+  opacity: .8;
 }
 
 .sd-avatar {

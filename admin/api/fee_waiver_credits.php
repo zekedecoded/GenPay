@@ -194,6 +194,16 @@ try {
                 ['student_user_id' => $studentUserId, 'status' => 'posted', 'waiver_file' => $rel]
             );
 
+            gjc_notify(
+                $db,
+                $studentUserId,
+                'fee_waiver',
+                'Fee Waiver Credit Posted',
+                gjc_money_plain((float) $before['amount']) . ' Fee Waiver Credit is now confirmed and on file with finance.',
+                'hand-holding-dollar',
+                STUDENT_URL . '/profile.php'
+            );
+
             fwc_json(['success' => true, 'message' => 'Signed waiver uploaded. The credit is now posted.', 'status' => 'posted', 'waiver_file' => $rel]);
         }
 

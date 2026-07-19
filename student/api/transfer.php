@@ -118,6 +118,11 @@ try {
             exit;
         }
 
+        if (gjc_student_graduated($db, $currentUserId)) {
+            echo json_encode(['success' => false, 'message' => 'Account locked: graduated.']);
+            exit;
+        }
+
         // --- Parent wallet controls check on sender ---
         $wcStmt = $db->prepare("SELECT is_frozen, daily_spend_limit FROM student_wallets WHERE id = ?");
         $wcStmt->execute([$senderWallet['id']]);
@@ -186,12 +191,13 @@ try {
             $db->prepare(
                 "INSERT INTO transactions
                     (reference_no, transaction_type, initiated_by, student_wallet_id, amount,
-                     vault_before, vault_after, total_in_circulation, status, notes)
-                 VALUES (?, 'p2p_transfer', ?, ?, ?, ?, ?, ?, 'completed', ?)"
+                     vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
+                 VALUES (?, 'p2p_transfer', ?, ?, ?, ?, ?, ?, 'completed', ?, ?)"
             )->execute([
                 $refNo, $currentUserId, $senderWallet['id'], $amount,
                 $vaultBefore, $vaultBefore, $totalCirc,
                 'P2P Transfer to ' . $recipientName . ($message ? ' — ' . $message : ''),
+                gjc_active_school_year_id($db),
             ]);
 
             // 5. Log p2p_transfers record
@@ -229,6 +235,26 @@ try {
                     'to_wallet_id' => $recipientWallet['id'],
                     'status' => 'completed',
                 ]
+            );
+
+            $senderName = gjc_user_label($db, $currentUserId);
+            gjc_notify(
+                $db,
+                $currentUserId,
+                'transfer_out',
+                'GenCoin Sent',
+                sprintf('You sent %s to %s.', gjc_money_plain($amount), $recipientName),
+                'paper-plane',
+                STUDENT_URL . '/history.php'
+            );
+            gjc_notify(
+                $db,
+                $recipientUserId,
+                'transfer_in',
+                'GenCoin Received',
+                sprintf('%s sent you %s (%s GC).', $senderName, gjc_money_plain($amount), number_format($amount / 10, 1)),
+                'arrow-down',
+                STUDENT_URL . '/history.php'
             );
 
             echo json_encode([

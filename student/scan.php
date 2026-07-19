@@ -4,6 +4,7 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
+gjc_enforce_graduate_lock($db);
 
 if (isset($_SESSION['force_change'])) {
     header('Location: ' . BASE_URL . '/change_password.php');
@@ -74,7 +75,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=2">
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>

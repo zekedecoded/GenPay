@@ -1,4 +1,4 @@
-@import url("gjc-clear.css?v=11");
+@import url("gjc-clear.css?v=12");
 @import url("theme.css?v=2");
 
 :root {
@@ -41,285 +41,48 @@ body {
   min-height: 100vh;
 }
 
-.merchant-sidebar {
-  width: 250px;
-  height: 100vh;
-  padding: 22px 16px 20px;
-  position: fixed;
-  left: 0;
-  top: 0;
-  background: linear-gradient(180deg, var(--emerald-950), var(--emerald-900));
-  transition: width 0.25s ease;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+/* responsive.css (linked after this file on every merchant page) sets
+   overflow-x: hidden on BOTH <html> and <body> with no matching overflow-y.
+   Per the CSS overflow spec, that silently forces overflow-y: auto on each
+   of them independently, which also blocks the normal html->body overflow
+   propagation quirk — so instead of one viewport-level scrollbar, <body>
+   becomes its own separate scroll box. .sd-sidebar's position: sticky is
+   sticky *within that box*, and a flex row taller than 100vh inside a
+   scrolling <body> doesn't give sticky anything to stick against, so it
+   just scrolls off with everything else. Neutralizing html's overflow-x
+   here restores single-viewport scrolling (student pages never load
+   responsive.css, so they never hit this). */
+html {
+  overflow-x: visible !important;
 }
 
-.merchant-sidebar.collapsed {
-  width: 58px;
-}
-
-.merchant-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 6px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 18px;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.merchant-brand-logo {
-  min-width: 42px;
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.merchant-brand-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.merchant-brand-text {
-  overflow: hidden;
-}
-
-.merchant-brand h4 {
-  margin: 0;
-  font-weight: 800;
-  font-size: 17px;
-  line-height: 1.2;
-  color: #fff;
-}
-
-.merchant-brand span {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.merchant-sidebar.collapsed .merchant-brand-text,
-.merchant-sidebar.collapsed .merchant-nav-text,
-.merchant-sidebar.collapsed .merchant-logout span {
-  display: none;
-}
-
-.merchant-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.merchant-menu::-webkit-scrollbar {
-  width: 0;
-}
-
-.merchant-menu a {
-  min-height: 40px;
-  color: rgba(255, 255, 255, 0.62);
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border-left: 3px solid transparent;
-  font-size: 13.5px;
-  font-weight: 600;
-  transition: color 0.15s ease, background 0.15s ease;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.merchant-nav-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.merchant-menu a:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.merchant-menu a.active {
-  background: var(--gold-soft);
-  border-left-color: var(--gold);
-  color: var(--gold);
-}
-
-.merchant-sidebar.collapsed .merchant-menu a {
-  justify-content: center;
-  padding: 0;
-  gap: 0;
-  border-left: none;
-}
-
-.merchant-sidebar.collapsed .merchant-menu a.active {
-  color: var(--gold);
-}
-
-.merchant-sidebar.collapsed .merchant-nav-icon {
-  width: 18px;
-  min-width: 18px;
-  font-size: 14px;
-}
-
-.merchant-logout {
-  margin-top: 20px;
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  background: transparent;
-  color: #e0654f;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13.5px;
-  font-weight: 600;
-  border: none;
-  transition: color 0.15s, background 0.15s;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.merchant-logout-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.merchant-logout:hover {
-  color: #f08373;
-  background: rgba(224, 91, 79, 0.12);
-}
-
-.merchant-sidebar.collapsed .merchant-logout {
-  justify-content: center;
-  padding: 0;
-}
+/* Sidebar (sd-sidebar/sd-brand/sd-menu/sd-logout), topbar (sd-topbar) and
+   mobile bottom nav (sd-bottomnav) are shared with the student shell —
+   see includes/partials/sidebar_merchant_admin.php / sidebar_merchant_staff.php
+   / topbar_merchant.php / bottom_nav_merchant.php, all styled entirely by
+   assets/css/student_dashboard.css (every merchant page links it). No
+   merchant-specific shell CSS needed here. */
 
 .merchant-main {
   --main-pad: 28px;
-  margin-left: 250px;
-  width: calc(100% - 250px);
+  flex: 1;
   min-width: 0;
   padding: var(--main-pad);
-  transition: margin-left 0.25s ease, width 0.25s ease;
 }
 
-.merchant-sidebar.collapsed ~ .merchant-main {
-  margin-left: 58px;
-  width: calc(100% - 58px);
-}
-
-/* Full-bleed flat dark topbar, flush with the viewport edge —
-   identical to the student sd-topbar / admin .topbar. The negative
-   margins undo .merchant-main's padding on three sides. */
-.merchant-topbar {
+/* Student's .sd-topbar is flush with the viewport edge for free — .sd-main
+   carries no padding of its own, only its inner .sd-content wrapper does.
+   .merchant-main puts page padding directly on itself (no such wrapper),
+   so without this the topbar sits inset like any other child instead of
+   full-bleed. Pull it back out on the three sides that need to touch the
+   edge; --main-pad tracks the padding at each breakpoint below. */
+.merchant-main .sd-topbar {
   margin: calc(var(--main-pad) * -1) calc(var(--main-pad) * -1) 26px;
-  min-height: auto;
-  padding: 18px 28px;
-  background: var(--emerald-950);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  gap: 16px;
 }
 
-.merchant-menu-btn {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-weight: 800;
-  font-size: 18px;
-  transition: background 0.15s;
-}
-
-.merchant-menu-btn:hover {
-  background: var(--gold-soft);
-  color: var(--gold);
-}
-
-.merchant-topbar h1 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 800;
-  color: #fff;
-}
-
-.merchant-topbar p {
-  margin: 2px 0 0;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12.5px;
-}
-
-.merchant-user {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 750;
-  color: #fff;
-}
-
-.merchant-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--emerald-800);
-  border: 1px solid rgba(240, 165, 0, 0.5);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-
-.merchant-avatar i {
-  font-size: 17px;
-  color: var(--gold);
-}
-
-/* POS topbar: Load Wallet action + user, pinned to the right */
-.merchant-topbar-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.merchant-topbar-actions .merchant-user {
-  margin-left: 0;
-}
-
+/* Send GenCoin action button — lives inside pos.php's product toolbar now
+   (the old header/topbar had its own dedicated slot for it; sd-topbar,
+   shared with student, doesn't). */
 .merchant-loadwallet-btn {
   padding: 9px 18px;
   background: linear-gradient(135deg, var(--gold-light), var(--gold));
@@ -408,162 +171,9 @@ body {
   z-index: 2;
 }
 
-/* GenCoin ledger ticket — compact balance + peso-equivalent strip */
-.gc-ticket {
-  display: flex;
-  align-items: stretch;
-  border-radius: var(--ad-radius);
-  background: linear-gradient(
-    115deg,
-    var(--emerald-900) 0%,
-    var(--emerald-800) 55%,
-    var(--emerald-700) 100%
-  );
-  border: 1px solid rgba(240, 165, 0, 0.22);
-  box-shadow: 0 12px 28px rgba(13, 36, 24, 0.2);
-  overflow: hidden;
-}
-
-.gc-ticket-side {
-  flex: 1 1 50%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 24px;
-}
-
-.gc-ticket-equiv {
-  justify-content: flex-start;
-}
-
-.gc-ticket-icon {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.gc-ticket-icon i {
-  font-size: 17px;
-  color: var(--gold-light);
-}
-
-.gc-ticket-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(243, 246, 241, 0.62);
-}
-
-.gc-ticket-figure {
-  margin: 3px 0 2px;
-  font-family: var(--gp-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 24px;
-  font-weight: 700;
-  color: #f3f6f1;
-  line-height: 1.1;
-}
-
-.gc-ticket-figure small {
-  margin-left: 5px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gold-light);
-}
-
-.gc-ticket-figure-peso {
-  color: var(--gold-light);
-}
-
-.gc-ticket-note {
-  display: block;
-  font-size: 11.5px;
-  color: rgba(243, 246, 241, 0.6);
-}
-
-.gc-ticket-seam {
-  flex: 0 0 auto;
-  position: relative;
-  width: 1px;
-  margin: 12px 0;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    rgba(240, 165, 0, 0.55) 6px,
-    rgba(240, 165, 0, 0.55) 10px,
-    transparent 10px
-  );
-  background-size: 1px 14px;
-  background-repeat: repeat-y;
-}
-
-.gc-ticket-seam::before,
-.gc-ticket-seam::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(240, 165, 0, 0.6);
-  background: var(--emerald-800);
-  transform: translateX(-50%);
-}
-
-.gc-ticket-seam::before {
-  top: -3.5px;
-}
-
-.gc-ticket-seam::after {
-  bottom: -3.5px;
-}
-
-@media (max-width: 576px) {
-  .gc-ticket {
-    flex-direction: column;
-  }
-
-  .gc-ticket-seam {
-    width: auto;
-    height: 1px;
-    margin: 0 16px;
-    background-image: linear-gradient(
-      to right,
-      transparent 0,
-      rgba(240, 165, 0, 0.55) 6px,
-      rgba(240, 165, 0, 0.55) 10px,
-      transparent 10px
-    );
-    background-size: 14px 1px;
-    background-repeat: repeat-x;
-  }
-
-  .gc-ticket-seam::before,
-  .gc-ticket-seam::after {
-    top: 50%;
-    left: auto;
-    transform: translateY(-50%);
-  }
-
-  .gc-ticket-seam::before {
-    left: -3.5px;
-  }
-
-  .gc-ticket-seam::after {
-    right: -3.5px;
-    left: auto;
-  }
-
-  .gc-ticket-figure {
-    font-size: 22px;
-  }
-}
+/* Dashboard hero balance + quick actions + stat row reuse student's
+   sd-balance / sd-quick / sd-stats classes directly (see
+   assets/css/student_dashboard.css and merchant/dashboard.php). */
 
 .merchant-premium-panel {
   background: #fff;
@@ -824,134 +434,10 @@ body {
   border: 1px solid #a8dcbe;
 }
 
-@media (max-width: 992px) {
-  .merchant-sidebar {
-    width: 58px;
-    padding: 18px 8px;
-  }
-
-  .merchant-sidebar .merchant-brand-text,
-  .merchant-sidebar .merchant-nav-text,
-  .merchant-sidebar .merchant-logout span {
-    display: none;
-  }
-
-  .merchant-brand {
-    justify-content: center;
-  }
-
-  .merchant-brand-logo {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-  }
-
-  .merchant-main {
-    --main-pad: 18px;
-    margin-left: 58px;
-    width: calc(100% - 58px);
-    padding: var(--main-pad);
-  }
-
-  .merchant-topbar {
-    padding: 16px 18px;
-    border-radius: 0;
-  }
-
-  .merchant-menu a {
-    justify-content: center;
-    padding: 0;
-    gap: 0;
-    border-left: none;
-  }
-
-  .merchant-menu a.active {
-    color: var(--gold);
-  }
-
-  .merchant-logout {
-    justify-content: center;
-    padding: 0;
-  }
-}
 
 /* ============================= */
 /* MERCHANT QR PAGE */
 /* ============================= */
-
-.qr-balance-card {
-  min-height: 178px;
-  padding: 28px 32px;
-  border-radius: 28px;
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 255, 255, 0.18),
-      transparent 36%
-    ),
-    linear-gradient(135deg, var(--emerald-700), #18a957, #12bfa5);
-  color: white;
-  box-shadow: 0 18px 45px rgba(14, 99, 50, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.qr-balance-card::after {
-  content: "";
-  position: absolute;
-  width: 230px;
-  height: 230px;
-  right: -55px;
-  top: -75px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.qr-balance-card span,
-.qr-balance-card h2,
-.qr-balance-card p,
-.qr-balance-badge {
-  position: relative;
-  z-index: 2;
-}
-
-.qr-balance-card span {
-  display: block;
-  font-size: 14px;
-  font-weight: 850;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: rgba(255, 255, 255, 0.86);
-}
-
-.qr-balance-card h2 {
-  margin: 10px 0 4px;
-  color: white;
-  font-size: 46px;
-  font-weight: 900;
-}
-
-.qr-balance-card p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.qr-balance-badge {
-  min-height: 40px;
-  padding: 0 18px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.18);
-  display: inline-flex;
-  align-items: center;
-  color: white;
-  font-size: 14px;
-  font-weight: 900;
-}
 
 .qr-layout-grid {
   display: grid;
@@ -1541,68 +1027,10 @@ body {
 /* MERCHANT ENCASH PAGE */
 /* ============================= */
 
-.encash-hero-card {
-  min-height: 168px;
-  padding: 26px 30px;
-  border-radius: var(--ad-radius);
-  position: relative;
-  overflow: hidden;
-  background: var(--gp-grad-hero);
-  color: white;
-  box-shadow: var(--gp-shadow-hero);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.encash-hero-card::after {
-  content: none;
-}
-
-.encash-hero-card span,
-.encash-hero-card h2,
-.encash-hero-card p,
-.encash-hero-badge {
-  position: relative;
-  z-index: 2;
-}
-
-.encash-hero-card span {
-  display: block;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.encash-hero-card h2 {
-  margin: 10px 0 4px;
-  color: white;
-  font-family: var(--gp-mono);
-  font-size: 40px;
-  font-weight: 700;
-}
-
-.encash-hero-card p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.encash-hero-badge {
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: var(--gp-gold-soft);
-  border: 1px solid var(--gp-gold-line);
-  color: var(--gp-gold);
-  display: inline-flex;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 800;
-}
+/* Hero balance panel (available-to-encash) reuses student's sd-balance /
+   sd-balance-label / sd-balance-amount / sd-gc-rate / sd-gc-badge classes
+   directly (assets/css/student_dashboard.css) instead of a near-duplicate
+   — see merchant/encash.php. */
 
 .encash-layout-grid {
   display: grid;
@@ -1763,61 +1191,12 @@ body {
   gap: 24px;
 }
 
-.history-balance-card {
-  min-height: 152px;
-  padding: 26px 28px;
-  border-radius: var(--ad-radius);
-  position: relative;
-  overflow: hidden;
-  background: var(--gp-grad-hero);
-  color: white;
-  box-shadow: var(--gp-shadow-hero);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.history-balance-card::after {
-  content: none;
-}
-
-.history-balance-card span,
-.history-balance-card h2,
-.history-balance-card p,
+/* Hero balance panel reuses student's sd-balance classes (see
+   merchant/history.php); only the wallet icon on the right stays
+   merchant-specific since sd-balance's own right side is holder info. */
 .history-balance-icon {
   position: relative;
   z-index: 2;
-}
-
-.history-balance-card span,
-.history-mini-card span {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.history-balance-card span {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.history-balance-card h2 {
-  margin: 8px 0 4px;
-  color: white;
-  font-family: var(--gp-mono);
-  font-size: 32px;
-  font-weight: 700;
-}
-
-.history-balance-card p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.history-balance-icon {
   width: 64px;
   height: 64px;
   border-radius: 20px;
@@ -1829,6 +1208,14 @@ body {
 .history-balance-icon i {
   font-size: 30px;
   color: white;
+}
+
+.history-mini-card span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .history-mini-card {
@@ -2208,73 +1595,9 @@ body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  .merchant-layout {
-    display: block;
-    min-height: 100vh;
-  }
-
-  .merchant-main,
-  .merchant-sidebar.collapsed ~ .merchant-main {
-    width: 100%;
-    margin-left: 0;
-    padding: 12px 12px calc(106px + env(safe-area-inset-bottom));
-  }
-
-  .merchant-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 900;
-    min-height: 64px;
-    margin: -12px -12px 14px;
-    padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
-    border-radius: 0 0 22px 22px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 10px 28px rgba(5, 41, 22, 0.09);
-    border: 0;
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .merchant-topbar > div:not(.merchant-user) {
-    min-width: 0;
-    flex: 1;
-  }
-
-  .merchant-menu-btn {
-    display: none;
-  }
-
-  .merchant-topbar h1 {
-    font-size: 21px;
-    line-height: 1.15;
-  }
-
-  .merchant-topbar p {
-    display: none;
-  }
-
-  .merchant-user {
-    width: auto;
-    margin-left: auto;
-    gap: 8px;
-    justify-content: flex-end;
-    flex: 0 0 auto;
-  }
-
-  .merchant-user span {
-    max-width: 124px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12px;
-  }
-
-  /* Keep the POS action cluster content-width (don't let it grab flex:1) */
-  .merchant-topbar > div.merchant-topbar-actions {
-    flex: 0 0 auto;
-    margin-left: auto;
-    gap: 8px;
+  .merchant-main {
+    --main-pad: 12px;
+    padding: var(--main-pad) var(--main-pad) calc(106px + env(safe-area-inset-bottom));
   }
 
   .merchant-loadwallet-btn {
@@ -2283,100 +1606,6 @@ body {
 
   .merchant-loadwallet-label {
     display: none;
-  }
-
-  .merchant-avatar {
-    width: 36px;
-    height: 36px;
-    box-shadow: none;
-  }
-
-  .merchant-avatar i {
-    font-size: 15px;
-  }
-
-  .merchant-sidebar,
-  .merchant-sidebar.collapsed {
-    position: fixed;
-    left: 50%;
-    right: auto;
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    top: auto;
-    width: min(calc(100vw - 20px), 430px);
-    min-height: 0;
-    height: 78px;
-    padding: 8px;
-    transform: translateX(-50%);
-    z-index: 1100;
-    border-radius: 24px;
-    background: rgba(5, 41, 22, 0.96);
-    box-shadow: 0 18px 38px rgba(5, 41, 22, 0.28);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-
-  .merchant-brand,
-  .merchant-logout {
-    display: none !important;
-  }
-
-  .merchant-menu {
-    width: 100%;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(70px, 1fr);
-    gap: 6px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    align-items: center;
-  }
-
-  .merchant-menu::-webkit-scrollbar {
-    display: none;
-  }
-
-  .merchant-menu a,
-  .merchant-sidebar.collapsed .merchant-menu a {
-    height: 62px;
-    min-width: 70px;
-    padding: 6px 4px;
-    border-radius: 18px;
-    gap: 4px;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    color: rgba(255, 255, 255, 0.72);
-    font-size: 10px;
-    line-height: 1.1;
-    font-weight: 800;
-    text-align: center;
-    box-sizing: border-box;
-  }
-
-  .merchant-menu a.active,
-  .merchant-menu a:hover {
-    background: linear-gradient(135deg, var(--gold-light), var(--gold));
-    color: var(--emerald-950);
-    box-shadow: none;
-  }
-
-  .merchant-menu a .merchant-nav-text,
-  .merchant-sidebar.collapsed .merchant-menu a .merchant-nav-text {
-    display: block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .merchant-menu a .merchant-nav-icon,
-  .merchant-sidebar.collapsed .merchant-menu a .merchant-nav-icon {
-    width: 22px;
-    min-width: 22px;
-    font-size: 16px;
   }
 
   .merchant-scanner-grid,
@@ -2395,9 +1624,6 @@ body {
 
   .merchant-metric-card,
   .merchant-premium-panel,
-  .qr-balance-card,
-  .encash-hero-card,
-  .history-balance-card,
   .history-mini-card,
   .qr-form-panel,
   .qr-preview-panel,
@@ -2407,24 +1633,6 @@ body {
   .merchant-manual-panel {
     border-radius: 22px;
     box-shadow: 0 10px 26px rgba(5, 41, 22, 0.07);
-  }
-
-  .qr-balance-card,
-  .encash-hero-card,
-  .history-balance-card {
-    min-height: 0;
-    padding: 22px 20px;
-    border-radius: 24px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 18px;
-  }
-
-  .qr-balance-card h2,
-  .encash-hero-card h2,
-  .history-balance-card h2 {
-    font-size: 34px;
-    line-height: 1.05;
   }
 
   .merchant-quick-actions a,
@@ -2452,43 +1660,12 @@ body {
 }
 
 @media (max-width: 420px) {
-  .merchant-main,
-  .merchant-sidebar.collapsed ~ .merchant-main {
+  .merchant-main {
     padding-left: 10px;
     padding-right: 10px;
   }
 
-  .merchant-topbar {
-    margin-left: -10px;
-    margin-right: -10px;
-  }
-
-  .merchant-sidebar,
-  .merchant-sidebar.collapsed {
-    left: 50%;
-    right: auto;
-    width: min(calc(100vw - 16px), 420px);
-    height: 74px;
-    border-radius: 22px;
-  }
-
-  .merchant-menu {
-    grid-auto-columns: minmax(66px, 1fr);
-    gap: 4px;
-  }
-
-  .merchant-menu a,
-  .merchant-sidebar.collapsed .merchant-menu a {
-    min-width: 66px;
-    height: 58px;
-    border-radius: 16px;
-    font-size: 9px;
-  }
-
-  .merchant-metric-card h2,
-  .qr-balance-card h2,
-  .encash-hero-card h2,
-  .history-balance-card h2 {
+  .merchant-metric-card h2 {
     font-size: 29px;
   }
 }

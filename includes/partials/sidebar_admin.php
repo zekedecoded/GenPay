@@ -29,6 +29,10 @@ $currentPage = $currentPage ?? ""; ?>
             <i class="fa-solid fa-money-bill-transfer nav-icon"></i>
             <span class="nav-text">Top-up Log</span>
         </a>
+        <a href="<?= ADMIN_URL ?>/parent_topups.php" class="<?= $currentPage === 'parent_topups' ? 'active' : '' ?>">
+            <i class="fa-solid fa-people-roof nav-icon"></i>
+            <span class="nav-text">Parent Top-ups</span>
+        </a>
         <a href="<?= ADMIN_URL ?>/encashments.php" class="<?= $currentPage === 'encashments' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-check-dollar nav-icon"></i>
             <span class="nav-text">Encashments</span>
@@ -56,6 +60,10 @@ $currentPage = $currentPage ?? ""; ?>
             <?php endif;
             } catch (Throwable $__e) {}
             ?>
+        </a>
+        <a href="<?= ADMIN_URL ?>/school_years.php" class="<?= $currentPage === 'school_years' ? 'active' : '' ?>">
+            <i class="fa-solid fa-graduation-cap nav-icon"></i>
+            <span class="nav-text">School Years</span>
         </a>
         <a href="<?= ADMIN_URL ?>/audit_log.php" class="<?= $currentPage === 'audit_log' ? 'active' : '' ?>">
             <i class="fa-solid fa-clipboard-list nav-icon"></i>

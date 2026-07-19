@@ -121,8 +121,13 @@
 .cat-btn.active { background:var(--gp-green-850); color:#fff; border-color:var(--gp-green-850); }
 .pos-product-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
 .pos-search-input {
-    width:100%; border:1px solid var(--gp-line); border-radius:10px; padding:10px 12px;
+    flex:1; min-width:0; border:1px solid var(--gp-line); border-radius:10px; padding:10px 12px;
     font-size:14px; background:#fff; color:var(--gp-ink); outline:none; transition:border-color .15s, box-shadow .15s;
+}
+
+@media (max-width: 480px) {
+    .pos-product-toolbar { flex-wrap:wrap; }
+    .pos-product-toolbar .merchant-loadwallet-label { display:none; }
 }
 .pos-search-input:focus { border-color:var(--gp-gold); box-shadow:0 0 0 3px var(--gp-gold-soft); }
 .pos-empty-filter { display:none; text-align:center; padding:36px 20px; color:var(--gp-muted); font-size:13px; }

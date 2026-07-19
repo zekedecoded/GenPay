@@ -21,6 +21,8 @@ $userId = (int)$_SESSION['userID'];
 $role = gjc_current_role();
 $adminEconomyRoles = ['admin', 'cashier', 'sub-admin', 'super-admin', 'finance'];
 
+gjc_ensure_parent_wallet_schema($db);
+
 
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 if (str_contains($contentType, 'application/json')) {
@@ -44,6 +46,15 @@ try {
             $notes    = trim((string)($body['notes'] ?? ''));
 
             $result = $engine->cashInWithFee($walletId, $amount, 'finance', $userId, 0, $notes);
+            gjc_notify_wallet(
+                $db,
+                $walletId,
+                'topup',
+                'Top-Up Approved',
+                gjc_money_plain($result['credited_amount']) . ' has been credited to your wallet.',
+                'circle-plus',
+                STUDENT_URL . '/history.php'
+            );
             echo json_encode(array_merge(['success' => true], $result));
             break;
 
@@ -143,6 +154,67 @@ try {
                 'user_id'   => (int) $student['userID'],
                 'wallet_id' => (int) $student['wallet_id'],
             ]);
+            break;
+
+        // Parents have no school ID of their own — resolved through the
+        // linked student's school ID instead, same model as
+        // merchant/api/topup.php's lookup_parent_by_student action.
+        case 'lookup_parent_by_student':
+            if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
+
+            $schoolId = trim($body['school_id'] ?? '');
+            if (!$schoolId) throw new InvalidArgumentException('Student ID is required.');
+
+            $stmt = $db->prepare(
+                "SELECT p.id AS parent_id, u.first_name, u.last_name
+                   FROM student_info si
+                   JOIN parent_student_links psl ON psl.student_user_id = si.userID
+                   JOIN parents p ON p.id = psl.parent_id
+                   JOIN users u ON u.userID = p.user_id
+                  WHERE si.studentID = ?"
+            );
+            $stmt->execute([$schoolId]);
+            $parents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!$parents) throw new RuntimeException('No parent is linked to that student. Check the ID and try again.');
+
+            echo json_encode([
+                'success' => true,
+                'parents' => array_map(static fn(array $p): array => [
+                    'parent_id' => (int) $p['parent_id'],
+                    'name' => trim($p['first_name'] . ' ' . $p['last_name']),
+                ], $parents),
+            ]);
+            break;
+
+        case 'topup_parent':
+            if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
+
+            $parentId = (int)($body['parent_id'] ?? 0);
+            $amount   = (float)($body['amount'] ?? 0);
+            $notes    = trim((string)($body['notes'] ?? ''));
+
+            if ($parentId <= 0) throw new InvalidArgumentException('Invalid parent.');
+
+            $parentWallet = gjc_parent_wallet($db, $parentId);
+            $result = $engine->cashInParent($parentWallet['id'], $amount, 'finance', $userId, 0, $notes);
+
+            $parentUserIdStmt = $db->prepare("SELECT user_id FROM parents WHERE id = ?");
+            $parentUserIdStmt->execute([$parentId]);
+            $parentUserId = (int) $parentUserIdStmt->fetchColumn();
+            if ($parentUserId > 0) {
+                gjc_notify(
+                    $db,
+                    $parentUserId,
+                    'topup',
+                    'Top-Up Approved',
+                    gjc_money_plain($result['credited_amount']) . ' has been credited to your wallet.',
+                    'circle-plus',
+                    PARENT_URL . '/wallet.php'
+                );
+            }
+
+            echo json_encode(array_merge(['success' => true], $result));
             break;
 
         default:

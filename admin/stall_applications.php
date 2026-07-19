@@ -6,8 +6,9 @@
 //  Submit -> meeting auto-scheduled at submission -> single in-person meeting
 //  (verify docs + sign contract + pay) -> Awarded.
 //
-//  Two visible statuses: Pending for Verification and Awarded. Rejected and
-//  Cancelled are kept as records (daily log / history) but are internal.
+//  Two visible statuses: Pending for Verification and Awarded. Rejected,
+//  Cancelled, and Expired (no-show past the meeting date) are kept as
+//  records (daily log / history) but are internal.
 // ============================================================
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -16,6 +17,8 @@ require_once __DIR__ . "/../connection/config.php";
 require_once __DIR__ . "/../connection/pdo.php";
 require_once __DIR__ . "/../connection/app.php";
 require_once __DIR__ . "/../connection/StallManager.php";
+require_once __DIR__ . "/../connection/audit_logger.php";
+require_once __DIR__ . "/../connection/mailer.php";
 
 gjc_require_role(["finance"]);
 gjc_ensure_stall_application_workflow_schema($db);
@@ -24,14 +27,18 @@ $currentUser = gjc_current_user($db);
 $currentPage = "stall_applications";
 $adminId = gjc_user_id();
 
+// No-show sweep: any pending_verification application whose meeting date has
+// fully passed becomes 'expired' before we pull the list below.
+gjc_expire_overdue_stall_applications($db, $adminId);
+
 // Awarded applications become active tenants, so they no longer belong in the
-// applications list — only pending and the internal rejected/cancelled history remain.
+// applications list — only pending and the internal rejected/cancelled/expired history remain.
 $apps = $db
     ->query(
         "SELECT sa.*, s.label AS stall_label, s.monthly_rate AS stall_rate
        FROM stall_applications sa
        LEFT JOIN stalls s ON s.stall_id = sa.stall_id
-      WHERE sa.status IN ('pending_verification','rejected','cancelled')
+      WHERE sa.status IN ('pending_verification','rejected','cancelled','expired')
       ORDER BY sa.created_at DESC",
     )
     ->fetchAll(PDO::FETCH_ASSOC);
@@ -69,6 +76,7 @@ $statusCounts = [
     "awarded" => 0,
     "rejected" => 0,
     "cancelled" => 0,
+    "expired" => 0,
 ];
 foreach ($apps as $a) {
     if (isset($statusCounts[$a["status"]])) {
@@ -96,6 +104,11 @@ $STATUS_META = [
         "label" => "Cancelled",
         "badge" => "secondary",
         "icon" => "fa-ban",
+    ],
+    "expired" => [
+        "label" => "Expired",
+        "badge" => "secondary",
+        "icon" => "fa-user-clock",
     ],
 ];
 
@@ -329,6 +342,9 @@ function sa_meeting_label(?string $dt): string
                     ] ?>)</button>
                     <button type="button" class="filter-btn" data-status="rejected">Rejected (<?= $statusCounts[
                         "rejected"
+                    ] ?>)</button>
+                    <button type="button" class="filter-btn" data-status="expired">Expired (<?= $statusCounts[
+                        "expired"
                     ] ?>)</button>
                 </div>
             </div>
@@ -858,6 +874,9 @@ function renderSummary(app) {
     } else if (app.status === 'cancelled') {
         outcome = `<div class="alert alert-secondary"><i class="fa-solid fa-ban me-1"></i>Cancelled on ${fmtDateTime(app.cancelled_at)}. The meeting slot was released.</div>
             <div class="sa-section"><h6>Reason</h6><p class="mb-0">${esc(app.cancel_reason || '—')}</p></div>`;
+    } else if (app.status === 'expired') {
+        outcome = `<div class="alert alert-secondary"><i class="fa-solid fa-user-clock me-1"></i>Expired — the applicant did not attend the verification meeting scheduled for ${fmtDateTime(app.meetup_scheduled_at)}.</div>
+            <div class="sa-section"><h6>Reason</h6><p class="mb-0">${esc(app.rejection_reason || '—')}</p></div>`;
     }
     return `${applicantHeader(app)}${outcome}
         <div class="sa-section mt-3"><h6>Submitted Documents</h6>${docGrid(app)}</div>`;

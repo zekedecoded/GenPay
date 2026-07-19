@@ -60,6 +60,11 @@ try {
                 exit;
             }
 
+            if (gjc_merchant_suspended_until($db, (int) $item['merchant_user_id']) !== null) {
+                echo json_encode(['success' => false, 'message' => 'This stall is temporarily suspended and cannot take orders right now.']);
+                exit;
+            }
+
             if ((int) $item['is_restricted'] === 1) {
                 echo json_encode([
                     'success' => false,
@@ -130,6 +135,11 @@ try {
         // merchant's static Wallet QR at the counter (see checkout.php pay_order).
         case 'submit_order': {
             $studentUserId = gjc_user_id();
+
+            if (gjc_student_graduated($db, $studentUserId)) {
+                echo json_encode(['success' => false, 'message' => 'Account locked: graduated.']);
+                exit;
+            }
 
             $existingStmt = $db->prepare(
                 "SELECT id FROM cart_orders WHERE student_user_id = ? AND status = 'pending' LIMIT 1"

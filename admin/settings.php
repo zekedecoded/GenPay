@@ -28,7 +28,7 @@ $currentPage = 'settings';
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=11">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=12">
 </head>
 
 <body class="gp-theme">

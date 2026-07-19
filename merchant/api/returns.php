@@ -97,8 +97,8 @@ try {
         $db->prepare(
             "INSERT INTO transactions
                 (reference_no, transaction_type, initiated_by, student_wallet_id, merchant_wallet_id,
-                 amount, vault_before, vault_after, total_in_circulation, status, notes)
-             VALUES (?, 'refund', ?, ?, ?, ?, ?, ?, ?, 'completed', ?)"
+                 amount, vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
+             VALUES (?, 'refund', ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?)"
         )->execute([
             $refundRefNo,
             $merchantUserId,
@@ -109,6 +109,7 @@ try {
             $vaultBefore,
             $totalCirc,
             $noteLine,
+            gjc_active_school_year_id($db),
         ]);
 
         // The original sale record is never edited or deleted — only its status changes.

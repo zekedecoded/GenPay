@@ -39,7 +39,7 @@ if (!$linkChk->fetch()) {
 
 // Student details
 $sStmt = $db->prepare(
-    "SELECT u.first_name, u.last_name, si.studentID,
+    "SELECT u.first_name, u.last_name, si.studentID, si.graduated_at,
             sw.id AS wallet_id, sw.balance, sw.is_frozen, sw.daily_spend_limit
        FROM users u
        LEFT JOIN student_info si ON si.userID = u.userID
@@ -57,9 +57,22 @@ $walletId    = (int) ($student['wallet_id'] ?? 0);
 $studentName = trim($student['first_name'] . ' ' . $student['last_name']);
 $credit      = gjc_student_waiver_credit($db, $targetUid);
 
+// Read-only per-year balance snapshots (school_year_balances is never written
+// to by the parent portal — finance's rollover is the only writer).
+gjc_ensure_school_year_schema($db);
+$syBalances = $db->prepare(
+    "SELECT sy.school_year_name, syb.starting_balance, syb.final_ending_balance, syb.archived_at
+       FROM school_year_balances syb
+       JOIN school_years sy ON sy.id = syb.school_year_id
+      WHERE syb.student_user_id = ?
+      ORDER BY sy.school_year_name DESC"
+);
+$syBalances->execute([$targetUid]);
+$syBalances = $syBalances->fetchAll(PDO::FETCH_ASSOC);
+
 // Transaction type filter
 $filterType = trim($_GET['type'] ?? 'all');
-$allowedTypes = ['all', 'cash_in', 'payment', 'p2p_transfer'];
+$allowedTypes = ['all', 'cash_in', 'payment', 'p2p_transfer', 'allowance'];
 if (!in_array($filterType, $allowedTypes, true)) $filterType = 'all';
 
 // Fetch transactions
@@ -82,7 +95,7 @@ $runningBalance = (float) $student['balance'];
 $txnsWithBalance = [];
 foreach ($txns as $t) {
     $txnsWithBalance[] = array_merge($t, ['running_balance' => $runningBalance]);
-    if ($t['transaction_type'] === 'cash_in') {
+    if (in_array($t['transaction_type'], ['cash_in', 'allowance'], true)) {
         $runningBalance -= (float) $t['amount'];
     } else {
         $runningBalance += (float) $t['amount'];
@@ -98,6 +111,7 @@ $typeLabels = [
     'payment'       => ['label' => 'POS',       'icon' => 'fa-store',          'color' => '#b45309', 'bg' => '#fdf1d8'],
     'p2p_transfer'  => ['label' => 'Transfer',  'icon' => 'fa-money-bill-transfer', 'color' => '#2563eb', 'bg' => '#e3edfd'],
     'voucher_payment' => ['label' => 'Voucher', 'icon' => 'fa-ticket',         'color' => '#7c3aed', 'bg' => '#efe7fb'],
+    'allowance'     => ['label' => 'Allowance', 'icon' => 'fa-hand-holding-dollar', 'color' => '#15803d', 'bg' => '#dcf3e4'],
 ];
 
 $currentPage = '';
@@ -141,7 +155,9 @@ $currentPage = '';
                 <div class="balance-big">&#8369;<?= number_format((float)$student['balance'], 2) ?></div>
                 <small>Current Balance</small>
                 <div class="status-chips">
-                    <?php if ($student['is_frozen']): ?>
+                    <?php if (!empty($student['graduated_at'])): ?>
+                    <span class="status-chip frozen"><i class="fa-solid fa-graduation-cap me-1"></i>Graduated — Locked (withdraw only)</span>
+                    <?php elseif ($student['is_frozen']): ?>
                     <span class="status-chip frozen"><i class="fa-solid fa-lock me-1"></i>Wallet Frozen</span>
                     <?php endif; ?>
                     <?php if ((float)$student['daily_spend_limit'] > 0): ?>
@@ -197,6 +213,39 @@ $currentPage = '';
                 <?php endif; ?>
             </div>
 
+            <!-- School Year Snapshots — read-only, finance's rollover is the only writer -->
+            <?php if ($syBalances): ?>
+            <div class="parent-card" style="margin-bottom:22px;">
+                <div class="parent-card-head">
+                    <h5><i class="fa-solid fa-graduation-cap me-2" style="color:var(--gp-green-700)"></i>School Year Balances</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="txn-table">
+                        <thead>
+                            <tr>
+                                <th>School Year</th>
+                                <th>Starting Balance</th>
+                                <th>Ending Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($syBalances as $syb): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($syb['school_year_name']) ?></td>
+                                <td>&#8369;<?= number_format((float) $syb['starting_balance'], 2) ?></td>
+                                <td>
+                                    <?= $syb['final_ending_balance'] !== null
+                                        ? '&#8369;' . number_format((float) $syb['final_ending_balance'], 2)
+                                        : '<span style="color:var(--gp-muted);">Year still open</span>' ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Filter tabs -->
             <?php
             $tabs = [
@@ -204,6 +253,7 @@ $currentPage = '';
                 'cash_in'      => 'Top-Ups',
                 'payment'      => 'POS Purchases',
                 'p2p_transfer' => 'Transfers',
+                'allowance'    => 'Allowance',
             ];
             ?>
             <div class="filter-tabs">

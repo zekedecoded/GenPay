@@ -73,6 +73,16 @@ try {
         ]
     );
 
+    gjc_notify_wallet(
+        $db,
+        $studentWalletId,
+        'topup',
+        'Top-Up Approved',
+        gjc_money_plain($result['credited_amount']) . ' has been credited to your wallet.',
+        'circle-plus',
+        STUDENT_URL . '/history.php'
+    );
+
     echo json_encode([
         'success'          => true,
         'message'          => "₱" . number_format($result['credited_amount'], 2) .

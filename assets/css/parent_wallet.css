@@ -1,0 +1,36 @@
+/* Parent Wallet + Allowance page-specific tweaks, layered on top of the
+   sd-*/pf-*/tu-* component classes shared with the student pages
+   (student_dashboard.css, student_topup.css, student_send.css,
+   student_profile.css) that parent/wallet.php and parent/allowance.php
+   also link, so the two portals share one visual language. */
+
+#pwAmount:focus,
+#pwSource:focus {
+    outline: none;
+    border-color: var(--gp-gold);
+    box-shadow: 0 0 0 3px var(--gp-gold-soft);
+}
+
+.pw-cancel-btn:hover {
+    background: var(--gp-danger-bg);
+}
+
+/* A plain <select> inside the shared .pf-field wrapper — the student pages
+   only ever needed styled <input>s, so this fills the missing rule. */
+.pf-field select.tu-select {
+    width: 100%;
+    border: 1.5px solid var(--sd-line);
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sd-ink);
+    background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pf-field select.tu-select:focus {
+    outline: none;
+    border-color: var(--sd-gold);
+    box-shadow: 0 0 0 3px var(--sd-gold-soft);
+}

@@ -39,6 +39,10 @@ const CONTRACT_ALLOWED_MIMES = ['application/pdf', 'image/jpeg', 'image/png'];
 $action  = trim((string) ($_POST['action'] ?? ''));
 $adminId = gjc_user_id();
 
+// No-show sweep: any pending_verification application whose meeting time has
+// already passed becomes 'expired' before this request's action runs.
+gjc_expire_overdue_stall_applications($db, $adminId);
+
 function stall_app_json(array $payload): void
 {
     echo json_encode($payload);
@@ -93,31 +97,6 @@ function stall_app_next_due_date(string $startYmd, int $day): string
     $m++;
     if ($m > 12) { $m = 1; $y++; }
     return $mk($y, $m, $day);
-}
-
-/** Queue a "your application was terminated, please re-apply" email (reject/cancel). */
-function stall_app_send_termination_email(array $app, string $heading, string $intro, string $reason): void
-{
-    $safeName   = htmlspecialchars($app['proprietor_name'], ENT_QUOTES, 'UTF-8');
-    $safeReason = htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
-    $applyUrl   = BASE_URL . '/apply';
-    $body = '
-        <div style="font-family:Arial,sans-serif;max-width:540px;margin:0 auto;padding:28px;background:#fef2f2;border-radius:14px">
-            <h3 style="color:#b91c1c;margin-top:0">' . htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') . '</h3>
-            <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
-            <p style="color:#374151;line-height:1.7">' . htmlspecialchars($intro, ENT_QUOTES, 'UTF-8') . '</p>
-            <div style="background:#fff;border:1px solid #fecaca;border-radius:10px;padding:14px;margin:14px 0">
-                <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase">Reason</p>
-                <p style="margin:0;color:#374151">' . $safeReason . '</p>
-            </div>
-            <p style="color:#374151;line-height:1.7">You are welcome to submit a brand-new application anytime. A new verification meeting will be scheduled automatically at submission.</p>
-            <p style="color:#374151"><a href="' . $applyUrl . '" style="color:#059669;font-weight:700">Submit a new application</a></p>
-            <p style="font-size:12px;color:#9ca3af">GenPay Team</p>
-        </div>';
-    $altBody = "Dear {$app['proprietor_name']},\n\n{$intro}\n\nReason: {$reason}\n\n"
-        . "You may submit a brand-new application anytime at {$applyUrl}. A new meeting will be auto-scheduled.\n\nGenPay Team";
-
-    gjc_queue_email($app['email'], $app['proprietor_name'], 'GenPay - Stall Application Update', $body, $altBody);
 }
 
 try {
@@ -404,7 +383,7 @@ try {
                   WHERE id = ?"
             )->execute([$reason, $adminId, $appId]);
 
-            stall_app_send_termination_email(
+            gjc_send_stall_application_termination_email(
                 $app,
                 'Application Not Approved',
                 'After reviewing your documents at the verification meeting, your stall application has not been approved.',

@@ -154,14 +154,6 @@
   margin: 0;
 }
 
-/* ===== TWO-COLUMN GRID ===== */
-.pf-grid {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 18px;
-  align-items: start;
-}
-
 /* ===== FORMS ===== */
 .pf-form {
   margin-top: 14px;
@@ -246,6 +238,14 @@
   text-align: center;
 }
 
+.pf-btn.is-danger {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.pf-btn.is-danger:hover {
+  box-shadow: 0 8px 20px rgba(185, 28, 28, 0.28);
+}
+
 .pf-alert.is-warn {
   background: var(--sd-gold-soft);
   border-color: rgba(240, 165, 0, 0.4);
@@ -298,12 +298,175 @@
   color: #7a6420;
 }
 
+/* ===== EDIT PROFILE CTA (sits on the dark hero) ===== */
+.pf-edit-btn {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-weight: 800;
+  font-size: 13px;
+  background: linear-gradient(135deg, #f6b81f, var(--sd-gold));
+  color: var(--sd-forest-950);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.pf-edit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  color: var(--sd-forest-950);
+}
+
+/* ===== SETTINGS MENU LIST ===== */
+.pf-menu {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.pf-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 4px;
+  border: 0;
+  background: none;
+  text-align: left;
+  text-decoration: none;
+  color: var(--sd-ink);
+  cursor: pointer;
+}
+
+.pf-menu-item + .pf-menu-item {
+  border-top: 1px solid var(--sd-line);
+}
+
+.pf-menu-item:hover {
+  background: var(--sd-mint);
+}
+
+.pf-menu-item-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--sd-mint);
+  color: var(--sd-forest-700);
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.pf-menu-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-menu-item-text strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sd-ink);
+}
+
+.pf-menu-item-text span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--sd-muted);
+  margin-top: 1px;
+}
+
+.pf-menu-item-chevron {
+  flex-shrink: 0;
+  color: var(--sd-muted);
+  font-size: 13px;
+}
+
+/* ===== BACK LINK (edit sub-pages) ===== */
+.pf-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sd-muted);
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+
+.pf-back-link:hover {
+  color: var(--sd-forest-700);
+}
+
+/* ===== FAQ ACCORDION ===== */
+.pf-faq {
+  margin-top: 4px;
+}
+
+.pf-faq .accordion-item {
+  border: none;
+  background: none;
+}
+
+.pf-faq .accordion-item + .accordion-item {
+  border-top: 1px solid var(--sd-line);
+}
+
+.pf-faq .accordion-button {
+  padding: 14px 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--sd-ink);
+  background: none;
+  box-shadow: none;
+}
+
+.pf-faq .accordion-button:hover {
+  color: var(--sd-forest-700);
+}
+
+.pf-faq .accordion-button:not(.collapsed) {
+  background: none;
+  color: var(--sd-forest-700);
+  box-shadow: none;
+}
+
+.pf-faq .accordion-button:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.pf-faq .accordion-button::after {
+  width: 14px;
+  height: 14px;
+  background-size: 14px;
+  flex-shrink: 0;
+}
+
+.pf-faq .accordion-body {
+  padding: 0 4px 16px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--sd-muted);
+}
+
+/* ===== SYSTEM VERSION FOOTER ===== */
+.pf-version {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--sd-muted);
+  padding: 4px 0 2px;
+}
+
 /* ===== MOBILE ===== */
 @media (max-width: 767.98px) {
-  .pf-grid {
-    grid-template-columns: 1fr;
-  }
-
   .pf-hero {
     flex-direction: column;
     text-align: center;

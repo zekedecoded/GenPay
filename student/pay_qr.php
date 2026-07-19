@@ -129,6 +129,9 @@ try {
         if (!$wc) {
             throw new PaymentError('no_wallet', 'Student wallet not found.');
         }
+        if (gjc_student_graduated($db, (int) $currentUser['id'])) {
+            throw new PaymentError('graduated', 'Account locked: graduated.');
+        }
         if ((int) $wc['is_frozen'] === 1) {
             throw new PaymentError('wallet_frozen', 'This wallet is frozen by a parent or guardian.');
         }
@@ -202,8 +205,8 @@ try {
         $db->prepare(
             "INSERT INTO transactions
                 (reference_no, transaction_type, initiated_by, student_wallet_id, merchant_wallet_id,
-                 amount, vault_before, vault_after, total_in_circulation, status, notes)
-             VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?)"
+                 amount, vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
+             VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?)"
         )->execute([
             $refNo,
             (int) $currentUser['id'],
@@ -214,6 +217,7 @@ try {
             $vaultBefore,
             $totalCirc,
             'POS QR Sale: ' . (string) $order['description'],
+            gjc_active_school_year_id($db),
         ]);
 
         $db->prepare(
@@ -248,6 +252,16 @@ try {
                 'items' => $items,
                 'status' => 'completed',
             ]
+        );
+
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'sale',
+            'Payment Received',
+            sprintf('%s paid %s at your stall.', gjc_user_label($db, (int) $currentUser['id']), gjc_money_plain($orderAmount)),
+            'cart-shopping',
+            MERCHANT_URL . '/history.php'
         );
 
         echo json_encode([

@@ -18,8 +18,10 @@ $merchantUserId = $currentUser["id"];
 
 // Fetch staff accounts created by this merchant admin
 $staffList = [];
+gjc_ensure_staff_position_schema($db);
+
 $stmt = $db->prepare(
-    "SELECT userID, first_name, last_name, email, contact_number, sub_role, created_at, status
+    "SELECT userID, first_name, middle_name, last_name, suffix, position, email, contact_number, sub_role, created_at, status
        FROM users
       WHERE merchant_owner_id = ? AND roleID = 6
       ORDER BY created_at DESC",
@@ -40,7 +42,8 @@ $currentPage = "staff";
     <title>Staff Management | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -53,14 +56,11 @@ $currentPage = "staff";
             : "sidebar_merchant_admin.php"); ?>
 
     <main class="merchant-main">
-        <header class="merchant-topbar">
-            <button class="merchant-menu-btn" onclick="document.getElementById('merchantSidebar').classList.toggle('collapsed')">&#9776;</button>
-            <div><h1>Staff Management</h1><p>Create and manage staff accounts for your stall.</p></div>
-            <div class="merchant-user">
-                <span><?= gjc_e($currentUser["name"]) ?></span>
-                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Staff Management';
+        $topbarSubtitle = 'Create and manage staff accounts for your stall.';
+        require __DIR__ . '/../includes/partials/topbar_merchant.php';
+        ?>
 
         <section class="merchant-premium-panel">
             <div class="merchant-panel-header d-flex justify-content-between align-items-center">
@@ -98,12 +98,20 @@ $currentPage = "staff";
                         <tr><td colspan="7" class="text-center text-muted py-5">No staff accounts yet. Add your first staff member.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($staffList as $s): ?>
-                        <?php $isActive = ($s['status'] ?? 'Active') === 'Active'; ?>
+                        <?php
+                        $isActive = ($s['status'] ?? 'Active') === 'Active';
+                        $fullName = implode(" ", array_filter([
+                            $s["first_name"],
+                            $s["middle_name"] ?? '',
+                            $s["last_name"],
+                            $s["suffix"] ?? '',
+                        ], fn($part) => trim((string) $part) !== ''));
+                        ?>
                         <tr data-status="<?= $isActive ? 'Active' : 'Inactive' ?>">
-                            <td><strong><?= gjc_e($s["first_name"] . " " . $s["last_name"]) ?></strong></td>
+                            <td><strong><?= gjc_e($fullName) ?></strong></td>
                             <td><?= gjc_e($s["email"]) ?></td>
                             <td><?= gjc_e($s["contact_number"]) ?></td>
-                            <td><span class="merchant-type-pill">Merchant Staff</span></td>
+                            <td><span class="merchant-type-pill"><?= gjc_e($s["position"] !== null && trim((string) $s["position"]) !== '' ? $s["position"] : 'Merchant Staff') ?></span></td>
                             <td><?= date("M d, Y", strtotime($s["created_at"])) ?></td>
                             <td>
                                 <span class="badge <?= $isActive ? 'bg-success' : 'bg-secondary' ?> status-badge">
@@ -128,38 +136,96 @@ $currentPage = "staff";
 
 <!-- Add Staff Modal -->
 <div class="modal fade" id="staffModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content custom-modal">
-            <div class="modal-header"><h5 class="modal-title">Create Staff Account</h5></div>
-            <div class="modal-body">
-                <form id="staffForm">
+    <div class="modal-dialog modal-dialog-centered staff-modal-dialog">
+        <div class="modal-content custom-modal staff-modal">
+            <div class="modal-header staff-modal-header">
+                <div>
+                    <h5 class="modal-title">Create Staff Account</h5>
+                    <p class="staff-modal-subtitle">Give a team member their own POS login for your stall.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <form id="staffForm" class="staff-form-grid">
                     <input type="hidden" name="action" value="create_staff">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">First Name *</label>
-                            <input type="text" class="form-control" name="first_name" required>
+
+                    <aside class="staff-id-rail">
+                        <div class="staff-avatar" id="staffAvatarPreview">?</div>
+                        <div class="staff-id-name" id="staffNamePreview">New staff member</div>
+                        <div class="staff-id-position" id="staffPositionPreview">Position not set</div>
+                        <ul class="staff-id-perks">
+                            <li><i class="fa-solid fa-cash-register"></i> Can run POS sales for your stall</li>
+                            <li><i class="fa-solid fa-right-to-bracket"></i> Signs in with their own email</li>
+                            <li><i class="fa-solid fa-power-off"></i> You can deactivate anytime</li>
+                        </ul>
+                    </aside>
+
+                    <div class="staff-fields">
+                        <div class="staff-section">
+                            <div class="staff-section-title"><i class="fa-solid fa-id-card"></i>Full legal name</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">First Name *</label>
+                                    <input type="text" class="form-control staff-name-input" name="first_name" placeholder="Juan" maxlength="60" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Middle Name</label>
+                                    <input type="text" class="form-control staff-name-input" name="middle_name" placeholder="Santos" maxlength="60">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Last Name *</label>
+                                    <input type="text" class="form-control staff-name-input" name="last_name" placeholder="Dela Cruz" maxlength="60" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Suffix</label>
+                                    <input type="text" class="form-control" name="suffix" placeholder="Jr., Sr., III" maxlength="20">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Last Name *</label>
-                            <input type="text" class="form-control" name="last_name" required>
+
+                        <div class="staff-section">
+                            <div class="staff-section-title"><i class="fa-solid fa-briefcase"></i>Role &amp; contact</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Position</label>
+                                    <input type="text" class="form-control staff-name-input" name="position" id="staffPositionInput" placeholder="e.g. Cashier" list="staffPositionOptions" maxlength="60">
+                                    <datalist id="staffPositionOptions">
+                                        <option value="Cashier">
+                                        <option value="Cook">
+                                        <option value="Kitchen Helper">
+                                        <option value="Inventory Clerk">
+                                        <option value="Server">
+                                    </datalist>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Contact Number</label>
+                                    <input type="text" class="form-control" name="contact_number" placeholder="09XXXXXXXXX" maxlength="20">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Email *</label>
+                                    <input type="email" class="form-control" name="email" required>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Email *</label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Contact Number</label>
-                            <input type="text" class="form-control" name="contact_number" placeholder="09XXXXXXXXX">
-                        </div>
-                        <div class="col-md-6">
+
+                        <div class="staff-section">
+                            <div class="staff-section-title"><i class="fa-solid fa-lock"></i>Account access</div>
                             <label class="form-label fw-semibold">Temporary Password *</label>
-                            <input type="password" class="form-control" name="password" required minlength="6">
+                            <div class="staff-password-row">
+                                <div class="staff-password-wrap">
+                                    <input type="password" class="form-control" name="password" id="staffPasswordInput" required minlength="6">
+                                    <button type="button" class="staff-pw-toggle" id="staffPwToggle" title="Show password"><i class="fa-solid fa-eye"></i></button>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary staff-pw-generate" id="staffPwGenerate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
+                            </div>
+                            <div class="staff-pw-hint" id="staffPwHint">At least 6 characters. Share it with them directly — this field isn't emailed automatically.</div>
                         </div>
-                    </div>
-                    <div id="staffMsg" class="mt-3"></div>
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="login-btn" style="flex:1" id="staffSubmitBtn">Create Account</button>
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+
+                        <div id="staffMsg"></div>
+                        <div class="staff-form-actions">
+                            <button type="submit" class="login-btn" id="staffSubmitBtn">Create Account</button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -167,9 +233,154 @@ $currentPage = "staff";
     </div>
 </div>
 
+<style>
+.staff-modal-dialog { max-width: 760px; }
+.staff-modal { overflow: hidden; }
+.staff-modal-header { align-items: flex-start; border-bottom: 1px solid var(--ad-line); padding: 20px 24px 16px; }
+.staff-modal-subtitle { margin: 3px 0 0; font-size: 12.5px; color: var(--text-muted); font-weight: 500; }
+
+.staff-form-grid { display: flex; align-items: stretch; }
+
+.staff-id-rail {
+    flex: 0 0 210px;
+    background: var(--gp-grad-shell, linear-gradient(180deg, var(--gp-green-950), var(--gp-green-900)));
+    color: #fff;
+    padding: 28px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+}
+.staff-avatar {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid var(--gp-gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 800; color: var(--gp-gold-light);
+    letter-spacing: 0.02em;
+}
+.staff-id-name { font-size: 14.5px; font-weight: 800; line-height: 1.3; word-break: break-word; }
+.staff-id-position {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--gp-gold-light); opacity: 0.9;
+}
+.staff-id-perks { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 11px; text-align: left; width: 100%; }
+.staff-id-perks li { font-size: 11.5px; line-height: 1.4; color: rgba(255,255,255,0.78); display: flex; gap: 8px; align-items: flex-start; }
+.staff-id-perks li i { color: var(--gp-gold-light); width: 14px; margin-top: 2px; }
+
+.staff-fields { flex: 1; min-width: 0; padding: 22px 26px 24px; max-height: 72vh; overflow-y: auto; }
+.staff-section + .staff-section { margin-top: 20px; }
+.staff-section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--emerald-800); margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px dashed var(--ad-line);
+}
+.staff-section-title i { color: var(--gp-gold-deep); }
+
+.staff-password-row { display: flex; gap: 8px; }
+.staff-password-wrap { position: relative; flex: 1; min-width: 0; }
+.staff-password-wrap input { padding-right: 40px; }
+.staff-pw-toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    border: none; background: none; color: var(--text-muted); padding: 6px;
+}
+.staff-pw-toggle:hover { color: var(--emerald-900); }
+.staff-pw-generate { white-space: nowrap; font-size: 12.5px; font-weight: 700; }
+.staff-pw-hint { margin-top: 7px; font-size: 11.5px; color: var(--text-muted); }
+
+.staff-form-actions { display: flex; gap: 8px; margin-top: 22px; }
+.staff-form-actions .login-btn { flex: 1; }
+
+@media (max-width: 650px) {
+    .staff-form-grid { flex-direction: column; }
+    .staff-id-rail { flex-direction: row; text-align: left; padding: 16px 20px; }
+    .staff-id-name, .staff-id-position { text-align: left; }
+    .staff-id-perks { display: none; }
+    .staff-fields { max-height: none; }
+}
+</style>
+
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
 const STAFF_API = '<?= MERCHANT_URL ?>/api/staff.php';
+
+// ── Live identity preview (avatar initials, name, position) ─────────────────
+const firstInput = document.querySelector('input[name="first_name"]');
+const middleInput = document.querySelector('input[name="middle_name"]');
+const lastInput = document.querySelector('input[name="last_name"]');
+const suffixInput = document.querySelector('input[name="suffix"]');
+const positionInput = document.getElementById('staffPositionInput');
+const avatarPreview = document.getElementById('staffAvatarPreview');
+const namePreview = document.getElementById('staffNamePreview');
+const positionPreview = document.getElementById('staffPositionPreview');
+
+function updateStaffPreview() {
+    const first = firstInput.value.trim();
+    const middle = middleInput.value.trim();
+    const last = lastInput.value.trim();
+    const suffix = suffixInput.value.trim();
+    const fullName = [first, middle, last, suffix].filter(Boolean).join(' ');
+
+    namePreview.textContent = fullName || 'New staff member';
+    avatarPreview.textContent = ((first[0] || '') + (last[0] || '')).toUpperCase() || '?';
+    positionPreview.textContent = positionInput.value.trim() || 'Position not set';
+}
+[firstInput, middleInput, lastInput, suffixInput, positionInput].forEach(el => {
+    el.addEventListener('input', updateStaffPreview);
+});
+
+// ── Show/hide password ───────────────────────────────────────────────────────
+const pwInput = document.getElementById('staffPasswordInput');
+const pwToggle = document.getElementById('staffPwToggle');
+pwToggle.addEventListener('click', function() {
+    const shown = pwInput.type === 'text';
+    pwInput.type = shown ? 'password' : 'text';
+    this.innerHTML = shown ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+    this.title = shown ? 'Show password' : 'Hide password';
+});
+
+// ── Generate a strong temporary password ─────────────────────────────────────
+document.getElementById('staffPwGenerate').addEventListener('click', function() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%*';
+    const all = upper + lower + digits + symbols;
+    const pick = set => set[Math.floor(Math.random() * set.length)];
+    const chars = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    for (let i = 0; i < 6; i++) chars.push(pick(all));
+    for (let i = chars.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    const generated = chars.join('');
+
+    pwInput.value = generated;
+    pwInput.type = 'text';
+    pwToggle.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    pwToggle.title = 'Hide password';
+
+    const hint = document.getElementById('staffPwHint');
+    const original = hint.textContent;
+    navigator.clipboard?.writeText(generated).then(() => {
+        hint.textContent = 'Generated and copied to clipboard — ' + generated;
+        setTimeout(() => { hint.textContent = original; }, 4000);
+    }).catch(() => {
+        hint.textContent = 'Generated: ' + generated;
+        setTimeout(() => { hint.textContent = original; }, 4000);
+    });
+});
+
+// ── Reset the form/preview each time the modal opens ─────────────────────────
+document.getElementById('staffModal').addEventListener('show.bs.modal', function() {
+    document.getElementById('staffForm').reset();
+    document.getElementById('staffMsg').innerHTML = '';
+    pwInput.type = 'password';
+    pwToggle.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    updateStaffPreview();
+});
 
 // ── Create staff ──────────────────────────────────────────────────────────────
 document.getElementById('staffForm').addEventListener('submit', async function(e) {
@@ -260,5 +471,6 @@ function sortByStatus() {
 // Default: show Active only on page load
 document.addEventListener('DOMContentLoaded', () => setStatusFilter('Active'));
 </script>
+<?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 </html>

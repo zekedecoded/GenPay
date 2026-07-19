@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../connection/audit_logger.php';
 
 header('Content-Type: application/json');
 gjc_require_role(['merchant']);
+gjc_ensure_staff_position_schema($db);
 
 // Only Merchant Admin (or legacy merchant) can manage staff
 if (!gjc_is_merchant_admin() && (gjc_current_role() !== 'merchant' || gjc_is_merchant_staff())) {
@@ -21,13 +22,31 @@ try {
     switch ($action) {
         case 'create_staff': {
             $firstName  = trim((string) ($_POST['first_name'] ?? ''));
+            $middleName = trim((string) ($_POST['middle_name'] ?? ''));
             $lastName   = trim((string) ($_POST['last_name'] ?? ''));
+            $suffix     = trim((string) ($_POST['suffix'] ?? ''));
+            $position   = trim((string) ($_POST['position'] ?? ''));
             $email      = strtolower(trim((string) ($_POST['email'] ?? '')));
             $contact    = trim((string) ($_POST['contact_number'] ?? '0'));
             $password   = (string) ($_POST['password'] ?? '');
 
             if (!$firstName || !$lastName || !$email || !$password) {
                 echo json_encode(['success' => false, 'message' => 'All required fields must be filled.']);
+                exit;
+            }
+
+            if (mb_strlen($middleName) > 60 || mb_strlen($firstName) > 60 || mb_strlen($lastName) > 60) {
+                echo json_encode(['success' => false, 'message' => 'Name fields must not exceed 60 characters.']);
+                exit;
+            }
+
+            if (mb_strlen($suffix) > 20) {
+                echo json_encode(['success' => false, 'message' => 'Suffix must not exceed 20 characters.']);
+                exit;
+            }
+
+            if (mb_strlen($position) > 60) {
+                echo json_encode(['success' => false, 'message' => 'Position must not exceed 60 characters.']);
                 exit;
             }
 
@@ -47,11 +66,26 @@ try {
             $hashedPw = password_hash($password, PASSWORD_BCRYPT);
             $stmt = $db->prepare(
                 "INSERT INTO users
-                    (last_name, first_name, email, contact_number, roleID, sub_role, merchant_owner_id, password, profile_img)
-                 VALUES (?, ?, ?, ?, 6, 'merchant_staff', ?, ?, '')"
+                    (last_name, first_name, middle_name, suffix, email, contact_number, roleID, sub_role, position, merchant_owner_id, password, profile_img)
+                 VALUES (?, ?, ?, ?, ?, ?, 6, 'merchant_staff', ?, ?, ?, '')"
             );
-            $stmt->execute([$lastName, $firstName, $email, $contact ?: '0', $merchantUserId, $hashedPw]);
+            $stmt->execute([
+                $lastName,
+                $firstName,
+                $middleName !== '' ? $middleName : null,
+                $suffix !== '' ? $suffix : null,
+                $email,
+                $contact ?: '0',
+                $position !== '' ? $position : null,
+                $merchantUserId,
+                $hashedPw,
+            ]);
             $newStaffId = (int) $db->lastInsertId();
+
+            $fullName = implode(' ', array_filter(
+                [$firstName, $middleName, $lastName, $suffix],
+                fn($part) => $part !== ''
+            ));
 
             logAudit(
                 $db,
@@ -63,9 +97,10 @@ try {
                 [
                     'event' => 'created',
                     'user_id' => $newStaffId,
-                    'name' => trim($firstName . ' ' . $lastName),
+                    'name' => $fullName,
                     'email' => $email,
                     'role' => 'merchant_staff',
+                    'position' => $position !== '' ? $position : null,
                     'merchant_owner_id' => $merchantUserId,
                 ]
             );

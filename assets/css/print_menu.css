@@ -35,7 +35,7 @@
 .menu-checkout-text span { font-size: 12.5px; color: #6b7280; }
 
 @media print {
-    .merchant-sidebar, .merchant-topbar, .menu-print-toolbar, .menu-skuless-note {
+    .sd-sidebar, .sd-topbar, .sd-bottomnav, .menu-print-toolbar, .menu-skuless-note {
         display: none !important;
     }
     .merchant-main { margin: 0 !important; width: 100% !important; padding: 0 !important; }

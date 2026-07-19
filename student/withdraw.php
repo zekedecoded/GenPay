@@ -21,6 +21,15 @@ if ($wallet['id'] > 0) {
     $isFrozen = (int) $fz->fetchColumn() === 1;
 }
 
+// Graduation freezes the wallet too (mark_graduate sets is_frozen = 1), but
+// withdraw is the one action a graduate is still allowed — it's how they get
+// their remaining balance out. So graduation overrides the frozen block here;
+// every other student page redirects graduates away via gjc_enforce_graduate_lock().
+$isGraduated = gjc_student_graduated($db, (int) $currentUser['id']);
+if ($isGraduated) {
+    $isFrozen = false;
+}
+
 // Total already queued (pending) so we never let requests exceed the balance.
 $pendingTotal = 0.0;
 if ($wallet['id'] > 0) {
@@ -123,8 +132,8 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=2">
 </head>
@@ -193,7 +202,12 @@ $csrfToken = gjc_csrf_token();
                             </div>
                         </div>
 
-                        <?php if ($isFrozen): ?>
+                        <?php if ($isGraduated): ?>
+                        <div class="pf-alert" style="margin-top:14px">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                            Your account is graduated and locked from all other features. You can still withdraw your remaining balance below.
+                        </div>
+                        <?php elseif ($isFrozen): ?>
                         <div class="pf-alert is-warn" style="margin-top:14px">
                             <i class="fa-solid fa-snowflake"></i>
                             Your wallet is currently frozen by a parent or guardian, so withdrawals are disabled.

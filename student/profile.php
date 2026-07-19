@@ -2,104 +2,24 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
-require_once __DIR__ . '/../connection/audit_logger.php';
 
 gjc_require_role(['student']);
+gjc_enforce_graduate_lock($db);
 
 $currentUser = gjc_current_user($db);
 $wallet = gjc_student_wallet($db, $currentUser['id']);
+
 $notice = '';
-$error = '';
-
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $action = (string) ($_POST['profile_action'] ?? '');
-    $columns = gjc_table_columns($db, 'users');
-    $idColumn = gjc_column($db, 'users', ['id', 'userID']);
-
-    if (!gjc_csrf_verify()) {
-        $error = 'Security check failed. Please reload the page and try again.';
-    } elseif (!$idColumn) {
-        $error = 'Profile cannot be updated because the users table ID column was not found.';
-    } elseif ($action === 'profile') {
-        $firstName = trim((string) ($_POST['first_name'] ?? ''));
-        $lastName = trim((string) ($_POST['last_name'] ?? ''));
-        $phone = trim((string) ($_POST['phone'] ?? ''));
-
-        if ($firstName === '' || $lastName === '') {
-            $error = 'First name and last name are required.';
-        } else {
-            $updates = [];
-            $values = [];
-
-            foreach ([
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-                'name' => trim($firstName . ' ' . $lastName),
-                'phone' => $phone,
-            ] as $column => $value) {
-                if (in_array($column, $columns, true)) {
-                    $updates[] = "{$column} = ?";
-                    $values[] = $value;
-                }
-            }
-
-            if ($updates) {
-                $values[] = $currentUser['id'];
-                $stmt = $db->prepare('UPDATE users SET ' . implode(', ', $updates) . " WHERE {$idColumn} = ?");
-                $stmt->execute($values);
-                $notice = 'Profile updated successfully!';
-            }
-        }
-    } elseif ($action === 'password') {
-        $currentPassword = (string) ($_POST['current_password'] ?? '');
-        $newPassword = (string) ($_POST['new_password'] ?? '');
-        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
-        $storedPassword = (string) ($currentUser['raw']['password'] ?? '');
-
-        $validCurrentPassword = $storedPassword !== ''
-            && (password_verify($currentPassword, $storedPassword) || hash_equals($storedPassword, $currentPassword));
-
-        if (!in_array('password', $columns, true)) {
-            $error = 'Password cannot be updated because the password column was not found.';
-        } elseif (!$validCurrentPassword) {
-            $error = 'Current password is incorrect.';
-        } elseif (strlen($newPassword) < 6) {
-            $error = 'New password must be at least 6 characters.';
-        } elseif ($newPassword !== $confirmPassword) {
-            $error = 'New passwords do not match.';
-        } else {
-            $stmt = $db->prepare("UPDATE users SET password = ? WHERE {$idColumn} = ?");
-            $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $currentUser['id']]);
-            logAudit(
-                $db,
-                (int) $currentUser['id'],
-                gjc_current_role(),
-                'PASSWORD_CHANGE',
-                'users',
-                ['password' => 'changed_by_student_profile'],
-                ['password' => 'changed_by_student_profile']
-            );
-            $notice = 'Password updated successfully!';
-        }
-    }
-
-    $currentUser = gjc_current_user($db);
+if (($_GET['updated'] ?? '') === '1') {
+    $notice = 'Profile updated successfully!';
+} elseif (($_GET['password_updated'] ?? '') === '1') {
+    $notice = 'Password updated successfully!';
 }
 
 $rawUser = $currentUser['raw'] ?? [];
-$firstName = (string) ($rawUser['first_name'] ?? '');
-$lastName = (string) ($rawUser['last_name'] ?? '');
-
-if ($firstName === '' && $lastName === '') {
-    $nameParts = preg_split('/\s+/', trim($currentUser['name']), 2);
-    $firstName = $nameParts[0] ?? '';
-    $lastName = $nameParts[1] ?? '';
-}
-
 $studentName = $currentUser['name'];
 $studentInitial = strtoupper(substr($studentName, 0, 1));
 $email = (string) ($currentUser['email'] ?? '');
-$phone = (string) ($rawUser['phone'] ?? '');
 $walletBalance = (float) $wallet['balance'];
 $createdAt = (string) ($rawUser['created_at'] ?? '');
 $memberSince = $createdAt !== '' ? date('F Y', strtotime($createdAt)) : 'N/A';
@@ -132,9 +52,14 @@ if ($wallet['id'] > 0 && $wallet['source'] === 'student_wallets') {
 $accountStatus = $isFrozen ? 'Frozen' : ucfirst((string) ($rawUser['status'] ?? 'Active'));
 $transactionsEnabled = $wallet['id'] > 0 && !$isFrozen;
 
+$waiverCredit = gjc_student_waiver_credit($db, (int) $currentUser['id']);
+$waiverPill = ['posted' => 'green', 'pending' => 'gold'][$waiverCredit['status']] ?? 'gray';
+$waiverLabel = $waiverCredit['status'] === 'posted'
+    ? gjc_money($waiverCredit['amount'])
+    : ($waiverCredit['status'] === 'pending' ? 'Pending' : 'None');
+
 $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $currentPage = 'profile';
-$csrfToken = gjc_csrf_token();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -150,8 +75,8 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
 </head>
 
 <body class="sd-body">
@@ -178,13 +103,6 @@ $csrfToken = gjc_csrf_token();
                 </div>
                 <?php endif; ?>
 
-                <?php if ($error): ?>
-                <div class="pf-alert is-error">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                    <?= $e($error) ?>
-                </div>
-                <?php endif; ?>
-
                 <!-- Hero -->
                 <section class="pf-hero">
                     <div class="pf-hero-left">
@@ -207,6 +125,10 @@ $csrfToken = gjc_csrf_token();
                             <h2><?= $e($studentName) ?></h2>
                             <p><?= $e($email) ?> &middot; <?= $e($studentID) ?></p>
                             <span class="sd-role-badge">STUDENT</span>
+                            <br>
+                            <a href="<?= STUDENT_URL ?>/profile_edit.php" class="pf-edit-btn">
+                                <i class="fa-solid fa-pen"></i> Edit Profile
+                            </a>
                             <div class="pf-photo-msg" id="photoMsg"></div>
                         </div>
                     </div>
@@ -218,121 +140,179 @@ $csrfToken = gjc_csrf_token();
                     </div>
                 </section>
 
-                <!-- Profile form + account status -->
-                <section class="pf-grid">
-
-                    <div class="sd-panel">
-                        <div class="sd-panel-head">
-                            <div>
-                                <h3>Update Profile</h3>
-                                <p>Edit your personal account information.</p>
-                            </div>
-                        </div>
-
-                        <form method="POST" class="pf-form">
-                            <input type="hidden" name="profile_action" value="profile">
-                            <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
-
-                            <div class="pf-form-grid">
-                                <div class="pf-field">
-                                    <label>First Name</label>
-                                    <input type="text" name="first_name" value="<?= $e($firstName) ?>" required>
-                                </div>
-
-                                <div class="pf-field">
-                                    <label>Last Name</label>
-                                    <input type="text" name="last_name" value="<?= $e($lastName) ?>" required>
-                                </div>
-                            </div>
-
-                            <div class="pf-field">
-                                <label>Phone Number</label>
-                                <input type="text" name="phone" value="<?= $e($phone) ?>">
-                            </div>
-
-                            <div class="pf-field">
-                                <label>Email Address</label>
-                                <input type="email" value="<?= $e($email) ?>" disabled>
-                                <small>Email cannot be changed. Contact Admin if needed.</small>
-                            </div>
-
-                            <button type="submit" class="pf-btn">
-                                <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="sd-panel">
-                        <div class="sd-panel-head">
-                            <div>
-                                <h3>Account Status</h3>
-                                <p>Current access and transaction settings.</p>
-                            </div>
-                        </div>
-
-                        <div class="pf-status-list">
-                            <div>
-                                <span>Account Status</span>
-                                <strong class="pf-pill <?= $isFrozen ? 'red' : 'green' ?>"><?= $e($accountStatus) ?></strong>
-                            </div>
-
-                            <div>
-                                <span>Transactions</span>
-                                <strong class="pf-pill <?= $transactionsEnabled ? 'green' : 'gold' ?>">
-                                    <?= $transactionsEnabled ? 'Enabled' : ($isFrozen ? 'Paused' : 'Wallet Pending') ?>
-                                </strong>
-                            </div>
-
-                            <div>
-                                <span>Spending Limit</span>
-                                <strong class="pf-pill <?= $dailyLimit > 0 ? 'gold' : 'gray' ?>">
-                                    <?= $dailyLimit > 0 ? '&#8369;' . number_format($dailyLimit, 2) . ' / day' : 'No Limit' ?>
-                                </strong>
-                            </div>
-                        </div>
-
-                        <div class="pf-note">
-                            Some account settings are managed by the system administrator or your parent/guardian.
-                        </div>
-                    </div>
-
-                </section>
-
-                <!-- Change password -->
+                <!-- Account status (read-only — managed by admin/parent, not the student) -->
                 <section class="sd-panel">
                     <div class="sd-panel-head">
                         <div>
-                            <h3>Change Password</h3>
-                            <p>Update your login password for better account security.</p>
+                            <h3>Account Status</h3>
+                            <p>Current access and transaction settings.</p>
                         </div>
                     </div>
 
-                    <form method="POST" class="pf-form">
-                        <input type="hidden" name="profile_action" value="password">
-                        <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
-
-                        <div class="pf-field">
-                            <label>Current Password</label>
-                            <input type="password" name="current_password" autocomplete="current-password" required>
+                    <div class="pf-status-list">
+                        <div>
+                            <span>Account Status</span>
+                            <strong class="pf-pill <?= $isFrozen ? 'red' : 'green' ?>"><?= $e($accountStatus) ?></strong>
                         </div>
 
-                        <div class="pf-form-grid">
-                            <div class="pf-field">
-                                <label>New Password</label>
-                                <input type="password" name="new_password" minlength="6" autocomplete="new-password" required>
-                            </div>
-
-                            <div class="pf-field">
-                                <label>Confirm New Password</label>
-                                <input type="password" name="confirm_password" minlength="6" autocomplete="new-password" required>
-                            </div>
+                        <div>
+                            <span>Transactions</span>
+                            <strong class="pf-pill <?= $transactionsEnabled ? 'green' : 'gold' ?>">
+                                <?= $transactionsEnabled ? 'Enabled' : ($isFrozen ? 'Paused' : 'Wallet Pending') ?>
+                            </strong>
                         </div>
 
-                        <button type="submit" class="pf-btn">
-                            <i class="fa-solid fa-shield-halved me-1"></i> Update Password
-                        </button>
-                    </form>
+                        <div>
+                            <span>Spending Limit</span>
+                            <strong class="pf-pill <?= $dailyLimit > 0 ? 'gold' : 'gray' ?>">
+                                <?= $dailyLimit > 0 ? '&#8369;' . number_format($dailyLimit, 2) . ' / day' : 'No Limit' ?>
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Fee Waiver Credit</span>
+                            <?php if ($waiverCredit['status'] === 'posted' && $waiverCredit['waiver_file']): ?>
+                                <button type="button" class="pf-pill <?= $waiverPill ?>" style="border:none;cursor:pointer;" onclick="gjcViewWaiver('<?= ADMIN_URL ?>/doc.php?f=<?= urlencode($waiverCredit['waiver_file']) ?>')">
+                                    <?= $waiverLabel ?>
+                                </button>
+                            <?php else: ?>
+                                <strong class="pf-pill <?= $waiverPill ?>" <?= $waiverCredit['status'] === 'pending' ? 'title="Awaiting signed waiver upload by finance."' : '' ?>>
+                                    <?= $waiverLabel ?>
+                                </strong>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="pf-note">
+                        Some account settings are managed by the system administrator or your parent/guardian.
+                    </div>
                 </section>
+
+                <!-- Settings menu -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
+                        <div>
+                            <h3>Settings</h3>
+                            <p>Manage your account and security.</p>
+                        </div>
+                    </div>
+
+                    <div class="pf-menu">
+                        <a href="<?= STUDENT_URL ?>/profile_edit.php" class="pf-menu-item">
+                            <span class="pf-menu-item-icon"><i class="fa-solid fa-user-pen"></i></span>
+                            <span class="pf-menu-item-text">
+                                <strong>Edit Profile</strong>
+                                <span>Update your name and phone number</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right pf-menu-item-chevron"></i>
+                        </a>
+
+                        <a href="<?= STUDENT_URL ?>/security.php" class="pf-menu-item">
+                            <span class="pf-menu-item-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                            <span class="pf-menu-item-text">
+                                <strong>Change Password</strong>
+                                <span>Update your login password</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-right pf-menu-item-chevron"></i>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- FAQs -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
+                        <div>
+                            <h3>FAQs</h3>
+                            <p>Quick answers to common questions.</p>
+                        </div>
+                    </div>
+
+                    <div class="pf-faq accordion" id="pfFaqAccordion">
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq1">
+                                    What is GenCoin (GC)?
+                                </button>
+                            </h2>
+                            <div id="pfFaq1" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    GenCoin is GenPay's in-app currency, fixed at &#8369;10 = 1 GC. It's used to pay at the canteen, send money to other students, and top up your wallet &mdash; no separate balance is stored, it's just a display conversion of your peso balance.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq2">
+                                    How do I top up my wallet?
+                                </button>
+                            </h2>
+                            <div id="pfFaq2" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    Go to <strong>Top-Up</strong> from the dashboard or bottom navigation, submit a request, and hand your cash to the Finance Office or a participating canteen merchant to have it approved and credited.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq3">
+                                    How do I send GenCoin to another student?
+                                </button>
+                            </h2>
+                            <div id="pfFaq3" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    Go to <strong>Send GenCoin</strong>, enter their Student ID to look them up, then the amount. Transfers are instant and cannot be undone, so double-check the recipient before confirming.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq4">
+                                    Why is my wallet frozen or spending-limited?
+                                </button>
+                            </h2>
+                            <div id="pfFaq4" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    A parent or guardian linked to your account can freeze your wallet or set a daily spending limit from the Parent Portal. Check your <strong>Account Status</strong> above, or ask them directly if you think this is a mistake.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq5">
+                                    What is the Fee Waiver Credit?
+                                </button>
+                            </h2>
+                            <div id="pfFaq5" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    It's a school-managed credit that Finance applies toward your tuition once your signed waiver is on file &mdash; separate from your GenCoin wallet. Its status appears in <strong>Account Status</strong> above.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pf-faq-item accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pfFaq6">
+                                    I forgot my password. What do I do?
+                                </button>
+                            </h2>
+                            <div id="pfFaq6" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
+                                <div class="accordion-body">
+                                    Visit the Finance Office with a valid ID and request a password reset. If you're already logged in and just want to change it, use <strong>Change Password</strong> in Settings above instead.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <button type="button" class="pf-btn pf-btn--block is-danger" onclick="openLogoutModal(event);">
+                    <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> Log Out
+                </button>
+
+                <div class="pf-version">GenPay v<?= $e(GJC_APP_VERSION) ?></div>
 
             </div>
 
@@ -342,7 +322,36 @@ $csrfToken = gjc_csrf_token();
 
     <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
 
+    <!-- Signed Waiver Viewer (inline, no new tab/window) -->
+    <div class="modal fade" id="gjcWaiverModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden">
+                <div class="modal-header border-0" style="padding:16px 20px">
+                    <h5 class="modal-title fw-bold" style="font-size:15px">
+                        <i class="fa-solid fa-file-lines me-2"></i>Signed Waiver
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding:0">
+                    <iframe id="gjcWaiverFrame" src="" style="width:100%;height:70vh;border:0;display:block"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+
+    <script>
+    // Show the signed waiver inline in a modal instead of opening a new tab/window.
+    function gjcViewWaiver(url) {
+        document.getElementById('gjcWaiverFrame').src = url;
+        new bootstrap.Modal(document.getElementById('gjcWaiverModal')).show();
+        return false;
+    }
+    document.getElementById('gjcWaiverModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('gjcWaiverFrame').src = '';
+    });
+    </script>
 
     <script>
     /* ── Profile photo upload ─────────────────────────────────── */

@@ -11,6 +11,12 @@ $ownerMerchId = gjc_merchant_owner_id($db, (int) $currentUser['id']);
 $wallet = gjc_merchant_wallet($db, $ownerMerchId);
 $currentBalance = $wallet['balance'];
 $canEncash = !gjc_is_merchant_staff();
+
+$stallStmt = $db->prepare("SELECT stall_name, stall_id FROM merchant WHERE userID = ? LIMIT 1");
+$stallStmt->execute([$ownerMerchId]);
+$stallRow = $stallStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$merchantDisplayName = $stallRow['stall_name'] ?? $currentUser['name'];
+$merchantStallId = $stallRow['stall_id'] ?? '';
 $todaysSales = 0;
 $totalEarned = 0;
 $encashmentStatus = "Available";
@@ -84,7 +90,8 @@ $currentPage = 'dashboard';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -102,83 +109,84 @@ $currentPage = 'dashboard';
 
         <main class="merchant-main">
 
-            <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">Menu</button>
+            <?php
+            $topbarTitle = 'Merchant Dashboard';
+            $topbarSubtitle = 'Monitor sales, balance, QR payments' . ($canEncash ? ', and encashment activity' : '') . '.';
+            require __DIR__ . '/../includes/partials/topbar_merchant.php';
+            ?>
 
+            <section class="sd-balance mb-4">
                 <div>
-                    <h1>Merchant Dashboard</h1>
-                    <p>Monitor sales, balance, QR payments<?= $canEncash ? ', and encashment activity' : '' ?>.</p>
-                </div>
-
-                <div class="merchant-user">
-                    <span><?php echo gjc_e($currentUser['name']); ?></span>
-                    <div class="merchant-avatar">
-                        <i class="fa-solid fa-store"></i>
+                    <span class="sd-balance-label">GenCoin Balance</span>
+                    <div class="sd-balance-amount">
+                        <span><?php echo number_format($currentBalance / 10, 1); ?></span><span class="sd-unit">GC</span>
+                    </div>
+                    <div class="sd-gc-row">
+                        <span class="sd-gc-badge">&#8776; <?php echo gjc_money($currentBalance); ?></span>
+                        <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
+                    </div>
+                    <div class="sd-balance-actions">
+                        <a class="sd-btn-solid" href="<?= MERCHANT_URL ?>/pos.php"><i class="fa-solid fa-cash-register"></i>Open POS</a>
+                        <a class="sd-btn-ghost" href="<?= MERCHANT_URL ?>/pos.php?open=loadwallet"><i class="fa-solid fa-coins"></i>Send GenCoin</a>
+                        <?php if ($canEncash): ?>
+                        <a class="sd-btn-ghost" href="<?= MERCHANT_URL ?>/encash.php"><i class="fa-solid fa-money-bill-wave"></i>Encash</a>
+                        <?php endif; ?>
                     </div>
                 </div>
-            </header>
-
-            <section class="row g-4 mb-4">
-                <div class="col-12">
-                    <div class="gc-ticket">
-                        <div class="gc-ticket-side gc-ticket-balance">
-                            <span class="gc-ticket-icon">
-                                <i class="fa-solid fa-coins"></i>
-                            </span>
-                            <div>
-                                <span class="gc-ticket-label">GenCoin Balance</span>
-                                <div class="gc-ticket-figure"><?php echo number_format($currentBalance / 10, 1); ?><small>GC</small></div>
-                                <span class="gc-ticket-note"><?= $canEncash ? 'Available for encashment' : 'Store wallet balance' ?></span>
-                            </div>
-                        </div>
-
-                        <div class="gc-ticket-seam" aria-hidden="true"></div>
-
-                        <div class="gc-ticket-side gc-ticket-equiv">
-                            <div>
-                                <span class="gc-ticket-label">PHP Equivalent</span>
-                                <div class="gc-ticket-figure gc-ticket-figure-peso"><?php echo gjc_money($currentBalance); ?></div>
-                                <span class="gc-ticket-note">Fixed rate &middot; &#8369;10 = 1.0 GenCoin</span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="sd-balance-holder">
+                    <strong><?php echo gjc_e($merchantDisplayName); ?></strong>
+                    <span class="sd-holder-id"><?php echo gjc_e($merchantStallId ?: 'Stall not yet assigned'); ?></span>
+                    <span class="sd-role-badge"><?php echo $canEncash ? 'MERCHANT ADMIN' : 'MERCHANT STAFF'; ?></span>
                 </div>
             </section>
 
-            <section class="row g-4 mb-4">
+            <section class="sd-quick mb-4">
+                <a href="<?= MERCHANT_URL ?>/pos.php">
+                    <span class="sd-quick-icon is-scan"><i class="fa-solid fa-cash-register"></i></span>
+                    <span>POS</span>
+                </a>
+                <a href="<?= MERCHANT_URL ?>/inventory.php">
+                    <span class="sd-quick-icon is-cart"><i class="fa-solid fa-boxes-stacked"></i></span>
+                    <span>Inventory</span>
+                </a>
+                <a href="<?= MERCHANT_URL ?>/history.php">
+                    <span class="sd-quick-icon is-history"><i class="fa-solid fa-receipt"></i></span>
+                    <span>History</span>
+                </a>
+                <a href="<?= $canEncash ? MERCHANT_URL . '/settings.php' : MERCHANT_URL . '/dashboard.php' ?>">
+                    <span class="sd-quick-icon is-profile"><i class="fa-solid fa-store"></i></span>
+                    <span>Business Profile</span>
+                </a>
+            </section>
 
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="merchant-metric-card">
-                        <div class="merchant-metric-icon">
-                            <i class="fa-solid fa-chart-line"></i>
-                        </div>
+            <section class="sd-stats mb-4">
+
+                <div class="sd-stat">
+                    <div class="sd-stat-top">
                         <span>Today's Sales</span>
-                        <h2 id="todaysSalesValue"><?php echo gjc_money($todaysSales); ?></h2>
-                        <p>Today's received payments</p>
+                        <span class="sd-stat-icon is-spent"><i class="fa-solid fa-chart-line"></i></span>
                     </div>
+                    <h2 class="sd-num" id="todaysSalesValue"><?php echo gjc_money($todaysSales); ?></h2>
+                    <p>Today's received payments</p>
                 </div>
 
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="merchant-metric-card">
-                        <div class="merchant-metric-icon">
-                            <i class="fa-solid fa-money-bill-wave"></i>
-                        </div>
+                <div class="sd-stat">
+                    <div class="sd-stat-top">
                         <span>Total Earned</span>
-                        <h2 id="totalEarnedValue"><?php echo gjc_money($totalEarned); ?></h2>
-                        <p>Lifetime merchant earnings</p>
+                        <span class="sd-stat-icon is-txns"><i class="fa-solid fa-money-bill-wave"></i></span>
                     </div>
+                    <h2 class="sd-num" id="totalEarnedValue"><?php echo gjc_money($totalEarned); ?></h2>
+                    <p>Lifetime merchant earnings</p>
                 </div>
 
                 <?php if ($canEncash): ?>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="merchant-metric-card">
-                        <div class="merchant-metric-icon">
-                            <i class="fa-solid fa-money-check-dollar"></i>
-                        </div>
+                <div class="sd-stat sd-stat--status">
+                    <div class="sd-stat-top">
                         <span>Encashment</span>
-                        <h2><?php echo $encashmentStatus; ?></h2>
-                        <p>Request at anytime</p>
+                        <span class="sd-stat-icon is-status"><i class="fa-solid fa-money-check-dollar"></i></span>
                     </div>
+                    <h2><?php echo $encashmentStatus; ?></h2>
+                    <p>Request at anytime</p>
                 </div>
                 <?php endif; ?>
 
@@ -541,10 +549,6 @@ $currentPage = 'dashboard';
     <script src="<?= JS_URL ?>/merchant_chart.js?v=11"></script>
 
     <script>
-    function toggleMerchantSidebar() {
-        document.getElementById("merchantSidebar").classList.toggle("collapsed");
-    }
-
     // ── Live Order Queue ─────────────────────────────────────────────────────
     const LIVE_QUEUE_API = '<?= MERCHANT_URL ?>/api/pos.php';
 
@@ -763,6 +767,7 @@ $currentPage = 'dashboard';
     setInterval(refreshSalesSummary, 5000);
     </script>
 
+    <?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 
 </html>

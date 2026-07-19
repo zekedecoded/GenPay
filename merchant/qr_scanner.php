@@ -24,7 +24,8 @@ $currentPage = 'qr_scanner';
     <title>Visitor QR Scanner | Merchant Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -35,20 +36,11 @@ $currentPage = 'qr_scanner';
         <?php require __DIR__ . '/../includes/partials/' . (gjc_is_merchant_staff() ? 'sidebar_merchant_staff.php' : 'sidebar_merchant_admin.php'); ?>
 
         <main class="merchant-main">
-            <header class="merchant-topbar">
-                <button class="merchant-menu-btn" onclick="toggleMerchantSidebar()">&#9776;</button>
-                <div>
-                    <h1>Visitor QR Scanner</h1>
-                    <p>Validate visitor vouchers, review remaining balance, and confirm merchant payments.</p>
-                </div>
-
-                <div class="merchant-user">
-                    <span><?php echo gjc_e($currentUser['name']); ?></span>
-                    <div class="merchant-avatar">
-                        <i class="fa-solid fa-store"></i>
-                    </div>
-                </div>
-            </header>
+            <?php
+            $topbarTitle = 'Visitor QR Scanner';
+            $topbarSubtitle = 'Validate visitor vouchers, review remaining balance, and confirm merchant payments.';
+            require __DIR__ . '/../includes/partials/topbar_merchant.php';
+            ?>
 
             <section class="merchant-scanner-grid">
                 <div class="merchant-premium-panel merchant-scanner-panel">
@@ -166,10 +158,6 @@ $currentPage = 'qr_scanner';
     let currentHash = null;
     let scannerPaused = false;
     let lastScannedHash = '';
-
-    function toggleMerchantSidebar() {
-        document.getElementById("merchantSidebar").classList.toggle("collapsed");
-    }
 
     function setScanStatus(text, tone = '') {
         scanStatus.className = 'merchant-scan-status';
@@ -398,6 +386,7 @@ $currentPage = 'qr_scanner';
 
     resetVoucherCard();
     </script>
+<?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 
 </html>

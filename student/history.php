@@ -4,6 +4,8 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
+gjc_enforce_graduate_lock($db);
+gjc_ensure_school_year_schema($db);
 
 $currentUser = gjc_current_user($db);
 $wallet = gjc_student_wallet($db, $currentUser['id']);
@@ -14,31 +16,40 @@ $totalReceived = 0.0;
 $totalSpent = 0.0;
 $transactions = [];
 
+$schoolYears = $db->query("SELECT id, school_year_name FROM school_years ORDER BY school_year_name DESC")->fetchAll(PDO::FETCH_ASSOC);
+$selectedSchoolYearId = (int) ($_GET['school_year'] ?? 0);
+if ($selectedSchoolYearId > 0 && !in_array($selectedSchoolYearId, array_column($schoolYears, 'id'), true)) {
+    $selectedSchoolYearId = 0;
+}
+
 if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
+    $syFilter = $selectedSchoolYearId > 0 ? ' AND school_year_id = ?' : '';
+    $syParams = $selectedSchoolYearId > 0 ? [$wallet['id'], $selectedSchoolYearId] : [$wallet['id']];
+
     // Aggregates run over the whole ledger (not the capped fetch below),
     // so the totals stay correct even past 200 lifetime transactions.
     $spentStmt = $db->prepare(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions
-          WHERE student_wallet_id = ? AND transaction_type IN ('payment', 'voucher_payment')"
+          WHERE student_wallet_id = ? AND transaction_type IN ('payment', 'voucher_payment'){$syFilter}"
     );
-    $spentStmt->execute([$wallet['id']]);
+    $spentStmt->execute($syParams);
     $totalSpent = (float) $spentStmt->fetchColumn();
 
     $receivedStmt = $db->prepare(
         "SELECT COALESCE(SUM(amount), 0) FROM transactions
-          WHERE student_wallet_id = ? AND transaction_type IN ('cash_in', 'topup', 'refund')"
+          WHERE student_wallet_id = ? AND transaction_type IN ('cash_in', 'topup', 'refund'){$syFilter}"
     );
-    $receivedStmt->execute([$wallet['id']]);
+    $receivedStmt->execute($syParams);
     $totalReceived = (float) $receivedStmt->fetchColumn();
 
     $stmt = $db->prepare(
         "SELECT reference_no, transaction_type, amount, status, notes, created_at
            FROM transactions
-          WHERE student_wallet_id = ?
+          WHERE student_wallet_id = ?{$syFilter}
           ORDER BY created_at DESC, id DESC
           LIMIT 200"
     );
-    $stmt->execute([$wallet['id']]);
+    $stmt->execute($syParams);
 
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $type = (string) ($row['transaction_type'] ?? '');
@@ -56,7 +67,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
     }
 }
 
-if (gjc_table_exists($db, 'topup_requests')) {
+if ($selectedSchoolYearId === 0 && gjc_table_exists($db, 'topup_requests')) {
     $stmt = $db->prepare(
         "SELECT reference_no, amount, payment_method, status, created_at
            FROM topup_requests
@@ -101,7 +112,7 @@ $currentPage = 'history';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
 </head>
 
 <body class="sd-body">
@@ -158,6 +169,20 @@ $currentPage = 'history';
                         </div>
                         <span class="sd-count"><?= count($transactions) ?> Records</span>
                     </div>
+
+                    <?php if ($schoolYears): ?>
+                    <form method="GET" style="margin-bottom:14px">
+                        <select name="school_year" class="form-select form-select-sm" style="max-width:220px"
+                                onchange="this.form.submit()">
+                            <option value="0"<?= $selectedSchoolYearId === 0 ? ' selected' : '' ?>>All School Years</option>
+                            <?php foreach ($schoolYears as $sy): ?>
+                            <option value="<?= (int) $sy['id'] ?>"<?= $selectedSchoolYearId === (int) $sy['id'] ? ' selected' : '' ?>>
+                                <?= $e($sy['school_year_name']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </form>
+                    <?php endif; ?>
 
                     <?php if (empty($transactions)): ?>
                     <div class="sd-empty">

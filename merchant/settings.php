@@ -56,27 +56,22 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ec
     <title>Business Profile | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=32">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=38">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=4">
 </head>
 <body class="gp-theme">
 <div class="merchant-layout">
     <?php require __DIR__ . '/../includes/partials/sidebar_merchant_admin.php'; ?>
 
     <main class="merchant-main">
-        <header class="merchant-topbar">
-            <button class="merchant-menu-btn" onclick="document.getElementById('merchantSidebar').classList.toggle('collapsed')">&#9776;</button>
-            <div>
-                <h1>Business Profile</h1>
-                <p>This display name and logo appear publicly on the Stall Directory.</p>
-            </div>
-            <div class="merchant-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
-                <div class="merchant-avatar"><i class="fa-solid fa-store"></i></div>
-            </div>
-        </header>
+        <?php
+        $topbarTitle = 'Business Profile';
+        $topbarSubtitle = "This display name and logo appear publicly on the Stall Directory.";
+        require __DIR__ . '/../includes/partials/topbar_merchant.php';
+        ?>
 
         <?php if (!$merchant): ?>
         <section class="merchant-premium-panel">
@@ -178,5 +173,6 @@ document.getElementById('profileForm')?.addEventListener('submit', async functio
     btn.textContent = 'Save Changes';
 });
 </script>
+<?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>
 </html>

@@ -7,17 +7,20 @@ require_once __DIR__ . "/connection/pdo.php";
 require_once __DIR__ . "/connection/app.php";
 require_once __DIR__ . "/connection/StallManager.php";
 require_once __DIR__ . "/connection/mailer.php";
+require_once __DIR__ . "/connection/audit_logger.php";
 
 gjc_ensure_stall_application_workflow_schema($db);
 
-// ── Upload constants ──────────────────────────────────────────
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_MIMES  = ["image/jpeg", "image/png", "application/pdf"];
-const ALLOWED_EXT    = ["jpg", "jpeg", "png", "pdf"];
-const IMG_ONLY_MIMES = ["image/jpeg", "image/png"];
-const IMG_ONLY_EXT   = ["jpg", "jpeg", "png"];
+// No-show sweep: without this, an applicant who missed their meeting stays
+// 'pending_verification' forever and the duplicate check below would block
+// them from ever re-applying with the same email/name/business.
+gjc_expire_overdue_stall_applications($db);
 
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Sweep abandoned draft upload folders (visitors who attached files, never
+// finished, and never came back) before touching this session's own draft.
+gjc_cleanup_stale_stall_application_drafts();
 
 $formErrors = [];
 $old        = [];
@@ -164,40 +167,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $formErrors["general"] = "Some of your details are already on an application that is being processed. Please review the highlighted fields below.";
     }
 
-    $fileRules = [
-        "profile_picture" => ["label" => "Profile Picture",   "mimes" => IMG_ONLY_MIMES, "exts" => IMG_ONLY_EXT],
-        "business_permit" => ["label" => "Business Permit",   "mimes" => ALLOWED_MIMES,  "exts" => ALLOWED_EXT],
-        "sanitary_permit" => ["label" => "Sanitary Permit",   "mimes" => ALLOWED_MIMES,  "exts" => ALLOWED_EXT],
-        "gjc_requirements"=> ["label" => "GJC Requirements",  "mimes" => ALLOWED_MIMES,  "exts" => ALLOWED_EXT],
-        "clearance"       => ["label" => "Clearance",         "mimes" => ALLOWED_MIMES,  "exts" => ALLOWED_EXT],
-    ];
-    $fileData = [];
+    $fileRules   = gjc_stall_application_upload_rules();
+    $stagedFiles = gjc_stall_application_draft_files();
+    $fileData    = [];
 
     foreach ($fileRules as $field => $rule) {
-        $file = $_FILES[$field] ?? null;
-        if (!$file || $file["error"] === UPLOAD_ERR_NO_FILE || empty($file["tmp_name"])) {
-            $formErrors[$field] = $rule["label"] . " is required.";
+        $file      = $_FILES[$field] ?? null;
+        $hasUpload = $file && $file["error"] !== UPLOAD_ERR_NO_FILE && !empty($file["tmp_name"]);
+
+        if ($hasUpload) {
+            $result = gjc_stage_stall_application_upload($field, $file, $rule);
+            if ($result["success"]) {
+                $stagedFiles = gjc_stall_application_draft_files(); // refreshed by the stage call
+                $fileData[$field] = $stagedFiles[$field];
+            } else {
+                $formErrors[$field] = $result["message"];
+            }
             continue;
         }
-        if ($file["error"] !== UPLOAD_ERR_OK) {
-            $formErrors[$field] = $rule["label"] . " upload error (code " . $file["error"] . ").";
+
+        // No new file this submission — an earlier attempt in this same
+        // session may already have this one staged (that's the whole point:
+        // a validation error on some OTHER field shouldn't force
+        // re-attaching documents that were already fine).
+        $draftDir = gjc_stall_application_draft_dir();
+        if (isset($stagedFiles[$field]) && is_file($draftDir . "/" . $stagedFiles[$field]["fname"])) {
+            $fileData[$field] = $stagedFiles[$field];
             continue;
         }
-        if ($file["size"] > MAX_FILE_BYTES) {
-            $formErrors[$field] = $rule["label"] . " exceeds the 5 MB limit.";
-            continue;
-        }
-        $ext = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-        if (!in_array($ext, $rule["exts"], true)) {
-            $formErrors[$field] = $rule["label"] . " must be " . implode(", ", array_map("strtoupper", $rule["exts"])) . ".";
-            continue;
-        }
-        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file["tmp_name"]);
-        if (!in_array($mime, $rule["mimes"], true)) {
-            $formErrors[$field] = $rule["label"] . " has an invalid file type.";
-            continue;
-        }
-        $fileData[$field] = ["tmp" => $file["tmp_name"], "ext" => $ext];
+        $formErrors[$field] = $rule["label"] . " is required.";
     }
 
     // Requirement 2 — hard filter: the Business Permit is mandatory. This is an
@@ -209,24 +207,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if (empty($formErrors)) {
-        $tmpToken = "tmp_" . bin2hex(random_bytes(8));
-        $tmpDir   = BASE_PATH . "/uploads/stall_applications/" . $tmpToken;
+        // Every field in $fileData is already sitting in the draft folder —
+        // either staged by this request above, or carried over from an
+        // earlier attempt in this session.
+        $tmpDir = gjc_stall_application_draft_dir();
 
         try {
             $db->beginTransaction();
 
-            if (!mkdir($tmpDir, 0755, true)) {
-                throw new RuntimeException("DIR_CREATE");
-            }
-
-            $tmpPaths = [];
-            foreach ($fileData as $field => $info) {
-                $fname = $field . "_" . time() . mt_rand(1000, 9999) . "." . $info["ext"];
-                $dest  = $tmpDir . "/" . $fname;
-                if (!move_uploaded_file($info["tmp"], $dest)) {
-                    throw new RuntimeException("MOVE_" . strtoupper($field));
-                }
-                $tmpPaths[$field] = $fname;
+            if (!is_dir($tmpDir)) {
+                throw new RuntimeException("DIR_MISSING");
             }
 
             $proprietorName = trim(implode(" ", array_filter(
@@ -266,8 +256,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
 
             $realPaths = [];
-            foreach ($tmpPaths as $field => $fname) {
-                $realPaths[$field] = "uploads/stall_applications/" . $appId . "/" . $fname;
+            foreach ($fileData as $field => $info) {
+                $realPaths[$field] = "uploads/stall_applications/" . $appId . "/" . $info["fname"];
             }
 
             $db->prepare(
@@ -320,9 +310,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $meetingInfo = null;
             }
 
+            // The draft folder is now the real application's folder — nothing
+            // left to reuse on a future attempt.
+            unset($_SESSION['apply_draft_files'], $_SESSION['apply_draft_token']);
+
             // PRG: store confirmation in session, then redirect so a page
             // refresh replays a GET instead of re-posting the form.
-            if (session_status() === PHP_SESSION_NONE) session_start();
             $_SESSION['apply_success'] = [
                 'app_id'  => $appId,
                 'email'   => $old['email'],
@@ -332,10 +325,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             exit;
         } catch (Throwable $e) {
             $db->rollBack();
-            if (is_dir($tmpDir)) {
-                array_map("unlink", glob($tmpDir . "/*") ?: []);
-                @rmdir($tmpDir);
-            }
+            // Deliberately NOT deleting $tmpDir here — it's the session's
+            // persistent draft folder, not a disposable one-off tmp dir, so a
+            // transient failure (e.g. the rename) shouldn't cost the visitor
+            // their already-attached documents on the next attempt.
             $formErrors["general"] = "A server error occurred. Please try again. (ref: " . $e->getMessage() . ")";
         }
     }
@@ -364,6 +357,37 @@ try {
     )->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
     $activeRestrictions = [];
+}
+
+// Files already attached in this session's draft — populated on a plain GET
+// (including a page refresh) just as much as a POST, so a tile that was
+// attached earlier still shows as attached even if the visitor never
+// resubmitted the form.
+$attachedFiles = gjc_stall_application_draft_files();
+
+// Release the session write-lock now that every read/write this request
+// needed is done. PHP holds an exclusive per-session file lock for a
+// script's whole lifetime by default — without closing it early here, the
+// page's own eager-upload/clear fetch() calls (same session cookie, fired
+// the instant the page loads) would block waiting for THIS request to fully
+// finish rendering, which can look like a hang.
+session_write_close();
+
+/** Inline data-URI preview for the profile photo tile — the draft folder
+ *  isn't web-reachable (uploads/.htaccess denies all), so this is the only
+ *  way to show the already-attached photo without a new serving endpoint. */
+function apply_photo_preview_data_uri(array $attached): ?string
+{
+    if (empty($attached["profile_picture"]["fname"])) {
+        return null;
+    }
+    $path = gjc_stall_application_draft_dir() . "/" . $attached["profile_picture"]["fname"];
+    if (!is_file($path)) {
+        return null;
+    }
+    $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $mime = $ext === "png" ? "image/png" : "image/jpeg";
+    return "data:{$mime};base64," . base64_encode(file_get_contents($path));
 }
 ?>
 <!DOCTYPE html>
@@ -688,8 +712,12 @@ try {
                 <div class="section-title">Profile Photo</div>
                 <div class="section-sub">JPG / PNG · max 5 MB</div>
             </div>
+            <?php
+            $photoAttached = $attachedFiles['profile_picture']['orig'] ?? null;
+            $photoPreview  = apply_photo_preview_data_uri($attachedFiles);
+            ?>
             <div class="form-section-body">
-                <div class="file-tile photo-tile <?= isset($formErrors['profile_picture']) ? 'err' : '' ?>"
+                <div class="file-tile photo-tile <?= isset($formErrors['profile_picture']) ? 'err' : '' ?> <?= $photoAttached ? 'has-file' : '' ?>"
                      id="drop-profile_picture"
                      onclick="document.getElementById('file-profile_picture').click()"
                      ondragover="handleDragOver(event,this)"
@@ -700,12 +728,14 @@ try {
                            style="display:none"
                            onchange="handleFile(this,'profile_picture',true)">
                     <div class="photo-ring">
-                        <i class="fa-solid fa-user photo-ring-icon" id="icon-profile_picture"></i>
-                        <img class="photo-preview" id="preview-profile_picture" alt="">
+                        <i class="fa-solid fa-user photo-ring-icon" id="icon-profile_picture" style="<?= $photoPreview ? 'display:none' : '' ?>"></i>
+                        <img class="photo-preview" id="preview-profile_picture" alt=""
+                             src="<?= $photoPreview ? htmlspecialchars($photoPreview) : '' ?>"
+                             style="<?= $photoPreview ? 'display:block' : '' ?>">
                     </div>
                     <div class="file-tile-label">Click or drag a photo here</div>
                     <div class="file-tile-sub">Clear front-facing photo of the proprietor</div>
-                    <div class="file-tile-name" id="name-profile_picture"></div>
+                    <div class="file-tile-name" id="name-profile_picture" style="<?= $photoAttached ? 'display:block' : '' ?>"><?= $photoAttached ? htmlspecialchars($photoAttached) . ' (attached)' : '' ?></div>
                 </div>
                 <?php if (isset($formErrors['profile_picture'])): ?>
                 <div class="field-error mt-2"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($formErrors['profile_picture']) ?></div>
@@ -729,10 +759,12 @@ try {
                         "gjc_requirements" => ["icon" => "fa-graduation-cap",  "label" => "GJC Requirements"],
                         "clearance"        => ["icon" => "fa-clipboard-check", "label" => "Clearance"],
                     ];
-                    foreach ($docFields as $field => $meta): ?>
+                    foreach ($docFields as $field => $meta):
+                        $docAttached = $attachedFiles[$field]['orig'] ?? null;
+                    ?>
                     <div>
                         <label class="field-label"><?= $meta['label'] ?> <span class="req">*</span></label>
-                        <div class="file-tile <?= isset($formErrors[$field]) ? 'err' : '' ?>"
+                        <div class="file-tile <?= isset($formErrors[$field]) ? 'err' : '' ?> <?= $docAttached ? 'has-file' : '' ?>"
                              id="drop-<?= $field ?>"
                              onclick="document.getElementById('file-<?= $field ?>').click()"
                              ondragover="handleDragOver(event,this)"
@@ -747,7 +779,7 @@ try {
                             </div>
                             <div class="file-tile-label"><?= $meta['label'] ?></div>
                             <div class="file-tile-sub">PDF, JPG, PNG</div>
-                            <div class="file-tile-name" id="name-<?= $field ?>"></div>
+                            <div class="file-tile-name" id="name-<?= $field ?>" style="<?= $docAttached ? 'display:block' : '' ?>"><?= $docAttached ? htmlspecialchars($docAttached) . ' (attached)' : '' ?></div>
                         </div>
                         <?php if (isset($formErrors[$field])): ?>
                         <div class="field-error mt-1"><i class="fa-solid fa-circle-exclamation"></i><?= htmlspecialchars($formErrors[$field]) ?></div>
@@ -838,7 +870,53 @@ try {
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <script>
+// ── Draft documents: keep on a refresh, wipe on a fresh arrival ─────────────
+// This render's request method tells us whether we're redisplaying the form
+// after a POST (e.g. a validation error on some OTHER field) — the draft
+// must always survive that, regardless of how the browser classifies the
+// navigation. GJC_WAS_POST comes from the server because the browser's own
+// navigation-type signal (below) can't tell a form resubmission apart from a
+// plain page load — both report as "navigate".
+const GJC_WAS_POST = <?= $_SERVER['REQUEST_METHOD'] === 'POST' ? 'true' : 'false' ?>;
+
+function gjcResetAttachedTiles() {
+    ['profile_picture', 'business_permit', 'sanitary_permit', 'gjc_requirements', 'clearance'].forEach(f => {
+        const drop    = document.getElementById('drop-' + f);
+        const nameEl  = document.getElementById('name-' + f);
+        const preview = document.getElementById('preview-' + f);
+        const icon    = document.getElementById('icon-' + f);
+        drop?.classList.remove('has-file');
+        if (nameEl)  { nameEl.style.display = 'none'; nameEl.textContent = ''; }
+        if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
+        if (icon)    { icon.style.display = ''; }
+    });
+    checkSubmitReady();
+}
+
+function gjcMaybeClearStaleDraft() {
+    if (GJC_WAS_POST) return; // redisplaying after submit — never clear here
+
+    const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+    const isReload = navEntry ? navEntry.type === 'reload' : false;
+    if (isReload) return; // an actual refresh of this same form — keep it
+
+    // A fresh GET arrival (first visit, came back after leaving, or used
+    // back/forward) — the visitor left the form, so any previously attached
+    // documents from an earlier visit should not silently reappear.
+    const fd = new FormData();
+    fd.append('action', 'clear');
+    fetch('<?= BASE_URL ?>/apply_upload.php', { method: 'POST', body: fd }).finally(gjcResetAttachedTiles);
+}
+gjcMaybeClearStaleDraft();
+window.addEventListener('pageshow', e => { if (e.persisted) gjcMaybeClearStaleDraft(); });
+
 // ── File upload handler ────────────────────────────────────────
+// Every attached file is eager-uploaded to apply_upload.php the moment it's
+// chosen (not held back for the final form submit), so it's already saved
+// to this session's draft folder and survives a refresh or a validation
+// error on some other field — see apply.php / apply_upload.php.
+let uploadingCount = 0;
+
 function handleFile(input, field, isImage) {
     const file    = input.files[0];
     const drop    = document.getElementById('drop-' + field);
@@ -847,10 +925,10 @@ function handleFile(input, field, isImage) {
     const preview = document.getElementById('preview-' + field);
     if (!file) return;
 
-    drop.classList.add('has-file');
-    drop.classList.remove('err');
+    drop.classList.remove('err', 'has-file');
     nameEl.style.display = 'block';
-    nameEl.textContent   = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    nameEl.textContent   = 'Uploading ' + file.name + '…';
+    clearFieldError(field);
 
     if (isImage && preview && file.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -861,7 +939,53 @@ function handleFile(input, field, isImage) {
         };
         reader.readAsDataURL(file);
     }
+
+    uploadingCount++;
     checkSubmitReady();
+
+    const fd = new FormData();
+    fd.append('field', field);
+    fd.append('file', file);
+    fetch('<?= BASE_URL ?>/apply_upload.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                drop.classList.add('has-file');
+                nameEl.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            } else {
+                drop.classList.add('err');
+                nameEl.style.display = 'none';
+                if (isImage && preview) { preview.style.display = 'none'; if (icon) icon.style.display = ''; }
+                showFieldError(field, d.message || 'Upload failed. Please try again.');
+            }
+        })
+        .catch(() => {
+            drop.classList.add('err');
+            nameEl.style.display = 'none';
+            showFieldError(field, 'Network error while uploading. Please try again.');
+        })
+        .finally(() => {
+            uploadingCount--;
+            checkSubmitReady();
+        });
+}
+
+// The error box (if present) is always rendered as the next sibling of the
+// drop tile — see the profile_picture and $docFields blocks above.
+function showFieldError(field, message) {
+    const drop = document.getElementById('drop-' + field);
+    if (!drop) return;
+    let box = drop.nextElementSibling;
+    if (!box || !box.classList.contains('field-error')) {
+        box = document.createElement('div');
+        box.className = 'field-error mt-1';
+        drop.insertAdjacentElement('afterend', box);
+    }
+    box.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>' + message;
+}
+function clearFieldError(field) {
+    const box = document.getElementById('drop-' + field)?.nextElementSibling;
+    if (box && box.classList.contains('field-error')) box.remove();
 }
 
 function handleDragOver(e, el)  { e.preventDefault(); el.classList.add('dragover'); }
@@ -894,10 +1018,16 @@ if (termsBox) {
 if (termsChk) termsChk.addEventListener('change', checkSubmitReady);
 
 // ── Submit gating ─────────────────────────────────────────────
+// A field counts as satisfied once its tile shows 'has-file' — true for a
+// file picked just now (once its eager upload confirms) AND for a file
+// already attached in an earlier attempt this session (rendered server-side
+// with the class already on it, even before any JS runs).
 function checkSubmitReady() {
+    const submitBtn = document.getElementById('submitBtn');
+    if (!submitBtn) return; // not on the form view (e.g. the post-submit success page)
     const allFiles = ['profile_picture','business_permit','sanitary_permit','gjc_requirements','clearance']
-        .every(f => document.getElementById('file-' + f)?.files?.length > 0);
-    document.getElementById('submitBtn').disabled = !(termsChk?.checked && allFiles);
+        .every(f => document.getElementById('drop-' + f)?.classList.contains('has-file'));
+    submitBtn.disabled = !(termsChk?.checked && allFiles && uploadingCount === 0);
 }
 
 // ── Contact number: digits only ───────────────────────────────
@@ -913,13 +1043,14 @@ document.getElementById('applyForm')?.addEventListener('submit', function () {
     btn.textContent = 'Submitting… Please wait';
 });
 
-// ── On load: restore terms state after validation error ───────
+// ── On load: restore terms state after validation error, and reflect any
+// files already attached from an earlier attempt this session ────────────
 if (termsChk?.checked) {
     termsChk.disabled = false;
     if (hint) hint.style.display = 'none';
     gateWrap?.classList.add('unlocked');
-    checkSubmitReady();
 }
+checkSubmitReady();
 </script>
 </body>
 </html>

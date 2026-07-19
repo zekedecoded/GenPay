@@ -575,8 +575,8 @@ try {
             $db->prepare(
                 "INSERT INTO transactions
                     (reference_no, transaction_type, initiated_by, student_wallet_id, merchant_wallet_id,
-                     amount, vault_before, vault_after, total_in_circulation, status, notes)
-                 VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?)"
+                     amount, vault_before, vault_after, total_in_circulation, status, notes, school_year_id)
+                 VALUES (?, 'payment', ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?)"
             )->execute([
                 $refNo,
                 $merchantUserId,
@@ -587,6 +587,7 @@ try {
                 $vaultBefore, // vault unchanged in a payment
                 $totalCirc,
                 'POS Sale: ' . $itemsSummary,
+                gjc_active_school_year_id($db),
             ]);
 
             $db->commit();
@@ -607,6 +608,29 @@ try {
                     'items' => $items,
                     'status' => 'completed',
                 ]
+            );
+
+            gjc_notify_wallet(
+                $db,
+                $walletId,
+                'payment',
+                'Payment Successful',
+                sprintf('You paid %s at %s.', gjc_money_plain($totalAmt), gjc_user_label($db, $ownerMerchId)),
+                'cart-shopping',
+                STUDENT_URL . '/history.php'
+            );
+
+            $payerUserIdStmt = $db->prepare("SELECT user_id FROM student_wallets WHERE id = ?");
+            $payerUserIdStmt->execute([$walletId]);
+            $payerUserId = (int) $payerUserIdStmt->fetchColumn();
+            gjc_notify(
+                $db,
+                $ownerMerchId,
+                'sale',
+                'Payment Received',
+                sprintf('%s paid %s at your stall.', $payerUserId ? gjc_user_label($db, $payerUserId) : 'A student', gjc_money_plain($totalAmt)),
+                'cart-shopping',
+                MERCHANT_URL . '/history.php'
             );
 
             echo json_encode([

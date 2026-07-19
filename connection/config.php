@@ -3,7 +3,8 @@
 
 
 
-define('BASE_PATH', dirname(__DIR__)); 
+define('BASE_PATH', dirname(__DIR__));
+define('GJC_APP_VERSION', '1.0.0');
 
 $projectFolder = basename(BASE_PATH);
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
