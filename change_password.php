@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         rel="stylesheet">
 
     
-    <link rel="stylesheet" href="<?= CSS_URL ?>/change_password.css?v=9">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/change_password.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
 </head>

@@ -2,8 +2,8 @@
    Scoped under sd-* so gjc-clear.css's student-* !important overrides never
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
-@import url("gjc-clear.css?v=12");
-@import url("theme.css?v=2");
+@import url("gjc-clear.css?v=14");
+@import url("theme.css?v=3");
 
 /* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
    — theme.css is the single source of truth for the palette. */
@@ -839,34 +839,9 @@ body.sd-body {
   white-space: nowrap;
 }
 
-/* ===== TABLES (DataTables inside .sd-panel) ===== */
-.sd-table {
-  margin: 0;
-}
-
-.sd-table thead th {
-  background: transparent;
-  border-bottom: 1px solid var(--sd-line);
-  color: var(--sd-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase;
-  padding: 10px 12px;
-  white-space: nowrap;
-}
-
-.sd-table tbody td {
-  border-bottom: 1px solid #eef3ee;
-  color: var(--sd-ink);
-  font-size: 13.5px;
-  padding: 13px 12px;
-  vertical-align: middle;
-}
-
-.sd-table tbody tr:hover td {
-  background: #f6faf7;
-}
+/* ===== TABLES (DataTables inside .sd-panel) =====
+   .sd-table base styling now comes from the canonical table system in
+   theme.css (body.sd-body .table). */
 
 .sd-table td.sd-cell-mono {
   font-family: var(--sd-mono);

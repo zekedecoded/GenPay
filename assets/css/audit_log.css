@@ -9,10 +9,8 @@
 .audit-reset:hover { background:#f4f7f1; }
 
 .audit-table-wrap { border:1px solid var(--gp-line); border-radius:var(--gjc-radius); overflow:hidden; }
-.audit-table { font-size:13px; margin:0; }
-.audit-table thead th { background:var(--gp-green-900); color:#fff; text-transform:uppercase; font-size:11px; letter-spacing:.04em; font-weight:700; border:0; padding:12px 14px; }
-.audit-table tbody td { padding:12px 14px; border-color:var(--gp-line); vertical-align:middle; }
-.audit-table tbody tr:hover { background:#f9fbf8; }
+/* .audit-table styling now comes from the canonical table system in theme.css;
+   only the semantic row tints below are page-specific. */
 .audit-row-login { background:#f0fdf6; }
 .audit-row-password { background:#fff8ec; }
 .audit-row-login-failed { background:#fef2f2; }

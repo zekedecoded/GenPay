@@ -5,6 +5,8 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['finance']);
 gjc_ensure_operational_tables($db);
+gjc_ensure_parent_schema($db);
+gjc_ensure_parent_wallet_schema($db);
 
 $pendingRequests = (int) $db->query("SELECT COUNT(*) FROM topup_requests WHERE status = 'pending'")->fetchColumn();
 $loadedToday = (float) $db->query("SELECT COALESCE(SUM(amount), 0) FROM topup_requests WHERE status = 'approved' AND DATE(approved_at) = CURDATE()")->fetchColumn();
@@ -29,6 +31,31 @@ $topupHistory = $db->query(
       LIMIT 20"
 )->fetchAll(PDO::FETCH_ASSOC);
 
+// Parent wallet top-ups — merged in from the former admin/parent_topups.php
+// (that URL now redirects here with ?tab=parent).
+$parentPendingCount = (int) $db->query("SELECT COUNT(*) FROM parent_topup_requests WHERE status = 'pending'")->fetchColumn();
+$parentLoadedToday  = (float) $db->query("SELECT COALESCE(SUM(credited_amount), 0) FROM parent_topup_requests WHERE status = 'approved' AND DATE(processed_at) = CURDATE()")->fetchColumn();
+
+$parentPending = $db->query(
+    "SELECT ptr.*, u.first_name, u.last_name
+       FROM parent_topup_requests ptr
+       JOIN parents p ON p.id = ptr.parent_id
+       JOIN users u ON u.userID = p.user_id
+      WHERE ptr.status = 'pending'
+      ORDER BY ptr.requested_at ASC
+      LIMIT 20"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$parentHistory = $db->query(
+    "SELECT ptr.*, u.first_name, u.last_name
+       FROM parent_topup_requests ptr
+       JOIN parents p ON p.id = ptr.parent_id
+       JOIN users u ON u.userID = p.user_id
+      ORDER BY ptr.requested_at DESC
+      LIMIT 20"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$activeTab   = (($_GET['tab'] ?? '') === 'parent') ? 'parent' : 'student';
 $currentPage = 'topups';
 ?>
 
@@ -44,16 +71,31 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=14">
     <style>
         .sgc-parent-choice--active { border-color: var(--gp-success) !important; background: var(--gp-success-bg); }
+        .topup-tabs { border-bottom: 1.5px solid var(--gp-line); gap: 4px; }
+        .topup-tabs .nav-link {
+            border: none; border-bottom: 2.5px solid transparent; border-radius: 0;
+            color: var(--gp-ink-soft, #6b7280); font-weight: 700; font-size: 14px;
+            padding: 10px 18px; background: transparent;
+        }
+        .topup-tabs .nav-link.active {
+            color: var(--gp-green-850); border-bottom-color: var(--gp-green-850); background: transparent;
+        }
+        .topup-tabs .tab-count {
+            display: inline-block; min-width: 20px; padding: 1px 7px; margin-left: 6px;
+            border-radius: 999px; font-size: 11px; font-weight: 800;
+            background: var(--gp-cream); color: var(--gp-green-850);
+        }
+        .topup-tabs .nav-link.active .tab-count { background: var(--gp-warning-bg); color: var(--gp-warning); }
     </style>
 </head>
 
@@ -70,7 +112,7 @@ $currentPage = 'topups';
 
                 <div>
                     <h1>Top-ups</h1>
-                    <p>Review pending requests, process wallet loads, and monitor recent top-up activity.</p>
+                    <p>Review pending student and parent wallet load requests, and monitor recent top-up activity.</p>
                 </div>
 
                 <div class="admin-user">
@@ -80,6 +122,24 @@ $currentPage = 'topups';
                     </div>
                 </div>
             </header>
+
+            <ul class="nav topup-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link<?= $activeTab === 'student' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-student" type="button" role="tab">
+                        <i class="fa-solid fa-user-graduate me-1"></i>Student
+                        <?php if ($pendingRequests > 0): ?><span class="tab-count"><?= $pendingRequests ?></span><?php endif; ?>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link<?= $activeTab === 'parent' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-parent" type="button" role="tab">
+                        <i class="fa-solid fa-people-roof me-1"></i>Parent
+                        <?php if ($parentPendingCount > 0): ?><span class="tab-count"><?= $parentPendingCount ?></span><?php endif; ?>
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+            <div class="tab-pane fade<?= $activeTab === 'student' ? ' show active' : '' ?>" id="tab-student" role="tabpanel">
 
             <section class="topup-stats-grid mb-4">
 
@@ -180,8 +240,6 @@ $currentPage = 'topups';
                         <h3>Recent Top-up History</h3>
                         <p>Latest completed, rejected, and processing wallet load records.</p>
                     </div>
-
-                    <a href="<?= ADMIN_URL ?>/topup_history.php" class="history-link">View All</a>
                 </div>
 
                 <div class="table-responsive">
@@ -218,6 +276,129 @@ $currentPage = 'topups';
                 </div>
 
             </section>
+
+            </div><!-- /#tab-student -->
+
+            <div class="tab-pane fade<?= $activeTab === 'parent' ? ' show active' : '' ?>" id="tab-parent" role="tabpanel">
+
+            <section class="topup-stats-grid mb-4">
+
+                <div class="topup-stat-card">
+                    <div class="stat-icon-wrap">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <span>Pending Requests</span>
+                    <h2><?= $parentPendingCount ?></h2>
+                    <p>Awaiting finance approval</p>
+                </div>
+
+                <div class="topup-stat-card">
+                    <div class="stat-icon-wrap">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <span>Loaded Today</span>
+                    <h2><?= gjc_money($parentLoadedToday) ?></h2>
+                    <p>Total parent wallet load volume</p>
+                </div>
+
+            </section>
+
+            <section class="topup-panel mb-4" id="pending-parent-topups">
+
+                <div class="topup-panel-header">
+                    <div>
+                        <h3>Pending Requests</h3>
+                        <p>Approve or reject incoming parent wallet top-up requests.</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table topup-table align-middle js-datatable" id="pendingParentTopupsTable" data-page-length="10">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Parent</th>
+                                <th>Amount</th>
+                                <th>Source</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($parentPending as $topup):
+                                $parentName = trim($topup['first_name'] . ' ' . $topup['last_name']);
+                            ?>
+                            <tr>
+                                <td><?= gjc_e($topup['reference_no']) ?></td>
+                                <td>
+                                    <div class="topup-user-cell">
+                                        <div class="topup-avatar"><?= gjc_e(strtoupper(substr($parentName, 0, 1))) ?></div>
+                                        <strong><?= gjc_e($parentName) ?></strong>
+                                    </div>
+                                </td>
+                                <td class="amount-text"><?= gjc_money((float) $topup['amount']) ?></td>
+                                <td><span class="method-pill"><?= gjc_e(ucfirst($topup['source'])) ?></span></td>
+                                <td><?= gjc_e(date('M d, h:i A', strtotime($topup['requested_at']))) ?></td>
+                                <td>
+                                    <div class="topup-actions">
+                                        <button type="button" class="approve-btn" onclick="approveParentTopup(<?= (int) $topup['id'] ?>)">Approve</button>
+                                        <button type="button" class="reject-btn" onclick="rejectParentTopup(<?= (int) $topup['id'] ?>)">Reject</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </section>
+
+            <section class="topup-panel">
+
+                <div class="topup-panel-header">
+                    <div>
+                        <h3>Recent History</h3>
+                        <p>Latest approved, rejected, and cancelled parent top-up records.</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table topup-table align-middle js-datatable" id="parentTopupHistoryTable" data-page-length="10">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Parent</th>
+                                <th>Amount</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($parentHistory as $history):
+                                $parentName = trim($history['first_name'] . ' ' . $history['last_name']);
+                            ?>
+                            <tr>
+                                <td><?= gjc_e($history['reference_no']) ?></td>
+                                <td><?= gjc_e($parentName) ?></td>
+                                <td class="amount-text"><?= gjc_money((float) $history['amount']) ?></td>
+                                <td><span class="method-pill"><?= gjc_e(ucfirst($history['source'])) ?></span></td>
+                                <td><span class="topup-status <?= strtolower($history['status']) ?>"><?= gjc_e(ucfirst($history['status'])) ?></span></td>
+                                <td><?= gjc_e(date('M d, h:i A', strtotime($history['requested_at']))) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </section>
+
+            </div><!-- /#tab-parent -->
+            </div><!-- /.tab-content -->
 
         </main>
 
@@ -739,6 +920,51 @@ $currentPage = 'topups';
             window.location.reload();
         }
     }
+
+    // ── Parent top-ups (merged from the former parent_topups.php page) ──────
+    const PARENT_TOPUPS_API = '<?= ADMIN_URL ?>/api/parent_topups.php';
+
+    async function approveParentTopup(id) {
+        if (!confirm('Approve this parent top-up request?')) return;
+        try {
+            const res = await fetch(PARENT_TOPUPS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'approve', id: id }),
+            });
+            const data = await res.json();
+            alert(data.message || (data.success ? 'Approved.' : (data.error || 'Failed.')));
+            if (data.success) window.location.href = '<?= ADMIN_URL ?>/topups.php?tab=parent';
+        } catch (err) {
+            alert('Network error. Please try again.');
+        }
+    }
+
+    async function rejectParentTopup(id) {
+        if (!confirm('Reject this parent top-up request?')) return;
+        try {
+            const res = await fetch(PARENT_TOPUPS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reject', id: id }),
+            });
+            const data = await res.json();
+            alert(data.message || (data.success ? 'Rejected.' : (data.error || 'Failed.')));
+            if (data.success) window.location.href = '<?= ADMIN_URL ?>/topups.php?tab=parent';
+        } catch (err) {
+            alert('Network error. Please try again.');
+        }
+    }
+
+    // DataTables initialized inside the hidden tab compute zero column widths;
+    // re-adjust whenever a tab is revealed.
+    document.querySelectorAll('.topup-tabs button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', () => {
+            if (window.jQuery && $.fn.dataTable) {
+                $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            }
+        });
+    });
     </script>
 
 </body>

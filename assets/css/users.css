@@ -126,43 +126,7 @@
   transform: translateY(-2px);
 }
 
-.users-table {
-  margin: 0;
-  border-collapse: separate;
-  border-spacing: 0 12px;
-}
-
-.users-table thead th {
-  background: transparent;
-  color: var(--gp-green-850);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  border: none;
-  padding: 0 16px 6px;
-}
-
-.users-table tbody tr {
-  background: #ffffff;
-  box-shadow: 0 10px 26px rgba(5, 41, 22, 0.06);
-}
-
-.users-table tbody td {
-  padding: 18px 16px;
-  border: none;
-  color: #1f2f25;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.users-table tbody td:first-child {
-  border-radius: 18px 0 0 18px;
-}
-
-.users-table tbody td:last-child {
-  border-radius: 0 18px 18px 0;
-}
+/* .users-table styling now comes from the canonical table system in theme.css. */
 
 .user-cell {
   display: flex;

@@ -1,6 +1,6 @@
 /* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
-@import url("theme.css?v=2");
+@import url("theme.css?v=3");
 
 :root {
   /* Primary green scale — aliases of the shared gp-* theme
@@ -118,166 +118,12 @@ img {
   object-fit: contain;
 }
 
-/* Layout */
-.admin-layout,
-.student-layout {
-  background: var(--gjc-page) !important;
-}
-
-.admin-main,
-.student-main,
-.merchant-main {
-  padding: 24px !important;
-}
-
-.admin-sidebar,
-.student-sidebar {
-  background: var(--gjc-sidebar) !important;
-  box-shadow: 4px 0 18px rgba(6, 55, 29, 0.18) !important;
-  border-right: 4px solid var(--gjc-gold-500);
-}
-
-.brand-box,
-.student-brand {
-  padding: 0 4px 18px;
-  margin-bottom: 18px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.brand-logo,
-.student-brand-logo {
-  width: 70px !important;
-  min-width: 70px !important;
-  height: 70px !important;
-  border-radius: 50% !important;
-  background: #fff !important;
-  box-shadow: none !important;
-  border: 2px solid var(--gjc-gold-500);
-  padding: 4px;
-}
-
-.brand-logo img,
-.student-brand-logo img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-}
-
-.brand-box h4,
-.student-brand h4 {
-  font-size: 18px !important;
-  font-weight: 800 !important;
-}
-
-.brand-box span,
-.student-brand span {
-  color: rgba(255, 255, 255, 0.78) !important;
-}
-
-.sidebar-menu,
-.student-menu {
-  gap: 6px !important;
-}
-
-.sidebar-menu a,
-.student-menu a {
-  height: 46px !important;
-  border-radius: var(--gjc-radius) !important;
-  color: rgba(255, 255, 255, 0.88) !important;
-  font-weight: 700 !important;
-}
-
-.sidebar-menu a:hover,
-.sidebar-menu a.active,
-.student-menu a:hover,
-.student-menu a.active {
-  background: var(--gjc-gold-500) !important;
-  color: var(--gjc-green-950) !important;
-  box-shadow: none !important;
-}
-
-/* Logout: quiet neutral chip at rest (gold is reserved for active nav),
-   danger red on hover to match the modal's confirm button. */
-.logout-btn,
-.student-logout {
-  height: 46px !important;
-  border-radius: var(--gjc-radius) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  color: rgba(255, 255, 255, 0.85) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  box-shadow: none !important;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease !important;
-}
-
-.logout-btn i,
-.student-logout i {
-  transition: transform 0.18s ease;
-}
-
-.logout-btn:hover,
-.student-logout:hover {
-  background: var(--gjc-danger) !important;
-  border-color: var(--gjc-danger) !important;
-  color: #fff !important;
-}
-
-.logout-btn:hover i,
-.student-logout:hover i {
-  transform: translateX(3px);
-}
-
-.logout-btn:focus-visible,
-.student-logout:focus-visible {
-  outline: 2px solid var(--gjc-gold-500);
-  outline-offset: 2px;
-}
-
-/* Top bars */
-.topbar,
-.student-topbar {
-  min-height: 76px !important;
-  padding: 16px 18px !important;
-  background: var(--gjc-panel) !important;
-  border: 1px solid var(--gjc-line) !important;
-  border-left: 6px solid var(--gjc-gold-500) !important;
-  border-radius: var(--gjc-radius) !important;
-  box-shadow: var(--gjc-shadow-sm) !important;
-  backdrop-filter: none !important;
-}
-
-.topbar h1,
-.student-topbar h1 {
-  color: var(--gjc-green-950) !important;
-  font-size: 24px !important;
-  font-weight: 800 !important;
-}
-
-.topbar p,
-.student-topbar p {
-  color: var(--gjc-muted) !important;
-  font-size: 14px !important;
-}
-
-.menu-btn,
-.student-menu-btn {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: var(--gjc-radius) !important;
-  background: var(--gjc-green-800) !important;
-  color: #fff !important;
-  box-shadow: none !important;
-}
-
-.avatar,
-.student-avatar {
-  width: 40px !important;
-  height: 40px !important;
-  border-radius: var(--gjc-radius) !important;
-  background: var(--gjc-green-800) !important;
-  box-shadow: none !important;
-}
+/* (Legacy shell overrides removed — sidebars and topbars are styled by each
+   role's own shell CSS, all sharing the sd forest/gold design: admin.css
+   .admin-sidebar/.topbar, student_dashboard.css .sd-sidebar/.sd-topbar,
+   parent_shell.css .parent-sidebar/.parent-topbar. The old white boxed
+   topbar + gold-filled nav look that lived here was overriding admin.css
+   with !important and made the finance side look different.) */
 
 .user-avatar,
 .topup-avatar,
@@ -733,61 +579,8 @@ img {
   border-radius: var(--gjc-radius);
 }
 
-.premium-table,
-.student-premium-table,
-.merchant-premium-table,
-.users-table,
-.transactions-table,
-.topup-table,
-.encash-table {
-  border-collapse: collapse !important;
-  border-spacing: 0 !important;
-  background: #fff !important;
-}
-
-.premium-table thead th,
-.student-premium-table thead th,
-.merchant-premium-table thead th,
-.users-table thead th,
-.transactions-table thead th,
-.topup-table thead th,
-.encash-table thead th {
-  background: var(--gjc-green-900) !important;
-  color: #fff !important;
-  border: 0 !important;
-  padding: 12px 14px !important;
-  font-size: 12px !important;
-  font-weight: 800 !important;
-  text-transform: uppercase;
-}
-
-.premium-table tbody tr,
-.student-premium-table tbody tr,
-.merchant-premium-table tbody tr,
-.users-table tbody tr,
-.transactions-table tbody tr,
-.topup-table tbody tr,
-.encash-table tbody tr {
-  background: #fff !important;
-  box-shadow: none !important;
-}
-
-.premium-table tbody td,
-.student-premium-table tbody td,
-.merchant-premium-table tbody td,
-.users-table tbody td,
-.transactions-table tbody td,
-.topup-table tbody td,
-.encash-table tbody td {
-  border-bottom: 1px solid var(--gjc-line) !important;
-  padding: 13px 14px !important;
-  color: var(--gjc-ink) !important;
-}
-
-.users-table tbody td:first-child,
-.users-table tbody td:last-child {
-  border-radius: 0 !important;
-}
+/* (Legacy green-header table system removed — tables are now styled by the
+   canonical minimal-hairline block in theme.css, one design for all roles.) */
 
 .role-pill,
 .status-pill,

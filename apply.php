@@ -403,7 +403,7 @@ function apply_photo_preview_data_uri(array $attached): ?string
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/apply.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/apply.css?v=6">
 </head>
 <body>
 

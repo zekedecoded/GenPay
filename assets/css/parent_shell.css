@@ -3,8 +3,8 @@
    (mirrors the exact pattern used in admin.css / merchant.css).
    Replaces the legacy student.css shell (.student-layout etc.), which
    nothing else in the app depends on. */
-@import url("gjc-clear.css?v=12");
-@import url("theme.css?v=2");
+@import url("gjc-clear.css?v=14");
+@import url("theme.css?v=3");
 
 :root {
   --emerald-950: var(--gp-green-950);
@@ -112,16 +112,16 @@ body {
 }
 
 .parent-menu a {
-  min-height: 40px;
-  color: rgba(255, 255, 255, 0.62);
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.68);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 10px;
   border-left: 3px solid transparent;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   transition: color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
@@ -129,9 +129,9 @@ body {
 }
 
 .parent-nav-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
+  width: 18px;
+  min-width: 18px;
+  font-size: 15px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -165,8 +165,8 @@ body {
 
 .parent-logout {
   margin-top: 20px;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border-radius: 10px;
   background: transparent;
   color: #e0654f;
@@ -174,7 +174,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   transition: color 0.15s, background 0.15s;
@@ -183,9 +183,9 @@ body {
 }
 
 .parent-logout-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
+  width: 18px;
+  min-width: 18px;
+  font-size: 15px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -390,31 +390,9 @@ body {
 .parent-badge--info    { background: var(--gp-info-bg);    color: var(--gp-info); }
 .parent-badge--gold    { background: var(--gp-gold-soft);  color: var(--gp-gold-deep); border: 1px solid var(--gp-gold-line); }
 
-/* ===== TABLE ===== */
-.parent-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.parent-table thead th {
-  text-align: left;
-  padding: 10px 14px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--gp-muted);
-  border-bottom: 1px solid var(--ad-line);
-  white-space: nowrap;
-}
-.parent-table tbody td {
-  padding: 13px 14px;
-  font-size: 13.5px;
-  border-bottom: 1px solid #eef3ee;
-  vertical-align: middle;
-  color: var(--gp-ink);
-}
-.parent-table tbody tr:last-child td { border-bottom: none; }
-.parent-table tbody tr:hover td { background: #f6faf7; }
+/* ===== TABLE =====
+   .parent-table styling now comes from the canonical table system in
+   theme.css (parent pages carry body.gp-theme). */
 
 .parent-empty {
   text-align: center;

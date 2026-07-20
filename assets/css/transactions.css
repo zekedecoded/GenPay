@@ -128,44 +128,8 @@
   font-weight: 900;
 }
 
-/* TABLE */
-
-.transactions-table {
-  margin: 0;
-  border-collapse: separate;
-  border-spacing: 0 12px;
-}
-
-.transactions-table thead th {
-  background: transparent;
-  color: var(--gp-green-850);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  border: none;
-  padding: 0 16px 6px;
-}
-
-.transactions-table tbody tr {
-  background: white;
-  box-shadow: 0 10px 26px rgba(5, 41, 22, 0.06);
-}
-
-.transactions-table tbody td {
-  padding: 18px 16px;
-  border: none;
-  color: var(--gp-ink);
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.transactions-table tbody td:first-child {
-  border-radius: 18px 0 0 18px;
-}
-
-.transactions-table tbody td:last-child {
-  border-radius: 0 18px 18px 0;
-}
+/* TABLE — .transactions-table styling now comes from the canonical
+   table system in theme.css. */
 
 .reference-text,
 .transaction-amount {

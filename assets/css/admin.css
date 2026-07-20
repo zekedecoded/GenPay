@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=12");
-@import url("theme.css?v=2");
+@import url("gjc-clear.css?v=14");
+@import url("theme.css?v=3");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -126,16 +126,16 @@ body {
 }
 
 .sidebar-menu a {
-  min-height: 40px;
-  color: rgba(255, 255, 255, 0.62);
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.68);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
+  padding: 0 14px;
   border-radius: 10px;
   border-left: 3px solid transparent;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   transition: color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
@@ -143,9 +143,9 @@ body {
 }
 
 .nav-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
+  width: 18px;
+  min-width: 18px;
+  font-size: 15px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -183,8 +183,8 @@ body {
 
 .logout-btn {
   margin-top: 20px;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border-radius: 10px;
   background: transparent;
   color: #e0654f;
@@ -192,7 +192,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   transition: color 0.15s, background 0.15s;
@@ -201,9 +201,9 @@ body {
 }
 
 .logout-icon {
-  width: 17px;
-  min-width: 17px;
-  font-size: 14px;
+  width: 18px;
+  min-width: 18px;
+  font-size: 15px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -630,33 +630,8 @@ a.mini-metric-card:focus-visible {
   color: #116232;
 }
 
-.premium-table {
-  margin-bottom: 0;
-}
-
-/* The student sd-table look: quiet uppercase headers, hairline rows */
-.premium-table thead th {
-  background: transparent;
-  border-bottom: 1px solid var(--ad-line);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 10px 12px;
-  white-space: nowrap;
-}
-
-.premium-table tbody td {
-  padding: 13px 12px;
-  font-size: 13.5px;
-  border-color: #eef3ee;
-  vertical-align: middle;
-}
-
-.premium-table tbody tr:hover td {
-  background: #f6faf7;
-}
+/* .premium-table styling now comes from the canonical table system in
+   theme.css (minimal hairline, one design for all roles). */
 
 .table-icon {
   width: 22px;
@@ -683,85 +658,7 @@ a.mini-metric-card:focus-visible {
   color: var(--gp-warning);
 }
 
-.dataTables_wrapper .dataTables_filter input,
-.dataTables_wrapper .dataTables_length select {
-  border: 1px solid var(--ad-line);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 13px;
-  background: #fbfdfb;
-  color: var(--text-main);
-  box-shadow: none !important;
-}
-
-.dataTables_wrapper .dataTables_filter input:focus,
-.dataTables_wrapper .dataTables_length select:focus {
-  outline: none;
-  border-color: #9fc9ae;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important;
-}
-
-.dataTables_wrapper .dataTables_filter label,
-.dataTables_wrapper .dataTables_length label,
-.dataTables_wrapper .dataTables_info {
-  color: var(--text-muted) !important;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.dataTables_wrapper .dataTables_filter input {
-  min-width: 220px;
-  margin-left: 8px;
-}
-
-/* Pagination — the student card-style pager (works for both plain
-   DataTables buttons and the Bootstrap 5 integration's .page-link) */
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-  border-radius: 9px !important;
-  border: 1px solid var(--ad-line) !important;
-  background: #fff !important;
-  color: var(--text-main) !important;
-  font-size: 12.5px;
-  font-weight: 700;
-  margin-left: 4px !important;
-}
-
-.dataTables_wrapper .dataTables_paginate .paginate_button.current,
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-  background: var(--emerald-900) !important;
-  border-color: var(--emerald-900) !important;
-  color: #fff !important;
-}
-
-.dataTables_wrapper .pagination {
-  gap: 4px;
-  margin: 0;
-}
-
-.dataTables_wrapper .pagination .page-link {
-  background: #fff;
-  border: 1px solid var(--ad-line);
-  border-radius: 9px;
-  color: var(--text-main);
-  font-size: 12.5px;
-  font-weight: 700;
-  padding: 6px 12px;
-}
-
-.dataTables_wrapper .pagination .page-item.active .page-link {
-  background: var(--emerald-900);
-  border-color: var(--emerald-900);
-  color: #fff;
-}
-
-.dataTables_wrapper .pagination .page-item.disabled .page-link {
-  background: #fbfdfb;
-  color: #b3c0b7;
-}
-
-.dataTables_wrapper .pagination .page-link:focus {
-  box-shadow: none;
-}
+/* DataTables chrome now lives in theme.css (shared across all roles). */
 
 .gjc-datatable-top,
 .gjc-datatable-bottom {

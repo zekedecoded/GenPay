@@ -30,6 +30,8 @@
   --gp-cream: #eef4ef;      /* page background */
   --gp-card: #ffffff;       /* content cards */
   --gp-line: #e2eae3;       /* hairline borders */
+  --gp-line-soft: #eef3ee;  /* table row separators (softer than --gp-line) */
+  --gp-row-hover: #f6faf7;  /* table row hover tint */
 
   /* ---- Text */
   --gp-ink: #14251b;
@@ -307,40 +309,174 @@
 }
 
 /* ============================================================
-   TABLES — scannable, on white cards
+   TABLES — one canonical design, all roles (minimal hairline).
+   Covers: opt-in .gp-table, every Bootstrap .table under the
+   role shells (body.gp-theme = admin/merchant/parent,
+   body.sd-body = student), and the parent ledger's .txn-table.
+   The per-page table skins (users/topups/transactions/encash/
+   visitors/audit/rp/sa + the gjc-clear green-header block) were
+   retired in favor of this system — don't reintroduce them.
+   Cell-level accents (.amount-text, .txn-amount, audit row
+   tints, table-danger rows) still apply: cells inherit their
+   text color from the table, and td backgrounds are left to
+   Bootstrap's variant vars.
    ============================================================ */
 
-.gp-table {
+.gp-table,
+.txn-table,
+body.gp-theme .table,
+body.sd-body .table {
   width: 100%;
   margin-bottom: 0;
   color: var(--gp-ink);
+  background: #fff;
+  border-collapse: collapse;
+  border-spacing: 0;
 }
 
-.gp-table thead th {
-  background: var(--gp-cream);
-  color: var(--gp-green-850);
-  font-size: 12px;
+.gp-table thead th,
+.txn-table thead th,
+body.gp-theme .table thead th,
+body.sd-body .table thead th {
+  background: transparent;
+  border-bottom: 1px solid var(--gp-line);
+  color: var(--gp-muted);
+  font-size: 11px;
   font-weight: 800;
+  /* !important outranks gjc-clear.css's global `* { letter-spacing: 0 }` reset */
+  letter-spacing: 0.06em !important;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: none;
-  padding: 12px 14px;
+  text-align: left;
+  padding: 10px 12px;
   white-space: nowrap;
+  box-shadow: none;
 }
 
-.gp-table tbody td {
-  padding: 13px 14px;
+.gp-table tbody td,
+.txn-table tbody td,
+body.gp-theme .table tbody td,
+body.sd-body .table tbody td {
+  padding: 13px 12px;
   font-size: 13.5px;
-  border-bottom: 1px solid #eef3ee;
+  border: 0;
+  border-bottom: 1px solid var(--gp-line-soft);
+  border-radius: 0;
   vertical-align: middle;
+  box-shadow: none;
 }
 
-.gp-table tbody tr:last-child td {
+.gp-table tbody tr,
+.txn-table tbody tr,
+body.gp-theme .table tbody tr,
+body.sd-body .table tbody tr {
+  box-shadow: none;
+}
+
+.gp-table tbody tr:last-child td,
+.txn-table tbody tr:last-child td,
+body.gp-theme .table tbody tr:last-child td,
+body.sd-body .table tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.gp-table tbody tr:hover td {
-  background: #f7faf7;
+.gp-table tbody tr:hover td,
+.txn-table tbody tr:hover td,
+body.gp-theme .table tbody tr:hover td,
+body.sd-body .table tbody tr:hover td {
+  background: var(--gp-row-hover);
+}
+
+/* Compact variant for small breakdown tables (modals, dashboard splits) */
+body.gp-theme .table-sm tbody td,
+body.sd-body .table-sm tbody td {
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+
+/* Detail views keep their grid, in the same hairline color */
+body.gp-theme .table-bordered thead th,
+body.gp-theme .table-bordered tbody td {
+  border: 1px solid var(--gp-line-soft);
+}
+
+/* DataTables chrome (search / length / info / pagination) — shared so every
+   role's listing controls match; was duplicated in admin.css + merchant.css. */
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+  border: 1px solid var(--gp-line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: #fbfdfb;
+  color: var(--gp-ink);
+  box-shadow: none !important;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus,
+.dataTables_wrapper .dataTables_length select:focus {
+  outline: none;
+  border-color: #9fc9ae;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important;
+}
+
+.dataTables_wrapper .dataTables_filter label,
+.dataTables_wrapper .dataTables_length label,
+.dataTables_wrapper .dataTables_info {
+  color: var(--gp-muted) !important;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+  min-width: 220px;
+  margin-left: 8px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  border-radius: 9px !important;
+  border: 1px solid var(--gp-line) !important;
+  background: #fff !important;
+  color: var(--gp-ink) !important;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-left: 4px !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background: var(--gp-green-900) !important;
+  border-color: var(--gp-green-900) !important;
+  color: #fff !important;
+}
+
+.dataTables_wrapper .pagination {
+  gap: 4px;
+  margin: 0;
+}
+
+.dataTables_wrapper .pagination .page-link {
+  background: #fff;
+  border: 1px solid var(--gp-line);
+  border-radius: 9px;
+  color: var(--gp-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+
+.dataTables_wrapper .pagination .page-item.active .page-link {
+  background: var(--gp-green-900);
+  border-color: var(--gp-green-900);
+  color: #fff;
+}
+
+.dataTables_wrapper .pagination .page-item.disabled .page-link {
+  background: #fbfdfb;
+  color: #b3c0b7;
+}
+
+.dataTables_wrapper .pagination .page-link:focus {
+  box-shadow: none;
 }
 
 .gp-mono {

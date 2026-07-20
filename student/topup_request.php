@@ -105,7 +105,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
 </head>

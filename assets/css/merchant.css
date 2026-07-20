@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=12");
-@import url("theme.css?v=2");
+@import url("gjc-clear.css?v=14");
+@import url("theme.css?v=3");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -267,109 +267,8 @@ html {
   color: #116232;
 }
 
-/* The student sd-table look: quiet uppercase headers, hairline rows */
-.merchant-premium-table {
-  margin-bottom: 0;
-}
-
-.merchant-premium-table thead th {
-  background: transparent;
-  border-bottom: 1px solid var(--ad-line);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 10px 12px;
-  white-space: nowrap;
-}
-
-.merchant-premium-table tbody td {
-  padding: 13px 12px;
-  font-size: 13.5px;
-  border-color: #eef3ee;
-  vertical-align: middle;
-}
-
-.merchant-premium-table tbody tr:hover td {
-  background: #f6faf7;
-}
-
-.dataTables_wrapper .dataTables_filter input,
-.dataTables_wrapper .dataTables_length select {
-  border: 1px solid var(--ad-line);
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 13px;
-  background: #fbfdfb;
-  color: var(--text-main);
-  box-shadow: none !important;
-}
-
-.dataTables_wrapper .dataTables_filter input:focus,
-.dataTables_wrapper .dataTables_length select:focus {
-  outline: none;
-  border-color: #9fc9ae;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important;
-}
-
-.dataTables_wrapper .dataTables_filter label,
-.dataTables_wrapper .dataTables_length label,
-.dataTables_wrapper .dataTables_info {
-  color: var(--text-muted) !important;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.dataTables_wrapper .dataTables_filter input {
-  min-width: 220px;
-  margin-left: 8px;
-}
-
-/* Pagination — the student card-style pager (works for both plain
-   DataTables buttons and the Bootstrap 5 integration's .page-link) */
-.dataTables_wrapper .dataTables_paginate .paginate_button {
-  border-radius: 9px !important;
-  border: 1px solid var(--ad-line) !important;
-  background: #fff !important;
-  color: var(--text-main) !important;
-  font-size: 12.5px;
-  font-weight: 700;
-  margin-left: 4px !important;
-}
-
-.dataTables_wrapper .dataTables_paginate .paginate_button.current,
-.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-  background: var(--emerald-900) !important;
-  border-color: var(--emerald-900) !important;
-  color: #fff !important;
-}
-
-.dataTables_wrapper .pagination {
-  gap: 4px;
-  margin: 0;
-}
-
-.dataTables_wrapper .pagination .page-link {
-  background: #fff;
-  border: 1px solid var(--ad-line);
-  border-radius: 9px;
-  color: var(--text-main);
-  font-size: 12.5px;
-  font-weight: 700;
-  padding: 6px 12px;
-}
-
-.dataTables_wrapper .pagination .page-item.active .page-link {
-  background: var(--emerald-900);
-  border-color: var(--emerald-900);
-  color: #fff;
-}
-
-.dataTables_wrapper .pagination .page-item.disabled .page-link {
-  background: #fbfdfb;
-  color: #b3c0b7;
-}
+/* .merchant-premium-table styling + DataTables chrome now come from the
+   canonical table system in theme.css (one design for all roles). */
 
 .dataTables_wrapper .pagination .page-link:focus {
   box-shadow: none;

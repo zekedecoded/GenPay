@@ -152,7 +152,7 @@ function sa_meeting_label(?string $dt): string
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=17">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=4">
@@ -193,11 +193,7 @@ function sa_meeting_label(?string $dt): string
     .filter-btn.active { background:#1e5c3a; color:#fff; border-color:#1e5c3a; }
 
     /* Applications table */
-    .sa-table { margin:0; }
-    .sa-table thead th { font-size:10.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9ca3af; background:#f8f8f3; border-bottom:1px solid #eeeee8; padding:10px 16px; }
-    .sa-table tbody td { padding:14px 16px; border-bottom:1px solid #f5f5f0; vertical-align:middle; background:transparent; }
-    .sa-table tbody tr:last-child td { border-bottom:0; }
-    .sa-table tbody tr:hover td { background:#f6f8f4; }
+    /* .sa-table base styling now comes from the canonical table system in theme.css. */
     .sa-table .biz { font-size:13.5px; font-weight:600; color:#1a1a1a; }
     .sa-table .prop { font-size:13px; color:#374151; }
     .sa-table .phone { font-size:12.5px; color:#555; }

@@ -189,31 +189,7 @@
   font-size: 14px;
 }
 
-.visitors-table {
-  margin: 0;
-  width: 100%;
-}
-
-.visitors-table thead th {
-  background: #f8faf9;
-  color: var(--gp-muted);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  padding: 16px 20px;
-  border: none;
-  white-space: nowrap;
-}
-
-.visitors-table tbody td {
-  padding: 16px 20px;
-  border-top: 1px solid #eef2f0;
-  color: #111827;
-  font-size: 14px;
-  vertical-align: middle;
-  white-space: nowrap;
-}
+/* .visitors-table styling now comes from the canonical table system in theme.css. */
 
 .visitor-name-cell strong {
   display: block;
