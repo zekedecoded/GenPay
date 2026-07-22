@@ -5,9 +5,10 @@
   align-items: center;
 }
 
+/* The topbar is full-bleed (admin.css uses negative margins to undo the
+   .admin-main padding) — stretch it past the centered 1080px column. */
 .settings-page .topbar {
-  width: 100%;
-  max-width: 1080px;
+  align-self: stretch;
 }
 
 .settings-panel {
@@ -285,7 +286,6 @@
 }
 
 @media (max-width: 992px) {
-  .settings-page .topbar,
   .settings-panel {
     max-width: 100%;
   }
