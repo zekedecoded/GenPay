@@ -69,9 +69,10 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                 <div class="pos-product-toolbar">
                     <input type="search" class="pos-search-input" id="posProductSearch"
                         placeholder="Search products by name, SKU, or category" autocomplete="off">
-                    <button type="button" class="merchant-loadwallet-btn" style="flex-shrink:0" onclick="lwOpen()">
+                    <!--SEND GENCOIN COMMENT ON OR OUT-->
+                    <!--<button type="button" class="merchant-loadwallet-btn" style="flex-shrink:0" onclick="lwOpen()">
                         <i class="fa-solid fa-coins"></i> <span class="merchant-loadwallet-label">Send GenCoin</span>
-                    </button>
+                    </button>-->
                 </div>
 
                 <!-- Category filter -->
