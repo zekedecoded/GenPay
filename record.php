@@ -56,6 +56,17 @@ class Record
                             . ' due to repeated attempts to list restricted products.';
                     }
 
+                    // A finance-issued suspension (admin/users.php) blocks every
+                    // role, and merchant staff go down with their owner's stall.
+                    $accountSuspension = \gjc_account_suspension(
+                        $this->con,
+                        (int) ($user['id'] ?? $user['userID'] ?? 0),
+                        in_array((int) ($user['roleID'] ?? 0), [2, 5, 6], true)
+                    );
+                    if ($accountSuspension !== null) {
+                        return 'Access Denied: ' . \gjc_suspension_notice($accountSuspension, 'Your account');
+                    }
+
                     $userId = (int) ($user['id'] ?? $user['userID'] ?? 0);
                     $roleId = (int) ($user['roleID'] ?? 0);
 

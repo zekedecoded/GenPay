@@ -585,6 +585,405 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
     return $count;
 }
 
+/**
+ * Idempotent self-healer for finance-issued account suspensions — the Suspend
+ * action in admin/users.php. Widens users.status with a third 'Suspended'
+ * label, reading the labels off the live enum rather than a hardcoded list so
+ * this never clobbers one a later migration added, then adds the columns that
+ * describe a single suspension: when it lifts (NULL = indefinite), why, who
+ * issued it, and the two bits needed to undo it cleanly — the status it
+ * interrupted, and whether the wallet freeze was ours to reverse.
+ *
+ * Distinct from restricted_suspended_until (gjc_ensure_product_violation_schema),
+ * which is the automatic merchant-only strike suspension. Both can be live on
+ * the same merchant at once; gjc_merchant_sales_blocked() ORs them.
+ */
+function gjc_ensure_account_suspension_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, 'users')) {
+        return;
+    }
+
+    try {
+        $column = $db->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+        $type = (string) ($column['Type'] ?? '');
+        if ($column && strpos($type, "'Suspended'") === false) {
+            preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $type, $labelMatches);
+            $labels = $labelMatches[1] ?? [];
+            if ($labels) {
+                $labels[] = 'Suspended';
+                $enumSql = implode(', ', array_map(
+                    static fn(string $label): string => "'" . str_replace("'", "\\'", $label) . "'",
+                    $labels
+                ));
+                $db->exec("ALTER TABLE users MODIFY status ENUM({$enumSql}) NOT NULL DEFAULT 'Active'");
+            }
+        }
+    } catch (\Throwable $ignored) {}
+
+    $cols = gjc_table_columns($db, 'users');
+    $altered = false;
+    $adds = [
+        'suspended_until'         => 'DATETIME NULL',
+        'suspension_reason'       => 'VARCHAR(255) NULL',
+        'suspended_at'            => 'DATETIME NULL',
+        'suspended_by'            => 'INT NULL',
+        'suspension_prev_status'  => 'VARCHAR(20) NULL',
+        'suspension_froze_wallet' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    ];
+    foreach ($adds as $col => $def) {
+        if (!in_array($col, $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE users ADD COLUMN {$col} {$def}");
+                $altered = true;
+            } catch (\Throwable $ignored) {}
+        }
+    }
+    if ($altered) {
+        gjc_table_columns($db, 'users', true);
+    }
+}
+
+/**
+ * The live finance-issued suspension on an account, or null when there isn't
+ * one. A timed suspension whose end has already passed is lifted right here
+ * rather than by a cron job — the same lazy expiry gjc_merchant_suspended_until()
+ * uses — so no caller ever sees a stale one.
+ *
+ * $inheritStallOwner makes a merchant staff account report its owner's
+ * suspension as its own: suspending a stall owner takes the whole stall down,
+ * staff logins included, exactly like a restricted-product suspension does.
+ *
+ * Returns ['user_id','until','reason','at','by'] where a null 'until' means
+ * indefinite — only a finance admin can lift it.
+ */
+function gjc_account_suspension(PDO $db, int $userId, bool $inheritStallOwner = false): ?array
+{
+    if ($userId <= 0 || !gjc_table_exists($db, 'users')) {
+        return null;
+    }
+    $cols = gjc_table_columns($db, 'users');
+    // Schema self-healer hasn't run against this database yet — nothing can be
+    // suspended, so don't let the missing columns turn into a query error.
+    if (!in_array('suspended_until', $cols, true)) {
+        return null;
+    }
+    $idCol = gjc_column($db, 'users', ['id', 'userID']);
+    if (!$idCol) {
+        return null;
+    }
+
+    // Own suspension first. Inheriting must be a fallback, never a redirect:
+    // reading the owner's row instead of the staff member's would let a
+    // directly-suspended staff account keep working under an unsuspended owner.
+    $own = gjc_read_account_suspension($db, $idCol, $userId);
+    if ($own !== null) {
+        return $own;
+    }
+
+    if ($inheritStallOwner && in_array('merchant_owner_id', $cols, true)) {
+        $stmt = $db->prepare("SELECT merchant_owner_id FROM users WHERE {$idCol} = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $ownerId = (int) $stmt->fetchColumn();
+        if ($ownerId > 0 && $ownerId !== $userId) {
+            return gjc_read_account_suspension($db, $idCol, $ownerId);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * One row's suspension, with the lazy expiry attached. Split out of
+ * gjc_account_suspension() only so that function can ask the same question of
+ * two accounts (the user, then their stall owner) without duplicating it.
+ */
+function gjc_read_account_suspension(PDO $db, string $idCol, int $userId): ?array
+{
+    $stmt = $db->prepare(
+        "SELECT status, suspended_until, suspension_reason, suspended_at, suspended_by
+           FROM users WHERE {$idCol} = ? LIMIT 1"
+    );
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row || (string) $row['status'] !== 'Suspended') {
+        return null;
+    }
+
+    $until = $row['suspended_until'] !== null ? (string) $row['suspended_until'] : null;
+    if ($until !== null && strtotime($until) <= time()) {
+        gjc_lift_account_suspension($db, $userId, null, 'auto_expired');
+        return null;
+    }
+
+    return [
+        'user_id' => $userId,
+        'until'   => $until,
+        'reason'  => (string) ($row['suspension_reason'] ?? ''),
+        'at'      => $row['suspended_at'] !== null ? (string) $row['suspended_at'] : null,
+        'by'      => (int) ($row['suspended_by'] ?? 0),
+    ];
+}
+
+/**
+ * Puts an account under a finance-issued suspension. $until is the datetime it
+ * lifts itself on, or null for indefinite. Freezing the student's wallet is
+ * belt-and-braces — the login block already stops the account acting — and only
+ * happens when the wallet wasn't frozen already, so lifting can tell our freeze
+ * apart from a parent's and never unlocks one it didn't set.
+ *
+ * The status write is an atomic test-and-set (see references/patterns.md): a
+ * double-submitted Suspend can't overwrite suspension_prev_status with
+ * 'Suspended' and strand the account with nothing to restore to.
+ * Returns false when the account doesn't exist or is already suspended.
+ */
+function gjc_suspend_account(PDO $db, int $userId, ?string $until, string $reason, int $suspendedBy): bool
+{
+    gjc_ensure_account_suspension_schema($db);
+    $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+
+    $prevStmt = $db->prepare("SELECT status FROM users WHERE {$idCol} = ? LIMIT 1");
+    $prevStmt->execute([$userId]);
+    $prev = $prevStmt->fetchColumn();
+    if ($prev === false) {
+        return false;
+    }
+
+    $claim = $db->prepare(
+        "UPDATE users
+            SET status = 'Suspended', suspended_until = ?, suspension_reason = ?,
+                suspended_at = NOW(), suspended_by = ?, suspension_prev_status = ?,
+                suspension_froze_wallet = 0
+          WHERE {$idCol} = ? AND status <> 'Suspended'"
+    );
+    $claim->execute([$until, mb_substr($reason, 0, 255), $suspendedBy, (string) $prev, $userId]);
+    if ($claim->rowCount() === 0) {
+        return false;
+    }
+
+    if (gjc_table_exists($db, 'student_wallets')) {
+        try {
+            $froze = $db->prepare("UPDATE student_wallets SET is_frozen = 1 WHERE user_id = ? AND is_frozen = 0");
+            $froze->execute([$userId]);
+            if ($froze->rowCount() > 0) {
+                $db->prepare("UPDATE users SET suspension_froze_wallet = 1 WHERE {$idCol} = ?")->execute([$userId]);
+            }
+        } catch (\Throwable $ignored) {}
+    }
+
+    return true;
+}
+
+/**
+ * Clears a suspension and puts the account back the way it was: status returns
+ * to whatever the suspension interrupted, so a staff account their owner had
+ * deactivated stays Inactive instead of being silently reactivated, and the
+ * student wallet is unfrozen only when the suspension is what froze it.
+ *
+ * Shared by the lazy expiry in gjc_account_suspension(), the sweep in
+ * gjc_expire_due_suspensions(), and the lift_suspension action, so all three
+ * undo a suspension identically. $liftedBy is null for an automatic expiry.
+ * Returns false when the account wasn't suspended.
+ */
+function gjc_lift_account_suspension(PDO $db, int $userId, ?int $liftedBy, string $event = 'suspension_lifted'): bool
+{
+    gjc_ensure_account_suspension_schema($db);
+    $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+
+    $stmt = $db->prepare(
+        "SELECT status, suspended_until, suspension_reason, suspension_prev_status, suspension_froze_wallet
+           FROM users WHERE {$idCol} = ? LIMIT 1"
+    );
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row || (string) $row['status'] !== 'Suspended') {
+        return false;
+    }
+
+    $restored = (string) ($row['suspension_prev_status'] ?? '');
+    if ($restored === '' || $restored === 'Suspended') {
+        $restored = 'Active';
+    }
+
+    // Test-and-set again: two concurrent lifts (an admin clicking while the
+    // page-load sweep runs) must not both unfreeze the wallet and both log.
+    $claim = $db->prepare(
+        "UPDATE users
+            SET status = ?, suspended_until = NULL, suspension_reason = NULL,
+                suspended_at = NULL, suspended_by = NULL,
+                suspension_prev_status = NULL, suspension_froze_wallet = 0
+          WHERE {$idCol} = ? AND status = 'Suspended'"
+    );
+    $claim->execute([$restored, $userId]);
+    if ($claim->rowCount() === 0) {
+        return false;
+    }
+
+    if ((int) ($row['suspension_froze_wallet'] ?? 0) === 1 && gjc_table_exists($db, 'student_wallets')) {
+        try {
+            $db->prepare("UPDATE student_wallets SET is_frozen = 0 WHERE user_id = ?")->execute([$userId]);
+        } catch (\Throwable $ignored) {}
+    }
+
+    // Both paths notify, so the account always learns access is back — whether
+    // an admin lifted it early or the clock simply ran out.
+    gjc_notify(
+        $db,
+        $userId,
+        'compliance',
+        'Account suspension lifted',
+        $event === 'auto_expired'
+            ? 'Your suspension period has ended. You can sign in and use your GenPay account again.'
+            : 'A GenPay finance admin lifted your account suspension. You can sign in and use your account again.',
+        'circle-check'
+    );
+
+    if (function_exists('logAudit')) {
+        logAudit(
+            $db,
+            $liftedBy > 0 ? $liftedBy : $userId,
+            $liftedBy > 0 ? gjc_current_role() : 'finance',
+            'USER_ACCOUNT',
+            'users',
+            [
+                'userID' => $userId,
+                'status' => 'Suspended',
+                'suspended_until' => $row['suspended_until'],
+                'suspension_reason' => $row['suspension_reason'],
+            ],
+            [
+                'event' => $event,
+                'userID' => $userId,
+                'status' => $restored,
+                'lifted_by' => $liftedBy,
+                'wallet_unfrozen' => (int) ($row['suspension_froze_wallet'] ?? 0) === 1,
+            ]
+        );
+    }
+
+    return true;
+}
+
+/**
+ * Lifts every timed suspension that has run out. gjc_account_suspension()
+ * already expires them one row at a time as it reads them, but admin/users.php
+ * renders the whole table from a single query and never calls it per row —
+ * this sweeps first so the list can't show a suspension that ended hours ago.
+ */
+function gjc_expire_due_suspensions(PDO $db): int
+{
+    gjc_ensure_account_suspension_schema($db);
+    $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+
+    try {
+        $due = $db->query(
+            "SELECT {$idCol} FROM users
+              WHERE status = 'Suspended'
+                AND suspended_until IS NOT NULL
+                AND suspended_until <= NOW()"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } catch (\Throwable $ignored) {
+        return 0;
+    }
+
+    $lifted = 0;
+    foreach ($due as $id) {
+        if (gjc_lift_account_suspension($db, (int) $id, null, 'auto_expired')) {
+            $lifted++;
+        }
+    }
+    return $lifted;
+}
+
+/**
+ * The one sentence every lockout surface shows for a suspension — the login
+ * error, the login page banner, the blocked-credit responses. Keeps the wording
+ * identical wherever a suspended account gets turned away.
+ */
+function gjc_suspension_notice(array $suspension, string $subject = 'This account'): string
+{
+    $until = $suspension['until'] ?? null;
+    $reason = trim((string) ($suspension['reason'] ?? ''));
+
+    $notice = $until
+        ? $subject . ' is suspended until ' . date('M d, Y g:i A', strtotime((string) $until)) . '.'
+        : $subject . ' is suspended indefinitely.';
+    if ($reason !== '') {
+        $notice .= ' Reason: ' . $reason;
+        if (!str_ends_with($notice, '.')) {
+            $notice .= '.';
+        }
+    }
+    if ($until === null) {
+        $notice .= ' Contact the GenPay finance office to have it reviewed.';
+    }
+
+    return $notice;
+}
+
+/**
+ * True when a stall may not sell right now — either a restricted-product strike
+ * suspension or a finance-issued suspension on the stall owner is live. Every
+ * student/parent-facing sales path checks this instead of
+ * gjc_merchant_suspended_until() alone, so a manual Suspend closes the stall the
+ * same way an automatic one does.
+ */
+function gjc_merchant_sales_blocked(PDO $db, int $merchantUserId): bool
+{
+    return gjc_merchant_suspended_until($db, $merchantUserId) !== null
+        || gjc_account_suspension($db, $merchantUserId, true) !== null;
+}
+
+/**
+ * Why money may not be credited into this account right now, or null when it
+ * may. Every inbound-money path (top-up approval, parent allowance, P2P
+ * transfer) calls this on the RECEIVING user: the login block only stops a
+ * suspended account from acting for itself, and can't stop someone else's
+ * session from pushing funds at it.
+ */
+function gjc_funds_in_block_reason(PDO $db, int $userId): ?string
+{
+    $suspension = gjc_account_suspension($db, $userId);
+    if ($suspension === null) {
+        return null;
+    }
+    return gjc_suspension_notice($suspension, gjc_user_label($db, $userId) . "'s account")
+        . ' Funds cannot be credited to it until the suspension is lifted.';
+}
+
+/**
+ * The users.userID behind a wallet row — 'student' reads student_wallets.user_id
+ * directly, 'parent' hops parent_wallets -> parents.user_id. Credit paths that
+ * only ever hold a wallet id use this to name the receiving account for
+ * gjc_funds_in_block_reason(). Returns 0 when it can't be resolved, which
+ * callers must treat as "don't block" rather than "blocked".
+ */
+function gjc_wallet_owner_user_id(PDO $db, string $kind, int $walletId): int
+{
+    if ($walletId <= 0) {
+        return 0;
+    }
+    try {
+        if ($kind === 'student' && gjc_table_exists($db, 'student_wallets')) {
+            $stmt = $db->prepare("SELECT user_id FROM student_wallets WHERE id = ? LIMIT 1");
+            $stmt->execute([$walletId]);
+            return (int) $stmt->fetchColumn();
+        }
+        if ($kind === 'parent' && gjc_table_exists($db, 'parent_wallets') && gjc_table_exists($db, 'parents')) {
+            $stmt = $db->prepare(
+                "SELECT p.user_id
+                   FROM parent_wallets pw
+                   JOIN parents p ON p.id = pw.parent_id
+                  WHERE pw.id = ? LIMIT 1"
+            );
+            $stmt->execute([$walletId]);
+            return (int) $stmt->fetchColumn();
+        }
+    } catch (\Throwable $ignored) {}
+
+    return 0;
+}
+
 function gjc_column(PDO $db, string $table, array $candidates): ?string
 {
     $columns = gjc_table_columns($db, $table);
@@ -1283,6 +1682,17 @@ function gjc_attempt_remember_login(PDO $db): void
         return;
     }
 
+    // A suspended account must not be auto-logged-in either. Without this the
+    // cookie and the gjc_require_role() lockout fight each other: the cookie
+    // rebuilds the session on login.php, login.php forwards to the dashboard,
+    // the role check tears the session down again — a redirect loop. Reading it
+    // through gjc_account_suspension() also means a suspension that has already
+    // run out lifts itself here and the login goes through as normal.
+    if (gjc_account_suspension($db, (int) $token['user_id']) !== null) {
+        gjc_clear_remember_token($db);
+        return;
+    }
+
     $db->prepare("DELETE FROM auth_remember_tokens WHERE id = ?")->execute([(int) $token['id']]);
     gjc_establish_login_session($user);
     session_regenerate_id(true);
@@ -1334,6 +1744,19 @@ function gjc_require_role(array $roles): void
                     header("Location: " . BASE_URL . "/login.php?reason=suspended&until=" . urlencode($suspendedUntil));
                     exit();
                 }
+            }
+
+            // A finance-issued suspension (admin/users.php) applies to every
+            // role, and merchant staff go down with their owner's stall. Checked
+            // on every page load, not just at login, so suspending someone who
+            // is already signed in ends their session on their next click.
+            $account = gjc_account_suspension($db, $userId, $role === 'merchant');
+            if ($account !== null) {
+                session_unset();
+                session_destroy();
+                header("Location: " . BASE_URL . "/login.php?reason=account_suspended"
+                    . ($account['until'] !== null ? "&until=" . urlencode((string) $account['until']) : ""));
+                exit();
             }
         }
     }
@@ -1740,10 +2163,11 @@ function gjc_cart_snapshot(PDO $db): array
     $total = 0.0;
     $merchantUserId = $cart['merchant_user_id'] ?? null;
 
-    // A stall suspended over restricted-product strikes can't sell at all —
-    // empty the cart with the reason so the student isn't left holding an
-    // order they can never check out.
-    if ($merchantUserId && gjc_merchant_suspended_until($db, (int) $merchantUserId) !== null) {
+    // A suspended stall can't sell at all — whether the suspension came from
+    // restricted-product strikes or from finance suspending the owner's
+    // account. Empty the cart with the reason so the student isn't left
+    // holding an order they can never check out.
+    if ($merchantUserId && gjc_merchant_sales_blocked($db, (int) $merchantUserId)) {
         $stallLabel = gjc_merchant_display_name($db, (int) $merchantUserId) ?: 'This stall';
         foreach ($cart['items'] as $itemId => $qty) {
             $row = $rowsById[(int) $itemId] ?? null;

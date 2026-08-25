@@ -61,7 +61,7 @@ try {
             throw new RuntimeException('This Wallet QR belongs to a different stall than your pending order.');
         }
 
-        if (gjc_merchant_suspended_until($db, (int) $order['merchant_user_id']) !== null) {
+        if (gjc_merchant_sales_blocked($db, (int) $order['merchant_user_id'])) {
             throw new RuntimeException('This stall is temporarily suspended and cannot accept payments right now. Please cancel this order.');
         }
 

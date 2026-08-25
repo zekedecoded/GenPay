@@ -6,9 +6,28 @@ require_once __DIR__ . '/../connection/app.php';
 gjc_require_role(['finance']);
 
 gjc_backfill_student_ids($db);
+gjc_ensure_account_suspension_schema($db);
+
+// Lift timed suspensions that have run out before reading the table, so the
+// list can never show one whose end date already passed.
+gjc_expire_due_suspensions($db);
+
+// The suspension columns are added by the self-healer above; if that ALTER
+// couldn't run (older MySQL grant, say) the page still has to render, so the
+// suspension parts are selected only when they actually exist.
+$userCols = gjc_table_columns($db, 'users');
+$hasSuspensionCols = in_array('suspended_until', $userCols, true);
 
 $roleFilter    = trim((string) ($_GET['role'] ?? ''));
+$statusFilter  = strtolower(trim((string) ($_GET['status'] ?? '')));
 $excludeAdmin  = !empty($_GET['exclude_admin']);
+
+// users.status is the only account-state column there is, so the filter offers
+// exactly its three labels rather than options with no data behind them.
+$statusOptions = ['active' => 'Active', 'suspended' => 'Suspended', 'inactive' => 'Inactive'];
+if (!isset($statusOptions[$statusFilter])) {
+    $statusFilter = '';
+}
 
 $query = "
     SELECT
@@ -16,6 +35,10 @@ $query = "
         u.first_name,
         u.last_name,
         u.email,
+        u.roleID,
+        u.sub_role,
+        u.status,
+        " . ($hasSuspensionCols ? "u.suspended_until,\n        u.suspension_reason," : "") . "
         r.role_name as role,
         si.studentID as student_id
     FROM users u
@@ -29,6 +52,10 @@ if ($roleFilter !== '') {
     $conditions[] = 'LOWER(COALESCE(r.role_name, "")) = ?';
     $params[] = strtolower($roleFilter);
 }
+if ($statusFilter !== '') {
+    $conditions[] = 'u.status = ?';
+    $params[] = $statusOptions[$statusFilter];
+}
 if ($excludeAdmin) {
     $conditions[] = 'LOWER(COALESCE(r.role_name, "")) != ?';
     $params[] = 'finance';
@@ -41,6 +68,13 @@ $query .= ' ORDER BY u.userID DESC';
 $stmt = $db->prepare($query);
 $stmt->execute($params);
 $dbUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$currentAdminId = gjc_user_id();
+
+// This page's older rows echo raw; anything added below is admin-entered free
+// text (a suspension reason) or ends up in an HTML attribute, so it gets
+// escaped properly — gjc_e() only casts to string, it does not escape.
+$esc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 
 $users = [];
 foreach ($dbUsers as $u) {
@@ -57,13 +91,31 @@ foreach ($dbUsers as $u) {
         $displayId = 'GJC-' . str_pad($u['userID'], 4, '0', STR_PAD_LEFT);
     }
 
+    $statusLabel = trim((string) ($u['status'] ?? 'Active'));
+    if ($statusLabel === '') {
+        $statusLabel = 'Active';
+    }
+    $isSuspended = ($statusLabel === 'Suspended');
+
+    // Mirrors users_suspend_guard() in admin/api/users.php. That endpoint is
+    // the real gate — this only decides whether to offer the menu item, so the
+    // two must agree or the UI offers an action that always fails.
+    $canSuspend = ((int) $u['userID'] !== $currentAdminId)
+        && !in_array((int) ($u['roleID'] ?? 0), [3, 4], true)
+        && (string) ($u['sub_role'] ?? '') !== 'super_admin';
+
     $users[] = [
-        "id"        => (int) $u['userID'],
-        "name"      => trim($u['first_name'] . ' ' . $u['last_name']),
-        "role"      => $roleName,
-        "school_id" => $displayId,
-        "email"     => $u['email'],
-        "status"    => "Active",
+        "id"          => (int) $u['userID'],
+        "name"        => trim($u['first_name'] . ' ' . $u['last_name']),
+        "role"        => $roleName,
+        "school_id"   => $displayId,
+        "email"       => $u['email'],
+        "status"      => $statusLabel,
+        "suspended"   => $isSuspended,
+        // A null end date on a live suspension means indefinite.
+        "suspended_until"   => $isSuspended ? ($u['suspended_until'] ?? null) : null,
+        "suspension_reason" => $isSuspended ? trim((string) ($u['suspension_reason'] ?? '')) : '',
+        "can_suspend" => $canSuspend,
     ];
 }
 
@@ -83,7 +135,7 @@ $currentPage = 'users';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -146,10 +198,11 @@ $currentPage = 'users';
                         <label>Status</label>
                         <select name="status">
                             <option value="">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="suspended">Suspended</option>
-                            <option value="blocked">Blocked</option>
-                            <option value="pending">Pending</option>
+                            <?php foreach ($statusOptions as $value => $label): ?>
+                            <option value="<?= $esc($value) ?>" <?= $statusFilter === $value ? 'selected' : '' ?>>
+                                <?= $esc($label) ?>
+                            </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
@@ -200,10 +253,23 @@ $currentPage = 'users';
                                 <td>
                                     <?php
                                     $statusClass = strtolower($u['status']);
+                                    // Second line under a Suspended pill. The
+                                    // full reason is the pill's tooltip — it is
+                                    // free text and too long for the cell.
+                                    $untilNote = '';
+                                    if ($u['suspended']) {
+                                        $untilNote = $u['suspended_until']
+                                            ? 'until ' . date('M d, Y', strtotime((string) $u['suspended_until']))
+                                            : 'indefinite';
+                                    }
                                     ?>
-                                    <span class="status-pill <?php echo $statusClass; ?>">
-                                        <?php echo $u['status']; ?>
+                                    <span class="status-pill <?php echo $statusClass; ?>"
+                                        <?= $u['suspension_reason'] !== '' ? 'title="' . $esc($u['suspension_reason']) . '"' : '' ?>>
+                                        <?php echo $esc($u['status']); ?>
                                     </span>
+                                    <?php if ($untilNote !== ''): ?>
+                                    <small class="status-note"><?= $esc($untilNote) ?></small>
+                                    <?php endif; ?>
                                 </td>
 
                                 <td>
@@ -222,7 +288,24 @@ $currentPage = 'users';
                                             </button>
 
                                             <ul class="dropdown-menu premium-dropdown">
-                                                <li><a class="dropdown-item" href="#">Suspend</a></li>
+                                                <?php if ($u['suspended']): ?>
+                                                <li><button type="button" class="dropdown-item js-lift-suspension"
+                                                        data-user-id="<?= (int) $u['id'] ?>"
+                                                        data-user-name="<?= $esc($u['name']) ?>">
+                                                        Lift Suspension
+                                                    </button></li>
+                                                <?php elseif ($u['can_suspend']): ?>
+                                                <li><button type="button" class="dropdown-item js-suspend"
+                                                        data-user-id="<?= (int) $u['id'] ?>"
+                                                        data-user-name="<?= $esc($u['name']) ?>">
+                                                        Suspend
+                                                    </button></li>
+                                                <?php else: ?>
+                                                <li><span class="dropdown-item disabled"
+                                                        title="Finance and super-admin accounts can't be suspended here, and you can't suspend yourself.">
+                                                        Suspend
+                                                    </span></li>
+                                                <?php endif; ?>
                                                 <li><a class="dropdown-item" href="#">Block</a></li>
                                                 <li><a class="dropdown-item" href="#">Restrict</a></li>
                                                 <li><a class="dropdown-item" href="#">Set Spending Limit</a></li>
@@ -241,6 +324,50 @@ $currentPage = 'users';
 
         </main>
 
+    </div>
+
+    <!-- Suspend Account Modal -->
+    <div class="modal fade" id="suspendModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-modal">
+                <div class="modal-header"><h5 class="modal-title">Suspend Account</h5></div>
+                <div class="modal-body">
+                    <form id="suspendForm">
+                        <input type="hidden" name="action" value="suspend">
+                        <input type="hidden" name="user_id" id="suspendUserId">
+
+                        <p class="mb-3">
+                            Suspending <strong id="suspendUserName"></strong> ends any signed-in session,
+                            blocks their login, freezes their wallet, and stops money being sent to them.
+                            A merchant owner's stall stops selling and their staff are locked out too.
+                        </p>
+
+                        <div class="premium-field mb-3">
+                            <label for="suspendDuration">Duration</label>
+                            <select name="duration" id="suspendDuration" class="form-select">
+                                <option value="3">3 days</option>
+                                <option value="7" selected>7 days</option>
+                                <option value="30">30 days</option>
+                                <option value="indefinite">Indefinite — until lifted by finance</option>
+                            </select>
+                        </div>
+
+                        <div class="premium-field">
+                            <label for="suspendReason">Reason <span class="text-danger">*</span></label>
+                            <textarea name="reason" id="suspendReason" class="form-control" rows="3"
+                                maxlength="255" required
+                                placeholder="Shown to the user and recorded in the audit trail."></textarea>
+                        </div>
+
+                        <div id="suspendMsg" class="mt-3"></div>
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="login-btn" style="flex:1" id="suspendSubmitBtn">Suspend Account</button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
@@ -265,6 +392,73 @@ $currentPage = 'users';
             $table.DataTable().search(this.value).draw();
         });
     });
+
+    // ── Suspend / lift ──────────────────────────────────────────────────────
+    // Delegated off the table body: DataTables re-renders rows on every page
+    // change and sort, so per-button listeners bound at load would go stale.
+    const USERS_API = "<?= ADMIN_URL ?>/api/users.php";
+
+    document.getElementById("usersTable").addEventListener("click", function (e) {
+        const suspendBtn = e.target.closest(".js-suspend");
+        if (suspendBtn) {
+            document.getElementById("suspendUserId").value = suspendBtn.dataset.userId;
+            document.getElementById("suspendUserName").textContent = suspendBtn.dataset.userName;
+            document.getElementById("suspendReason").value = "";
+            document.getElementById("suspendMsg").innerHTML = "";
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("suspendModal")).show();
+            return;
+        }
+
+        const liftBtn = e.target.closest(".js-lift-suspension");
+        if (liftBtn) {
+            liftSuspension(liftBtn);
+        }
+    });
+
+    document.getElementById("suspendForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById("suspendSubmitBtn");
+        const msg = document.getElementById("suspendMsg");
+        btn.disabled = true;
+        btn.textContent = "Suspending...";
+        try {
+            const resp = await fetch(USERS_API, { method: "POST", body: new FormData(this) });
+            const data = await resp.json();
+            if (data.success) {
+                location.reload();
+                return;
+            }
+            msg.innerHTML = '<div class="alert alert-danger mb-0"></div>';
+            msg.firstChild.textContent = data.message;
+        } catch (err) {
+            msg.innerHTML = '<div class="alert alert-danger mb-0">Could not reach the server. Try again.</div>';
+        }
+        btn.disabled = false;
+        btn.textContent = "Suspend Account";
+    });
+
+    async function liftSuspension(btn) {
+        const name = btn.dataset.userName;
+        if (!confirm("Lift the suspension on " + name + "? They will be able to sign in and transact again immediately.")) {
+            return;
+        }
+        btn.disabled = true;
+        const body = new FormData();
+        body.append("action", "lift_suspension");
+        body.append("user_id", btn.dataset.userId);
+        try {
+            const resp = await fetch(USERS_API, { method: "POST", body: body });
+            const data = await resp.json();
+            if (data.success) {
+                location.reload();
+                return;
+            }
+            alert(data.message);
+        } catch (err) {
+            alert("Could not reach the server. Try again.");
+        }
+        btn.disabled = false;
+    }
     </script>
 
 </body>

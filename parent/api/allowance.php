@@ -63,6 +63,12 @@ try {
             }
             $studentName = trim($student['first_name'] . ' ' . $student['last_name']);
 
+            // A suspended student can't be topped up, even by their own parent.
+            $studentBlocked = gjc_funds_in_block_reason($db, $studentUserId);
+            if ($studentBlocked !== null) {
+                throw new \RuntimeException($studentBlocked);
+            }
+
             $parentWallet = gjc_parent_wallet($db, $parentId);
             $studentWallet = gjc_student_wallet($db, $studentUserId);
             if ($studentWallet['id'] === 0) {

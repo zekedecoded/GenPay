@@ -45,6 +45,10 @@ try {
             $amount   = (float)($body['amount'] ?? 0);
             $notes    = trim((string)($body['notes'] ?? ''));
 
+            $targetUserId = gjc_wallet_owner_user_id($db, 'student', $walletId);
+            $blocked = $targetUserId > 0 ? gjc_funds_in_block_reason($db, $targetUserId) : null;
+            if ($blocked !== null) throw new RuntimeException($blocked);
+
             $result = $engine->cashInWithFee($walletId, $amount, 'finance', $userId, 0, $notes);
             gjc_notify_wallet(
                 $db,
@@ -197,6 +201,11 @@ try {
             if ($parentId <= 0) throw new InvalidArgumentException('Invalid parent.');
 
             $parentWallet = gjc_parent_wallet($db, $parentId);
+
+            $targetUserId = gjc_wallet_owner_user_id($db, 'parent', $parentWallet['id']);
+            $blocked = $targetUserId > 0 ? gjc_funds_in_block_reason($db, $targetUserId) : null;
+            if ($blocked !== null) throw new RuntimeException($blocked);
+
             $result = $engine->cashInParent($parentWallet['id'], $amount, 'finance', $userId, 0, $notes);
 
             $parentUserIdStmt = $db->prepare("SELECT user_id FROM parents WHERE id = ?");

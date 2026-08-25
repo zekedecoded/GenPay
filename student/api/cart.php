@@ -60,7 +60,7 @@ try {
                 exit;
             }
 
-            if (gjc_merchant_suspended_until($db, (int) $item['merchant_user_id']) !== null) {
+            if (gjc_merchant_sales_blocked($db, (int) $item['merchant_user_id'])) {
                 echo json_encode(['success' => false, 'message' => 'This stall is temporarily suspended and cannot take orders right now.']);
                 exit;
             }

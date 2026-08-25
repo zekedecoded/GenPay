@@ -157,8 +157,22 @@
 
 .status-pill.blocked,
 .status-pill.suspended {
+  background: var(--gp-danger-bg);
+  color: var(--gp-danger);
+}
+
+/* Owner-deactivated staff — a quieter state than a finance suspension. */
+.status-pill.inactive {
   background: #eef2ee;
   color: #4b5b52;
+}
+
+/* "until Mar 03" / "indefinite" under a Suspended pill. */
+.status-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--gp-muted);
 }
 
 .action-area {

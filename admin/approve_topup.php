@@ -33,6 +33,16 @@ if (!$topupId || !$studentWalletId || !$amount || $amount <= 0) {
 
 
 try {
+    // Don't credit a suspended account — the owner can't spend it and the
+    // top-up would have to be reversed by hand.
+    $targetUserId = gjc_wallet_owner_user_id($db, 'student', $studentWalletId);
+    $blocked = $targetUserId > 0 ? gjc_funds_in_block_reason($db, $targetUserId) : null;
+    if ($blocked !== null) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => $blocked]);
+        exit;
+    }
+
     $engine = new CirculationEngine($db);
     $result = $engine->cashInWithFee($studentWalletId, $amount, 'finance', $sessionUserId);
 

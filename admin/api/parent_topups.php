@@ -53,6 +53,16 @@ try {
 
             try {
                 $parentWallet = gjc_parent_wallet($db, (int) $request['parent_id']);
+
+                // Inside the try on purpose: throwing here reverts the claim
+                // above, so a request aimed at a suspended parent goes back to
+                // the queue instead of being marked approved but never credited.
+                $targetUserId = gjc_wallet_owner_user_id($db, 'parent', (int) $parentWallet['id']);
+                $blocked = $targetUserId > 0 ? gjc_funds_in_block_reason($db, $targetUserId) : null;
+                if ($blocked !== null) {
+                    throw new \RuntimeException($blocked);
+                }
+
                 $engine = new CirculationEngine($db);
                 $result = $engine->cashInParent(
                     $parentWallet['id'],

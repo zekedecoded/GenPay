@@ -126,7 +126,7 @@ try {
         $merchantWalletId = (int) $order['merchant_wallet_id'];
         $merchantUserId = (int) $order['merchant_user_id'];
 
-        if (gjc_merchant_suspended_until($db, $merchantUserId) !== null) {
+        if (gjc_merchant_sales_blocked($db, $merchantUserId)) {
             throw new ParentPaymentError('merchant_suspended', 'This stall is temporarily suspended and cannot accept payments right now.');
         }
 

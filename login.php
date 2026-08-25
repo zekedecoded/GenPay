@@ -31,6 +31,16 @@ if (!$error && ($_GET['reason'] ?? '') === 'suspended') {
         . ($untilTs ? ' until ' . date('M d, Y g:i A', $untilTs) : '')
         . ' due to repeated attempts to list restricted products.';
 }
+
+// Finance-issued suspension (admin/users.php). The reason text lives on the
+// account and is only shown once the user identifies themselves at login —
+// this banner just says the session ended and when access returns.
+if (!$error && ($_GET['reason'] ?? '') === 'account_suspended') {
+    $untilTs = strtotime((string) ($_GET['until'] ?? ''));
+    $error = 'Your account has been suspended by the GenPay finance office'
+        . ($untilTs ? ' until ' . date('M d, Y g:i A', $untilTs) : '')
+        . '. Sign in for details, or contact the finance office.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

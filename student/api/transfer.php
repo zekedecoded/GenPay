@@ -96,6 +96,14 @@ try {
             exit;
         }
 
+        // The sender's own suspension already ended their session; this is the
+        // other half — money must not land in a suspended account either.
+        $recipientBlocked = gjc_funds_in_block_reason($db, $recipientUserId);
+        if ($recipientBlocked !== null) {
+            echo json_encode(['success' => false, 'message' => $recipientBlocked]);
+            exit;
+        }
+
         // --- Daily limit check ---
         $dailySent = gjc_p2p_daily_sent($db, $currentUserId);
         if ($dailySent + $amount > $DAILY_LIMIT) {
