@@ -5,13 +5,16 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['parent']);
 gjc_ensure_parent_schema($db);
+gjc_ensure_parent_wallet_schema($db);
 
 $parentUserId    = gjc_user_id();
 $currentUser     = gjc_current_user($db);
 $profileImg      = (string) ($currentUser['raw']['profile_img'] ?? '');
 $profilePhotoUrl = ($profileImg !== '') ? (BASE_URL . '/' . ltrim($profileImg, '/')) : '';
 
-$parentId = gjc_parent_id_for_user($db, $parentUserId);
+$parentId       = gjc_parent_id_for_user($db, $parentUserId);
+$parentWallet   = gjc_parent_wallet($db, $parentId);
+$parentWalletId = (int) $parentWallet['id'];
 
 $linkedStmt = $db->prepare(
     "SELECT u.userID, u.first_name, u.last_name, sw.id AS wallet_id
@@ -47,12 +50,27 @@ $dateFrom = trim((string) ($_GET['from'] ?? ''));
 $dateTo   = trim((string) ($_GET['to'] ?? ''));
 
 $rows = [];
-if ($walletIds && gjc_table_exists($db, 'transactions')) {
-    $targetWallets = $selectedStudent > 0 ? [$selectedStudent] : $walletIds;
-    $placeholders = implode(',', array_fill(0, count($targetWallets), '?'));
-    $params = $targetWallets;
+if (($walletIds || $parentWalletId) && gjc_table_exists($db, 'transactions')) {
+    // Scope: the linked students' wallets, plus — unless a single student is
+    // selected — the parent's own wallet purchases (Scan & Pay).
+    $scopeClauses = [];
+    $params = [];
+    if ($selectedStudent > 0) {
+        $scopeClauses[] = "t.student_wallet_id = ?";
+        $params[] = $selectedStudent;
+    } else {
+        if ($walletIds) {
+            $ph = implode(',', array_fill(0, count($walletIds), '?'));
+            $scopeClauses[] = "t.student_wallet_id IN ({$ph})";
+            $params = array_merge($params, $walletIds);
+        }
+        if ($parentWalletId > 0) {
+            $scopeClauses[] = "t.parent_wallet_id = ?";
+            $params[] = $parentWalletId;
+        }
+    }
 
-    $where = "WHERE t.student_wallet_id IN ({$placeholders})";
+    $where = "WHERE (" . implode(' OR ', $scopeClauses) . ")";
     if ($filterType !== '') {
         $where .= " AND t.transaction_type = ?";
         $params[] = $filterType;
@@ -73,7 +91,7 @@ if ($walletIds && gjc_table_exists($db, 'transactions')) {
     // action already reads.
     $stmt = $db->prepare(
         "SELECT t.reference_no, t.transaction_type, t.student_wallet_id, t.merchant_wallet_id,
-                t.initiated_by, t.amount, t.notes, t.status, t.created_at,
+                t.parent_wallet_id, t.initiated_by, t.amount, t.notes, t.status, t.created_at,
                 COALESCE(co.items_json, mqo.items_json) AS items_json
            FROM transactions t
            LEFT JOIN cart_orders co ON co.paid_ref = t.reference_no
@@ -94,7 +112,9 @@ foreach ($rows as &$r) {
     $meta = gjc_student_txn_meta($type);
     $r['label'] = $meta['label'];
     $r['incoming'] = $meta['incoming'];
-    $r['student_name'] = $studentByWallet[(int) $r['student_wallet_id']] ?? '—';
+    $r['student_name'] = ((int) $r['parent_wallet_id'] > 0 && (int) $r['parent_wallet_id'] === $parentWalletId)
+        ? 'You (Parent)'
+        : ($studentByWallet[(int) $r['student_wallet_id']] ?? '—');
 
     $counterparty = '—';
     if (in_array($type, ['payment', 'voucher_payment'], true) && (int) $r['merchant_wallet_id'] > 0) {
@@ -161,7 +181,7 @@ $currentPage = 'activity';
 
         <div class="parent-content" style="max-width:1100px;">
 
-            <?php if (empty($linkedStudents)): ?>
+            <?php if (empty($linkedStudents) && empty($rows)): ?>
             <div class="parent-card">
                 <div class="parent-empty">
                     <i class="fa-solid fa-user-graduate"></i>

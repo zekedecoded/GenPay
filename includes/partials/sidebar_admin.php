@@ -83,3 +83,4 @@ $currentPage = $currentPage ?? ""; ?>
     </a>
 </aside>
 <?php require __DIR__ . '/logout_modal.php'; ?>
+<?php require __DIR__ . '/back_to_dashboard.php'; ?>

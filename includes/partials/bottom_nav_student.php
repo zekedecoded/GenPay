@@ -25,3 +25,4 @@ $currentPage = $currentPage ?? '';
         <span>Profile</span>
     </a>
 </nav>
+<?php require __DIR__ . '/back_to_dashboard.php'; ?>

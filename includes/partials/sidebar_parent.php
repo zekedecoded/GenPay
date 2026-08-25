@@ -24,6 +24,10 @@ $currentPage = $currentPage ?? '';
             <i class="fa-solid fa-hand-holding-dollar parent-nav-icon"></i>
             <span class="parent-nav-text">Send Allowance</span>
         </a>
+        <a href="<?= PARENT_URL ?>/scan.php" class="<?= $currentPage === 'scan' ? 'active' : '' ?>">
+            <i class="fa-solid fa-qrcode parent-nav-icon"></i>
+            <span class="parent-nav-text">Scan &amp; Pay</span>
+        </a>
         <a href="<?= PARENT_URL ?>/activity.php" class="<?= $currentPage === 'activity' ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check parent-nav-icon"></i>
             <span class="parent-nav-text">Activity Trail</span>
@@ -40,3 +44,4 @@ $currentPage = $currentPage ?? '';
     </a>
 </aside>
 <?php require __DIR__ . '/logout_modal.php'; ?>
+<?php require __DIR__ . '/back_to_dashboard.php'; ?>

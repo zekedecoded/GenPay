@@ -41,3 +41,4 @@ $__bnavIsStaff = function_exists('gjc_is_merchant_staff') && gjc_is_merchant_sta
     </a>
     <?php endif; ?>
 </nav>
+<?php require __DIR__ . '/back_to_dashboard.php'; ?>

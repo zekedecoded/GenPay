@@ -15,9 +15,34 @@ if (!$transaction) {
     http_response_code(404);
 }
 
-$meta = $transaction['meta'] ?? [];
-?>
+// Local escaper — the shared gjc_e() only casts to string, and this page
+// renders record values (sender/receiver labels, notes, meta).
+$esc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 
+if ($transaction) {
+    $meta = $transaction['meta'] ?? [];
+    $status = (string) ($transaction['status'] ?? '');
+
+    // Success / pending / everything-else -> the shared hero pill colours.
+    $statusClass = gjc_transaction_is_success($status)
+        ? 'is-active'
+        : (gjc_transaction_is_pending($status) ? 'is-pending' : 'is-inactive');
+
+    // Type glyph for the hero tile (mirrors the user page's monogram slot).
+    $typeIconMap = [
+        'topup'      => 'fa-wallet',
+        'encashment' => 'fa-money-bill-transfer',
+        'payment'    => 'fa-cart-shopping',
+        'voucher'    => 'fa-ticket',
+        'transfer'   => 'fa-right-left',
+        'refund'     => 'fa-rotate-left',
+    ];
+    $typeIcon = $typeIconMap[(string) ($transaction['type_slug'] ?? '')] ?? 'fa-receipt';
+
+    $sourceLabel = ucwords(str_replace('_', ' ', (string) $transaction['source']));
+    $notes = trim((string) ($transaction['notes'] ?? ''));
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -26,95 +51,125 @@ $meta = $transaction['meta'] ?? [];
     <link rel="icon" type="image/png" sizes="192x192" href="<?= ICONS_URL ?>/gp_logo.png">
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
-    <title>Transaction Details | GenPay</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $transaction ? 'Transaction Details' : 'Content Not Available' ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/detail_view.css?v=3">
 </head>
 
 <body class="gp-theme">
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h1 class="mb-1" style="font-size: 28px;">Transaction Details</h1>
-                <p class="text-muted mb-0">Review the selected wallet movement or request record.</p>
-            </div>
-            <a href="<?= ADMIN_URL ?>/transactions.php" class="btn btn-outline-secondary">Back to Transactions</a>
-        </div>
-
+    <div class="uv-wrap">
         <?php if (!$transaction): ?>
-        <div class="alert alert-warning">Transaction record not found.</div>
-        <?php else: ?>
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-4">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Reference</small>
-                            <strong><?php echo gjc_e($transaction['ref']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Type</small>
-                            <strong><?php echo gjc_e($transaction['type_label']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Amount</small>
-                            <strong><?php echo gjc_money($transaction['amount']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Status</small>
-                            <strong><?php echo gjc_e($transaction['status_label']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Recorded At</small>
-                            <strong><?php echo gjc_e($transaction['time_label']); ?></strong>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Sender</small>
-                            <strong><?php echo gjc_e($transaction['sender']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Receiver</small>
-                            <strong><?php echo gjc_e($transaction['receiver']); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Source</small>
-                            <strong><?php echo gjc_e(ucwords(str_replace('_', ' ', $transaction['source']))); ?></strong>
-                        </div>
-                        <div class="mb-3">
-                            <small class="text-muted d-block">Notes</small>
-                            <strong><?php echo gjc_e($transaction['notes'] !== '' ? $transaction['notes'] : 'None'); ?></strong>
-                        </div>
-                    </div>
-                </div>
-
-                <?php if (!empty($meta)): ?>
-                <hr class="my-4">
-                <h2 style="font-size: 18px;" class="mb-3">Raw Record</h2>
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle" id="transactionRawRecordTable">
-                        <tbody>
-                            <?php foreach ($meta as $key => $value): ?>
-                            <tr>
-                                <th style="width: 220px;"><?php echo gjc_e(ucwords(str_replace('_', ' ', (string) $key))); ?></th>
-                                <td><?php echo gjc_e(is_scalar($value) || $value === null ? (string) $value : json_encode($value)); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
-            </div>
+        <!-- Generic not-available state, consistent with view_user.php. -->
+        <div class="uv-notfound">
+            <div class="uv-nf-ic"><i class="fa-regular fa-circle-question"></i></div>
+            <h1>This page isn't available</h1>
+            <p>The link you followed may be broken, or the record may have been removed.</p>
+            <a href="<?= ADMIN_URL ?>/transactions.php" class="gp-btn gp-btn--forest">Go to Transactions</a>
         </div>
+        <?php else: ?>
+        <div class="uv-topbar">
+            <a class="uv-back" href="<?= ADMIN_URL ?>/transactions.php">
+                <i class="fa-solid fa-arrow-left"></i> Back to Transactions
+            </a>
+            <span class="uv-ro"><i class="fa-solid fa-lock"></i> Read-only</span>
+        </div>
+
+        <section class="uv-hero">
+            <div class="uv-avatar"><i class="fa-solid <?= $esc($typeIcon) ?>"></i></div>
+            <div class="uv-hero-main">
+                <div class="uv-eyebrow"><?= $esc($sourceLabel) ?> transaction</div>
+                <div class="uv-amount"><?= gjc_money($transaction['amount']) ?></div>
+                <div class="uv-id-line">
+                    <span class="gp-hero-badge"><?= $esc($transaction['type_label']) ?></span>
+                    <span class="uv-mono"><?= $esc($transaction['ref']) ?></span>
+                    <span class="uv-status <?= $statusClass ?>"><?= $esc($transaction['status_label']) ?></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="gp-card uv-card">
+            <div class="gp-card-head">
+                <div>
+                    <h3>Transaction details</h3>
+                    <p>Read-only view of the selected wallet movement or request.</p>
+                </div>
+            </div>
+            <div class="uv-fields">
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-solid fa-user"></i></div>
+                    <div>
+                        <div class="uv-field-label">Sender</div>
+                        <div class="uv-field-value"><?= $esc($transaction['sender']) ?></div>
+                    </div>
+                </div>
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-solid fa-user-check"></i></div>
+                    <div>
+                        <div class="uv-field-label">Receiver</div>
+                        <div class="uv-field-value"><?= $esc($transaction['receiver']) ?></div>
+                    </div>
+                </div>
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-solid fa-layer-group"></i></div>
+                    <div>
+                        <div class="uv-field-label">Source</div>
+                        <div class="uv-field-value"><?= $esc($sourceLabel) ?></div>
+                    </div>
+                </div>
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-regular fa-clock"></i></div>
+                    <div>
+                        <div class="uv-field-label">Recorded At</div>
+                        <div class="uv-field-value"><?= $esc($transaction['time_label']) ?></div>
+                    </div>
+                </div>
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-solid fa-hashtag"></i></div>
+                    <div>
+                        <div class="uv-field-label">Reference</div>
+                        <div class="uv-field-value is-mono"><?= $esc($transaction['ref']) ?></div>
+                    </div>
+                </div>
+                <div class="uv-field">
+                    <div class="uv-field-ic"><i class="fa-regular fa-note-sticky"></i></div>
+                    <div>
+                        <div class="uv-field-label">Notes</div>
+                        <div class="uv-field-value"><?= $esc($notes !== '' ? $notes : 'None') ?></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <?php if (!empty($meta)): ?>
+        <details class="uv-raw">
+            <summary>
+                <span class="uv-raw-lead">
+                    <i class="fa-solid fa-table-list"></i> Raw record
+                    <small>(<?= count($meta) ?> fields)</small>
+                </span>
+                <i class="fa-solid fa-chevron-down uv-raw-chev"></i>
+            </summary>
+            <div class="uv-raw-body table-responsive">
+                <table class="table align-middle">
+                    <tbody>
+                        <?php foreach ($meta as $key => $value): ?>
+                        <tr>
+                            <th><?= $esc(ucwords(str_replace('_', ' ', (string) $key))) ?></th>
+                            <td><?= $esc(is_scalar($value) || $value === null ? (string) $value : json_encode($value)) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
-    <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 </body>
 
 </html>

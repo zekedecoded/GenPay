@@ -39,6 +39,59 @@ define('GJC_VIOLATION_WARN_AT', 3);
 define('GJC_VIOLATION_RISK_AT', 5);
 define('GJC_VIOLATION_SUSPEND_DAYS', 3);
 
+// Server-side key used to sign opaque "view record" tokens (see
+// gjc_make_view_token()). This is not a user secret and nothing is stored per
+// row — it only proves a token was minted by the app. Rotating it simply
+// invalidates any outstanding view links.
+if (!defined('GJC_VIEW_TOKEN_SECRET')) {
+    define('GJC_VIEW_TOKEN_SECRET', 'gjc-view-token::7f3a9c1e5b8d24061a0e9f2c4d6b8a13::v1');
+}
+
+/**
+ * Mint an opaque, tamper-proof token for a read-only "view" URL.
+ *
+ * The token is base64url("<id>.<sig>") where <sig> is a truncated
+ * HMAC-SHA256 of "<scope>:<id>" keyed by GJC_VIEW_TOKEN_SECRET. It carries a
+ * row id in the URL without exposing it as a bare, enumerable ?id=1,2,3
+ * integer, and any edit to the id breaks the signature. Stateless — no DB
+ * column, nothing stored. The $scope namespaces tokens so a token minted for
+ * one entity's view page can't be replayed against another's.
+ */
+function gjc_make_view_token(int $id, string $scope = 'record'): string
+{
+    $id = max(0, $id);
+    $sig = substr(hash_hmac('sha256', $scope . ':' . $id, GJC_VIEW_TOKEN_SECRET), 0, 40);
+    return rtrim(strtr(base64_encode($id . '.' . $sig), '+/', '-_'), '=');
+}
+
+/**
+ * Verify a token from gjc_make_view_token() and return the row id it carries,
+ * or null if the token is missing, malformed, or the signature does not match
+ * (compared with hash_equals(), constant time). The $scope must match the one
+ * the token was minted with.
+ */
+function gjc_verify_view_token(?string $token, string $scope = 'record'): ?int
+{
+    $token = (string) $token;
+    if ($token === '') {
+        return null;
+    }
+    $raw = base64_decode(strtr($token, '-_', '+/'), true);
+    if ($raw === false || strpos($raw, '.') === false) {
+        return null;
+    }
+    [$idPart, $sig] = explode('.', $raw, 2);
+    if (!ctype_digit($idPart)) {
+        return null;
+    }
+    $id = (int) $idPart;
+    $expected = substr(hash_hmac('sha256', $scope . ':' . $id, GJC_VIEW_TOKEN_SECRET), 0, 40);
+    if (!hash_equals($expected, $sig)) {
+        return null;
+    }
+    return $id;
+}
+
 function gjc_gc_amount($pesos): string
 {
     $gc = (float) $pesos / GJC_PESOS_PER_GC;

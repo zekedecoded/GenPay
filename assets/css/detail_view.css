@@ -1,0 +1,170 @@
+/* ============================================================
+   Detail view — shared chrome for the admin single-record "Read"
+   pages (view_user.php, view_transaction.php). Built entirely on
+   the gp-* "Scan & Pay" tokens from theme.css; must load AFTER
+   admin.css (which pulls in theme.css). The .uv-* namespace keeps
+   it clear of the per-page listing skins.
+
+   Note: gjc-clear.css sets `* { letter-spacing: 0 !important }`,
+   so every intentional letter-spacing below carries !important to
+   survive it.
+   ============================================================ */
+
+.uv-wrap { max-width: 940px; margin: 0 auto; padding: 30px 20px 56px; }
+
+.uv-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 18px;
+}
+.uv-back {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13.5px; font-weight: 700; color: var(--gp-muted); text-decoration: none;
+}
+.uv-back:hover { color: var(--gp-green-850); }
+.uv-ro {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 800; letter-spacing: .04em !important; text-transform: uppercase;
+    color: var(--gp-muted); background: #fff; border: 1px solid var(--gp-line);
+    border-radius: 999px; padding: 6px 13px;
+}
+
+/* --- Identity hero: the balance-card look, as a record header --- */
+.uv-hero {
+    position: relative; overflow: hidden;
+    border-radius: var(--gp-radius); background: var(--gp-grad-hero);
+    color: #fff; box-shadow: var(--gp-shadow-hero);
+    padding: 30px 32px; display: flex; align-items: center; gap: 26px;
+    flex-wrap: wrap; row-gap: 20px;
+}
+/* Identity group (avatar + text), paired with an optional wallet panel */
+.uv-hero-id { display: flex; align-items: center; gap: 26px; flex: 1 1 340px; min-width: 0; }
+.uv-hero-wallet {
+    margin-left: auto; flex: 0 0 auto; min-width: 190px; text-align: right;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+    border-radius: 18px; padding: 16px 20px;
+}
+.uv-hw-label {
+    display: block; font-size: 11px; font-weight: 800; letter-spacing: .1em !important;
+    text-transform: uppercase; color: rgba(255,255,255,.6);
+}
+.uv-hw-value { font-family: var(--gp-mono); font-size: 25px; font-weight: 700; color: var(--gp-gold-light); margin: 7px 0 2px; }
+.uv-hw-sub { font-size: 12px; color: rgba(255,255,255,.7); }
+.uv-avatar {
+    position: relative; flex: 0 0 92px; width: 92px; height: 92px;
+    border-radius: 26px; display: grid; place-items: center; overflow: hidden;
+    background: linear-gradient(135deg, var(--gp-gold-light), var(--gp-gold));
+    color: var(--gp-green-950); font-size: 32px; font-weight: 800; letter-spacing: .02em !important;
+    box-shadow: 0 10px 24px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.uv-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.uv-avatar i { font-size: 30px; }
+.uv-hero-main { flex: 1 1 auto; min-width: 0; }
+.uv-eyebrow {
+    font-size: 11px; font-weight: 800; letter-spacing: .16em !important; text-transform: uppercase;
+    color: rgba(255,255,255,.55); margin-bottom: 8px;
+}
+.uv-name {
+    font-size: 27px; font-weight: 800; line-height: 1.15; margin: 0;
+    color: #fff; word-break: break-word;
+}
+.uv-amount {
+    font-family: var(--gp-mono); font-size: 40px; font-weight: 700; line-height: 1;
+    margin: 2px 0 0; color: #fff;
+}
+.uv-id-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.uv-mono {
+    font-family: var(--gp-mono); font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,.82);
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+    border-radius: 8px; padding: 4px 10px;
+}
+.uv-status {
+    display: inline-flex; align-items: center; gap: 7px;
+    border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 800;
+}
+.uv-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.uv-status.is-active   { background: rgba(74,222,128,.16); color: #86efac; border: 1px solid rgba(74,222,128,.38); }
+.uv-status.is-pending  { background: rgba(240,165,0,.18);  color: #f6c453; border: 1px solid rgba(240,165,0,.42); }
+.uv-status.is-inactive { background: rgba(248,113,113,.16); color: #fca5a5; border: 1px solid rgba(248,113,113,.38); }
+.uv-status.is-neutral  { background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.22); }
+
+/* --- Detail card: icon-labelled field grid --- */
+.uv-card { margin-top: 18px; padding: 24px 26px; }
+.uv-fields {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 22px 28px;
+}
+.uv-field { display: flex; align-items: flex-start; gap: 13px; min-width: 0; }
+.uv-field-ic {
+    flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px;
+    display: grid; place-items: center; font-size: 14px;
+    background: var(--emerald-soft-2); color: var(--gp-green-700);
+}
+.uv-field-label {
+    font-size: 11px; font-weight: 800; letter-spacing: .06em !important; text-transform: uppercase;
+    color: var(--gp-muted);
+}
+.uv-field-value {
+    font-size: 15px; font-weight: 700; color: var(--gp-ink);
+    margin-top: 3px; word-break: break-word;
+}
+.uv-field-value.is-mono { font-family: var(--gp-mono); font-weight: 600; font-size: 14px; }
+
+/* --- Collapsible technical record --- */
+.uv-raw { margin-top: 16px; }
+.uv-raw summary {
+    list-style: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 15px 20px; background: #fff; border: 1px solid var(--gp-line);
+    border-radius: var(--gp-radius-sm); font-size: 13.5px; font-weight: 800; color: var(--gp-ink);
+}
+.uv-raw summary::-webkit-details-marker { display: none; }
+.uv-raw summary:hover { background: var(--gp-row-hover); }
+.uv-raw-lead { display: inline-flex; align-items: center; gap: 10px; }
+.uv-raw-lead i { color: var(--gp-green-700); }
+.uv-raw-lead small { color: var(--gp-muted); font-weight: 700; }
+.uv-raw-chev { transition: transform .2s ease; color: var(--gp-muted); }
+.uv-raw[open] summary { border-radius: var(--gp-radius-sm) var(--gp-radius-sm) 0 0; border-bottom: 0; }
+.uv-raw[open] .uv-raw-chev { transform: rotate(180deg); }
+.uv-raw-body {
+    border: 1px solid var(--gp-line); border-top: 0;
+    border-radius: 0 0 var(--gp-radius-sm) var(--gp-radius-sm); overflow: hidden;
+}
+.uv-raw-body .table { margin: 0; }
+.uv-raw-body th { width: 220px; color: var(--gp-muted); font-weight: 700; }
+.uv-raw-body td { font-family: var(--gp-mono); word-break: break-word; }
+
+/* --- Two-column card row + key/value table (audit before/after) --- */
+.uv-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.uv-muted { color: var(--gp-muted); font-size: 13.5px; margin: 0; }
+.uv-kv th { width: 42%; color: var(--gp-muted); font-weight: 700; }
+.uv-kv td { font-family: var(--gp-mono); word-break: break-word; }
+@media (max-width: 640px) { .uv-two { grid-template-columns: 1fr; } }
+
+/* --- Not-available (generic 404) state --- */
+.uv-notfound { max-width: 520px; margin: 9vh auto 0; text-align: center; padding: 0 20px; }
+.uv-nf-ic {
+    width: 78px; height: 78px; border-radius: 22px; margin: 0 auto 22px;
+    display: grid; place-items: center; font-size: 30px; color: var(--gp-muted);
+    background: #fff; border: 1px solid var(--gp-line); box-shadow: var(--gp-shadow-card);
+}
+.uv-notfound h1 { font-size: 24px; font-weight: 800; color: var(--gp-ink); margin: 0 0 8px; }
+.uv-notfound p { color: var(--gp-muted); font-size: 14.5px; line-height: 1.55; margin: 0 0 26px; }
+
+/* --- Restrained load motion --- */
+@keyframes uv-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.uv-hero, .uv-card, .uv-raw { animation: uv-rise .5s cubic-bezier(.2,.7,.2,1) both; }
+.uv-card { animation-delay: .06s; }
+.uv-raw  { animation-delay: .12s; }
+@media (prefers-reduced-motion: reduce) {
+    .uv-hero, .uv-card, .uv-raw { animation: none; }
+    .uv-raw-chev { transition: none; }
+}
+
+@media (max-width: 560px) {
+    .uv-hero { flex-direction: column; align-items: flex-start; gap: 18px; padding: 24px 22px; }
+    .uv-hero-id { gap: 16px; }
+    .uv-hero-wallet { margin-left: 0; width: 100%; text-align: left; }
+    .uv-name { font-size: 23px; }
+    .uv-amount { font-size: 34px; }
+}

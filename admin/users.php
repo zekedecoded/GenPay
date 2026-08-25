@@ -58,6 +58,7 @@ foreach ($dbUsers as $u) {
     }
 
     $users[] = [
+        "id"        => (int) $u['userID'],
         "name"      => trim($u['first_name'] . ' ' . $u['last_name']),
         "role"      => $roleName,
         "school_id" => $displayId,
@@ -207,6 +208,13 @@ $currentPage = 'users';
 
                                 <td>
                                     <div class="action-area">
+                                        <!-- Read view: the record is identified by a signed HMAC
+                                             token. Tampering with it in the URL fails verification. -->
+                                        <a class="premium-action-btn text-decoration-none d-inline-flex align-items-center"
+                                            href="<?= ADMIN_URL ?>/view_user.php?token=<?= urlencode(gjc_make_view_token($u['id'], 'user')) ?>">
+                                            <i class="fa-regular fa-eye me-2"></i>View
+                                        </a>
+
                                         <div class="dropdown">
                                             <button class="premium-action-btn dropdown-toggle" type="button"
                                                 data-bs-toggle="dropdown">
@@ -220,10 +228,6 @@ $currentPage = 'users';
                                                 <li><a class="dropdown-item" href="#">Set Spending Limit</a></li>
                                             </ul>
                                         </div>
-
-                                        <button class="freeze-btn">
-                                            Toggle Wallet Freeze
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
