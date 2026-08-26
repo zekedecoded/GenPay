@@ -43,7 +43,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
     $totalReceived = (float) $receivedStmt->fetchColumn();
 
     $stmt = $db->prepare(
-        "SELECT reference_no, transaction_type, amount, status, notes, created_at
+        "SELECT id, reference_no, transaction_type, amount, status, notes, created_at
            FROM transactions
           WHERE student_wallet_id = ?{$syFilter}
           ORDER BY created_at DESC, id DESC
@@ -56,6 +56,10 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
         $amount = (float) ($row['amount'] ?? 0);
 
         $transactions[] = [
+            // id + source feed the signed token on the View link below;
+            // view_transaction.php re-checks ownership before rendering.
+            'id' => (int) ($row['id'] ?? 0),
+            'source' => 'ledger',
             'ref' => (string) ($row['reference_no'] ?: 'N/A'),
             'desc' => trim((string) ($row['notes'] ?? '')) ?: gjc_transaction_type_label($type),
             'type' => gjc_transaction_type_label($type),
@@ -69,7 +73,7 @@ if ($wallet['id'] > 0 && gjc_table_exists($db, 'transactions')) {
 
 if ($selectedSchoolYearId === 0 && gjc_table_exists($db, 'topup_requests')) {
     $stmt = $db->prepare(
-        "SELECT reference_no, amount, payment_method, status, created_at
+        "SELECT id, reference_no, amount, payment_method, status, created_at
            FROM topup_requests
           WHERE user_id = ? AND status <> 'approved'
           ORDER BY created_at DESC, id DESC
@@ -79,6 +83,8 @@ if ($selectedSchoolYearId === 0 && gjc_table_exists($db, 'topup_requests')) {
 
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $transactions[] = [
+            'id' => (int) ($row['id'] ?? 0),
+            'source' => 'topup_request',
             'ref' => (string) ($row['reference_no'] ?: 'TOPUP-REQ'),
             'desc' => 'Payment method: ' . (string) ($row['payment_method'] ?? 'Cash at Cashier'),
             'type' => 'Top-up Request',
@@ -112,7 +118,7 @@ $currentPage = 'history';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
 </head>
 
 <body class="sd-body">
@@ -200,6 +206,7 @@ $currentPage = 'history';
                                     <th>Amount</th>
                                     <th>Status</th>
                                     <th>Date</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -211,6 +218,12 @@ $currentPage = 'history';
                                     <td><?= gjc_gc_price((float) $t['amount']) ?></td>
                                     <td><span class="sd-status-pill is-<?= $e(gjc_transaction_status_slug($t['status'])) ?>"><?= $e($t['status']) ?></span></td>
                                     <td><?= $e($t['date']) ?></td>
+                                    <td class="text-end">
+                                        <a class="student-view-btn"
+                                            href="<?= STUDENT_URL ?>/view_transaction.php?source=<?= $e($t['source']) ?>&token=<?= urlencode(gjc_make_view_token((int) $t['id'], 'student_' . $t['source'])) ?>">
+                                            <i class="fa-regular fa-eye"></i> View
+                                        </a>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

@@ -41,10 +41,6 @@ $currentPage = $currentPage ?? ""; ?>
             <i class="fa-solid fa-coins nav-icon"></i>
             <span class="nav-text">Economy</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/visitors.php" class="<?= $currentPage === 'visitors' ? 'active' : '' ?>">
-            <i class="fa-solid fa-person-walking nav-icon"></i>
-            <span class="nav-text">Visitors</span>
-        </a>
         <a href="<?= ADMIN_URL ?>/stall_applications.php" class="<?= $currentPage === 'stall_applications' ? 'active' : '' ?>">
             <i class="fa-solid fa-store nav-icon"></i>
             <span class="nav-text">Stall Applications</span>

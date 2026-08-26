@@ -23,8 +23,13 @@ $statusFilter  = strtolower(trim((string) ($_GET['status'] ?? '')));
 $excludeAdmin  = !empty($_GET['exclude_admin']);
 
 // users.status is the only account-state column there is, so the filter offers
-// exactly its three labels rather than options with no data behind them.
-$statusOptions = ['active' => 'Active', 'suspended' => 'Suspended', 'inactive' => 'Inactive'];
+// exactly its labels rather than options with no data behind them.
+$statusOptions = [
+    'active'    => 'Active',
+    'suspended' => 'Suspended',
+    'banned'    => 'Banned',
+    'inactive'  => 'Inactive',
+];
 if (!isset($statusOptions[$statusFilter])) {
     $statusFilter = '';
 }
@@ -96,10 +101,13 @@ foreach ($dbUsers as $u) {
         $statusLabel = 'Active';
     }
     $isSuspended = ($statusLabel === 'Suspended');
+    $isBanned    = ($statusLabel === 'Banned');
 
     // Mirrors users_suspend_guard() in admin/api/users.php. That endpoint is
     // the real gate — this only decides whether to offer the menu item, so the
-    // two must agree or the UI offers an action that always fails.
+    // two must agree or the UI offers an action that always fails. The same
+    // guard covers Suspend and Ban: an account you may not suspend is an
+    // account you may not ban either.
     $canSuspend = ((int) $u['userID'] !== $currentAdminId)
         && !in_array((int) ($u['roleID'] ?? 0), [3, 4], true)
         && (string) ($u['sub_role'] ?? '') !== 'super_admin';
@@ -112,9 +120,13 @@ foreach ($dbUsers as $u) {
         "email"       => $u['email'],
         "status"      => $statusLabel,
         "suspended"   => $isSuspended,
-        // A null end date on a live suspension means indefinite.
+        "banned"      => $isBanned,
+        // A null end date on a live suspension means indefinite. A ban never
+        // has one — it ends only when finance lifts it.
         "suspended_until"   => $isSuspended ? ($u['suspended_until'] ?? null) : null,
-        "suspension_reason" => $isSuspended ? trim((string) ($u['suspension_reason'] ?? '')) : '',
+        // The reason column is shared by both lockouts, so it is read for
+        // either one — it is what the pill's tooltip shows.
+        "suspension_reason" => ($isSuspended || $isBanned) ? trim((string) ($u['suspension_reason'] ?? '')) : '',
         "can_suspend" => $canSuspend,
     ];
 }
@@ -134,8 +146,8 @@ $currentPage = 'users';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=6">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -253,9 +265,11 @@ $currentPage = 'users';
                                 <td>
                                     <?php
                                     $statusClass = strtolower($u['status']);
-                                    // Second line under a Suspended pill. The
-                                    // full reason is the pill's tooltip — it is
-                                    // free text and too long for the cell.
+                                    // Second line under a Suspended pill, for
+                                    // its end date. A ban has none — the pill
+                                    // alone says it. The full reason is the
+                                    // pill's tooltip either way: it is free
+                                    // text and too long for the cell.
                                     $untilNote = '';
                                     if ($u['suspended']) {
                                         $untilNote = $u['suspended_until']
@@ -288,6 +302,17 @@ $currentPage = 'users';
                                             </button>
 
                                             <ul class="dropdown-menu premium-dropdown">
+                                                <?php if ($u['banned']): ?>
+                                                <!-- A ban outranks a suspension, so it is the only
+                                                     lockout action a banned account offers: there is
+                                                     nothing to suspend on top of it, and Suspend
+                                                     would be refused by the endpoint anyway. -->
+                                                <li><button type="button" class="dropdown-item js-lift-ban"
+                                                        data-user-id="<?= (int) $u['id'] ?>"
+                                                        data-user-name="<?= $esc($u['name']) ?>">
+                                                        Lift Ban
+                                                    </button></li>
+                                                <?php else: ?>
                                                 <?php if ($u['suspended']): ?>
                                                 <li><button type="button" class="dropdown-item js-lift-suspension"
                                                         data-user-id="<?= (int) $u['id'] ?>"
@@ -306,9 +331,21 @@ $currentPage = 'users';
                                                         Suspend
                                                     </span></li>
                                                 <?php endif; ?>
-                                                <li><a class="dropdown-item" href="#">Block</a></li>
-                                                <li><a class="dropdown-item" href="#">Restrict</a></li>
-                                                <li><a class="dropdown-item" href="#">Set Spending Limit</a></li>
+
+                                                <?php if ($u['can_suspend']): ?>
+                                                <li><button type="button" class="dropdown-item js-ban"
+                                                        data-user-id="<?= (int) $u['id'] ?>"
+                                                        data-user-name="<?= $esc($u['name']) ?>"
+                                                        data-suspended="<?= $u['suspended'] ? '1' : '0' ?>">
+                                                        Ban
+                                                    </button></li>
+                                                <?php else: ?>
+                                                <li><span class="dropdown-item disabled"
+                                                        title="Finance and super-admin accounts can't be banned here, and you can't ban yourself.">
+                                                        Ban
+                                                    </span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
                                             </ul>
                                         </div>
                                     </div>
@@ -370,6 +407,53 @@ $currentPage = 'users';
         </div>
     </div>
 
+    <!-- Ban Account Modal -->
+    <div class="modal fade" id="banModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-modal">
+                <div class="modal-header"><h5 class="modal-title">Ban Account</h5></div>
+                <div class="modal-body">
+                    <form id="banForm">
+                        <input type="hidden" name="action" value="ban">
+                        <input type="hidden" name="user_id" id="banUserId">
+
+                        <p class="mb-3">
+                            Banning <strong id="banUserName"></strong> is <strong>permanent</strong>. It ends any
+                            signed-in session, blocks their login for good, freezes their wallet, and stops money
+                            being sent to them. A merchant owner's stall stops selling and their staff are locked
+                            out too. Unlike a suspension it never expires — only a finance admin can lift it.
+                        </p>
+
+                        <!-- Shown only when the ban replaces a live suspension, so the
+                             admin knows this escalates rather than starts a lockout. -->
+                        <div id="banEscalationNote" class="alert alert-warning d-none">
+                            This account is currently suspended. Banning it replaces that suspension.
+                        </div>
+
+                        <div class="premium-field mb-3">
+                            <label for="banReason">Reason <span class="text-danger">*</span></label>
+                            <textarea name="reason" id="banReason" class="form-control" rows="3"
+                                maxlength="255" required
+                                placeholder="Shown to the user and recorded in the audit trail."></textarea>
+                        </div>
+
+                        <div class="premium-field">
+                            <label for="banConfirm">Type <strong>BAN</strong> to confirm <span class="text-danger">*</span></label>
+                            <input type="text" name="confirm" id="banConfirm" class="form-control"
+                                autocomplete="off" required placeholder="BAN">
+                        </div>
+
+                        <div id="banMsg" class="mt-3"></div>
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-danger" style="flex:1" id="banSubmitBtn">Ban Account</button>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
@@ -393,7 +477,7 @@ $currentPage = 'users';
         });
     });
 
-    // ── Suspend / lift ──────────────────────────────────────────────────────
+    // ── Suspend / ban / lift ────────────────────────────────────────────────
     // Delegated off the table body: DataTables re-renders rows on every page
     // change and sort, so per-button listeners bound at load would go stale.
     const USERS_API = "<?= ADMIN_URL ?>/api/users.php";
@@ -409,9 +493,30 @@ $currentPage = 'users';
             return;
         }
 
+        const banBtn = e.target.closest(".js-ban");
+        if (banBtn) {
+            document.getElementById("banUserId").value = banBtn.dataset.userId;
+            document.getElementById("banUserName").textContent = banBtn.dataset.userName;
+            document.getElementById("banReason").value = "";
+            document.getElementById("banConfirm").value = "";
+            document.getElementById("banMsg").innerHTML = "";
+            document.getElementById("banEscalationNote")
+                .classList.toggle("d-none", banBtn.dataset.suspended !== "1");
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("banModal")).show();
+            return;
+        }
+
+        const liftBanBtn = e.target.closest(".js-lift-ban");
+        if (liftBanBtn) {
+            liftLockout(liftBanBtn, "lift_ban",
+                "Lift the ban on NAME? They will be able to sign in and transact again immediately.");
+            return;
+        }
+
         const liftBtn = e.target.closest(".js-lift-suspension");
         if (liftBtn) {
-            liftSuspension(liftBtn);
+            liftLockout(liftBtn, "lift_suspension",
+                "Lift the suspension on NAME? They will be able to sign in and transact again immediately.");
         }
     });
 
@@ -437,14 +542,47 @@ $currentPage = 'users';
         btn.textContent = "Suspend Account";
     });
 
-    async function liftSuspension(btn) {
-        const name = btn.dataset.userName;
-        if (!confirm("Lift the suspension on " + name + "? They will be able to sign in and transact again immediately.")) {
+    document.getElementById("banForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById("banSubmitBtn");
+        const msg = document.getElementById("banMsg");
+
+        // Client-side echo of the endpoint's own check, so a mistyped
+        // confirmation costs a keystroke instead of a round trip. The endpoint
+        // still enforces it — this is convenience, not the gate.
+        if (document.getElementById("banConfirm").value.trim().toUpperCase() !== "BAN") {
+            msg.innerHTML = '<div class="alert alert-danger mb-0">Type BAN in the confirmation box to continue.</div>';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Banning...";
+        try {
+            const resp = await fetch(USERS_API, { method: "POST", body: new FormData(this) });
+            const data = await resp.json();
+            if (data.success) {
+                location.reload();
+                return;
+            }
+            msg.innerHTML = '<div class="alert alert-danger mb-0"></div>';
+            msg.firstChild.textContent = data.message;
+        } catch (err) {
+            msg.innerHTML = '<div class="alert alert-danger mb-0">Could not reach the server. Try again.</div>';
+        }
+        btn.disabled = false;
+        btn.textContent = "Ban Account";
+    });
+
+    // Both lifts are the same round trip against the same endpoint — only the
+    // action name and the confirm wording differ, so they share one function
+    // rather than two copies that could drift apart.
+    async function liftLockout(btn, action, promptTemplate) {
+        if (!confirm(promptTemplate.replace("NAME", btn.dataset.userName))) {
             return;
         }
         btn.disabled = true;
         const body = new FormData();
-        body.append("action", "lift_suspension");
+        body.append("action", action);
         body.append("user_id", btn.dataset.userId);
         try {
             const resp = await fetch(USERS_API, { method: "POST", body: body });

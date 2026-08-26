@@ -4,11 +4,14 @@
  * admin/users.php. Multi-stage dispatcher shape (references/patterns.md):
  * $_POST + FormData, one `action` switch, JSON out.
  *
- * Suspend is a finance-issued lockout, distinct from the merchant-staff
- * Active/Inactive toggle and from the automatic restricted-product suspension.
- * The state itself lives on users.status = 'Suspended' plus the suspension_*
- * columns; everything that reads or reverses it lives in connection/app.php
- * (gjc_suspend_account / gjc_account_suspension / gjc_lift_account_suspension)
+ * Suspend and Ban are the two finance-issued lockouts, distinct from the
+ * merchant-staff Active/Inactive toggle and from the automatic
+ * restricted-product suspension. A suspension is timed (or indefinite) and can
+ * expire on its own; a ban is permanent and only ever ends when finance lifts
+ * it here. The state lives on users.status ('Suspended' / 'Banned') plus the
+ * shared suspension_* columns; everything that reads or reverses it lives in
+ * connection/app.php (gjc_suspend_account / gjc_ban_account /
+ * gjc_account_suspension / gjc_lift_account_suspension / gjc_lift_account_ban)
  * so the enforcement points and this endpoint can never disagree.
  */
 session_start();
@@ -54,20 +57,22 @@ function users_fetch(PDO $db, int $userId): ?array
 }
 
 /**
- * Why this account may not be suspended, or null when it may. Keeps an admin
+ * Why this account may not be locked out, or null when it may. Keeps an admin
  * from locking out themselves — or the finance team as a whole — which nobody
- * left inside the system would be able to undo.
+ * left inside the system would be able to undo. $verb names the action in the
+ * message so the same guard can speak for both Suspend and Ban.
  */
-function users_suspend_guard(array $user, int $adminId): ?string
+function users_suspend_guard(array $user, int $adminId, string $verb = 'suspend'): ?string
 {
+    $past = $verb === 'ban' ? 'banned' : 'suspended';
     if ((int) $user['userID'] === $adminId) {
-        return 'You cannot suspend your own account.';
+        return "You cannot {$verb} your own account.";
     }
     if (in_array((int) $user['roleID'], [3, 4], true)) {
-        return 'Finance accounts cannot be suspended from this page — revoking finance access is a school-administrator action.';
+        return "Finance accounts cannot be {$past} from this page — revoking finance access is a school-administrator action.";
     }
     if ((string) ($user['sub_role'] ?? '') === 'super_admin') {
-        return 'The super-admin account cannot be suspended.';
+        return "The super-admin account cannot be {$past}.";
     }
     return null;
 }
@@ -153,6 +158,86 @@ try {
 
             $name = trim($user['first_name'] . ' ' . $user['last_name']);
             users_json(['success' => true, 'message' => "Suspension lifted. {$name} can sign in again."]);
+        }
+
+        case 'ban': {
+            $userId  = (int) ($_POST['user_id'] ?? 0);
+            $reason  = trim((string) ($_POST['reason'] ?? ''));
+            $confirm = trim((string) ($_POST['confirm'] ?? ''));
+
+            $user = users_fetch($db, $userId);
+            if (!$user) {
+                users_json(['success' => false, 'message' => 'That user no longer exists.']);
+            }
+            if (($guard = users_suspend_guard($user, $adminId, 'ban')) !== null) {
+                users_json(['success' => false, 'message' => $guard]);
+            }
+            if (mb_strlen($reason) < 5) {
+                users_json(['success' => false, 'message' => 'Give a reason of at least 5 characters — the user sees it, and it goes into the audit trail.']);
+            }
+
+            // A ban has no clock on it, so the only thing standing between a
+            // misclick and a permanent lockout is this typed confirmation. The
+            // modal collects it; checking it here too means the endpoint can't
+            // be driven straight past the warning.
+            if (strcasecmp($confirm, 'BAN') !== 0) {
+                users_json(['success' => false, 'message' => 'Type BAN in the confirmation box to continue.']);
+            }
+
+            $wasSuspended = (string) $user['status'] === 'Suspended';
+
+            if (!gjc_ban_account($db, $userId, $reason, $adminId)) {
+                users_json(['success' => false, 'message' => 'That account is already banned.']);
+            }
+
+            $name = trim($user['first_name'] . ' ' . $user['last_name']);
+
+            logAudit(
+                $db, $adminId, gjc_current_role(),
+                'USER_ACCOUNT', 'users',
+                ['userID' => $userId, 'status' => (string) $user['status']],
+                [
+                    'event'     => 'banned',
+                    'userID'    => $userId,
+                    'status'    => 'Banned',
+                    'permanent' => true,
+                    // Worth recording separately: a ban that replaced a live
+                    // suspension is an escalation, not a fresh lockout.
+                    'escalated_from_suspension' => $wasSuspended,
+                    'reason'    => $reason,
+                    'banned_by' => $adminId,
+                ]
+            );
+
+            gjc_notify(
+                $db, $userId, 'compliance', 'Your account has been banned',
+                gjc_suspension_notice(['kind' => 'ban', 'reason' => $reason], 'Your GenPay account'),
+                'ban'
+            );
+
+            users_json([
+                'success' => true,
+                'message' => "{$name} has been permanently banned. Any signed-in session ends on their next click.",
+            ]);
+        }
+
+        case 'lift_ban': {
+            $userId = (int) ($_POST['user_id'] ?? 0);
+
+            $user = users_fetch($db, $userId);
+            if (!$user) {
+                users_json(['success' => false, 'message' => 'That user no longer exists.']);
+            }
+
+            // gjc_lift_account_ban() writes the audit entry and the
+            // notification itself, the same way the suspension lift does, so a
+            // lockout is always undone through one code path.
+            if (!gjc_lift_account_ban($db, $userId, $adminId)) {
+                users_json(['success' => false, 'message' => 'That account is not currently banned.']);
+            }
+
+            $name = trim($user['first_name'] . ' ' . $user['last_name']);
+            users_json(['success' => true, 'message' => "Ban lifted. {$name} can sign in again."]);
         }
 
         default:

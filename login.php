@@ -41,6 +41,13 @@ if (!$error && ($_GET['reason'] ?? '') === 'account_suspended') {
         . ($untilTs ? ' until ' . date('M d, Y g:i A', $untilTs) : '')
         . '. Sign in for details, or contact the finance office.';
 }
+
+// Finance-issued ban (admin/users.php). Permanent, so unlike the suspension
+// banner above there is no date to offer and no "until" to read.
+if (!$error && ($_GET['reason'] ?? '') === 'account_banned') {
+    $error = 'Your account has been permanently banned from GenPay. '
+        . 'Sign in for details, or contact the finance office if you believe this is a mistake.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -57,7 +64,7 @@ if (!$error && ($_GET['reason'] ?? '') === 'account_suspended') {
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="<?= CSS_URL ?>/login.css?v=13">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/login.css?v=14">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 </head>
 
@@ -114,12 +121,6 @@ if (!$error && ($_GET['reason'] ?? '') === 'account_suspended') {
                 <a href="#" data-bs-toggle="modal" data-bs-target="#studentModal">
                     Register as Student
                 </a>
-
-                &nbsp;|&nbsp;
-
-                <a href="#" data-bs-toggle="modal" data-bs-target="#guestModal">
-                    Register as Guest
-                </a>
             </div>
 
         </div>
@@ -149,62 +150,6 @@ if (!$error && ($_GET['reason'] ?? '') === 'account_suspended') {
                     </ul>
 
                     <button class="btn-close-modal" data-bs-dismiss="modal">Got it</button>
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <div class="modal fade" id="guestModal">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content custom-modal">
-                <div class="modal-body">
-
-                    <h4 class="modal-title text-center">Visitor Registration</h4>
-
-                    <div class="guest-grid">
-
-                        <div class="visitor-card">
-                            <h6 class="card-title">How it works</h6>
-
-                            <div class="step"><img src="<?= ICONS_URL ?>/form.png"> Fill out the form</div>
-                            <div class="step"><img src="<?= ICONS_URL ?>/wallet.png"> Load wallet at cashier</div>
-                            <div class="step"><img src="<?= ICONS_URL ?>/qr.png"> Use QR for payments</div>
-                            <div class="step"><img src="<?= ICONS_URL ?>/refund.png"> Refund unused balance</div>
-
-                        </div>
-
-                        <div class="form-card">
-
-                            <form>
-
-                                <div class="input-modern">
-                                    <input type="text" required>
-                                    <label>Full Name</label>
-                                </div>
-
-                                <div class="input-modern">
-                                    <input type="text" required>
-                                    <label>Mobile Number</label>
-                                </div>
-
-                                <div class="input-modern">
-                                    <input type="text">
-                                    <label>Purpose of Visit</label>
-                                </div>
-
-                                <div class="btn-group-custom">
-                                    <button type="button" class="login-btn">
-                                        Create Visitor Account
-                                    </button>
-                                </div>
-
-                            </form>
-
-                        </div>
-
-                    </div>
 
                 </div>
             </div>

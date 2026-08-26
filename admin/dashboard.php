@@ -55,7 +55,7 @@ $currentPage = "dashboard";
     <title>Admin Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -231,20 +231,6 @@ $currentPage = "dashboard";
                     </a>
                 </div>
 
-                <div class="col-12 col-sm-6 col-xl-3">
-                    <a href="<?= ADMIN_URL ?>/visitors.php" class="mini-metric-card">
-                        <div class="mini-icon-wrap">
-                            <i class="fa-solid fa-person-walking"></i>
-                        </div>
-                        <div class="mini-metric-info">
-                            <span>Active Visitors</span>
-                            <h3><?php echo (int) $demographics[
-                                "active_visitors"
-                            ]; ?></h3>
-                        </div>
-                    </a>
-                </div>
-
             </section>
 
             <section class="row g-4 mb-4">
@@ -286,11 +272,6 @@ $currentPage = "dashboard";
 
                             <a href="<?= ADMIN_URL ?>/encashments.php">
                                 <span>Encashments</span>
-                                <b>&rsaquo;</b>
-                            </a>
-
-                            <a href="<?= ADMIN_URL ?>/visitors.php">
-                                <span>Visitors Management</span>
                                 <b>&rsaquo;</b>
                             </a>
 

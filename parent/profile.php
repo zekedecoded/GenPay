@@ -5,6 +5,7 @@ require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/audit_logger.php';
 
 gjc_require_role(['parent']);
+gjc_ensure_user_profile_schema($db);
 
 $currentUser = gjc_current_user($db);
 $rawUser     = $currentUser['raw'] ?? [];
@@ -21,8 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $idCol) {
         $lastName  = trim((string) ($_POST['last_name']  ?? ''));
         $phone     = trim((string) ($_POST['phone']       ?? ''));
 
+        // Sex / birth date / address / emergency contact, validated by the same
+        // helper the student profile uses so both portals enforce one rule set.
+        $details = gjc_collect_profile_details($_POST, $columns);
+
         if ($firstName === '' || $lastName === '') {
             $error = 'First name and last name are required.';
+        } elseif ($details['error'] !== null) {
+            $error = $details['error'];
         } else {
             $updates = [];
             $values  = [];
@@ -31,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $idCol) {
                 'last_name'  => $lastName,
                 'name'       => trim($firstName . ' ' . $lastName),
                 'phone'      => $phone,
-            ] as $col => $val) {
+            ] + $details['values'] as $col => $val) {
                 if (in_array($col, $columns, true)) {
                     $updates[] = "{$col} = ?";
                     $values[]  = $val;
@@ -103,9 +110,9 @@ $currentPage = 'profile';
     <title>My Profile | GenPay Parent Portal</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=6">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_profile.css?v=4">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -160,7 +167,7 @@ $currentPage = 'profile';
             <!-- Edit profile -->
             <div class="pcard">
                 <h5><i class="fa-solid fa-pen me-2" style="color:var(--gp-green-700)"></i>Edit Profile</h5>
-                <p>Update your name and contact number.</p>
+                <p>Update your name, contact details and personal information.</p>
                 <form method="POST">
                     <input type="hidden" name="profile_action" value="profile">
                     <div class="pgrid">
@@ -182,6 +189,14 @@ $currentPage = 'profile';
                         <input type="email" value="<?= htmlspecialchars($email) ?>" disabled>
                         <small>Email cannot be changed. Contact Finance if needed.</small>
                     </div>
+
+                    <?php
+                    $pdRow   = $rawUser;
+                    $pdField = 'pfield';
+                    $pdGrid  = 'pgrid';
+                    require __DIR__ . '/../includes/partials/profile_details_fields.php';
+                    ?>
+
                     <button type="submit" class="btn-primary-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save Changes</button>
                 </form>
             </div>

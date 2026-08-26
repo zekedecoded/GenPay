@@ -4,6 +4,7 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['finance']);
+gjc_ensure_user_profile_schema($db);
 
 /**
  * CRUD "Read": view a single user record as the account's real profile. The
@@ -79,7 +80,7 @@ if ($user) {
     $statusKey = strtolower($status);
     $statusClass = match (true) {
         $statusKey === 'active' => 'is-active',
-        in_array($statusKey, ['inactive', 'blocked', 'suspended'], true) => 'is-inactive',
+        in_array($statusKey, ['inactive', 'blocked', 'suspended', 'banned'], true) => 'is-inactive',
         default => 'is-neutral',
     };
 
@@ -200,11 +201,11 @@ $field = static function (string $icon, string $label, string $value, bool $mono
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $user ? 'User Details' : 'Content Not Available' ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/detail_view.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/detail_view.css?v=7">
 </head>
 
 <body class="gp-theme">
@@ -223,7 +224,6 @@ $field = static function (string $icon, string $label, string $value, bool $mono
             <a class="uv-back" href="<?= ADMIN_URL ?>/users.php">
                 <i class="fa-solid fa-arrow-left"></i> Back to Users
             </a>
-            <span class="uv-ro"><i class="fa-solid fa-lock"></i> Read-only</span>
         </div>
 
         <section class="uv-hero">
@@ -333,6 +333,28 @@ $field = static function (string $icon, string $label, string $value, bool $mono
             </div>
         </section>
         <?php endif; ?>
+
+        <!-- Personal details apply to every role, so this card sits outside the
+             per-role blocks above. Read-only here: the account's owner maintains
+             these from their own profile page. -->
+        <section class="gp-card uv-card">
+            <div class="gp-card-head">
+                <div><h3>Personal details</h3><p>Demographics on record for this account.</p></div>
+            </div>
+            <div class="uv-fields">
+                <?php
+                $sex = trim((string) ($user['sex'] ?? ''));
+                $address = gjc_format_address($user);
+                $dob = $user['date_of_birth'] ?? null;
+                $field('fa-solid fa-venus-mars', 'Sex', $sex !== '' ? $sex : '—');
+                // Age stands as its own field but is still computed from the
+                // birth date below it, so the two can never contradict.
+                $field('fa-solid fa-hourglass-half', 'Age', gjc_age_label($dob));
+                $field('fa-solid fa-cake-candles', 'Date of Birth', gjc_dob_label($dob));
+                $field('fa-solid fa-location-dot', 'Address', $address !== '' ? $address : '—');
+                ?>
+            </div>
+        </section>
 
         <section class="gp-card uv-card">
             <div class="gp-card-head">

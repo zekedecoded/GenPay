@@ -51,8 +51,8 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=40">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -160,14 +160,21 @@ $returnReasons = ['Defective item', 'Wrong item given', 'Customer cancelled', 'O
                                 </td>
                                 <td><?php echo gjc_e(date('M d, Y h:i A', strtotime($t['created_at']))); ?></td>
                                 <td class="text-end txn-action-cell">
-                                    <?php if ($t['status'] === 'completed' && $t['transaction_type'] === 'payment'): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                        onclick="openReturnModal(<?= (int) $t['id'] ?>, '<?= gjc_e($t['reference_no']) ?>')">
-                                        Issue Return
-                                    </button>
-                                    <?php else: ?>
-                                    <span class="text-muted">&mdash;</span>
-                                    <?php endif; ?>
+                                    <div class="merchant-row-actions">
+                                        <!-- Read view: the row is identified by a signed HMAC token,
+                                             and view_transaction.php re-checks it against this stall's
+                                             wallet before rendering. -->
+                                        <a class="merchant-row-btn merchant-row-btn--view"
+                                            href="<?= MERCHANT_URL ?>/view_transaction.php?token=<?= urlencode(gjc_make_view_token((int) $t['id'], 'merchant_txn')) ?>">
+                                            <i class="fa-regular fa-eye"></i> View
+                                        </a>
+                                        <?php if ($t['status'] === 'completed' && $t['transaction_type'] === 'payment'): ?>
+                                        <button type="button" class="merchant-row-btn merchant-row-btn--return"
+                                            onclick="openReturnModal(<?= (int) $t['id'] ?>, '<?= gjc_e($t['reference_no']) ?>')">
+                                            <i class="fa-solid fa-rotate-left"></i> Issue Return
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

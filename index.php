@@ -28,8 +28,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=14">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=6">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/index.css?v=7">
 </head>
 <body>
 
@@ -60,7 +60,7 @@
                         <i class="fa-solid fa-qrcode"></i>
                     </div>
                     <h3>QR Code Payments</h3>
-                    <p>No need for cash. Just scan the merchant's QR code or present your visitor voucher to pay instantly.</p>
+                    <p>No need for cash. Just scan the merchant's QR code to pay instantly.</p>
                 </div>
             </div>
             <div class="col-md-4">

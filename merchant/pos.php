@@ -38,8 +38,8 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=40">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=5">
@@ -152,7 +152,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                 <div class="pos-qr-box" id="posQrBox">
                     <div class="pos-qr-status is-pending" id="posQrStatus">Waiting for payment&hellip;</div>
                     <strong id="posQrTitle">Ready for student scan</strong>
-                    <span id="posQrHint">Ask the student to open Scan &amp; Pay and scan this QR, or type the manual code.</span>
+                    <span id="posQrHint">Ask the student to open Shop Cart, tap &ldquo;Pay Now&rdquo;, and scan this QR.</span>
                     <div class="pos-qr-frame">
                         <div class="pos-qr-canvas" id="posQrCanvas"></div>
                         <span class="pos-qr-corner tl"></span>
@@ -167,7 +167,7 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
                     <span id="posQrSummary"></span>
                     <div class="pos-qr-guide">
                         <div class="pos-qr-guide-step"><strong>1</strong><span>Show this QR to the student.</span></div>
-                        <div class="pos-qr-guide-step"><strong>2</strong><span>They scan it in Scan &amp; Pay, or type the manual code above.</span></div>
+                        <div class="pos-qr-guide-step"><strong>2</strong><span>They scan it from the Shop Cart&rsquo;s &ldquo;Pay Now&rdquo; mode.</span></div>
                         <div class="pos-qr-guide-step"><strong>3</strong><span>Wait for the status to flip to Paid before handing over the order.</span></div>
                     </div>
                 </div>
@@ -422,7 +422,7 @@ async function generatePaymentQr() {
 
         renderPosQr(result.qr_payload);
         document.getElementById('posQrTitle').textContent = 'Ready for student scan';
-        document.getElementById('posQrHint').textContent = 'Ask the student to open Scan & Pay and scan this QR, or type the manual code.';
+        document.getElementById('posQrHint').textContent = 'Ask the student to open Shop Cart, tap "Pay Now", and scan this QR.';
         document.getElementById('posQrShortCode').textContent = result.short_code || '----';
         document.getElementById('posQrSummary').textContent = result.summary || `Total: ${gcAmount(total)} GC (\u2248 \u20b1${total.toFixed(2)})`;
         setQrStatus('pending', 'Waiting for payment\u2026');

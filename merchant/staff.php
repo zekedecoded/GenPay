@@ -42,8 +42,8 @@ $currentPage = "staff";
     <title>Staff Management | GenPay Merchant</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=40">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -91,11 +91,12 @@ $currentPage = "staff";
                                 Status <i class="fa-solid fa-sort ms-1" id="statusSortIcon"></i>
                             </th>
                             <th>Active</th>
+                            <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody id="staffTableBody">
                     <?php if (empty($staffList)): ?>
-                        <tr><td colspan="7" class="text-center text-muted py-5">No staff accounts yet. Add your first staff member.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-5">No staff accounts yet. Add your first staff member.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($staffList as $s): ?>
                         <?php
@@ -124,6 +125,14 @@ $currentPage = "staff";
                                         <?= $isActive ? 'checked' : '' ?>
                                         onchange="toggleStaffStatus(<?= (int) $s['userID'] ?>, this)">
                                 </div>
+                            </td>
+                            <td class="text-end">
+                                <!-- Read view: signed HMAC token, re-checked in view_staff.php
+                                     against this owner's roster before rendering. -->
+                                <a class="merchant-row-btn merchant-row-btn--view"
+                                    href="<?= MERCHANT_URL ?>/view_staff.php?token=<?= urlencode(gjc_make_view_token((int) $s['userID'], 'merchant_staff')) ?>">
+                                    <i class="fa-regular fa-eye"></i> View
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

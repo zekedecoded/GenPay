@@ -32,10 +32,6 @@ $currentPage = $currentPage ?? '';
             <i class="fa-solid fa-users"></i>
             <span>Staff</span>
         </a>
-        <a href="<?= MERCHANT_URL ?>/qr_scanner.php" class="<?= $currentPage === 'qr_scanner' ? 'active' : '' ?>">
-            <i class="fa-solid fa-person-walking"></i>
-            <span>Scan Voucher</span>
-        </a>
         <a href="<?= MERCHANT_URL ?>/encash.php" class="<?= $currentPage === 'encash' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-check-dollar"></i>
             <span>Encash</span>

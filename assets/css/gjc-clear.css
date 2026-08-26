@@ -1,6 +1,6 @@
 /* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
-@import url("theme.css?v=3");
+@import url("theme.css?v=4");
 
 :root {
   /* Primary green scale — aliases of the shared gp-* theme
@@ -56,14 +56,18 @@
   --gjc-space-7: 28px;
   --gjc-space-8: 32px;
 
-  /* Radius scale */
-  --gjc-radius-sm: 4px;
-  --gjc-radius: 8px;
-  --gjc-radius-md: 12px;
-  --gjc-radius-lg: 16px;
-  --gjc-radius-xl: 20px;
-  --gjc-radius-2xl: 24px;
-  --gjc-radius-pill: 999px;
+  /* Radius scale — aliases of theme.css, which is the single source of
+     truth for shape. The old 8/12/16/20/24 ramp is collapsed: containers,
+     panels and badges all square off, and only buttons stay pills. The
+     -sm/-lg/-xl/-2xl names are kept (and deliberately equal) so any code
+     that reaches for them cannot reintroduce a blob. */
+  --gjc-radius-sm: var(--gp-radius);
+  --gjc-radius: var(--gp-radius);
+  --gjc-radius-md: var(--gp-radius);
+  --gjc-radius-lg: var(--gp-radius);
+  --gjc-radius-xl: var(--gp-radius);
+  --gjc-radius-2xl: var(--gp-radius);
+  --gjc-radius-pill: var(--gp-radius-pill);
 
   /* Elevation scale (green-tinted drop shadows) */
   --gjc-shadow-sm: 0 1px 2px rgba(6, 55, 29, 0.08);
@@ -205,7 +209,6 @@ img {
 .encash-stat-card,
 .transaction-stat-card,
 .history-stat-card,
-.visitor-stat-card,
 .mini-metric-card,
 .history-mini-card {
   background: var(--gjc-panel) !important;
@@ -244,7 +247,6 @@ img {
 .topup-hero-card::after,
 .profile-hero-card::after,
 .history-balance-card::after,
-.visitor-stat-card::after,
 .topup-stat-card::after,
 .encash-stat-card::after,
 .transaction-stat-card::after {
@@ -258,8 +260,7 @@ img {
 .topup-stat-card span,
 .encash-stat-card span,
 .transaction-stat-card span,
-.history-stat-card span,
-.visitor-stat-card span {
+.history-stat-card span {
   color: var(--gjc-muted) !important;
   font-size: 12px !important;
   font-weight: 700 !important;
@@ -272,8 +273,7 @@ img {
 .topup-stat-card h2,
 .encash-stat-card h2,
 .transaction-stat-card h2,
-.history-stat-card h2,
-.visitor-stat-card h2 {
+.history-stat-card h2 {
   color: var(--gjc-ink) !important;
   font-weight: 800 !important;
   font-variant-numeric: tabular-nums;
@@ -286,8 +286,7 @@ img {
 .topup-stat-card h2 span,
 .encash-stat-card h2 span,
 .transaction-stat-card h2 span,
-.history-stat-card h2 span,
-.visitor-stat-card h2 span {
+.history-stat-card h2 span {
   color: var(--gjc-ink) !important;
   font-size: inherit !important;
   font-weight: inherit !important;
@@ -300,8 +299,7 @@ img {
 .topup-stat-card p,
 .encash-stat-card p,
 .transaction-stat-card p,
-.history-stat-card p,
-.visitor-stat-card p {
+.history-stat-card p {
   color: var(--gjc-muted) !important;
 }
 
@@ -468,14 +466,12 @@ img {
 .create-topup-btn,
 .create-encash-btn,
 .export-btn,
-.visitor-primary-btn,
 .load-cash-btn,
-.visitor-load-btn,
 .save-settings-btn {
   background: var(--gjc-green-800) !important;
   color: #fff !important;
   border: 1px solid var(--gjc-green-800) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: var(--gp-radius-pill) !important;
   box-shadow: none !important;
   font-weight: 800 !important;
   transform: none !important;
@@ -494,9 +490,7 @@ img {
 .create-topup-btn:hover,
 .create-encash-btn:hover,
 .export-btn:hover,
-.visitor-primary-btn:hover,
 .load-cash-btn:hover,
-.visitor-load-btn:hover,
 .save-settings-btn:hover {
   background: var(--gjc-green-950) !important;
   border-color: var(--gjc-green-950) !important;
@@ -535,7 +529,7 @@ img {
   background: #fff !important;
   color: var(--gjc-green-800) !important;
   border: 1px solid var(--gjc-green-700) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: var(--gp-radius-pill) !important;
   box-shadow: none !important;
 }
 
@@ -556,7 +550,7 @@ img {
   background: var(--gjc-success) !important;
   color: #fff !important;
   border: 1px solid var(--gjc-success) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: var(--gp-radius-pill) !important;
 }
 
 .reject-btn,
@@ -564,14 +558,14 @@ img {
   background: #fff !important;
   color: var(--gjc-danger) !important;
   border: 1px solid var(--gjc-danger-border) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: var(--gp-radius-pill) !important;
 }
 
 .freeze-btn {
   background: var(--gjc-gold-100) !important;
   color: var(--gjc-green-950) !important;
   border: 1px solid var(--gjc-gold-500) !important;
-  border-radius: var(--gjc-radius) !important;
+  border-radius: var(--gp-radius-pill) !important;
 }
 
 /* Tables */
@@ -634,6 +628,10 @@ img {
 .economy-balance-card {
   background: var(--gjc-green-800) !important;
   border: 1px solid var(--gjc-green-700) !important;
+  /* The gold keyline every dark hero carries. It has to be declared here,
+     after the border shorthand and with !important, because this block is
+     what actually paints the card — the rule in admin.css never wins. */
+  border-top: var(--gp-keyline) !important;
   border-radius: var(--gjc-radius) !important;
   box-shadow: var(--gjc-shadow-md) !important;
 }
@@ -691,10 +689,47 @@ img {
   color: var(--gjc-green-950) !important;
 }
 
+/* Mirror of the rule above, for the other direction. cap/vault/merchants are
+   DARK fills, but the .metric-card block further up forces every tile's text
+   to the white-card ink (--gjc-muted / --gjc-ink) with !important. That left
+   these three at 1.4-2.6:1 — effectively unreadable. Bring the text back to
+   white; the label and hint stay a step down so the figure still dominates. */
+.metric-card.metric-cap h2,
+.metric-card.metric-cap h2 span,
+.metric-card.metric-vault h2,
+.metric-card.metric-vault h2 span,
+.metric-card.metric-merchants h2,
+.metric-card.metric-merchants h2 span {
+  color: #ffffff !important;
+}
+
+.metric-card.metric-cap span,
+.metric-card.metric-cap p,
+.metric-card.metric-cap small,
+.metric-card.metric-vault span,
+.metric-card.metric-vault p,
+.metric-card.metric-vault small,
+.metric-card.metric-merchants span,
+.metric-card.metric-merchants p,
+.metric-card.metric-merchants small {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.metric-card.metric-cap .metric-icon,
+.metric-card.metric-vault .metric-icon,
+.metric-card.metric-merchants .metric-icon {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+.metric-card.metric-cap .metric-icon i,
+.metric-card.metric-vault .metric-icon i,
+.metric-card.metric-merchants .metric-icon i {
+  color: #ffffff !important;
+}
+
 /* Circulation widget (admin/economy.php via includes/circulation_widget.php)
    The widget's own CSS in admin.css now owns this component's look (flat
    white panels, ledger bar, neutral pool cards) - nothing left to override
-   here. .ce-pool-vault/.ce-pool-students/.ce-pool-merchants/.ce-pool-vouchers/
+   here. .ce-pool-vault/.ce-pool-students/.ce-pool-merchants/
    .ce-pool-parents are colour identifiers consumed directly by admin.css, not full-card
    background painters, so no !important fight is needed any more. */
 
@@ -827,18 +862,6 @@ img {
 .modal-title,
 .modal-desc,
 .modal-steps,
-.card-title {
-  color: var(--gjc-ink) !important;
-}
-
-.visitor-card,
-.step,
-.form-card {
-  background: #f8faf7 !important;
-  border: 1px solid var(--gjc-line) !important;
-  border-radius: var(--gjc-radius) !important;
-}
-
 /* Public landing page overrides */
 .navbar {
   background: #fff !important;

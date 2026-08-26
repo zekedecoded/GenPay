@@ -71,14 +71,14 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
     <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=14">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
     <style>
         .sgc-parent-choice--active { border-color: var(--gp-success) !important; background: var(--gp-success-bg); }
         .topup-tabs { border-bottom: 1.5px solid var(--gp-line); gap: 4px; }

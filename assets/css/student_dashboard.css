@@ -2,8 +2,8 @@
    Scoped under sd-* so gjc-clear.css's student-* !important overrides never
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
-@import url("gjc-clear.css?v=14");
-@import url("theme.css?v=3");
+@import url("gjc-clear.css?v=15");
+@import url("theme.css?v=4");
 
 /* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
    — theme.css is the single source of truth for the palette. */
@@ -42,7 +42,7 @@ body.sd-body {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: linear-gradient(180deg, var(--sd-forest-950), var(--sd-forest-900));
+  background: var(--sd-forest-950);
   display: flex;
   flex-direction: column;
   padding: 22px 16px;
@@ -94,7 +94,7 @@ body.sd-body {
   align-items: center;
   gap: 12px;
   padding: 11px 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   border-left: 3px solid transparent;
   color: rgba(255, 255, 255, 0.68);
   text-decoration: none;
@@ -126,7 +126,7 @@ body.sd-body {
   align-items: center;
   gap: 12px;
   padding: 11px 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   color: #e0654f;
   text-decoration: none;
   font-size: 14px;
@@ -166,7 +166,7 @@ body.sd-body {
   display: inline-block;
   margin-left: 10px;
   padding: 2px 10px;
-  border-radius: 50px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .3px;
@@ -193,7 +193,7 @@ body.sd-body {
   width: 40px;
   height: 40px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   display: grid;
@@ -214,7 +214,7 @@ body.sd-body {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   background: var(--sd-red);
   border: 1.5px solid var(--sd-forest-950);
   color: #fff;
@@ -232,7 +232,7 @@ body.sd-body {
   width: 340px;
   max-width: calc(100vw - 40px);
   background: #fff;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   box-shadow: 0 20px 45px rgba(15, 40, 25, 0.22);
   border: 1px solid var(--sd-line);
   overflow: hidden;
@@ -311,7 +311,7 @@ body.sd-body {
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   background: var(--sd-mint);
   color: var(--sd-forest-700);
   display: grid;
@@ -355,7 +355,7 @@ body.sd-body {
 .sd-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: var(--sd-forest-850);
   border: 1px solid rgba(240, 165, 0, 0.5);
   color: var(--sd-gold);
@@ -377,10 +377,8 @@ body.sd-body {
   position: relative;
   overflow: hidden;
   border-radius: var(--sd-radius);
-  background:
-    radial-gradient(circle at 85% -20%, rgba(240, 165, 0, 0.18), transparent 45%),
-    radial-gradient(circle at -10% 120%, rgba(74, 222, 128, 0.14), transparent 45%),
-    linear-gradient(135deg, var(--sd-forest-900), var(--sd-forest-700));
+  background: var(--sd-forest-950);
+  border-top: var(--gp-keyline);
   color: #fff;
   padding: 26px 28px;
   display: flex;
@@ -421,7 +419,7 @@ body.sd-body {
 .sd-gc-badge {
   background: rgba(240, 165, 0, 0.16);
   border: 1px solid rgba(240, 165, 0, 0.45);
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   color: var(--sd-gold);
   font-family: var(--sd-mono);
   font-weight: 700;
@@ -447,7 +445,7 @@ body.sd-body {
   align-items: center;
   gap: 8px;
   padding: 9px 18px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   font-size: 13px;
   text-decoration: none;
   transition: background 0.18s ease;
@@ -499,7 +497,7 @@ body.sd-body {
 .sd-role-badge {
   background: rgba(240, 165, 0, 0.14);
   border: 1px solid rgba(240, 165, 0, 0.5);
-  border-radius: 6px;
+  border-radius: var(--gp-radius);
   color: var(--sd-gold);
   font-size: 10px;
   font-weight: 800;
@@ -510,12 +508,16 @@ body.sd-body {
 
 /* ===== QUICK ACTIONS ===== */
 .sd-quick {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
 }
 
 .sd-quick a {
+  flex: 1 1 0;
+  min-width: 150px;
+  max-width: 250px;
   background: #fff;
   border: 1px solid var(--sd-line);
   border-radius: var(--sd-radius-sm);
@@ -540,7 +542,7 @@ body.sd-body {
 .sd-quick-icon {
   width: 46px;
   height: 46px;
-  border-radius: 13px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   font-size: 17px;
@@ -580,7 +582,7 @@ body.sd-body {
 .sd-stat-icon {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   font-size: 13px;
@@ -643,7 +645,7 @@ body.sd-body {
 
 .sd-viewall {
   background: #dcf3e4;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   color: #15803d;
   font-size: 12.5px;
   font-weight: 700;
@@ -678,7 +680,7 @@ body.sd-body {
 .sd-txn-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   font-size: 15px;
@@ -762,7 +764,7 @@ body.sd-body {
 
 .sd-count {
   background: #dcf3e4;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   color: #15803d;
   font-size: 12.5px;
   font-weight: 700;
@@ -774,7 +776,7 @@ body.sd-body {
   display: inline-block;
   background: var(--sd-mint);
   border: 1px solid #dfe9e1;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   color: #2b4a38;
   font-size: 11.5px;
   font-weight: 700;
@@ -785,7 +787,7 @@ body.sd-body {
 .sd-status-pill {
   display: inline-block;
   background: #eef1ef;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   color: #5b6b61;
   font-size: 11px;
   font-weight: 800;
@@ -867,7 +869,7 @@ body.sd-body {
 .sd-panel .dataTables_filter input {
   background: #fbfdfb;
   border: 1px solid var(--sd-line);
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   font-size: 13px;
   margin-left: 0 !important;
   outline: none;
@@ -895,7 +897,7 @@ body.sd-body {
 .sd-panel .pagination .page-link {
   background: #fff;
   border: 1px solid var(--sd-line);
-  border-radius: 9px;
+  border-radius: var(--gp-radius);
   color: var(--sd-ink);
   font-size: 12.5px;
   font-weight: 700;
@@ -971,13 +973,13 @@ body.sd-body {
   }
 
   .sd-quick {
-    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
   }
 
   .sd-quick a {
+    min-width: 0;
     padding: 12px 4px;
-    border-radius: 12px;
+    border-radius: var(--gp-radius);
     gap: 8px;
     font-size: 10.5px;
   }
@@ -985,7 +987,7 @@ body.sd-body {
   .sd-quick-icon {
     width: 40px;
     height: 40px;
-    border-radius: 11px;
+    border-radius: var(--gp-radius);
     font-size: 15px;
   }
 
@@ -1060,7 +1062,7 @@ body.sd-body {
     margin-top: -34px;
     border-radius: 50%;
     border: 4px solid var(--sd-forest-950);
-    background: linear-gradient(135deg, #f6b81f, var(--sd-gold));
+    background: var(--sd-gold);
     color: var(--sd-forest-950) !important;
     display: grid;
     place-items: center;
@@ -1083,4 +1085,20 @@ body.sd-body {
   font-family: var(--sd-mono);
   font-size: 11px;
   color: var(--sd-muted);
+}
+
+/* Base box-model for .student-view-btn — gjc-clear.css already skins the
+   whole view-button family (colour, border, pill radius), but the box-model
+   lives in student.css, which this shell doesn't load. Same split as
+   audit_log.css handles for .details-btn. */
+.student-view-btn {
+  min-height: 32px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
 }

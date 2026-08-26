@@ -161,6 +161,14 @@
   color: var(--gp-danger);
 }
 
+/* A ban is permanent, so it reads heavier than the tinted suspension pill —
+   solid fill rather than a wash, to separate the two at a glance down a
+   column where both are red. */
+.status-pill.banned {
+  background: var(--gp-danger);
+  color: #fff;
+}
+
 /* Owner-deactivated staff — a quieter state than a finance suspension. */
 .status-pill.inactive {
   background: #eef2ee;
@@ -216,6 +224,17 @@
 .premium-dropdown .dropdown-item:hover {
   background: var(--gp-cream);
   color: var(--gp-green-850);
+}
+
+/* Ban is the one destructive item in the Manage menu, so it is the only one
+   that reads red — hard to pick by accident sitting next to Suspend. */
+.premium-dropdown .dropdown-item.js-ban,
+.premium-dropdown .dropdown-item.js-ban:hover {
+  color: var(--gp-danger);
+}
+
+.premium-dropdown .dropdown-item.js-ban:hover {
+  background: var(--gp-danger-bg);
 }
 
 @media (max-width: 1200px) {

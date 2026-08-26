@@ -1,4 +1,4 @@
-@import url("theme.css?v=3");
+@import url("theme.css?v=4");
 
 body {
     font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
@@ -76,7 +76,7 @@ body {
 }
 .hero h1 span {
     color: #4ade80;
-    background: linear-gradient(135deg, #4ade80, #22c55e);
+    background: #4ade80;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -87,12 +87,12 @@ body {
     line-height: 1.6;
 }
 .btn-primary-custom {
-    background: linear-gradient(135deg, #4ade80, #22c55e);
+    background: #4ade80;
     color: var(--gp-green-700);
     padding: 15px 40px;
     font-size: 18px;
     font-weight: 800;
-    border-radius: 50px;
+    border-radius: var(--gp-radius-pill);
     text-decoration: none;
     transition: all 0.3s ease;
     display: inline-block;
@@ -110,7 +110,7 @@ body {
 }
 .feature-card {
     padding: 40px 30px;
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
     background: #f9fcf8;
     border: 1px solid rgba(14, 99, 50, 0.05);
     text-align: center;
@@ -169,7 +169,7 @@ body {
 }
 .step-card {
     background: #ffffff;
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
     padding: 30px 26px;
     height: 100%;
     border: 1px solid rgba(14, 99, 50, 0.05);
@@ -179,7 +179,7 @@ body {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #4ade80, #22c55e);
+    background: #4ade80;
     color: var(--gp-green-700);
     font-weight: 800;
     font-size: 18px;
@@ -202,7 +202,7 @@ body {
 }
 .requirements-box {
     background: #ffffff;
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
     padding: 36px 36px;
     margin-top: 40px;
     border: 1px solid rgba(14, 99, 50, 0.05);

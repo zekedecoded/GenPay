@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=14");
-@import url("theme.css?v=3");
+@import url("gjc-clear.css?v=15");
+@import url("theme.css?v=4");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -46,7 +46,7 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  background: linear-gradient(180deg, var(--emerald-950), var(--emerald-900));
+  background: var(--emerald-950);
   transition: width 0.25s ease;
   z-index: 1000;
   display: flex;
@@ -133,7 +133,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   border-left: 3px solid transparent;
   font-size: 14px;
   font-weight: 600;
@@ -185,7 +185,7 @@ body {
   margin-top: 20px;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   background: transparent;
   color: #e0654f;
   text-decoration: none;
@@ -254,7 +254,7 @@ body {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   font-weight: 800;
@@ -292,7 +292,7 @@ body {
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-800);
   border: 1px solid rgba(240, 165, 0, 0.5);
   display: grid;
@@ -303,19 +303,6 @@ body {
 .avatar i {
   font-size: 17px;
   color: var(--gold);
-}
-
-/* Buttons placed inside the (now dark) topbar need the gold treatment
-   to stay visible — e.g. visitors.php's "Log Visitor" button. */
-.topbar .visitor-primary-btn {
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
-  color: var(--emerald-950);
-  box-shadow: 0 10px 22px rgba(240, 165, 0, 0.25);
-}
-
-.topbar .visitor-primary-btn span {
-  background: rgba(13, 36, 24, 0.15);
-  color: var(--emerald-950);
 }
 
 /* The student balance-hero look: forest gradient with gold/green
@@ -342,7 +329,7 @@ body {
 .metric-icon {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   background: var(--gold-soft);
@@ -421,8 +408,8 @@ a.mini-metric-card:focus-visible {
 .mini-icon-wrap {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--emerald-soft), var(--emerald-soft-2));
+  border-radius: var(--gp-radius);
+  background: var(--emerald-soft-2);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -473,7 +460,7 @@ a.mini-metric-card:focus-visible {
 
 .economy-balance-card {
   color: white;
-  background: linear-gradient(135deg, var(--emerald-900), var(--emerald-950));
+  background: var(--emerald-950);
   border-color: rgba(240, 165, 0, 0.25);
 }
 
@@ -528,12 +515,12 @@ a.mini-metric-card:focus-visible {
 }
 
 .economy-mini-card.economy-ok {
-  background: linear-gradient(145deg, #ecfdf5, #ffffff);
+  background: #ecfdf5;
   border-color: rgba(34, 197, 94, 0.22);
 }
 
 .economy-mini-card.economy-alert {
-  background: linear-gradient(145deg, #fff7ed, #ffffff);
+  background: #fff7ed;
   border-color: rgba(245, 158, 11, 0.32);
 }
 
@@ -575,7 +562,7 @@ a.mini-metric-card:focus-visible {
 .quick-actions a {
   height: 54px;
   padding: 0 16px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-soft);
   border: 1px solid var(--ad-line);
   color: var(--emerald-800);
@@ -620,7 +607,7 @@ a.mini-metric-card:focus-visible {
   background: var(--gp-success-bg);
   border: none;
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   white-space: nowrap;
   transition: background 0.15s;
 }
@@ -643,7 +630,7 @@ a.mini-metric-card:focus-visible {
 .badge-success,
 .badge-warning {
   padding: 7px 11px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 12px;
   font-weight: 800;
 }
@@ -777,11 +764,11 @@ a.mini-metric-card:focus-visible {
 
   .metric-card {
     min-height: 145px;
-    border-radius: 16px;
+    border-radius: var(--gp-radius);
   }
 
   .premium-panel {
-    border-radius: 16px;
+    border-radius: var(--gp-radius);
     padding: 20px;
   }
 
@@ -835,7 +822,7 @@ a.mini-metric-card:focus-visible {
 
   .sidebar-menu a {
     height: 34px;
-    border-radius: 4px;
+    border-radius: var(--gp-radius);
   }
 
   .nav-icon {
@@ -863,7 +850,7 @@ a.mini-metric-card:focus-visible {
   .menu-btn {
     width: 40px;
     height: 40px;
-    border-radius: 12px;
+    border-radius: var(--gp-radius);
     font-size: 17px;
   }
 
@@ -888,13 +875,13 @@ a.mini-metric-card:focus-visible {
   .metric-card {
     min-height: 135px;
     padding: 18px;
-    border-radius: 16px;
+    border-radius: var(--gp-radius);
   }
 
   .metric-icon {
     width: 40px;
     height: 40px;
-    border-radius: 14px;
+    border-radius: var(--gp-radius);
   }
 
   .metric-card h2 {
@@ -915,7 +902,7 @@ a.mini-metric-card:focus-visible {
 
   .economy-balance-card,
   .economy-mini-card {
-    border-radius: 16px;
+    border-radius: var(--gp-radius);
     padding: 18px;
   }
 
@@ -925,7 +912,7 @@ a.mini-metric-card:focus-visible {
 
   .premium-panel {
     padding: 18px;
-    border-radius: 16px;
+    border-radius: var(--gp-radius);
   }
 
   .panel-header h3 {
@@ -942,7 +929,7 @@ a.mini-metric-card:focus-visible {
 
   .quick-actions a {
     height: 50px;
-    border-radius: 15px;
+    border-radius: var(--gp-radius);
     font-size: 13px;
   }
 
@@ -984,7 +971,7 @@ a.mini-metric-card:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   background: var(--gp-green-850);
   color: white;
   font-size: 14px;
@@ -999,7 +986,7 @@ a.mini-metric-card:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 13px;
   font-weight: 700;
 }
@@ -1104,7 +1091,7 @@ a.mini-metric-card:focus-visible {
   display: flex;
   width: 100%;
   height: 16px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   overflow: hidden;
   background: var(--gjc-line);
 }
@@ -1143,7 +1130,6 @@ a.mini-metric-card:focus-visible {
 .ce-pool-vault     { background: var(--gp-green-850); }
 .ce-pool-students  { background: var(--gp-gold); }
 .ce-pool-merchants { background: var(--gjc-slate); }
-.ce-pool-vouchers  { background: var(--gp-green-700); }
 .ce-pool-parents   { background: var(--gp-info); }
 
 /* ── Pool grid section intro ─────────────────────────────── */
@@ -1170,7 +1156,7 @@ a.mini-metric-card:focus-visible {
 
 .ce-pool-icon-wrap {
   width: 38px; height: 38px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1182,8 +1168,6 @@ a.mini-metric-card:focus-visible {
 .ce-pool-card.ce-pool-students .ce-pool-icon       { color: var(--gp-gold); }
 .ce-pool-card.ce-pool-merchants .ce-pool-icon-wrap { background: rgba(63, 75, 69, 0.12); }
 .ce-pool-card.ce-pool-merchants .ce-pool-icon       { color: var(--gjc-slate); }
-.ce-pool-card.ce-pool-vouchers .ce-pool-icon-wrap  { background: rgba(17, 106, 56, 0.1); }
-.ce-pool-card.ce-pool-vouchers .ce-pool-icon        { color: var(--gp-green-700); }
 .ce-pool-card.ce-pool-parents .ce-pool-icon-wrap   { background: rgba(37, 99, 235, 0.12); }
 .ce-pool-card.ce-pool-parents .ce-pool-icon         { color: var(--gp-info); }
 
@@ -1191,7 +1175,6 @@ a.mini-metric-card:focus-visible {
 .ce-pool-card.ce-pool-vault,
 .ce-pool-card.ce-pool-students,
 .ce-pool-card.ce-pool-merchants,
-.ce-pool-card.ce-pool-vouchers,
 .ce-pool-card.ce-pool-parents {
   background: var(--gjc-panel);
 }
@@ -1231,7 +1214,7 @@ a.mini-metric-card:focus-visible {
 }
 .ce-mint-info-icon {
   width: 42px; height: 42px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   background: var(--gp-green-850);
   display: grid;
   place-items: center;
@@ -1245,13 +1228,13 @@ a.mini-metric-card:focus-visible {
 .ce-mint-track {
   flex: 1;
   height: 9px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   background: var(--gjc-line);
   overflow: hidden;
 }
 .ce-mint-track-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   transition: width 0.6s ease;
 }
 .ce-track-ok   { background: var(--gp-success); }
@@ -1300,7 +1283,7 @@ a.mini-metric-card:focus-visible {
 .ce-mint-badge {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   background: var(--gjc-gold-500);
   color: var(--gp-green-950);
   font-size: 11px;
@@ -1345,7 +1328,7 @@ a.mini-metric-card:focus-visible {
   background: rgba(200, 155, 31, 0.22);
   color: #6b4f0e;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--gp-radius);
   text-transform: none;
   letter-spacing: 0;
   white-space: nowrap;
@@ -1429,7 +1412,7 @@ a.mini-metric-card:focus-visible {
 }
 .ce-flow-step-icon {
   width: 34px; height: 34px;
-  border-radius: 8px;
+  border-radius: var(--gp-radius);
   color: white;
   font-size: 14px;
   font-weight: 800;
@@ -1505,10 +1488,10 @@ a.mini-metric-card:focus-visible {
 }
 
 /* ── Metric card colour overrides for the widget ── */
-.metric-card.metric-cap     { background: linear-gradient(145deg, #0e6332, #117039); }
-.metric-card.metric-vault   { background: linear-gradient(145deg, #1e3a5f, #2563eb); }
-.metric-card.metric-students{ background: linear-gradient(145deg, #713f12, #d97706); }
-.metric-card.metric-merchants{ background: linear-gradient(145deg, #4c1d95, #7c3aed); }
+.metric-card.metric-cap     { background: #0e6332; }
+.metric-card.metric-vault   { background: #1e3a5f; }
+.metric-card.metric-students{ background: #713f12; }
+.metric-card.metric-merchants{ background: #4c1d95; }
 .metric-card small {
   font-size: 12px;
   color: rgba(255,255,255,0.72);
@@ -1522,7 +1505,7 @@ a.mini-metric-card:focus-visible {
 .circulation-bar {
   display: flex;
   height: 52px;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   overflow: hidden;
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 4px 14px rgba(0,0,0,0.07);
@@ -1541,17 +1524,15 @@ a.mini-metric-card:focus-visible {
   min-width: 0;
 }
 .bar-segment span { line-height: 1.2; }
-.bar-vault     { background: linear-gradient(90deg, #0e6332, #147d41); }
-.bar-students  { background: linear-gradient(90deg, #d97706, #f59e0b); }
-.bar-merchants { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
-.bar-vouchers  { background: linear-gradient(90deg, #0891b2, #06b6d4); }
+.bar-vault     { background: #0e6332; }
+.bar-students  { background: #d97706; }
+.bar-merchants { background: #7c3aed; }
 
 .bar-legend    { font-size: 13px; font-weight: 700; display: flex; gap: 6px; align-items: center; }
 .legend-dot    { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
-.legend-dot.vault     { background: #147d41; }
-.legend-dot.students  { background: #f59e0b; }
-.legend-dot.merchants { background: #a78bfa; }
-.legend-dot.vouchers  { background: #06b6d4; }
+.legend-dot.vault     { background: #0e6332; }
+.legend-dot.students  { background: #d97706; }
+.legend-dot.merchants { background: #7c3aed; }
 
 .balanced    { color: var(--gp-success); font-weight: 800; }
 .drift-alert { color: var(--gp-red); font-weight: 800; }
@@ -1559,12 +1540,12 @@ a.mini-metric-card:focus-visible {
 /* ── Monthly minting budget card ── */
 .minting-budget-card {
   padding: 18px 22px;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   border: 1.5px solid rgba(13, 36, 24, 0.1);
-  background: linear-gradient(145deg, #f4faf7, #eaf5ef);
+  background: #f4faf7;
 }
 .minting-budget-card.limit-exceeded {
-  background: linear-gradient(145deg, #fffbeb, #fef3c7);
+  background: #fffbeb;
   border-color: #f59e0b;
 }
 .minting-budget-card.limit-ok { border-color: #22c55e; }
@@ -1572,21 +1553,21 @@ a.mini-metric-card:focus-visible {
 .mint-progress-track {
   height: 10px;
   background: rgba(0,0,0,0.07);
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   overflow: hidden;
 }
 .mint-progress-fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   transition: width 0.5s ease;
 }
 
 /* ── Mint form panel ── */
 .mint-panel {
   padding: 22px;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   border: 1.5px solid rgba(240, 165, 0, 0.35);
-  background: linear-gradient(145deg, #fffdf3, #fdf4dc);
+  background: #fffdf3;
   margin-top: 4px;
 }
 .mint-panel h4 {
@@ -1601,7 +1582,7 @@ a.mini-metric-card:focus-visible {
 .form-control {
   width: 100%;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   border: 1.5px solid rgba(13, 36, 24, 0.14);
   font-size: 14px;
   outline: none;
@@ -1612,9 +1593,9 @@ a.mini-metric-card:focus-visible {
 
 .btn-primary-custom {
   padding: 12px 28px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius-pill);
   border: none;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  background: var(--gold);
   color: var(--emerald-950);
   font-weight: 850;
   font-size: 15px;
@@ -1625,7 +1606,7 @@ a.mini-metric-card:focus-visible {
 .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(240, 165, 0, 0.32); }
 .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-.btn-sm { padding: 7px 14px; border-radius: 12px; font-size: 13px; font-weight: 750; cursor: pointer; border: none; }
+.btn-sm { padding: 7px 14px; border-radius: var(--gp-radius); font-size: 13px; font-weight: 750; cursor: pointer; border: none; }
 .btn-outline {
   background: transparent;
   border: 1.5px solid rgba(13, 36, 24, 0.18);
@@ -1637,7 +1618,7 @@ a.mini-metric-card:focus-visible {
 /* ── Alerts ── */
 .alert {
   padding: 14px 18px;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 0;
@@ -1650,12 +1631,12 @@ a.mini-metric-card:focus-visible {
   display: inline-flex;
   align-items: center;
   padding: 6px 13px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 12px;
   font-weight: 800;
 }
 .badge-danger    { background: var(--gp-danger-bg); color: var(--gp-danger); }
-.badge-secondary { background: #e2e8f0; color: #475569; padding: 7px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+.badge-secondary { background: #e2e8f0; color: #475569; padding: 7px 11px; border-radius: var(--gp-radius); font-size: 12px; font-weight: 800; }
 
 /* ── Leases & Rent filter bar ── */
 .lease-filter-bar {
@@ -1699,7 +1680,7 @@ a.mini-metric-card:focus-visible {
   width: 100%;
   min-height: 150px;
   border: 1px solid var(--ad-line);
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   background: #fff;
   padding: 18px;
   text-align: left;
@@ -1719,7 +1700,7 @@ a.mini-metric-card:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   border: 2px solid #fff;
   background: #dc2626;
   color: #fff;
@@ -1763,7 +1744,7 @@ a.mini-metric-card:focus-visible {
 
 .detail-stat {
   border: 1px solid var(--gjc-line);
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   padding: 14px 16px;
   background: var(--gjc-soft-2);
 }
@@ -1790,7 +1771,7 @@ a.mini-metric-card:focus-visible {
 
 #stallDetailModal .modal-content {
   border: none;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   overflow: hidden;
   box-shadow: var(--gjc-shadow-lg);
 }
@@ -1823,7 +1804,7 @@ a.mini-metric-card:focus-visible {
   display: inline-flex;
   align-items: center;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
   font-weight: 800;
   text-transform: capitalize;
@@ -1839,7 +1820,7 @@ a.mini-metric-card:focus-visible {
 /* Alerts inside the modal follow the token palette instead of Bootstrap blue/yellow */
 #stallDetailModal .alert {
   border: none;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
@@ -1856,14 +1837,14 @@ a.mini-metric-card:focus-visible {
   display: inline-flex;
   border: none;
   background: var(--gjc-soft);
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   padding: 4px;
   gap: 4px;
 }
 
 #stallDetailModal .nav-tabs .nav-link {
   border: none;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   padding: 8px 18px;
   font-size: 13px;
   font-weight: 700;
@@ -1910,7 +1891,7 @@ a.mini-metric-card:focus-visible {
 #stallDetailModal .form-select {
   min-height: 42px;
   border: 1px solid var(--gjc-line);
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   font-size: 14px;
   font-weight: 600;
   color: var(--gjc-ink);
@@ -1925,23 +1906,23 @@ a.mini-metric-card:focus-visible {
 /* Buttons: solid brand for commits, soft ghost for filters/pager */
 #stallDetailModal .btn-primary,
 #stallDetailModal .btn-success {
-  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
+  background: var(--gp-green-700);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--gp-radius-pill);
   font-weight: 800;
   padding: 10px 22px;
 }
 
 #stallDetailModal .btn-primary:hover,
 #stallDetailModal .btn-success:hover {
-  background: linear-gradient(135deg, var(--gp-green-900), var(--gp-green-850));
+  background: var(--gp-green-850);
 }
 
 #stallDetailModal .btn-outline-secondary {
   min-height: 42px;
   background: var(--gjc-soft);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--gp-radius-pill);
   color: var(--gp-green-850);
   font-weight: 700;
 }
@@ -1969,8 +1950,8 @@ a.mini-metric-card:focus-visible {
   color: var(--gp-green-850);
 }
 
-#stallDetailModal .table thead th:first-child { border-radius: 10px 0 0 10px; }
-#stallDetailModal .table thead th:last-child  { border-radius: 0 10px 10px 0; }
+#stallDetailModal .table thead th:first-child { border-radius: var(--gp-radius) 0 0 var(--gp-radius); }
+#stallDetailModal .table thead th:last-child  { border-radius: 0 var(--gp-radius) var(--gp-radius) 0; }
 
 #stallDetailModal .table tbody td {
   padding: 12px 14px;
@@ -2001,7 +1982,7 @@ a.mini-metric-card:focus-visible {
 /* Status/compliance badges follow token pills */
 #stallDetailModal .badge {
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
   font-weight: 800;
 }

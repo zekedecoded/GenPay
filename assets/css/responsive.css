@@ -193,13 +193,3 @@ html {
   }
 }
 
-/* Visitor Modal Responsive */
-@media (max-width: 768px) {
-  .guest-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .visitor-card {
-    margin-bottom: 10px;
-  }
-}

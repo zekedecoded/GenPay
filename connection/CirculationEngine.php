@@ -9,13 +9,20 @@ class CirculationEngine
 
     const TXN_CASH_IN = "cash_in";
     const TXN_PAYMENT = "payment";
-    const TXN_VOUCHER_PAYMENT = "voucher_payment";
     const TXN_MERCHANT_SETTLE = "merchant_settle";
     const TXN_STUDENT_WITHDRAW = "student_withdraw";
-    const TXN_VOUCHER_CREATE = "voucher_create";
-    const TXN_VOUCHER_EXPIRE = "voucher_expire";
     const TXN_CAP_INCREASE = "cap_increase";
     const TXN_ALLOWANCE = "allowance";
+
+    // Read-only history. The visitor voucher feature was removed, so nothing
+    // writes these any more, but rows carrying them stay in the ledger forever
+    // — merchant/dashboard.php and merchant/api/pos.php still count
+    // TXN_VOUCHER_PAYMENT toward historical earnings, and the labels in
+    // connection/app.php still render them in transaction views. Do not reuse
+    // these strings for anything else.
+    const TXN_VOUCHER_PAYMENT = "voucher_payment";
+    const TXN_VOUCHER_CREATE = "voucher_create";
+    const TXN_VOUCHER_EXPIRE = "voucher_expire";
 
     // Service-fee rates per top-up source
     const FEE_SYSTEM_RATE = 0.002; // 2 % → stays in vault (both routes)
@@ -844,179 +851,6 @@ class CirculationEngine
         }
     }
 
-    public function createVoucher(
-        float $amount,
-        string $visitorName,
-        string $visitorContact,
-        int $expiryHours,
-        int $issuedBy,
-    ): array {
-        $this->assertPositive($amount);
-
-        $this->db->beginTransaction();
-        try {
-            $settings = $this->lockSettings();
-
-            if ($settings["cashier_vault_points"] < $amount) {
-                throw new RuntimeException(
-                    "VAULT_INSUFFICIENT: Cannot issue voucher. Vault has Php " .
-                        number_format($settings["cashier_vault_points"], 2) .
-                        ".",
-                );
-            }
-
-            $code = $this->generateVoucherCode();
-            $expiresAt = date(
-                "Y-m-d H:i:s",
-                strtotime("+{$expiryHours} hours"),
-            );
-
-            $this->db
-                ->prepare(
-                    "UPDATE system_settings
-                    SET cashier_vault_points = cashier_vault_points - ?
-                  WHERE id = 1",
-                )
-                ->execute([$amount]);
-
-            $this->db
-                ->prepare(
-                    "INSERT INTO vouchers
-                    (voucher_code, issued_by, visitor_name, visitor_contact,
-                     original_amount, remaining_balance, expires_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)",
-                )
-                ->execute([
-                    $code,
-                    $issuedBy,
-                    $visitorName,
-                    $visitorContact,
-                    $amount,
-                    $amount,
-                    $expiresAt,
-                ]);
-
-            $voucherId = (int) $this->db->lastInsertId();
-            $vaultAfter = $settings["cashier_vault_points"] - $amount;
-
-            $this->validateCirculation($settings["total_circulation_cap"]);
-
-            $ref = $this->logTransaction(
-                self::TXN_VOUCHER_CREATE,
-                $issuedBy,
-                $amount,
-                $settings["cashier_vault_points"],
-                $vaultAfter,
-                voucherId: $voucherId,
-            );
-
-            $this->db->commit();
-            return [
-                "success" => true,
-                "voucher_code" => $code,
-                "voucher_id" => $voucherId,
-                "expires_at" => $expiresAt,
-                "reference" => $ref,
-                "non_refundable_notice" =>
-                    "This voucher is NON-REFUNDABLE. Any unspent balance cannot be converted to cash.",
-            ];
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
-    }
-
-    public function voucherPay(
-        string $voucherCode,
-        int $merchantWalletId,
-        float $amount,
-        int $initiatedBy,
-    ): array {
-        $this->assertPositive($amount);
-
-        $this->db->beginTransaction();
-        try {
-            $settings = $this->lockSettings();
-
-            $vStmt = $this->db->prepare(
-                "SELECT * FROM vouchers WHERE voucher_code = ? AND status = 'active' FOR UPDATE",
-            );
-            $vStmt->execute([$voucherCode]);
-            $voucher = $vStmt->fetch();
-
-            if (!$voucher) {
-                throw new RuntimeException(
-                    "INVALID_VOUCHER: Code not found or already used/expired.",
-                );
-            }
-            if (new DateTime() > new DateTime($voucher["expires_at"])) {
-                throw new RuntimeException(
-                    "VOUCHER_EXPIRED: This voucher expired at {$voucher["expires_at"]}.",
-                );
-            }
-            if ($voucher["remaining_balance"] < $amount) {
-                throw new RuntimeException(
-                    "VOUCHER_INSUFFICIENT: Voucher has Php " .
-                        number_format($voucher["remaining_balance"], 2) .
-                        " remaining - cannot pay Php " .
-                        number_format($amount, 2) .
-                        "." .
-                        " Note: change cannot be given as cash (non-refundable).",
-                );
-            }
-
-            $newBalance = $voucher["remaining_balance"] - $amount;
-            $newStatus = $newBalance == 0 ? "used" : "active";
-
-            $this->db
-                ->prepare(
-                    "UPDATE vouchers
-                    SET remaining_balance = ?,
-                        status = ?
-                  WHERE id = ?",
-                )
-                ->execute([$newBalance, $newStatus, $voucher["id"]]);
-
-            $this->db
-                ->prepare(
-                    "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?",
-                )
-                ->execute([$amount, $merchantWalletId]);
-
-            $this->validateCirculation($settings["total_circulation_cap"]);
-
-            $ref = $this->logTransaction(
-                self::TXN_VOUCHER_PAYMENT,
-                $initiatedBy,
-                $amount,
-                $settings["cashier_vault_points"],
-                $settings["cashier_vault_points"],
-                merchantWalletId: $merchantWalletId,
-                voucherId: $voucher["id"],
-            );
-
-            $this->db->commit();
-
-            $notice =
-                $newBalance > 0
-                    ? "Php " .
-                        number_format($newBalance, 2) .
-                        " remains on voucher. " .
-                        "Change CANNOT be given as cash - it stays on the voucher (non-refundable)."
-                    : "Voucher fully consumed.";
-
-            return [
-                "success" => true,
-                "reference" => $ref,
-                "remaining_balance" => $newBalance,
-                "voucher_notice" => $notice,
-            ];
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
-    }
-
     public function increaseCirculationCap(
         float $increaseBy,
         int $superAdminId,
@@ -1088,72 +922,6 @@ class CirculationEngine
         }
     }
 
-    public function expireVoucher(int $voucherId, int $initiatedBy): array
-    {
-        $this->db->beginTransaction();
-        try {
-            $settings = $this->lockSettings();
-            $vaultBefore = (float) $settings["cashier_vault_points"];
-
-            $vStmt = $this->db->prepare(
-                "SELECT * FROM vouchers WHERE id = ? AND status = 'active' FOR UPDATE",
-            );
-            $vStmt->execute([$voucherId]);
-            $voucher = $vStmt->fetch();
-
-            if (!$voucher) {
-                throw new RuntimeException(
-                    "VOUCHER_NOT_FOUND or already inactive.",
-                );
-            }
-
-            $recycled = $voucher["remaining_balance"];
-
-            $this->db
-                ->prepare("UPDATE vouchers SET status = 'expired' WHERE id = ?")
-                ->execute([$voucherId]);
-
-            $vaultAfterExpire = $this->getVaultBalance();
-            $triggerRecycled =
-                abs($vaultAfterExpire - ($vaultBefore + (float) $recycled)) <=
-                0.01;
-
-            if ((float) $recycled > 0 && !$triggerRecycled) {
-                $this->db
-                    ->prepare(
-                        "UPDATE system_settings
-                        SET cashier_vault_points = cashier_vault_points + ?
-                      WHERE id = 1",
-                    )
-                    ->execute([$recycled]);
-            }
-
-            $vaultAfter = $this->getVaultBalance();
-
-            $this->validateCirculation($settings["total_circulation_cap"]);
-
-            $ref = $this->logTransaction(
-                self::TXN_VOUCHER_EXPIRE,
-                $initiatedBy,
-                max($recycled, 0.01),
-                $vaultBefore,
-                $vaultAfter,
-                voucherId: $voucherId,
-                notes: "Recycled Php {$recycled} from expired voucher #{$voucherId}",
-            );
-
-            $this->db->commit();
-            return [
-                "success" => true,
-                "recycled" => $recycled,
-                "reference" => $ref,
-            ];
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
-    }
-
     public function getCirculationSnapshot(): array
     {
         // Circulation health is computed in PHP (buildCirculationSnapshot),
@@ -1163,6 +931,11 @@ class CirculationEngine
 
     private function validateCirculation(float $expectedCap): void
     {
+        // The active-voucher term below is deliberately retained after the
+        // visitor feature was removed. Every voucher was expired back into the
+        // vault first, so it sums to zero today — but keeping it means that if
+        // an 'active' voucher row ever reappears, the money still counts toward
+        // circulation instead of silently vanishing from the closed loop.
         $row = $this->db
             ->query(
                 "SELECT
@@ -1387,11 +1160,6 @@ class CirculationEngine
         } catch (\Throwable $ignored) {
             // Table hasn't been created yet — will self-heal on next page load
         }
-    }
-
-    private function generateVoucherCode(): string
-    {
-        return "VCH-" . strtoupper(bin2hex(random_bytes(6)));
     }
 
     private function assertPositive(float $amount): void

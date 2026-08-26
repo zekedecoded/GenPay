@@ -1,7 +1,7 @@
 <?php
 // Partial: student sidebar (forest-green dashboard shell). Including pages
-// set $currentPage ('dashboard','cart','transfer','withdraw','topup',
-// 'history','profile') and must link assets/css/student_dashboard.css,
+// set $currentPage ('dashboard','cart','transfer','withdraw','history',
+// 'profile') and must link assets/css/student_dashboard.css,
 // which carries the sd-* styles. Desktop only — hidden under 768px, where
 // bottom_nav_student.php takes over.
 $currentPage = $currentPage ?? '';
@@ -31,10 +31,6 @@ $currentPage = $currentPage ?? '';
         <a href="<?= STUDENT_URL ?>/withdraw.php" class="<?= $currentPage === 'withdraw' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-bill-wave"></i>
             <span>Withdraw</span>
-        </a>
-        <a href="<?= STUDENT_URL ?>/topup_request.php" class="<?= $currentPage === 'topup' ? 'active' : '' ?>">
-            <i class="fa-solid fa-circle-plus"></i>
-            <span>Top-Up</span>
         </a>
         <a href="<?= STUDENT_URL ?>/history.php" class="<?= $currentPage === 'history' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i>

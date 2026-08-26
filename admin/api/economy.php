@@ -84,42 +84,6 @@ try {
             break;
 
         
-        case 'voucher':
-            if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
-
-            $amount        = (float)($body['amount']           ?? 0);
-            $visitorName   = trim($body['visitor_name']        ?? '');
-            $visitorContact= trim($body['visitor_contact']     ?? '');
-            $expiryHours   = (int)($body['expiry_hours']       ?? 24);
-
-            if ($visitorName === '') throw new RuntimeException('Visitor name is required.');
-
-            $result = $engine->createVoucher($amount, $visitorName, $visitorContact, $userId, $expiryHours);
-            echo json_encode($result);
-            break;
-
-        
-        case 'voucher_pay':
-            $voucherCode    = trim($body['voucher_code']       ?? '');
-            $merchantWallet = (int)($body['merchant_wallet_id'] ?? 0);
-            $amount         = (float)($body['amount'] ?? 0);
-
-            if ($voucherCode === '') throw new RuntimeException('voucher_code is required.');
-
-            $result = $engine->voucherPay($voucherCode, $merchantWallet, $amount, $userId);
-            echo json_encode($result);
-            break;
-
-        
-        case 'expire_voucher':
-            if (!in_array($role, $adminEconomyRoles, true)) throw new RuntimeException('ACCESS_DENIED');
-
-            $voucherId = (int)($body['voucher_id'] ?? 0);
-            $result    = $engine->expireVoucher($voucherId, $userId);
-            echo json_encode($result);
-            break;
-
-        
         case 'circulation':
             $snapshot = $engine->getCirculationSnapshot();
 

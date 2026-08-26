@@ -132,7 +132,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=2">
@@ -181,7 +181,6 @@ $csrfToken = gjc_csrf_token();
                         </div>
                         <div class="sd-balance-actions">
                             <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
-                            <a class="sd-btn-ghost sd-hide-mobile" href="<?= STUDENT_URL ?>/topup_request.php"><i class="fa-solid fa-circle-plus"></i>Top-Up</a>
                         </div>
                     </div>
                     <div class="sd-balance-holder">

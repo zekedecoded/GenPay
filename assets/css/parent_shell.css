@@ -3,8 +3,8 @@
    (mirrors the exact pattern used in admin.css / merchant.css).
    Replaces the legacy student.css shell (.student-layout etc.), which
    nothing else in the app depends on. */
-@import url("gjc-clear.css?v=14");
-@import url("theme.css?v=3");
+@import url("gjc-clear.css?v=15");
+@import url("theme.css?v=4");
 
 :root {
   --emerald-950: var(--gp-green-950);
@@ -38,7 +38,7 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  background: linear-gradient(180deg, var(--emerald-950), var(--emerald-900));
+  background: var(--emerald-950);
   transition: width 0.25s ease;
   z-index: 1000;
   display: flex;
@@ -119,7 +119,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   border-left: 3px solid transparent;
   font-size: 14px;
   font-weight: 600;
@@ -167,7 +167,7 @@ body {
   margin-top: 20px;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--gp-radius);
   background: transparent;
   color: #e0654f;
   text-decoration: none;
@@ -236,7 +236,7 @@ body {
   width: 44px;
   height: 44px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   font-weight: 800;
@@ -274,7 +274,7 @@ body {
 .parent-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-850);
   border: 1px solid rgba(240, 165, 0, 0.5);
   color: var(--gp-gold);
@@ -330,6 +330,7 @@ body {
   overflow: hidden;
   border-radius: var(--ad-radius);
   background: var(--gp-grad-hero);
+  border-top: var(--gp-keyline);
   color: #fff;
   padding: 26px 28px;
   box-shadow: var(--gp-shadow-hero);
@@ -342,7 +343,7 @@ body {
   justify-content: center;
   gap: 8px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   padding: 10px 20px;
   font-size: 13.5px;
   font-weight: 800;
@@ -381,7 +382,7 @@ body {
   font-size: 11px;
   font-weight: 800;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   white-space: nowrap;
 }
 .parent-badge--success { background: var(--gp-success-bg); color: var(--gp-success); }
@@ -429,4 +430,19 @@ body {
   .parent-menu a { justify-content: center; padding: 0; gap: 0; border-left: none; }
   .parent-menu a.active { color: var(--gp-gold); }
   .parent-logout { justify-content: center; padding: 0; }
+}
+
+/* Base box-model for .view-btn — gjc-clear.css skins the view-button family
+   (colour, border, pill radius); the box-model normally comes from admin.css,
+   which the parent shell doesn't load. */
+.view-btn {
+  min-height: 32px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
 }

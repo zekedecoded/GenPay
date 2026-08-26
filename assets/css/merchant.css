@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=14");
-@import url("theme.css?v=3");
+@import url("gjc-clear.css?v=15");
+@import url("theme.css?v=4");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -85,10 +85,10 @@ html {
    shared with student, doesn't). */
 .merchant-loadwallet-btn {
   padding: 9px 18px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  background: var(--gold);
   color: var(--emerald-950);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -128,7 +128,7 @@ html {
 .merchant-metric-icon {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   display: grid;
   place-items: center;
   background: var(--gold-soft);
@@ -213,7 +213,7 @@ html {
 .merchant-quick-actions a {
   height: 54px;
   padding: 0 16px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-soft);
   border: 1px solid var(--ad-line);
   color: var(--emerald-800);
@@ -240,7 +240,7 @@ html {
 .merchant-note {
   margin-top: 16px;
   padding: 15px;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-soft);
   color: var(--emerald-800);
   font-size: 13px;
@@ -257,7 +257,7 @@ html {
   background: var(--gp-success-bg);
   border: none;
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius-pill);
   white-space: nowrap;
   transition: background 0.15s;
 }
@@ -292,7 +292,7 @@ html {
 
 .merchant-type-pill {
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11.5px;
   font-weight: 700;
   background: var(--gp-cream);
@@ -307,7 +307,7 @@ html {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -367,7 +367,7 @@ html {
   width: 100%;
   height: 54px;
   border: 1px solid #dce6df;
-  border-radius: 15px;
+  border-radius: var(--gp-radius);
   padding: 0 16px;
   color: #111827;
   font-size: 15px;
@@ -383,7 +383,7 @@ html {
 .qr-money-input {
   height: 54px;
   border: 1px solid #dce6df;
-  border-radius: 15px;
+  border-radius: var(--gp-radius);
   display: flex;
   overflow: hidden;
   background: white;
@@ -394,7 +394,7 @@ html {
   min-width: 52px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-700));
+  background: var(--emerald-800);
   color: white;
   font-weight: 900;
 }
@@ -412,8 +412,8 @@ html {
 .qr-generate-btn {
   height: 54px;
   border: none;
-  border-radius: 15px;
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-700));
+  border-radius: var(--gp-radius-pill);
+  background: var(--emerald-800);
   color: white;
   font-size: 15px;
   font-weight: 900;
@@ -480,8 +480,8 @@ html {
 .qr-instruction-list div {
   min-height: 72px;
   padding: 14px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f9fcf8, var(--emerald-soft));
+  border-radius: var(--gp-radius);
+  background: var(--emerald-soft);
   border: 1px solid rgba(14, 99, 50, 0.08);
   display: flex;
   align-items: center;
@@ -492,8 +492,8 @@ html {
   width: 34px;
   min-width: 34px;
   height: 34px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border-radius: var(--gp-radius);
+  background: var(--gold);
   color: var(--emerald-950);
   display: grid;
   place-items: center;
@@ -510,15 +510,9 @@ html {
 
 .qr-setting-box {
   min-height: 168px;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   padding: 20px;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(240, 165, 0, 0.18),
-      transparent 35%
-    ),
-    linear-gradient(145deg, var(--emerald-800), var(--emerald-700));
+  background: var(--emerald-800);
   color: white;
 }
 
@@ -553,372 +547,6 @@ html {
 
   .qr-instruction-list {
     grid-template-columns: 1fr;
-  }
-}
-
-/* ============================= */
-/* MERCHANT VOUCHER SCANNER */
-/* ============================= */
-
-.merchant-scanner-grid {
-  display: grid;
-  grid-template-columns: 1.08fr 0.92fr;
-  gap: 24px;
-}
-
-.merchant-scanner-header {
-  align-items: flex-start;
-}
-
-.merchant-scan-status {
-  min-height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--gp-warning-bg);
-  color: var(--gp-warning);
-  font-size: 12px;
-  font-weight: 900;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.merchant-scan-status.active {
-  background: var(--gp-success-bg);
-  color: var(--gp-success);
-}
-
-.merchant-scan-status.pending {
-  background: var(--gp-info-bg);
-  color: var(--gp-info);
-}
-
-.merchant-scan-status.blocked {
-  background: var(--gp-danger-bg);
-  color: var(--gp-danger);
-}
-
-.merchant-reader-shell {
-  position: relative;
-}
-
-/* Gold-tinted frame echoing the student scan screen's camera reticle —
-   kept as a border treatment (not literal corner brackets, and the
-   background stays light) since html5-qrcode renders its own
-   controls/dropdown/buttons inside this shell with light-theme styling
-   we don't control. */
-.merchant-reader {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 16px;
-  border: 2px solid var(--gp-gold-line);
-  background: var(--gp-cream);
-}
-
-.merchant-reader > div {
-  border: none !important;
-}
-
-.merchant-reader video {
-  border-radius: 14px;
-}
-
-.merchant-reader-hint {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--emerald-soft);
-  color: var(--emerald-800);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.merchant-scan-toolbar {
-  margin-top: 16px;
-  display: flex;
-  gap: 12px;
-}
-
-.merchant-scan-btn {
-  min-height: 46px;
-  border: none;
-  border-radius: 999px;
-  padding: 0 18px;
-  background: var(--gp-grad-forest-btn);
-  color: white;
-  font-size: 14px;
-  font-weight: 800;
-  box-shadow: none;
-  transition: 0.2s ease;
-}
-
-.merchant-scan-btn.secondary {
-  background: #ffffff;
-  color: var(--emerald-800);
-  border: 1px solid var(--ad-line);
-  box-shadow: none;
-}
-
-.merchant-scan-btn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
-}
-
-.merchant-manual-panel {
-  margin-top: 18px;
-  padding: 18px;
-  border-radius: var(--ad-radius);
-  background: var(--emerald-soft);
-  border: 1px solid var(--ad-line);
-}
-
-.merchant-manual-panel label {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--text-main);
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.merchant-manual-panel textarea {
-  min-height: 110px;
-  margin-bottom: 12px;
-  resize: vertical;
-  border-radius: 14px;
-  border: 1px solid var(--ad-line);
-}
-
-.merchant-voucher-card {
-  min-height: 420px;
-  border-radius: var(--ad-radius);
-  background: var(--gp-grad-hero);
-  color: white;
-  padding: 22px;
-  position: relative;
-  overflow: hidden;
-}
-
-.merchant-voucher-card.is-empty {
-  display: grid;
-  place-items: center;
-}
-
-.merchant-voucher-empty {
-  text-align: center;
-  max-width: 280px;
-}
-
-.merchant-voucher-empty-icon {
-  width: 84px;
-  height: 84px;
-  border-radius: 24px;
-  margin: 0 auto 18px;
-  background: rgba(255, 255, 255, 0.12);
-  display: grid;
-  place-items: center;
-}
-
-.merchant-voucher-empty-icon i {
-  font-size: 32px;
-  color: white;
-}
-
-.merchant-voucher-empty h4 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 900;
-}
-
-.merchant-voucher-empty p {
-  margin: 10px 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.55;
-}
-
-.merchant-voucher-content {
-  display: none;
-}
-
-.merchant-voucher-card:not(.is-empty) .merchant-voucher-content {
-  display: block;
-}
-
-.merchant-voucher-card:not(.is-empty) .merchant-voucher-empty {
-  display: none;
-}
-
-.merchant-voucher-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-  padding-bottom: 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-.merchant-voucher-label,
-.merchant-voucher-meta span {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.68);
-  letter-spacing: 0.5px;
-}
-
-.merchant-voucher-top h4 {
-  margin: 8px 0 4px;
-  font-size: 26px;
-  font-weight: 900;
-  color: white;
-}
-
-.merchant-voucher-top small {
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.merchant-voucher-balance {
-  min-width: 170px;
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-.merchant-voucher-balance strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--gold-light);
-  font-family: var(--gp-mono);
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.merchant-voucher-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.merchant-voucher-meta div {
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.merchant-voucher-meta strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 15px;
-  font-weight: 850;
-  line-height: 1.4;
-}
-
-.merchant-inline-note {
-  margin-top: 16px;
-  padding: 13px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 1.45;
-}
-
-.merchant-inline-note.warning {
-  background: var(--gp-warning-bg);
-  color: var(--gp-warning);
-}
-
-.merchant-inline-note.danger {
-  background: var(--gp-danger-bg);
-  color: var(--gp-danger);
-}
-
-.merchant-inline-note.success {
-  background: var(--gp-success-bg);
-  color: var(--gp-success);
-}
-
-.merchant-pay-form {
-  margin-top: 18px;
-}
-
-.merchant-pay-form label {
-  display: block;
-  margin-bottom: 10px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  font-weight: 900;
-}
-
-.merchant-pay-form small {
-  display: block;
-  margin-top: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.45;
-}
-
-.merchant-pay-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-}
-
-.merchant-pay-input {
-  min-height: 52px;
-  border-radius: 15px;
-  display: flex;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-.merchant-pay-input span {
-  width: 52px;
-  min-width: 52px;
-  display: grid;
-  place-items: center;
-  background: rgba(13, 36, 24, 0.06);
-  color: var(--emerald-800);
-  font-weight: 900;
-}
-
-.merchant-pay-input input {
-  border: none;
-  box-shadow: none !important;
-  height: 52px;
-  font-weight: 800;
-}
-
-@media (max-width: 1200px) {
-  .merchant-scanner-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .merchant-scan-toolbar,
-  .merchant-pay-row,
-  .merchant-voucher-top,
-  .merchant-voucher-meta {
-    grid-template-columns: 1fr;
-    flex-direction: column;
-  }
-
-  .merchant-scan-toolbar {
-    display: flex;
-  }
-
-  .merchant-scan-btn {
-    width: 100%;
-  }
-
-  .merchant-voucher-balance {
-    min-width: 0;
-    width: 100%;
   }
 }
 
@@ -967,7 +595,7 @@ html {
 .encash-money-input {
   height: 54px;
   border: 1px solid #dce6df;
-  border-radius: 15px;
+  border-radius: var(--gp-radius);
   display: flex;
   overflow: hidden;
   background: white;
@@ -978,7 +606,7 @@ html {
   min-width: 52px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-700));
+  background: var(--emerald-800);
   color: white;
   font-weight: 900;
 }
@@ -996,7 +624,7 @@ html {
 .encash-withdraw-all-btn,
 .encash-submit-btn {
   height: 52px;
-  border-radius: 15px;
+  border-radius: var(--gp-radius-pill);
   font-size: 14px;
   font-weight: 900;
   transition: 0.25s ease;
@@ -1010,7 +638,7 @@ html {
 
 .encash-submit-btn {
   border: none;
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-700));
+  background: var(--emerald-800);
   color: #ffffff;
   box-shadow: var(--gjc-shadow-lg);
 }
@@ -1028,8 +656,8 @@ html {
 .encash-guidelines div {
   min-height: 74px;
   padding: 15px;
-  border-radius: 17px;
-  background: linear-gradient(135deg, #f9fcf8, var(--emerald-soft));
+  border-radius: var(--gp-radius);
+  background: var(--emerald-soft);
   border: 1px solid rgba(13, 36, 24, 0.08);
   display: flex;
   align-items: center;
@@ -1040,8 +668,8 @@ html {
   width: 36px;
   min-width: 36px;
   height: 36px;
-  border-radius: 13px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border-radius: var(--gp-radius);
+  background: var(--gold);
   color: var(--emerald-950);
   display: grid;
   place-items: center;
@@ -1059,7 +687,7 @@ html {
 .encash-note {
   margin-top: 16px;
   padding: 15px;
-  border-radius: 16px;
+  border-radius: var(--gp-radius);
   background: var(--gp-warning-bg);
   color: var(--gp-warning);
   font-size: 13px;
@@ -1098,7 +726,7 @@ html {
   z-index: 2;
   width: 64px;
   height: 64px;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.16);
   display: grid;
   place-items: center;
@@ -1148,7 +776,7 @@ html {
 .history-balance-pill {
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   background: var(--gp-success-bg);
   color: var(--emerald-800);
   display: inline-flex;
@@ -1159,7 +787,7 @@ html {
 
 .history-status-pill {
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1205,8 +833,8 @@ html {
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--emerald-800), var(--emerald-700));
+  border-radius: var(--gp-radius);
+  background: var(--emerald-800);
   color: white;
   font-size: 14px;
   font-weight: 800;
@@ -1222,7 +850,7 @@ html {
   align-items: center;
   gap: 7px;
   padding: 7px 16px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1266,11 +894,14 @@ html {
   display: flex;
   align-items: stretch;
   padding: 22px 28px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top right, rgba(217,169,40,0.16), transparent 40%),
-    linear-gradient(145deg, var(--emerald-800), var(--emerald-950));
-  box-shadow: 0 18px 44px rgba(5, 41, 22,0.2);
+  border-radius: var(--gp-radius);
+  /* NOTE: this whole block is superseded by the later top-level
+     .me-hero-strip rule (~line 1253), which makes the strip a transparent
+     5-column grid. Kept flat for correctness, but it does not paint. No
+     keyline here: a border-top before the `border` shorthand below would be
+     wiped by it anyway, and a transparent grid has no hero to key. */
+  background: var(--emerald-950);
+  box-shadow: var(--gp-shadow-hero);
   border: 1px solid rgba(255,255,255,0.07);
   overflow-x: auto;
   gap: 0;
@@ -1331,7 +962,7 @@ html {
 }
 
 .me-pool-card {
-  border-radius: 22px;
+  border-radius: var(--gp-radius);
   padding: 20px;
   color: white;
   position: relative;
@@ -1349,10 +980,10 @@ html {
 }
 
 /* Card colours */
-.me-pool-merchant { background: linear-gradient(145deg, #4c1d95, #7c3aed); }
-.me-pool-vault    { background: linear-gradient(145deg, #1e3a5f, #2563eb); }
-.me-pool-students { background: linear-gradient(145deg, #92400e, #d97706); }
-.me-pool-tip      { background: linear-gradient(145deg, var(--emerald-900), var(--emerald-700)); }
+.me-pool-merchant { background: #4c1d95; }
+.me-pool-vault    { background: #1e3a5f; }
+.me-pool-students { background: #92400e; }
+.me-pool-tip      { background: var(--emerald-900); }
 
 /* Glow orb */
 .me-pool-glow {
@@ -1374,7 +1005,7 @@ html {
 /* Icon wrap */
 .me-pool-icon {
   width: 40px; height: 40px;
-  border-radius: 13px;
+  border-radius: var(--gp-radius);
   background: rgba(255,255,255,0.16);
   display: grid;
   place-items: center;
@@ -1391,8 +1022,8 @@ html {
 .me-pool-badge {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  border-radius: var(--gp-radius);
+  background: var(--gold);
   color: var(--emerald-950);
   font-size: 10px;
   font-weight: 900;
@@ -1424,7 +1055,7 @@ html {
 .me-pool-bar {
   height: 5px;
   background: rgba(255,255,255,0.18);
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   overflow: hidden;
   margin: 2px 0;
   position: relative;
@@ -1433,7 +1064,7 @@ html {
 .me-pool-bar-fill {
   height: 100%;
   background: rgba(255,255,255,0.75);
-  border-radius: 999px;
+  border-radius: var(--gp-radius-tag);
   transition: width 0.7s ease;
 }
 
@@ -1452,7 +1083,7 @@ html {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 18px;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   background: var(--emerald-soft-2);
   border: 1px solid rgba(13, 36, 24, 0.08);
   font-size: 13px;
@@ -1507,7 +1138,6 @@ html {
     display: none;
   }
 
-  .merchant-scanner-grid,
   .encash-layout-grid,
   .qr-layout-grid,
   .qr-bottom-grid,
@@ -1528,9 +1158,8 @@ html {
   .qr-preview-panel,
   .encash-form-panel,
   .encash-info-panel,
-  .merchant-voucher-card,
   .merchant-manual-panel {
-    border-radius: 22px;
+    border-radius: var(--gp-radius);
     box-shadow: 0 10px 26px rgba(5, 41, 22, 0.07);
   }
 
@@ -1541,7 +1170,7 @@ html {
   .encash-withdraw-all-btn,
   .merchant-scan-btn {
     min-height: 52px;
-    border-radius: 16px;
+    border-radius: var(--gp-radius-pill);
     touch-action: manipulation;
   }
 
@@ -1550,7 +1179,7 @@ html {
   }
 
   .merchant-reader {
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
   }
 
   .merchant-pay-row {
@@ -1572,7 +1201,7 @@ html {
 /* Minimal merchant economy summary */
 .me-section {
   padding: 22px;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(13, 36, 24, 0.08);
   box-shadow: 0 10px 28px rgba(5, 41, 22, 0.06);
@@ -1609,7 +1238,7 @@ html {
 .me-status-badge {
   min-height: 30px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
 }
 
@@ -1647,7 +1276,7 @@ html {
   gap: 3px;
   padding: 14px;
   text-align: left;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   background: #f8faf8;
   border: 1px solid rgba(13, 36, 24, 0.07);
 }
@@ -1727,4 +1356,67 @@ html {
 
 .gc-price--end {
   align-items: flex-end;
+}
+
+/* ── Table row action group ───────────────────────────────────────────────
+   The View / Issue Return pair in merchant/history.php. theme.css states
+   buttons keep --gp-radius-pill so shape alone reads as "pressable", but
+   Bootstrap's .btn-outline-danger is one of the few button classes theme.css
+   never restyles, so Issue Return arrived square and a size off from its
+   neighbour. One geometry lives here; colour is the only thing that differs
+   between the two, and the pair sits flush on a single 32px line.
+   Deliberately NOT named .merchant-view-btn — gjc-clear.css force-skins that
+   whole family with !important, which would fight the danger variant. */
+.merchant-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.merchant-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--gp-radius-pill);
+  background: #fff;
+  border: 1px solid var(--gp-line);
+  color: var(--gp-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.merchant-row-btn i { font-size: 12px; }
+
+.merchant-row-btn--view {
+  border-color: var(--gp-green-700);
+  color: var(--gp-green-850);
+}
+.merchant-row-btn--view:hover {
+  background: var(--gp-green-850);
+  border-color: var(--gp-green-850);
+  color: #fff;
+}
+
+.merchant-row-btn--return {
+  border-color: var(--gp-danger);
+  color: var(--gp-danger);
+}
+.merchant-row-btn--return:hover {
+  background: var(--gp-danger);
+  border-color: var(--gp-danger);
+  color: #fff;
+}
+
+/* Narrow screens: let the pair stack rather than force the column wider. */
+@media (max-width: 720px) {
+  .merchant-row-actions { flex-wrap: wrap; gap: 6px; }
 }

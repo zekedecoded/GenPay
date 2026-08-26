@@ -5,6 +5,7 @@ require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
 gjc_enforce_graduate_lock($db);
+gjc_ensure_user_profile_schema($db);
 
 $currentUser = gjc_current_user($db);
 $error = '';
@@ -22,8 +23,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $lastName = trim((string) ($_POST['last_name'] ?? ''));
         $phone = trim((string) ($_POST['phone'] ?? ''));
 
+        // Sex / birth date / address / emergency contact, validated once in
+        // app.php so this page and the parent portal can't disagree on what a
+        // valid birth date is.
+        $details = gjc_collect_profile_details($_POST, $columns);
+
         if ($firstName === '' || $lastName === '') {
             $error = 'First name and last name are required.';
+        } elseif ($details['error'] !== null) {
+            $error = $details['error'];
         } else {
             $updates = [];
             $values = [];
@@ -33,7 +41,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 'last_name' => $lastName,
                 'name' => trim($firstName . ' ' . $lastName),
                 'phone' => $phone,
-            ] as $column => $value) {
+            ] + $details['values'] as $column => $value) {
                 if (in_array($column, $columns, true)) {
                     $updates[] = "{$column} = ?";
                     $values[] = $value;
@@ -87,8 +95,8 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=8">
 </head>
 
 <body class="sd-body">
@@ -152,6 +160,13 @@ $csrfToken = gjc_csrf_token();
                             <input type="email" value="<?= $e($email) ?>" disabled>
                             <small>Email cannot be changed. Contact Admin if needed.</small>
                         </div>
+
+                        <?php
+                        $pdRow   = $rawUser;
+                        $pdField = 'pf-field';
+                        $pdGrid  = 'pf-form-grid';
+                        require __DIR__ . '/../includes/partials/profile_details_fields.php';
+                        ?>
 
                         <button type="submit" class="pf-btn">
                             <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes

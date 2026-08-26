@@ -586,13 +586,18 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
 }
 
 /**
- * Idempotent self-healer for finance-issued account suspensions — the Suspend
- * action in admin/users.php. Widens users.status with a third 'Suspended'
- * label, reading the labels off the live enum rather than a hardcoded list so
- * this never clobbers one a later migration added, then adds the columns that
- * describe a single suspension: when it lifts (NULL = indefinite), why, who
- * issued it, and the two bits needed to undo it cleanly — the status it
- * interrupted, and whether the wallet freeze was ours to reverse.
+ * Idempotent self-healer for finance-issued account lockouts — the Suspend and
+ * Ban actions in admin/users.php. Widens users.status with the 'Suspended' and
+ * 'Banned' labels, reading the labels off the live enum rather than a hardcoded
+ * list so this never clobbers one a later migration added, then adds the columns
+ * that describe a single lockout: which kind it is, when it lifts (NULL =
+ * indefinite, and always NULL for a ban), why, who issued it, and the two bits
+ * needed to undo it cleanly — the status it interrupted, and whether the wallet
+ * freeze was ours to reverse.
+ *
+ * Suspension and ban share one set of columns because an account can only be in
+ * one of them at a time: both are written to users.status, so claiming either
+ * one excludes the other.
  *
  * Distinct from restricted_suspended_until (gjc_ensure_product_violation_schema),
  * which is the automatic merchant-only strike suspension. Both can be live on
@@ -607,11 +612,15 @@ function gjc_ensure_account_suspension_schema(PDO $db): void
     try {
         $column = $db->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
         $type = (string) ($column['Type'] ?? '');
-        if ($column && strpos($type, "'Suspended'") === false) {
+        $missing = array_values(array_filter(
+            ['Suspended', 'Banned'],
+            static fn(string $label): bool => strpos($type, "'{$label}'") === false
+        ));
+        if ($column && $missing) {
             preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $type, $labelMatches);
             $labels = $labelMatches[1] ?? [];
             if ($labels) {
-                $labels[] = 'Suspended';
+                $labels = array_merge($labels, $missing);
                 $enumSql = implode(', ', array_map(
                     static fn(string $label): string => "'" . str_replace("'", "\\'", $label) . "'",
                     $labels
@@ -630,6 +639,12 @@ function gjc_ensure_account_suspension_schema(PDO $db): void
         'suspended_by'            => 'INT NULL',
         'suspension_prev_status'  => 'VARCHAR(20) NULL',
         'suspension_froze_wallet' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        // Which kind of lockout the columns above currently describe:
+        // 'suspension' (timed or indefinite, self-expiring) or 'ban'
+        // (permanent, never expires, finance must lift it by hand). NULL on
+        // rows written before this column existed — read as suspensions,
+        // which is what they were.
+        'lockout_kind'            => 'VARCHAR(12) NULL',
     ];
     foreach ($adds as $col => $def) {
         if (!in_array($col, $cols, true)) {
@@ -654,8 +669,9 @@ function gjc_ensure_account_suspension_schema(PDO $db): void
  * suspension as its own: suspending a stall owner takes the whole stall down,
  * staff logins included, exactly like a restricted-product suspension does.
  *
- * Returns ['user_id','until','reason','at','by'] where a null 'until' means
- * indefinite — only a finance admin can lift it.
+ * Returns ['user_id','kind','until','reason','at','by'] where 'kind' is
+ * 'suspension' or 'ban', and a null 'until' means indefinite — only a finance
+ * admin can lift it. A ban always has a null 'until'.
  */
 function gjc_account_suspension(PDO $db, int $userId, bool $inheritStallOwner = false): ?array
 {
@@ -694,30 +710,52 @@ function gjc_account_suspension(PDO $db, int $userId, bool $inheritStallOwner = 
 }
 
 /**
- * One row's suspension, with the lazy expiry attached. Split out of
- * gjc_account_suspension() only so that function can ask the same question of
- * two accounts (the user, then their stall owner) without duplicating it.
+ * One row's live lockout — suspension or ban — with the lazy expiry attached.
+ * Split out of gjc_account_suspension() only so that function can ask the same
+ * question of two accounts (the user, then their stall owner) without
+ * duplicating it.
+ *
+ * A ban is read through this same function on purpose: every enforcement point
+ * in the app already calls gjc_account_suspension(), so returning bans here is
+ * what makes a ban block logins, sessions, stall sales and inbound money
+ * without a second check having to be added at each of those sites. Callers
+ * that need to tell them apart read the 'kind' key.
  */
 function gjc_read_account_suspension(PDO $db, string $idCol, int $userId): ?array
 {
+    $cols = gjc_table_columns($db, 'users');
+    $kindCol = in_array('lockout_kind', $cols, true) ? 'lockout_kind' : "NULL AS lockout_kind";
+
     $stmt = $db->prepare(
-        "SELECT status, suspended_until, suspension_reason, suspended_at, suspended_by
+        "SELECT status, suspended_until, suspension_reason, suspended_at, suspended_by, {$kindCol}
            FROM users WHERE {$idCol} = ? LIMIT 1"
     );
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row || (string) $row['status'] !== 'Suspended') {
+    $status = $row ? (string) $row['status'] : '';
+    if (!$row || !in_array($status, ['Suspended', 'Banned'], true)) {
         return null;
     }
 
+    // users.status is the authority on which kind this is; lockout_kind is only
+    // a tiebreak for rows written before the status widened, so a NULL there on
+    // a Suspended row still reads as a suspension.
+    $kind = $status === 'Banned' ? 'ban' : 'suspension';
+
+    // Only a suspension can run out. A ban has no end date and must never be
+    // expired out from under finance even if a stale one is somehow set.
     $until = $row['suspended_until'] !== null ? (string) $row['suspended_until'] : null;
-    if ($until !== null && strtotime($until) <= time()) {
+    if ($kind === 'suspension' && $until !== null && strtotime($until) <= time()) {
         gjc_lift_account_suspension($db, $userId, null, 'auto_expired');
         return null;
+    }
+    if ($kind === 'ban') {
+        $until = null;
     }
 
     return [
         'user_id' => $userId,
+        'kind'    => $kind,
         'until'   => $until,
         'reason'  => (string) ($row['suspension_reason'] ?? ''),
         'at'      => $row['suspended_at'] !== null ? (string) $row['suspended_at'] : null,
@@ -727,36 +765,95 @@ function gjc_read_account_suspension(PDO $db, string $idCol, int $userId): ?arra
 
 /**
  * Puts an account under a finance-issued suspension. $until is the datetime it
- * lifts itself on, or null for indefinite. Freezing the student's wallet is
- * belt-and-braces — the login block already stops the account acting — and only
- * happens when the wallet wasn't frozen already, so lifting can tell our freeze
- * apart from a parent's and never unlocks one it didn't set.
+ * lifts itself on, or null for indefinite.
  *
  * The status write is an atomic test-and-set (see references/patterns.md): a
  * double-submitted Suspend can't overwrite suspension_prev_status with
- * 'Suspended' and strand the account with nothing to restore to.
- * Returns false when the account doesn't exist or is already suspended.
+ * 'Suspended' and strand the account with nothing to restore to. The same
+ * test-and-set excludes 'Banned', so a suspension can never quietly downgrade a
+ * ban into something that expires on its own.
+ * Returns false when the account doesn't exist, is already suspended, or is
+ * banned.
  */
 function gjc_suspend_account(PDO $db, int $userId, ?string $until, string $reason, int $suspendedBy): bool
 {
+    return gjc_claim_account_lockout($db, $userId, 'Suspended', $until, $reason, $suspendedBy);
+}
+
+/**
+ * Puts an account under a permanent finance-issued ban — the Ban action in
+ * admin/users.php. Same lockout record as a suspension (see
+ * gjc_ensure_account_suspension_schema) with no end date, so nothing ever
+ * expires it: gjc_expire_due_suspensions() only sweeps status='Suspended', and
+ * gjc_read_account_suspension() refuses to expire a ban even if an end date
+ * somehow lands on the row. Only gjc_lift_account_ban() clears it.
+ *
+ * Returns false when the account doesn't exist or is already banned. An
+ * account that is merely suspended CAN be banned — that is an escalation, and
+ * the ban inherits the status the suspension interrupted so lifting the ban
+ * later restores the original state rather than the suspension.
+ */
+function gjc_ban_account(PDO $db, int $userId, string $reason, int $bannedBy): bool
+{
+    return gjc_claim_account_lockout($db, $userId, 'Banned', null, $reason, $bannedBy);
+}
+
+/**
+ * The one write behind both Suspend and Ban. Claims users.status atomically,
+ * remembers the status it interrupted so the lift can restore it, and freezes
+ * the student wallet belt-and-braces — the login block already stops the
+ * account acting — only when the wallet wasn't frozen already, so lifting can
+ * tell our freeze apart from a parent's and never unlocks one it didn't set.
+ *
+ * $target is 'Suspended' or 'Banned'. The claim excludes the target status
+ * itself (a repeat of the same action is a no-op) but a ban may still claim a
+ * suspended account, which is how escalation works.
+ */
+function gjc_claim_account_lockout(PDO $db, int $userId, string $target, ?string $until, string $reason, int $actorId): bool
+{
     gjc_ensure_account_suspension_schema($db);
     $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+    $hasKind = in_array('lockout_kind', gjc_table_columns($db, 'users'), true);
 
-    $prevStmt = $db->prepare("SELECT status FROM users WHERE {$idCol} = ? LIMIT 1");
+    $prevStmt = $db->prepare(
+        "SELECT status, suspension_prev_status, suspension_froze_wallet
+           FROM users WHERE {$idCol} = ? LIMIT 1"
+    );
     $prevStmt->execute([$userId]);
-    $prev = $prevStmt->fetchColumn();
-    if ($prev === false) {
+    $row = $prevStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
         return false;
     }
 
+    // Escalating a suspension to a ban must carry the pre-suspension status
+    // forward, not record 'Suspended' as the thing to restore to — otherwise
+    // lifting the ban would drop the account back into a suspension that no
+    // longer has a reason or an end date behind it.
+    $prev = (string) $row['status'];
+    $frozeWallet = 0;
+    if (in_array($prev, ['Suspended', 'Banned'], true)) {
+        $carried = trim((string) ($row['suspension_prev_status'] ?? ''));
+        $prev = ($carried !== '' && !in_array($carried, ['Suspended', 'Banned'], true)) ? $carried : 'Active';
+        // The outgoing lockout may already have frozen the wallet, in which
+        // case the freeze attempt below is a no-op and would leave the flag at
+        // 0 — the ban would then refuse to unfreeze on lift, stranding a wallet
+        // that only GenPay had locked. Carry the claim forward instead.
+        $frozeWallet = (int) ($row['suspension_froze_wallet'] ?? 0);
+    }
+
+    // A suspension may not claim an account that is suspended OR banned; a ban
+    // may not re-claim one that is already banned.
+    $blocked = $target === 'Banned' ? ["'Banned'"] : ["'Suspended'", "'Banned'"];
+    $kindSet = $hasKind ? ", lockout_kind = " . ($target === 'Banned' ? "'ban'" : "'suspension'") : '';
+
     $claim = $db->prepare(
         "UPDATE users
-            SET status = 'Suspended', suspended_until = ?, suspension_reason = ?,
+            SET status = ?, suspended_until = ?, suspension_reason = ?,
                 suspended_at = NOW(), suspended_by = ?, suspension_prev_status = ?,
-                suspension_froze_wallet = 0
-          WHERE {$idCol} = ? AND status <> 'Suspended'"
+                suspension_froze_wallet = ?{$kindSet}
+          WHERE {$idCol} = ? AND status NOT IN (" . implode(', ', $blocked) . ")"
     );
-    $claim->execute([$until, mb_substr($reason, 0, 255), $suspendedBy, (string) $prev, $userId]);
+    $claim->execute([$target, $until, mb_substr($reason, 0, 255), $actorId, $prev, $frozeWallet, $userId]);
     if ($claim->rowCount() === 0) {
         return false;
     }
@@ -787,8 +884,32 @@ function gjc_suspend_account(PDO $db, int $userId, ?string $until, string $reaso
  */
 function gjc_lift_account_suspension(PDO $db, int $userId, ?int $liftedBy, string $event = 'suspension_lifted'): bool
 {
+    return gjc_clear_account_lockout($db, $userId, 'Suspended', $liftedBy, $event);
+}
+
+/**
+ * Lifts a permanent ban, putting the account back the way the ban found it.
+ * Deliberately a separate entry point from gjc_lift_account_suspension(): a ban
+ * has no automatic path out, so nothing but an explicit finance action — the
+ * lift_ban endpoint in admin/api/users.php — can ever reach this.
+ * Returns false when the account isn't banned.
+ */
+function gjc_lift_account_ban(PDO $db, int $userId, ?int $liftedBy): bool
+{
+    return gjc_clear_account_lockout($db, $userId, 'Banned', $liftedBy, 'ban_lifted');
+}
+
+/**
+ * The one write behind lifting either kind of lockout. $fromStatus is the
+ * status being cleared, and is part of the test-and-set, so a lift aimed at a
+ * suspension can never clear a ban that replaced it between the read and the
+ * write (or the reverse).
+ */
+function gjc_clear_account_lockout(PDO $db, int $userId, string $fromStatus, ?int $liftedBy, string $event): bool
+{
     gjc_ensure_account_suspension_schema($db);
     $idCol = gjc_column($db, 'users', ['id', 'userID']) ?: 'userID';
+    $isBan = $fromStatus === 'Banned';
 
     $stmt = $db->prepare(
         "SELECT status, suspended_until, suspension_reason, suspension_prev_status, suspension_froze_wallet
@@ -796,25 +917,28 @@ function gjc_lift_account_suspension(PDO $db, int $userId, ?int $liftedBy, strin
     );
     $stmt->execute([$userId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row || (string) $row['status'] !== 'Suspended') {
+    if (!$row || (string) $row['status'] !== $fromStatus) {
         return false;
     }
 
     $restored = (string) ($row['suspension_prev_status'] ?? '');
-    if ($restored === '' || $restored === 'Suspended') {
+    if ($restored === '' || in_array($restored, ['Suspended', 'Banned'], true)) {
         $restored = 'Active';
     }
 
     // Test-and-set again: two concurrent lifts (an admin clicking while the
     // page-load sweep runs) must not both unfreeze the wallet and both log.
+    $kindSet = in_array('lockout_kind', gjc_table_columns($db, 'users'), true)
+        ? ', lockout_kind = NULL'
+        : '';
     $claim = $db->prepare(
         "UPDATE users
             SET status = ?, suspended_until = NULL, suspension_reason = NULL,
                 suspended_at = NULL, suspended_by = NULL,
-                suspension_prev_status = NULL, suspension_froze_wallet = 0
-          WHERE {$idCol} = ? AND status = 'Suspended'"
+                suspension_prev_status = NULL, suspension_froze_wallet = 0{$kindSet}
+          WHERE {$idCol} = ? AND status = ?"
     );
-    $claim->execute([$restored, $userId]);
+    $claim->execute([$restored, $userId, $fromStatus]);
     if ($claim->rowCount() === 0) {
         return false;
     }
@@ -827,16 +951,17 @@ function gjc_lift_account_suspension(PDO $db, int $userId, ?int $liftedBy, strin
 
     // Both paths notify, so the account always learns access is back — whether
     // an admin lifted it early or the clock simply ran out.
-    gjc_notify(
-        $db,
-        $userId,
-        'compliance',
-        'Account suspension lifted',
-        $event === 'auto_expired'
-            ? 'Your suspension period has ended. You can sign in and use your GenPay account again.'
-            : 'A GenPay finance admin lifted your account suspension. You can sign in and use your account again.',
-        'circle-check'
-    );
+    if ($isBan) {
+        $noticeTitle = 'Account ban lifted';
+        $noticeBody  = 'A GenPay finance admin lifted the ban on your account. You can sign in and use your account again.';
+    } elseif ($event === 'auto_expired') {
+        $noticeTitle = 'Account suspension lifted';
+        $noticeBody  = 'Your suspension period has ended. You can sign in and use your GenPay account again.';
+    } else {
+        $noticeTitle = 'Account suspension lifted';
+        $noticeBody  = 'A GenPay finance admin lifted your account suspension. You can sign in and use your account again.';
+    }
+    gjc_notify($db, $userId, 'compliance', $noticeTitle, $noticeBody, 'circle-check');
 
     if (function_exists('logAudit')) {
         logAudit(
@@ -847,7 +972,7 @@ function gjc_lift_account_suspension(PDO $db, int $userId, ?int $liftedBy, strin
             'users',
             [
                 'userID' => $userId,
-                'status' => 'Suspended',
+                'status' => $fromStatus,
                 'suspended_until' => $row['suspended_until'],
                 'suspension_reason' => $row['suspension_reason'],
             ],
@@ -896,25 +1021,36 @@ function gjc_expire_due_suspensions(PDO $db): int
 }
 
 /**
- * The one sentence every lockout surface shows for a suspension — the login
- * error, the login page banner, the blocked-credit responses. Keeps the wording
- * identical wherever a suspended account gets turned away.
+ * The one sentence every lockout surface shows — the login error, the login
+ * page banner, the blocked-credit responses. Keeps the wording identical
+ * wherever a locked-out account gets turned away, and says plainly which kind
+ * of lockout it is: a suspension names its end date (or says indefinite), a ban
+ * says permanent and never offers one.
+ *
+ * Takes the array gjc_account_suspension() returns.
  */
 function gjc_suspension_notice(array $suspension, string $subject = 'This account'): string
 {
     $until = $suspension['until'] ?? null;
     $reason = trim((string) ($suspension['reason'] ?? ''));
+    $isBan = ($suspension['kind'] ?? 'suspension') === 'ban';
 
-    $notice = $until
-        ? $subject . ' is suspended until ' . date('M d, Y g:i A', strtotime((string) $until)) . '.'
-        : $subject . ' is suspended indefinitely.';
+    if ($isBan) {
+        $notice = $subject . ' has been permanently banned from GenPay.';
+    } else {
+        $notice = $until
+            ? $subject . ' is suspended until ' . date('M d, Y g:i A', strtotime((string) $until)) . '.'
+            : $subject . ' is suspended indefinitely.';
+    }
     if ($reason !== '') {
         $notice .= ' Reason: ' . $reason;
         if (!str_ends_with($notice, '.')) {
             $notice .= '.';
         }
     }
-    if ($until === null) {
+    if ($isBan) {
+        $notice .= ' Contact the GenPay finance office if you believe this is a mistake.';
+    } elseif ($until === null) {
         $notice .= ' Contact the GenPay finance office to have it reviewed.';
     }
 
@@ -948,7 +1084,9 @@ function gjc_funds_in_block_reason(PDO $db, int $userId): ?string
         return null;
     }
     return gjc_suspension_notice($suspension, gjc_user_label($db, $userId) . "'s account")
-        . ' Funds cannot be credited to it until the suspension is lifted.';
+        . (($suspension['kind'] ?? 'suspension') === 'ban'
+            ? ' Funds cannot be credited to it.'
+            : ' Funds cannot be credited to it until the suspension is lifted.');
 }
 
 /**
@@ -1161,8 +1299,8 @@ function gjc_ensure_stall_application_workflow_schema(PDO $db): void
 }
 
 /**
- * Lazy expiry (same idea as VoucherEngine's lazy voucher expiry — there is no
- * background cron in this app, so every touch point re-checks). A
+ * Lazy expiry (there is no background cron in this app, so every touch point
+ * re-checks — see also gjc_account_suspension()). A
  * pending_verification application whose one-stop meeting time has already
  * passed with no award/reject decision means the applicant never showed up;
  * flip it to 'expired' so it stops blocking that email/name/business from a
@@ -1754,7 +1892,8 @@ function gjc_require_role(array $roles): void
             if ($account !== null) {
                 session_unset();
                 session_destroy();
-                header("Location: " . BASE_URL . "/login.php?reason=account_suspended"
+                $reason = ($account['kind'] ?? 'suspension') === 'ban' ? 'account_banned' : 'account_suspended';
+                header("Location: " . BASE_URL . "/login.php?reason={$reason}"
                     . ($account['until'] !== null ? "&until=" . urlencode((string) $account['until']) : ""));
                 exit();
             }
@@ -1766,6 +1905,180 @@ function gjc_require_role(array $roles): void
         header("Location: " . BASE_URL . "/change_password.php");
         exit();
     }
+}
+
+/** Nobody on file is older than this — an upper bound for date-of-birth sanity. */
+const GJC_MAX_AGE = 120;
+
+/**
+ * Idempotent self-healer for the personal-details block on an account: sex,
+ * date of birth, and address. Lives on `users` rather than
+ * `student_info` so every role carries the same fields — a parent or a merchant
+ * owner has an address exactly like a student does.
+ *
+ * Every column is NULLable with no default: these are optional details a user
+ * fills in over time, and an account created before this ran is simply blank
+ * rather than wrong. Age is deliberately NOT a column — see gjc_age_from_dob().
+ */
+function gjc_ensure_user_profile_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, 'users')) {
+        return;
+    }
+
+    $cols = gjc_table_columns($db, 'users');
+    $altered = false;
+    foreach (gjc_user_profile_columns() as $col => $def) {
+        if (!in_array($col, $cols, true)) {
+            try {
+                $db->exec("ALTER TABLE users ADD COLUMN {$col} {$def}");
+                $altered = true;
+            } catch (\Throwable $ignored) {}
+        }
+    }
+    if ($altered) {
+        gjc_table_columns($db, 'users', true);
+    }
+}
+
+/**
+ * The personal-details columns and their definitions, in the order they are
+ * shown. One source of truth for the self-healer, the edit forms, and the
+ * read-only views, so a field can never exist in the schema but go missing from
+ * a form (or the reverse).
+ *
+ * The address is deliberately coarse — barangay, municipality, province, e.g.
+ * "San Fernando Sur, Cabiao, Nueva Ecija". A canteen wallet has no use for a
+ * house number, and collecting one only creates personal data to look after.
+ */
+function gjc_user_profile_columns(): array
+{
+    return [
+        'sex'                        => "ENUM('Male', 'Female', 'Prefer not to say') NULL DEFAULT NULL",
+        'date_of_birth'              => 'DATE NULL',
+        'address_barangay'           => 'VARCHAR(120) NULL',
+        'address_city'               => 'VARCHAR(120) NULL',
+        'address_province'           => 'VARCHAR(120) NULL',
+    ];
+}
+
+/** The values users.sex accepts. Matches the ENUM above. */
+function gjc_sex_options(): array
+{
+    return ['Male', 'Female', 'Prefer not to say'];
+}
+
+/**
+ * Age in whole years from a stored date of birth, or null when there isn't one.
+ * Age is computed on every read and never stored: a number in a column is
+ * correct for at most a year, and would eventually contradict the birth date
+ * sitting next to it.
+ */
+function gjc_age_from_dob(?string $dob): ?int
+{
+    $dob = trim((string) $dob);
+    if ($dob === '' || $dob === '0000-00-00') {
+        return null;
+    }
+    try {
+        $born = new DateTimeImmutable($dob);
+    } catch (\Throwable $ignored) {
+        return null;
+    }
+    $now = new DateTimeImmutable('today');
+    if ($born > $now) {
+        return null;
+    }
+    return (int) $born->diff($now)->y;
+}
+
+/** "Mar 04, 2007", or an em dash when no birth date is on file. */
+function gjc_dob_label(?string $dob): string
+{
+    if (gjc_age_from_dob($dob) === null) {
+        return '—';
+    }
+    return date('M d, Y', strtotime((string) $dob));
+}
+
+/**
+ * "19 years old", or an em dash when no birth date is on file. Age is shown as
+ * a field in its own right, but it is still only ever computed from
+ * date_of_birth — there is no age column to fall out of step with it.
+ */
+function gjc_age_label(?string $dob): string
+{
+    $age = gjc_age_from_dob($dob);
+    return $age === null ? '—' : $age . ' years old';
+}
+
+/**
+ * The address as one line — "San Fernando Sur, Cabiao, Nueva Ecija" — skipping
+ * the parts that were left blank so a half-filled address doesn't render as a
+ * row of stray commas. Returns '' when nothing at all is on file, which callers
+ * show as an em dash.
+ */
+function gjc_format_address(array $row): string
+{
+    $parts = array_filter([
+        trim((string) ($row['address_barangay'] ?? '')),
+        trim((string) ($row['address_city'] ?? '')),
+        trim((string) ($row['address_province'] ?? '')),
+    ], static fn(string $part): bool => $part !== '');
+
+    return implode(', ', $parts);
+}
+
+/**
+ * Reads the personal-details fields out of a submitted form, validates them,
+ * and returns ['values' => [column => value], 'error' => ?string]. Shared by
+ * every profile edit page so one rule set covers them all — a birth date that
+ * the student page rejects can't be smuggled in through the parent page.
+ *
+ * A field left blank is stored as NULL rather than '', so clearing a value
+ * actually clears it and the read-side "is anything on file?" checks stay
+ * honest. Columns absent from $columns are skipped, mirroring how the profile
+ * pages already guard their writes against a schema that never healed.
+ */
+function gjc_collect_profile_details(array $post, array $columns): array
+{
+    $blank = static function (string $key) use ($post): ?string {
+        $value = trim((string) ($post[$key] ?? ''));
+        return $value === '' ? null : $value;
+    };
+
+    $sex = $blank('sex');
+    if ($sex !== null && !in_array($sex, gjc_sex_options(), true)) {
+        return ['values' => [], 'error' => 'Pick one of the listed options for Sex.'];
+    }
+
+    $dob = $blank('date_of_birth');
+    if ($dob !== null) {
+        $ts = strtotime($dob);
+        if ($ts === false) {
+            return ['values' => [], 'error' => 'Enter your date of birth as a valid date.'];
+        }
+        $dob = date('Y-m-d', $ts);
+        if ($ts > strtotime('today')) {
+            return ['values' => [], 'error' => 'Date of birth cannot be in the future.'];
+        }
+        if (gjc_age_from_dob($dob) > GJC_MAX_AGE) {
+            return ['values' => [], 'error' => 'Check the date of birth — that works out to over ' . GJC_MAX_AGE . ' years old.'];
+        }
+    }
+
+    $values = [
+        'sex'                        => $sex,
+        'date_of_birth'              => $dob,
+        'address_barangay'           => $blank('address_barangay'),
+        'address_city'               => $blank('address_city'),
+        'address_province'           => $blank('address_province'),
+    ];
+
+    return [
+        'values' => array_intersect_key($values, array_flip($columns)),
+        'error'  => null,
+    ];
 }
 
 function gjc_ensure_operational_tables(PDO $db): void
@@ -2914,6 +3227,70 @@ function gjc_transaction_is_success(string $status): bool
     );
 }
 
+/**
+ * Line items behind a paid order, keyed by the transaction's reference_no.
+ *
+ * The transactions row itself never carries them: both checkout flows keep an
+ * items_json snapshot on their own order row and link back with
+ * paid_ref = transactions.reference_no — cart_orders for the in-app Shop Cart,
+ * merchant_qr_orders for POS / QR pay. Same join parent/activity.php uses for
+ * its Items column, narrowed to a single record.
+ *
+ * Returns a normalised list of ['name', 'qty', 'price', 'line_total'], or []
+ * for a transaction with no order behind it (top-ups, transfers, encashments).
+ * merchant_qr_orders items carry no line_total, so it is derived from qty x price.
+ */
+function gjc_transaction_line_items(PDO $db, string $referenceNo): array
+{
+    $referenceNo = trim($referenceNo);
+    if ($referenceNo === "") {
+        return [];
+    }
+
+    $json = null;
+    foreach (["cart_orders", "merchant_qr_orders"] as $table) {
+        if ($json !== null || !gjc_table_exists($db, $table)) {
+            continue;
+        }
+        $stmt = $db->prepare(
+            "SELECT items_json FROM {$table} WHERE paid_ref = ? LIMIT 1",
+        );
+        $stmt->execute([$referenceNo]);
+        $found = $stmt->fetchColumn();
+        if ($found !== false && $found !== null && $found !== "") {
+            $json = (string) $found;
+        }
+    }
+
+    if ($json === null) {
+        return [];
+    }
+
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $items = [];
+    foreach ($decoded as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $qty = max(1, (int) ($item["qty"] ?? 1));
+        $price = (float) ($item["price"] ?? 0);
+        $items[] = [
+            "name" => (string) ($item["name"] ?? "Item"),
+            "qty" => $qty,
+            "price" => $price,
+            "line_total" => isset($item["line_total"])
+                ? (float) $item["line_total"]
+                : round($price * $qty, 2),
+        ];
+    }
+
+    return $items;
+}
+
 function gjc_user_label_cached(PDO $db, int $userId): string
 {
     static $cache = [];
@@ -3383,16 +3760,13 @@ function gjc_admin_dashboard_data(PDO $db): array
 
     $studentWalletsTotal = (float) ($snapshot["student_wallets_total"] ?? 0);
     $merchantWalletsTotal = (float) ($snapshot["merchant_wallets_total"] ?? 0);
+    // Kept after the visitor feature was removed, for the same reason the
+    // engine keeps its active-voucher term: every voucher was expired back into
+    // the vault, so this is zero — but if an 'active' row ever reappears the
+    // money still shows as circulating rather than quietly disappearing.
     $activeVouchersTotal = (float) ($snapshot["active_vouchers_total"] ?? 0);
     $circulatingBalance =
         $studentWalletsTotal + $merchantWalletsTotal + $activeVouchersTotal;
-
-    $activeVisitors = 0;
-    if (gjc_table_exists($db, "vouchers")) {
-        $activeVisitors = (int) $db
-            ->query("SELECT COUNT(*) FROM vouchers WHERE status = 'active'")
-            ->fetchColumn();
-    }
 
     $pendingTopups = 0;
     if (gjc_table_exists($db, "topup_requests")) {
@@ -3437,7 +3811,6 @@ function gjc_admin_dashboard_data(PDO $db): array
             "total_users" => $totalUsers,
             "active_students" => gjc_count_users_by_role($db, "student"),
             "active_merchants" => gjc_count_users_by_role($db, "merchant"),
-            "active_visitors" => $activeVisitors,
         ],
         "recent_transactions" => $recentTransactions,
         "transaction_chart" => $chart,
@@ -4000,9 +4373,9 @@ function gjc_student_graduated(PDO $db, int $studentUserId): bool
  * Full lockout for graduated students: every student-facing HTML page is
  * off-limits except withdraw.php (their only remaining action — cashing out
  * whatever balance is left). Call this right after gjc_require_role(['student'])
- * on every such page. Do NOT call this on JSON API endpoints (student/api/*.php,
- * pay_qr.php) — a redirect there would break the fetch() caller; those pages
- * already check gjc_student_graduated() directly and return a JSON error.
+ * on every such page. Do NOT call this on JSON API endpoints (student/api/*.php)
+ * — a redirect there would break the fetch() caller; those endpoints already
+ * check gjc_student_graduated() directly and return a JSON error.
  */
 function gjc_enforce_graduate_lock(PDO $db): void
 {

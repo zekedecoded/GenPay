@@ -37,8 +37,8 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=40">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -144,6 +144,13 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                             </td>
                             <td class="text-nowrap">
                                 <div class="d-flex align-items-center gap-1 flex-nowrap">
+                                    <!-- Read view: the row is identified by a signed HMAC token,
+                                         and view_product.php re-checks it against this stall's
+                                         merchant_user_id before rendering. -->
+                                    <a class="btn btn-sm btn-outline-secondary rounded-0 text-decoration-none"
+                                        href="<?= MERCHANT_URL ?>/view_product.php?token=<?= urlencode(gjc_make_view_token((int) $item['id'], 'merchant_product')) ?>">
+                                        <i class="fa-regular fa-eye"></i> View
+                                    </a>
                                     <?php if (!$isMerchAdmin): ?>
                                     <!-- Staff have no Edit button, so the quick Stock modal stays their
                                          only way to update quantities. Admins update stock via Edit. -->

@@ -90,7 +90,7 @@ if (($walletIds || $parentWalletId) && gjc_table_exists($db, 'transactions')) {
     // items_json column, same shape merchant/api/pos.php's own view_order
     // action already reads.
     $stmt = $db->prepare(
-        "SELECT t.reference_no, t.transaction_type, t.student_wallet_id, t.merchant_wallet_id,
+        "SELECT t.id, t.reference_no, t.transaction_type, t.student_wallet_id, t.merchant_wallet_id,
                 t.parent_wallet_id, t.initiated_by, t.amount, t.notes, t.status, t.created_at,
                 COALESCE(co.items_json, mqo.items_json) AS items_json
            FROM transactions t
@@ -162,7 +162,7 @@ $currentPage = 'activity';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=6">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=1">
 </head>
@@ -246,6 +246,7 @@ $currentPage = 'activity';
                                 <th>Items</th>
                                 <th>Amount</th>
                                 <th>Status</th>
+                                <th class="text-end">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -263,6 +264,14 @@ $currentPage = 'activity';
                                     <?= $r['incoming'] ? '+' : '−' ?>&#8369;<?= number_format((float) $r['amount'], 2) ?>
                                 </td>
                                 <td><?= $e(gjc_transaction_status_label((string) $r['status'])) ?></td>
+                                <td class="text-end">
+                                    <!-- Read view: signed HMAC token, re-checked in
+                                         view_transaction.php against this parent's scope. -->
+                                    <a class="view-btn"
+                                        href="<?= PARENT_URL ?>/view_transaction.php?token=<?= urlencode(gjc_make_view_token((int) $r['id'], 'parent_txn')) ?>">
+                                        <i class="fa-regular fa-eye"></i> View
+                                    </a>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

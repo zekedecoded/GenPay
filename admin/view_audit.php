@@ -114,11 +114,11 @@ if ($log) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $log ? 'Audit Entry' : 'Content Not Available' ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/detail_view.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/detail_view.css?v=7">
 </head>
 
 <body class="gp-theme">
@@ -136,7 +136,6 @@ if ($log) {
             <a class="uv-back" href="<?= ADMIN_URL ?>/audit_log.php">
                 <i class="fa-solid fa-arrow-left"></i> Back to Audit Log
             </a>
-            <span class="uv-ro"><i class="fa-solid fa-lock"></i> Read-only</span>
         </div>
 
         <section class="uv-hero">

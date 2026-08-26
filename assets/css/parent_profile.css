@@ -39,11 +39,13 @@
 .pcard p  { font-size: 13px; color: var(--gp-muted); margin: 0 0 18px; }
 .pfield { margin-bottom: 14px; }
 .pfield label { font-size: 12px; font-weight: 700; color: var(--gp-muted); text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 5px; }
-.pfield input { width: 100%; border: 1.5px solid var(--ad-line); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 500; outline: none; transition: border .15s, box-shadow .15s; }
+.pfield select { width: 100%; border: 1.5px solid var(--ad-line); border-radius: 10px; padding: 9px 34px 9px 12px; font-size: 14px; font-weight: 500; line-height: 1.45; outline: none; background: #fff; }
+.pfield select:focus { border-color: #9fc9ae; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12); }
+.pfield input { width: 100%; border: 1.5px solid var(--ad-line); border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 500; line-height: 1.45; outline: none; transition: border .15s, box-shadow .15s; }
 .pfield input:focus { border-color: #9fc9ae; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12); }
 .pfield input:disabled { background: var(--gp-cream); color: var(--gp-muted); cursor: not-allowed; }
 .pfield small { font-size: 11px; color: var(--gp-muted); display: block; margin-top: 4px; }
-.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 @media(max-width:540px) { .pgrid { grid-template-columns: 1fr; } }
 .btn-primary-save { background: var(--gp-grad-forest-btn); color: #fff; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
 .btn-primary-save:hover { filter: brightness(1.1); }
@@ -51,3 +53,7 @@
 .flash.ok  { background: var(--gp-success-bg); color: var(--gp-success); border: 1px solid #a8dcbe; }
 .flash.err { background: var(--gp-danger-bg); color: var(--gp-danger); border: 1px solid #f0b8b2; }
 #photoMsg { font-size: 12px; margin-top: 6px; min-height: 16px; }
+
+/* Group heading inside a profile form ("Address", "Emergency Contact") —
+   see includes/partials/profile_details_fields.php. */
+.pcard .pd-subhead { margin: 20px 0 12px; padding-top: 16px; border-top: 1px dashed var(--ad-line); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gp-muted); }

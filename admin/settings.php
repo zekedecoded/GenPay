@@ -22,13 +22,13 @@ $currentPage = 'settings';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=19">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
     <link rel="stylesheet" href="<?= CSS_URL ?>/settings.css?v=4">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=14">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
 </head>
 
 <body class="gp-theme">
@@ -44,7 +44,7 @@ $currentPage = 'settings';
 
                 <div>
                     <h1>System Settings</h1>
-                    <p>Configure visitor sessions, financial controls, and payment gateway options.</p>
+                    <p>Configure financial controls and payment gateway options.</p>
                 </div>
 
                 <div class="admin-user">
@@ -66,22 +66,6 @@ $currentPage = 'settings';
 
                 <form action="<?= ADMIN_URL ?>/save_settings.php" method="POST" class="settings-form">
 
-                    <h4>Visitor Settings</h4>
-
-                    <div class="settings-grid">
-                        <div class="settings-field">
-                            <label>Session Duration (hours)</label>
-                            <small>Default visitor account expiry in hours</small>
-                            <input type="number" name="session_duration" value="8">
-                        </div>
-
-                        <div class="settings-field">
-                            <label>QR Token Validity (minutes)</label>
-                            <small>Temporary QR code validity</small>
-                            <input type="number" name="qr_validity" value="15">
-                        </div>
-                    </div>
-
                     <h4>Financial Controls</h4>
 
                     <div class="settings-grid">
@@ -92,16 +76,6 @@ $currentPage = 'settings';
                             <div class="input-with-prefix">
                                 <span>₱</span>
                                 <input type="number" name="max_topup" value="5000">
-                            </div>
-                        </div>
-
-                        <div class="settings-field money-field">
-                            <label>Default Spending Limit (₱)</label>
-                            <small>0 means no spending limit</small>
-
-                            <div class="input-with-prefix">
-                                <span>₱</span>
-                                <input type="number" name="spending_limit" value="0">
                             </div>
                         </div>
                     </div>

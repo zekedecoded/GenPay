@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=14");
-@import url("theme.css?v=3");
+@import url("gjc-clear.css?v=15");
+@import url("theme.css?v=4");
 
 /* ===== GLOBAL =====
    The photo-background "auth glass" treatment is a deliberate departure
@@ -32,7 +32,7 @@ body {
   width: 100%;
   max-width: 420px;
   padding: 35px;
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(25px);
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
@@ -46,7 +46,7 @@ body {
 .badge-top {
   background: rgba(255, 255, 255, 0.2);
   padding: 6px 16px;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   font-size: 11px;
   color: #fff;
 
@@ -78,7 +78,7 @@ body {
   position: relative;
   display: flex;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   overflow: hidden;
   margin-bottom: 24px;
 }
@@ -88,7 +88,7 @@ body {
   width: 50%;
   height: 100%;
   background: #fff;
-  border-radius: 14px;
+  border-radius: var(--gp-radius);
   transition: 0.3s;
   left: 0;
 }
@@ -117,7 +117,7 @@ body {
 .input-group-box input {
   width: 100%;
   padding: 15px 40px 15px 15px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   border: none;
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
@@ -153,7 +153,7 @@ body {
   padding: 0;
   margin: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--gp-radius);
   background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   font-size: 14px;
@@ -168,7 +168,7 @@ body {
   background: rgba(220, 38, 38, 0.2);
   border: 1px solid rgba(220, 38, 38, 0.5);
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius);
   color: #ffb3b3;
   text-align: center;
   margin-bottom: 20px;
@@ -211,8 +211,8 @@ body {
   padding: 15px;
   margin-top: 20px;
   border: none;
-  border-radius: 12px;
-  background: linear-gradient(90deg, var(--gp-green-850), var(--gp-green-700));
+  border-radius: var(--gp-radius-pill);
+  background: var(--gp-green-700);
   color: #fff;
   font-weight: 600;
   letter-spacing: 1px;
@@ -268,7 +268,7 @@ body {
   .login-card {
     max-width: 100%;
     padding: 22px 18px;
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(18px);
@@ -301,7 +301,7 @@ body {
   .input-group-box input {
     min-height: 52px;
     padding-right: 44px;
-    border-radius: 12px;
+    border-radius: var(--gp-radius);
     font-size: 15px;
   }
 
@@ -318,7 +318,7 @@ body {
 
   .login-btn {
     min-height: 52px;
-    border-radius: 12px;
+    border-radius: var(--gp-radius-pill);
     margin-top: 18px;
   }
 
@@ -329,13 +329,13 @@ body {
   .custom-modal {
     margin: 0 10px;
     padding: 14px;
-    border-radius: 20px;
+    border-radius: var(--gp-radius);
   }
 }
 
 /* MODAL CUSTOM (background tinted from --gp-green-950, 13 36 24) */
 .custom-modal {
-  border-radius: 20px;
+  border-radius: var(--gp-radius);
   background: rgba(13, 36, 24, 0.95);
   backdrop-filter: blur(20px);
   color: #fff;
@@ -374,47 +374,11 @@ body {
 
 /* BUTTON */
 .btn-close-modal {
-  background: linear-gradient(90deg, var(--gp-green-850), var(--gp-green-700));
+  background: var(--gp-green-700);
   border: none;
   padding: 10px 20px;
-  border-radius: 12px;
+  border-radius: var(--gp-radius-pill);
   color: #fff;
-}
-
-/* GUEST GRID */
-.guest-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-.visitor-card {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 15px;
-  border-radius: 12px;
-}
-
-.step {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 8px;
-  border-radius: 10px;
-  margin-bottom: 6px;
-}
-
-.form-card input {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  margin-bottom: 10px;
-}
-
-@media (max-width: 768px) {
-  .guest-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .modal-icon img {
@@ -424,104 +388,6 @@ body {
   margin-bottom: 10px;
 }
 
-/* ===== Improved Visitor Modal ===== */
-
-.visitor-card {
-  background: rgba(255, 255, 255, 0.06);
-  padding: 18px;
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
-}
-
-.card-title {
-  font-size: 14px;
-  margin-bottom: 12px;
-  color: #d1f5d3;
-}
-
-/* steps with icon */
-.step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-.step img {
-  width: 18px;
-  height: 18px;
-}
-
-/* modern input */
-.input-modern {
-  position: relative;
-  margin-bottom: 15px;
-}
-
-.input-modern input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  background: rgba(255, 255, 255, 0.07);
-  color: #fff;
-  outline: none;
-}
-
-.input-modern label {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 12px;
-  color: #aaa;
-  transition: 0.2s;
-}
-
-.input-modern input:focus + label,
-.input-modern input:not(:placeholder-shown) + label {
-  top: -7px;
-  font-size: 10px;
-}
-
-/* button polish */
-.form-card .login-btn {
-  margin-top: 10px;
-  background: linear-gradient(90deg, var(--gp-green-700), #27764b);
-}
-
 .modal-title {
   margin-bottom: 18px; /* dagdag space */
-}
-
-.form-card {
-  margin-top: 10px;
-}
-
-.btn-group-custom {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.btn-group-custom .login-btn {
-  flex: 1;
-}
-
-.btn-back {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  color: #fff;
-  border-radius: 12px;
-  padding: 14px;
-  transition: 0.2s;
-}
-
-.btn-back:hover {
-  background: rgba(255, 255, 255, 0.15);
 }

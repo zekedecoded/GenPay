@@ -97,7 +97,7 @@ $currentPage = 'dashboard';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
 </head>
 
 <body class="sd-body">
@@ -129,9 +129,7 @@ $currentPage = 'dashboard';
                             <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
                         </div>
                         <div class="sd-balance-actions">
-                            <!-- Hidden under 768px: on mobile Top-Up lives in the bottom nav instead. -->
-                            <a class="sd-btn-solid sd-hide-mobile" href="<?= STUDENT_URL ?>/topup_request.php"><i class="fa-solid fa-circle-plus"></i>Top-Up</a>
-                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
+                            <a class="sd-btn-solid" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
                             <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/withdraw.php"><i class="fa-solid fa-money-bill-wave"></i>Withdraw</a>
                         </div>
                     </div>
@@ -144,10 +142,6 @@ $currentPage = 'dashboard';
 
                 <!-- Quick actions -->
                 <section class="sd-quick">
-                    <a href="<?= STUDENT_URL ?>/scan.php">
-                        <span class="sd-quick-icon is-scan"><i class="fa-solid fa-qrcode"></i></span>
-                        <span>Scan &amp; Pay</span>
-                    </a>
                     <a href="<?= STUDENT_URL ?>/cart.php">
                         <span class="sd-quick-icon is-cart"><i class="fa-solid fa-cart-shopping"></i></span>
                         <span>Shop Cart</span>

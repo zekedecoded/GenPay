@@ -4,6 +4,7 @@ require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
 gjc_require_role(['student']);
+gjc_ensure_user_profile_schema($db);
 gjc_enforce_graduate_lock($db);
 
 $currentUser = gjc_current_user($db);
@@ -75,7 +76,7 @@ $currentPage = 'profile';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
 </head>
 
@@ -188,6 +189,44 @@ $currentPage = 'profile';
                     </div>
                 </section>
 
+                <!-- Personal details (editable from Edit Profile) -->
+                <section class="sd-panel">
+                    <div class="sd-panel-head">
+                        <div>
+                            <h3>Personal Details</h3>
+                            <p>Your demographics on record.</p>
+                        </div>
+                    </div>
+
+                    <div class="pf-status-list">
+                        <?php
+                        $sexOnFile = trim((string) ($rawUser['sex'] ?? ''));
+                        $addressOnFile = gjc_format_address($rawUser);
+                        $dobOnFile = $rawUser['date_of_birth'] ?? null;
+                        $dobAge = gjc_age_from_dob($dobOnFile);
+                        foreach ([
+                            'Sex'           => $sexOnFile !== '' ? $sexOnFile : 'Not set',
+                            // Derived on read, so it is right on every birthday
+                            // without anyone having to update it.
+                            'Age'           => $dobAge !== null ? gjc_age_label($dobOnFile) : 'Not set',
+                            'Date of Birth' => $dobAge !== null ? gjc_dob_label($dobOnFile) : 'Not set',
+                            'Address'       => $addressOnFile !== '' ? $addressOnFile : 'Not set',
+                        ] as $pdLabel => $pdValue): ?>
+                        <div>
+                            <span><?= $e($pdLabel) ?></span>
+                            <!-- Plain text, not a pf-pill: an address is a value,
+                                 not a status, and a pill neither wraps nor fits one. -->
+                            <strong class="pf-detail-value <?= $pdValue === 'Not set' ? 'is-empty' : '' ?>"><?= $e($pdValue) ?></strong>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="pf-note">
+                        Keep these up to date from <a href="<?= STUDENT_URL ?>/profile_edit.php">Edit Profile</a>.
+                        Your age is worked out from your date of birth, so it is never entered by hand.
+                    </div>
+                </section>
+
                 <!-- Settings menu -->
                 <section class="sd-panel">
                     <div class="sd-panel-head">
@@ -249,7 +288,7 @@ $currentPage = 'profile';
                             </h2>
                             <div id="pfFaq2" class="accordion-collapse collapse" data-bs-parent="#pfFaqAccordion">
                                 <div class="accordion-body">
-                                    Go to <strong>Top-Up</strong> from the dashboard or bottom navigation, submit a request, and hand your cash to the Finance Office or a participating canteen merchant to have it approved and credited.
+                                    Hand your cash to the <strong>Finance Office</strong> or any participating canteen merchant. They load it straight into your wallet at the counter &mdash; there is nothing to submit beforehand, and the credit shows up in your History right away.
                                 </div>
                             </div>
                         </div>
