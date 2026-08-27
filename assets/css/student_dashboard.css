@@ -515,8 +515,11 @@ body.sd-body {
 }
 
 .sd-quick a {
+  /* Floor low enough that a 4-tile row (merchant) never wraps to 3+1 in the
+     768-960px band where the sidebar is still on screen; the cap keeps a
+     3-tile row (student) from stretching into slabs on a wide monitor. */
   flex: 1 1 0;
-  min-width: 150px;
+  min-width: 120px;
   max-width: 250px;
   background: #fff;
   border: 1px solid var(--sd-line);
