@@ -11,7 +11,7 @@ $topbarInitial = strtoupper(substr((string) $currentUser['name'], 0, 1));
 $__topbar_e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <header class="parent-topbar">
-    <button class="parent-menu-btn" onclick="toggleParentSidebar()">
+    <button class="parent-menu-btn" aria-label="Toggle navigation" onclick="toggleParentSidebar()">
         <i class="fa-solid fa-bars"></i>
     </button>
     <div>

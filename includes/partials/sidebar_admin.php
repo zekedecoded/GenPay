@@ -25,7 +25,7 @@ $currentPage = $currentPage ?? ""; ?>
             <i class="fa-solid fa-file-signature nav-icon"></i>
             <span class="nav-text">Leases &amp; Rent</span>
         </a>
-        <a href="<?= ADMIN_URL ?>/topups.php" class="<?= in_array($currentPage, ['topups', 'parent_topups'], true) ? 'active' : '' ?>">
+        <a href="<?= ADMIN_URL ?>/topups.php" class="<?= $currentPage === 'topups' ? 'active' : '' ?>">
             <i class="fa-solid fa-money-bill-transfer nav-icon"></i>
             <span class="nav-text">Top-ups</span>
         </a>

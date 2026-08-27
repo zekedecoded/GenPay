@@ -28,12 +28,12 @@
 }
 .cart-merchant-pill {
     display: inline-block; padding: 4px 12px; border-radius: 20px;
-    background: var(--sd-gold-soft); color: #8a6100;
+    background: var(--sd-gold-soft); color: var(--gp-gold-deep);
     font-size: 12px; font-weight: 700; margin-bottom: 12px;
 }
 .pending-order-badge {
     display: inline-block; padding: 5px 14px; border-radius: 20px;
-    background: var(--sd-gold-soft); color: #8a6100; font-size: 12px; font-weight: 800;
+    background: var(--sd-gold-soft); color: var(--gp-gold-deep); font-size: 12px; font-weight: 800;
     text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;
 }
 .pending-order-ref {

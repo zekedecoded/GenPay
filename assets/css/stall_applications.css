@@ -54,7 +54,7 @@
 .step-filter-card.active .sfc-count { color: var(--emerald-800); }
 .step-filter-card .sfc-label {
     font-size: 12px;
-    font-weight: 750;
+    font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: .3px;

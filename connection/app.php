@@ -2643,10 +2643,13 @@ function gjc_ensure_cart_orders_schema(PDO $db): void
         "CREATE TABLE IF NOT EXISTS cart_orders (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             reference_no VARCHAR(30) NOT NULL UNIQUE,
-            student_user_id INT UNSIGNED NOT NULL,
-            student_wallet_id INT UNSIGNED NOT NULL,
+            student_user_id INT UNSIGNED NULL,
+            student_wallet_id INT UNSIGNED NULL,
             merchant_user_id INT UNSIGNED NOT NULL,
             merchant_wallet_id INT UNSIGNED NOT NULL,
+            buyer_role VARCHAR(10) NOT NULL DEFAULT 'student',
+            parent_user_id INT UNSIGNED NULL,
+            parent_wallet_id INT UNSIGNED NULL,
             description TEXT NULL,
             items_json TEXT NOT NULL,
             amount DECIMAL(15,2) NOT NULL,
@@ -2655,9 +2658,36 @@ function gjc_ensure_cart_orders_schema(PDO $db): void
             paid_at DATETIME NULL,
             paid_ref VARCHAR(40) NULL,
             INDEX idx_cart_orders_student (student_user_id, status),
+            INDEX idx_cart_orders_parent (parent_user_id, status),
             INDEX idx_cart_orders_merchant (merchant_user_id, status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+
+    // Parent shop-cart (2026-08-27). Additive only — existing student rows keep
+    // their values and default to buyer_role 'student', so nothing is rewritten.
+    $cols = gjc_table_columns($db, 'cart_orders', true);
+
+    if (!in_array('buyer_role', $cols, true)) {
+        $db->exec("ALTER TABLE cart_orders ADD COLUMN buyer_role VARCHAR(10) NOT NULL DEFAULT 'student'");
+    }
+    if (!in_array('parent_user_id', $cols, true)) {
+        $db->exec("ALTER TABLE cart_orders ADD COLUMN parent_user_id INT UNSIGNED NULL");
+        try { $db->exec("ALTER TABLE cart_orders ADD INDEX idx_cart_orders_parent (parent_user_id, status)"); } catch (\Throwable $ignored) {}
+    }
+    if (!in_array('parent_wallet_id', $cols, true)) {
+        $db->exec("ALTER TABLE cart_orders ADD COLUMN parent_wallet_id INT UNSIGNED NULL");
+    }
+
+    // A parent order has no student, so the two student columns must accept
+    // NULL. MODIFY only relaxes nullability — existing values are preserved.
+    foreach (['student_user_id', 'student_wallet_id'] as $col) {
+        try {
+            $def = $db->query("SHOW COLUMNS FROM cart_orders LIKE " . $db->quote($col))->fetch(PDO::FETCH_ASSOC);
+            if ($def && strtoupper((string) $def['Null']) === 'NO') {
+                $db->exec("ALTER TABLE cart_orders MODIFY $col INT UNSIGNED NULL");
+            }
+        } catch (\Throwable $ignored) {}
+    }
 }
 
 function gjc_student_wallet(PDO $db, int $userId): array
@@ -3978,23 +4008,6 @@ function gjc_ensure_parent_wallet_schema(PDO $db): void
         ) ENGINE=InnoDB"
     );
 
-    $db->exec(
-        "CREATE TABLE IF NOT EXISTS parent_topup_requests (
-            id              INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            parent_id       INT UNSIGNED NOT NULL,
-            amount          DECIMAL(15,2) NOT NULL,
-            source          VARCHAR(20) NOT NULL DEFAULT 'finance',
-            merchant_id     INT UNSIGNED NULL,
-            status          VARCHAR(20) NOT NULL DEFAULT 'pending',
-            reference_no    VARCHAR(40) NULL UNIQUE,
-            fee_amount      DECIMAL(15,2) NULL,
-            credited_amount DECIMAL(15,2) NULL,
-            requested_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            processed_at    DATETIME NULL,
-            processed_by    INT UNSIGNED NULL,
-            INDEX idx_parent_status (parent_id, status)
-        ) ENGINE=InnoDB"
-    );
 
     if (gjc_table_exists($db, 'transactions')) {
         $cols = gjc_table_columns($db, 'transactions');

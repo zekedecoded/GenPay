@@ -47,7 +47,7 @@
 .encash-stat-card h2 {
   margin: 8px 0 5px;
   font-size: 34px;
-  font-weight: 900;
+  font-weight: 800;
   color: white;
 }
 
@@ -77,7 +77,7 @@
   margin: 0;
   color: var(--gp-ink);
   font-size: 22px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .encash-panel-header p {
@@ -92,7 +92,7 @@
   padding: 0 20px;
   border-radius: 16px;
   text-decoration: none;
-  font-weight: 850;
+  font-weight: 800;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -148,13 +148,13 @@
   color: white;
   display: grid;
   place-items: center;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: 0 10px 22px rgba(14, 99, 50, 0.18);
 }
 
 .amount-text {
   color: var(--gp-green-850) !important;
-  font-weight: 900 !important;
+  font-weight: 800 !important;
 }
 
 .method-pill,
@@ -167,7 +167,7 @@
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .method-pill {
@@ -186,8 +186,8 @@
 }
 
 .encash-status.rejected {
-  background: #eef2ee;
-  color: #4b5b52;
+  background: var(--gp-line-soft);
+  color: var(--gjc-slate);
 }
 
 .encash-actions {
@@ -207,7 +207,7 @@
   justify-content: center;
   text-decoration: none;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
   transition: 0.2s ease;
   border: 0;
   cursor: pointer;
@@ -224,8 +224,8 @@
 }
 
 .reject-btn {
-  background: #eef2ee;
-  color: #4b5b52;
+  background: var(--gp-line-soft);
+  color: var(--gjc-slate);
 }
 
 .details-btn:hover,

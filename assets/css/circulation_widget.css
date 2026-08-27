@@ -8,7 +8,7 @@
 .ce-wu-badge--inactive{background:rgba(100,116,139,.13);color:#64748b}
 .ce-wu-dot{display:inline-block;width:6px;height:6px;border-radius:50%}
 .ce-wu-dot--active{background:#22c55e}
-.ce-wu-dot--inactive{background:#94a3b8}
+.ce-wu-dot--inactive{background:var(--gp-subtle)}
 .ce-wu-bar-fill--merchant{background:#f59e0b}
 .ce-wu-pct--merchant{color:var(--gp-warning)}
 .ce-wu-badge--merchant-active{background:rgba(245,158,11,.15);color:#b45309}

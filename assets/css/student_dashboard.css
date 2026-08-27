@@ -2,8 +2,8 @@
    Scoped under sd-* so gjc-clear.css's student-* !important overrides never
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
-@import url("gjc-clear.css?v=15");
-@import url("theme.css?v=4");
+@import url("gjc-clear.css?v=18");
+@import url("theme.css?v=8");
 
 /* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
    — theme.css is the single source of truth for the palette. */
@@ -21,7 +21,7 @@
   --sd-green: var(--gp-green);
   --sd-red: var(--gp-red);
   --sd-radius: var(--gp-radius);
-  --sd-radius-sm: var(--gp-radius-sm);
+  --sd-radius-sm: var(--gp-radius);
   --sd-mono: var(--gp-mono);
 }
 
@@ -321,7 +321,7 @@ body.sd-body {
 
 .sd-notif-item.is-unread .sd-notif-item-icon {
   background: var(--sd-gold-soft);
-  color: #8a6100;
+  color: var(--gp-gold-deep);
 }
 
 .sd-notif-item-body {
@@ -698,8 +698,8 @@ body.sd-body {
 .sd-txn--voucher .sd-txn-type { color: #7c3aed; }
 .sd-txn--transfer .sd-txn-icon { background: #e3edfd; color: #2563eb; }
 .sd-txn--transfer .sd-txn-type { color: #2563eb; }
-.sd-txn--other .sd-txn-icon { background: #eef1ef; color: #5b6b61; }
-.sd-txn--other .sd-txn-type { color: #5b6b61; }
+.sd-txn--other .sd-txn-icon { background: var(--gp-line-soft); color: var(--gp-muted); }
+.sd-txn--other .sd-txn-type { color: var(--gp-muted); }
 
 .sd-txn-info {
   min-width: 0;
@@ -789,9 +789,9 @@ body.sd-body {
 
 .sd-status-pill {
   display: inline-block;
-  background: #eef1ef;
+  background: var(--gp-line-soft);
   border-radius: var(--gp-radius);
-  color: #5b6b61;
+  color: var(--gp-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em !important;
@@ -870,7 +870,7 @@ body.sd-body {
 }
 
 .sd-panel .dataTables_filter input {
-  background: #fbfdfb;
+  background: var(--gp-card);
   border: 1px solid var(--sd-line);
   border-radius: var(--gp-radius);
   font-size: 13px;
@@ -882,8 +882,8 @@ body.sd-body {
 }
 
 .sd-panel .dataTables_filter input:focus {
-  border-color: #9fc9ae;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+  border-color: var(--gp-gold);
+  box-shadow: var(--gp-focus-ring);
 }
 
 .sd-panel .dataTables_info {
@@ -914,7 +914,7 @@ body.sd-body {
 }
 
 .sd-panel .pagination .page-item.disabled .page-link {
-  background: #fbfdfb;
+  background: var(--gp-card);
   color: #b3c0b7;
 }
 
@@ -1090,10 +1090,10 @@ body.sd-body {
   color: var(--sd-muted);
 }
 
-/* Base box-model for .student-view-btn — gjc-clear.css already skins the
-   whole view-button family (colour, border, pill radius), but the box-model
-   lives in student.css, which this shell doesn't load. Same split as
-   audit_log.css handles for .details-btn. */
+/* Base box-model for .student-view-btn — gjc-clear.css skins the whole
+   view-button family (colour, border, pill radius) but carries no box-model,
+   so it is defined here. Same split as audit_log.css handles for
+   .details-btn. */
 .student-view-btn {
   min-height: 32px;
   padding: 0 13px;

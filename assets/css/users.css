@@ -16,14 +16,14 @@
 
 .users-panel-header h3 {
   margin: 0;
-  color: #102018;
+  color: var(--gp-ink);
   font-size: 22px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .users-panel-header p {
   margin: 5px 0 0;
-  color: #66756c;
+  color: var(--gp-muted);
   font-size: 14px;
 }
 
@@ -49,7 +49,7 @@
   margin-bottom: 6px;
   color: var(--gp-green-850);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0.3px;
   text-transform: uppercase;
 }
@@ -60,7 +60,7 @@
   border: none;
   outline: none;
   background: transparent;
-  color: #102018;
+  color: var(--gp-ink);
   font-weight: 700;
   font-size: 14px;
 }
@@ -82,7 +82,7 @@
   border-radius: 18px;
   background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: #ffffff;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: var(--gjc-shadow-lg);
   transition: 0.25s ease;
 }
@@ -109,14 +109,14 @@
   color: white;
   display: grid;
   place-items: center;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: 0 10px 22px rgba(14, 99, 50, 0.18);
 }
 
 .user-cell strong {
   display: block;
   color: var(--gp-ink);
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .user-cell small {
@@ -136,7 +136,7 @@
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
   text-align: center;
 }
 
@@ -171,8 +171,8 @@
 
 /* Owner-deactivated staff — a quieter state than a finance suspension. */
 .status-pill.inactive {
-  background: #eef2ee;
-  color: #4b5b52;
+  background: var(--gp-line-soft);
+  color: var(--gjc-slate);
 }
 
 /* "until Mar 03" / "indefinite" under a Suspended pill. */
@@ -198,7 +198,7 @@
   background: var(--gp-cream);
   color: var(--gp-green-850);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .premium-action-btn:hover {
@@ -216,7 +216,7 @@
 .premium-dropdown .dropdown-item {
   border-radius: 12px;
   padding: 8px 12px;
-  color: #102018;
+  color: var(--gp-ink);
   font-weight: 700;
   font-size: 14px;
 }

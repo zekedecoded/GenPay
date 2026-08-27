@@ -105,9 +105,9 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=18">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
 </head>
 
 <body class="sd-body">
@@ -186,7 +186,7 @@ $csrfToken = gjc_csrf_token();
                         </div>
                         <?php endif; ?>
 
-                        <form method="POST" class="pf-form">
+                        <form method="POST" class="pf-form" data-busy="Submitting…">
                             <input type="hidden" name="csrf_token" value="<?= $e($csrfToken) ?>">
 
                             <div class="pf-field">
@@ -342,6 +342,7 @@ $csrfToken = gjc_csrf_token();
     <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+    <script src="<?= JS_URL ?>/gp_form_busy.js?v=1"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <script>

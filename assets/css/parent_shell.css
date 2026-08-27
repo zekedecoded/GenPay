@@ -1,10 +1,10 @@
 /* Parent Portal shell — same forest/gold sd-* visual language as
    student/admin/merchant, under its own .parent-* class namespace
    (mirrors the exact pattern used in admin.css / merchant.css).
-   Replaces the legacy student.css shell (.student-layout etc.), which
-   nothing else in the app depends on. */
-@import url("gjc-clear.css?v=15");
-@import url("theme.css?v=4");
+   Replaces the legacy .student-layout shell, which was deleted with
+   assets/css/student.css once nothing referenced it. */
+@import url("gjc-clear.css?v=18");
+@import url("theme.css?v=8");
 
 :root {
   --emerald-950: var(--gp-green-950);
@@ -267,7 +267,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-weight: 750;
+  font-weight: 800;
   color: #fff;
 }
 
@@ -445,4 +445,88 @@ body {
   font-weight: 700;
   white-space: nowrap;
   text-decoration: none;
+}
+
+/* ============================================================
+   PHONE (<=576px) — off-canvas drawer
+   ============================================================
+   Above this width the shell keeps the admin-style icon rail (the 992px
+   block above): a permanent 58px strip of icons. On a 390px phone that
+   rail costs ~15% of the screen and, worse, the topbar hamburger is dead —
+   .parent-sidebar.collapsed is also 58px, so toggling it changed nothing.
+
+   Below 576px the sidebar becomes a proper drawer instead: parked
+   off-canvas at full width with its labels back, slid in by the hamburger
+   over a backdrop, with the content taking the full viewport. That makes
+   the existing toggleParentSidebar() button meaningful on the one screen
+   size where a nav toggle actually matters.
+
+   The .collapsed class is reused rather than renamed so all seven parent
+   pages keep working without touching their inline JS; here it reads as
+   "drawer open". ============================================================ */
+@media (max-width: 576px) {
+  .parent-sidebar {
+    width: 250px;
+    padding: 22px 16px 20px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: var(--gp-z-modal);
+  }
+
+  /* Toggled by the topbar hamburger — on this breakpoint it means "open". */
+  .parent-sidebar.collapsed {
+    width: 250px;
+    transform: translateX(0);
+    box-shadow: var(--gp-shadow-overlay);
+  }
+
+  /* Labels come back: a full-width drawer has room for them. */
+  .parent-sidebar .parent-brand-text,
+  .parent-sidebar .parent-nav-text,
+  .parent-sidebar .parent-logout span {
+    display: inline;
+  }
+
+  .parent-brand { justify-content: flex-start; }
+  .parent-brand-logo { width: 34px; min-width: 34px; height: 34px; }
+
+  .parent-menu a {
+    justify-content: flex-start;
+    padding: 0 14px;
+    gap: 12px;
+    border-left: 3px solid transparent;
+  }
+
+  .parent-logout { justify-content: flex-start; padding: 0 14px; }
+
+  /* Content reclaims the full width — no rail to sit beside. */
+  .parent-main {
+    --main-pad: 14px;
+    margin-left: 0;
+    width: 100%;
+    padding: var(--main-pad);
+  }
+
+  .parent-topbar { padding: 14px; }
+  .parent-topbar h1 { font-size: var(--gp-text-md); }
+  .parent-topbar p { font-size: var(--gp-text-xs); }
+
+  .parent-content { max-width: none; }
+}
+
+/* Backdrop behind the open drawer (markup lives in topbar_parent.php so all
+   parent pages get it from one place). Inert until the drawer is open. */
+.parent-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 36, 24, 0.45);
+  z-index: calc(var(--gp-z-modal) - 1);
+}
+
+@media (max-width: 576px) {
+  .parent-sidebar.collapsed ~ .parent-scrim,
+  .parent-scrim.is-open {
+    display: block;
+  }
 }

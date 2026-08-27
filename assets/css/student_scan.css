@@ -31,18 +31,18 @@
   font-size: 12px;
   font-weight: 700;
   background: var(--sd-gold-soft);
-  color: #8a6100;
+  color: var(--gp-gold-deep);
   white-space: nowrap;
 }
 
 .sp-status.is-active {
-  background: #dcfce7;
+  background: var(--gp-success-bg);
   color: #15803d;
 }
 
 .sp-status.is-blocked {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--gp-danger-bg);
+  color: var(--gp-danger);
 }
 
 /* ===== CAMERA FRAME ===== */
@@ -177,7 +177,7 @@
 .sp-btn--gold {
   background: var(--sd-gold-soft);
   border-color: rgba(240, 165, 0, 0.45);
-  color: #8a6100;
+  color: var(--gp-gold-deep);
 }
 
 .sp-btn--gold:hover {
@@ -329,9 +329,9 @@
 .sp-pay-error {
   display: none;
   margin-top: 12px;
-  background: #fee2e2;
+  background: var(--gp-danger-bg);
   border: 1px solid #fecaca;
-  color: #b91c1c;
+  color: var(--gp-danger);
   border-radius: 12px;
   padding: 10px 14px;
   font-size: 13px;
@@ -350,7 +350,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #dcfce7;
+  background: var(--gp-success-bg);
   color: #15803d;
   font-size: 30px;
 }
@@ -426,7 +426,7 @@
 .sp-code-input:focus {
   outline: none;
   border-color: var(--sd-gold);
-  box-shadow: 0 0 0 3px var(--sd-gold-soft);
+  box-shadow: var(--gp-focus-ring);
 }
 
 .sp-code-error {
@@ -440,10 +440,19 @@
 /* ===== MOBILE (<768px): full-screen dark scanner ===== */
 @media (max-width: 767.98px) {
   body.sp-page .sd-topbar,
+  body.sp-page .parent-topbar,
   body.sp-page .sd-balance,
   body.sp-page .sp-guide,
   body.sp-page .sp-recent {
     display: none;
+  }
+
+  /* The takeover above reserves 58px at the bottom for the student/merchant
+     mobile bottom-nav. The parent shell has no bottom nav (it uses a fixed
+     sidebar behind a hamburger), so on parent/cart.php the scanner runs all
+     the way to the bottom edge. */
+  body.sp-page .parent-layout .sp-scanner {
+    bottom: 0;
   }
 
   .sp-mobile-only {

@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=15");
-@import url("theme.css?v=4");
+@import url("gjc-clear.css?v=18");
+@import url("theme.css?v=8");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -285,7 +285,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-weight: 750;
+  font-weight: 800;
   color: #fff;
 }
 
@@ -486,7 +486,7 @@ a.mini-metric-card:focus-visible {
 .economy-mini-card small {
   margin: 0;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -506,7 +506,7 @@ a.mini-metric-card:focus-visible {
   display: block;
   color: var(--emerald-950);
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 800;
   margin-bottom: 6px;
 }
 
@@ -1349,8 +1349,8 @@ a.mini-metric-card:focus-visible {
   box-sizing: border-box;
 }
 .ce-input:focus {
-  border-color: var(--gp-green-700);
-  box-shadow: 0 0 0 3px rgba(17,106,56,0.14);
+  border-color: var(--gp-gold);
+  box-shadow: var(--gp-focus-ring);
 }
 
 .ce-mint-btn {
@@ -1423,7 +1423,7 @@ a.mini-metric-card:focus-visible {
 .ce-flow-step-info       { flex: 1; }
 .ce-flow-step-info strong{ display: block; font-size: 14px; font-weight: 800; color: var(--gp-green-950); }
 .ce-flow-step-info span  { font-size: 12px; color: var(--gjc-muted); font-weight: 600; }
-.ce-flow-arrow { font-size: 18px; color: var(--gp-green-700); font-weight: 900; }
+.ce-flow-arrow { font-size: 18px; color: var(--gp-green-700); font-weight: 800; }
 .ce-invisible  { visibility: hidden; }
 
 /* ── Footer strip ────────────────────────────────────────── */
@@ -1473,14 +1473,6 @@ a.mini-metric-card:focus-visible {
   .ce-ledger-panel { padding: 22px 18px 18px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ce-pulse,
-  .ce-ledger-seg,
-  .ce-mint-track-fill {
-    animation: none !important;
-    transition: none !important;
-  }
-}
 
 
 .circulation-health-panel {
@@ -1572,7 +1564,7 @@ a.mini-metric-card:focus-visible {
 }
 .mint-panel h4 {
   font-size: 18px;
-  font-weight: 850;
+  font-weight: 800;
   margin: 0 0 4px;
   color: #7a5a00;
 }
@@ -1589,7 +1581,7 @@ a.mini-metric-card:focus-visible {
   background: white;
   transition: border-color 0.2s;
 }
-.form-control:focus { border-color: var(--emerald-600); }
+.form-control:focus { border-color: var(--gp-gold); }
 
 .btn-primary-custom {
   padding: 12px 28px;
@@ -1597,7 +1589,7 @@ a.mini-metric-card:focus-visible {
   border: none;
   background: var(--gold);
   color: var(--emerald-950);
-  font-weight: 850;
+  font-weight: 800;
   font-size: 15px;
   cursor: pointer;
   box-shadow: 0 8px 22px rgba(240, 165, 0, 0.25);
@@ -1606,7 +1598,7 @@ a.mini-metric-card:focus-visible {
 .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(240, 165, 0, 0.32); }
 .btn-primary-custom:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-.btn-sm { padding: 7px 14px; border-radius: var(--gp-radius); font-size: 13px; font-weight: 750; cursor: pointer; border: none; }
+.btn-sm { padding: 7px 14px; border-radius: var(--gp-radius); font-size: 13px; font-weight: 800; cursor: pointer; border: none; }
 .btn-outline {
   background: transparent;
   border: 1.5px solid rgba(13, 36, 24, 0.18);
@@ -1722,7 +1714,7 @@ a.mini-metric-card:focus-visible {
 .tenant-card-kicker,
 .tenant-proprietor {
   display: block;
-  color: #64748b;
+  color: var(--gp-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1813,8 +1805,8 @@ a.mini-metric-card:focus-visible {
 }
 
 .stall-status-pill.is-muted {
-  background: #eef2ee;
-  color: #4b5b52;
+  background: var(--gp-line-soft);
+  color: var(--gjc-slate);
 }
 
 /* Alerts inside the modal follow the token palette instead of Bootstrap blue/yellow */
@@ -1899,8 +1891,8 @@ a.mini-metric-card:focus-visible {
 
 #stallDetailModal .form-control:focus,
 #stallDetailModal .form-select:focus {
-  border-color: var(--gp-green-700);
-  box-shadow: 0 0 0 3px rgba(13, 36, 24, 0.12);
+  border-color: var(--gp-gold);
+  box-shadow: var(--gp-focus-ring);
 }
 
 /* Buttons: solid brand for commits, soft ghost for filters/pager */
@@ -1989,7 +1981,7 @@ a.mini-metric-card:focus-visible {
 
 #stallDetailModal .badge.bg-success   { background: var(--gp-success-bg) !important; color: var(--gp-success) !important; }
 #stallDetailModal .badge.bg-danger    { background: var(--gp-danger-bg) !important;  color: var(--gp-danger) !important; }
-#stallDetailModal .badge.bg-secondary { background: #eef2ee !important;               color: #4b5b52 !important; }
+#stallDetailModal .badge.bg-secondary { background: var(--gp-line-soft) !important;               color: var(--gjc-slate) !important; }
 #stallDetailModal .badge.bg-primary   { background: var(--gp-info-bg) !important;    color: var(--gp-info) !important; }
 
 .stall-pager {

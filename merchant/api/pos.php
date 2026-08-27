@@ -326,9 +326,11 @@ try {
 
         if ($source === 'cart_pending') {
             $stmt = $db->prepare(
+                // COALESCE so a parent-placed order (buyer_role 'parent',
+                // student_user_id NULL) resolves its buyer too — see parent/cart.php.
                 "SELECT co.*, u.first_name, u.last_name
                    FROM cart_orders co
-                   LEFT JOIN users u ON u.userID = co.student_user_id
+                   LEFT JOIN users u ON u.userID = COALESCE(co.student_user_id, co.parent_user_id)
                   WHERE co.id = ? AND co.merchant_user_id = ?"
             );
             $stmt->execute([$orderId, $ownerMerchId]);
@@ -350,7 +352,9 @@ try {
                 'status' => $row['status'],
                 'created_at' => $row['created_at'],
                 'paid_at' => $row['paid_at'],
-                'student_name' => $studentName !== '' ? $studentName : 'Student',
+                'student_name' => $studentName !== ''
+                    ? $studentName
+                    : (($row['buyer_role'] ?? 'student') === 'parent' ? 'Parent' : 'Student'),
             ]);
             exit;
         }

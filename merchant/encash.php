@@ -65,8 +65,8 @@ $currentPage = 'encash';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=18">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -118,7 +118,7 @@ $currentPage = 'encash';
                     <div class="alert alert-danger"><?php echo gjc_e($error); ?></div>
                     <?php endif; ?>
 
-                    <form method="POST" class="encash-form">
+                    <form method="POST" class="encash-form" data-busy="Submitting…">
 
                         <div class="encash-field">
                             <label>Encashment Amount (&#8369;)</label>
@@ -225,6 +225,7 @@ $currentPage = 'encash';
     </div>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+    <script src="<?= JS_URL ?>/gp_form_busy.js?v=1"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
 
     <?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>

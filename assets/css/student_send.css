@@ -15,7 +15,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #dcfce7;
+  background: var(--gp-success-bg);
   color: #15803d;
   font-size: 32px;
 }
@@ -118,7 +118,7 @@
 }
 
 .wd-stat.is-gold span {
-  color: #8a6100;
+  color: var(--gp-gold-deep);
 }
 
 /* Monospace reference cells in the recent tables */

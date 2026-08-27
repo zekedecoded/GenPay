@@ -1,10 +1,21 @@
 <?php
+// ============================================================
+//  parent/cart.php
+//  Parent shop cart — the parent-side twin of student/cart.php.
+//  Same in-person model: scan each item's barcode at the stall, submit the
+//  order, then pay by scanning that stall's Wallet QR at the counter.
+//  Replaced parent/wallet.php (removed 2026-08-27 along with parent top-up
+//  requests), so the wallet balance hero lives here now.
+//  Content markup and scanner JS are kept identical to the student page on
+//  purpose — only the shell, the wallet lookup and the API URLs differ.
+// ============================================================
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 
-gjc_require_role(['student']);
-gjc_enforce_graduate_lock($db);
+gjc_require_role(['parent']);
+gjc_ensure_parent_schema($db);
+gjc_ensure_parent_wallet_schema($db);
 
 if (isset($_SESSION['force_change'])) {
     header('Location: ' . BASE_URL . '/change_password.php');
@@ -12,21 +23,15 @@ if (isset($_SESSION['force_change'])) {
 }
 
 $currentUser = gjc_current_user($db);
-$wallet      = gjc_student_wallet($db, (int) $currentUser['id']);
-$studentName = $currentUser['name'];
-$balance     = (float) $wallet['balance'];
+$parentUserId = (int) $currentUser['id'];
+$parentName   = $currentUser['name'];
+$parentId     = gjc_parent_id_for_user($db, $parentUserId);
+$wallet       = $parentId ? gjc_parent_wallet($db, $parentId) : ['balance' => 0.0];
+$balance      = (float) $wallet['balance'];
 
-// Real school-issued ID (GJC2026-0001); the padded userID is only a fallback
-// for accounts that never got a student_info row.
-$studentID = 'GJC-' . str_pad((string) $currentUser['id'], 5, '0', STR_PAD_LEFT);
-if (gjc_table_exists($db, 'student_info')) {
-    $sidStmt = $db->prepare("SELECT studentID FROM student_info WHERE userID = ? LIMIT 1");
-    $sidStmt->execute([(int) $currentUser['id']]);
-    $realID = trim((string) $sidStmt->fetchColumn());
-    if ($realID !== '') {
-        $studentID = $realID;
-    }
-}
+$linkedStmt = $db->prepare("SELECT COUNT(*) FROM parent_student_links WHERE parent_id = ?");
+$linkedStmt->execute([(int) $parentId]);
+$linkedCount = (int) $linkedStmt->fetchColumn();
 
 $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $currentPage = 'cart';
@@ -46,6 +51,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/cart.css?v=7">
@@ -53,26 +59,26 @@ $csrfToken = gjc_csrf_token();
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 
-<body class="sd-body sp-page">
+<body class="gp-theme sp-page">
 
-    <div class="sd-layout">
+    <div class="parent-layout">
 
-        <?php require __DIR__ . '/../includes/partials/sidebar_student.php'; ?>
+        <?php require __DIR__ . '/../includes/partials/sidebar_parent.php'; ?>
 
-        <main class="sd-main">
+        <main class="parent-main">
 
             <?php
             $topbarTitle = 'Shop Cart';
             $topbarSubtitle = 'Scan each item&rsquo;s barcode, submit your order, then pay at the counter by scanning the shop&rsquo;s Wallet QR.';
-            require __DIR__ . '/../includes/partials/topbar_student.php';
+            require __DIR__ . '/../includes/partials/topbar_parent.php';
             ?>
 
-            <div class="sd-content">
+            <div class="parent-content" style="max-width:none;">
 
                 <!-- Balance card -->
                 <section class="sd-balance">
                     <div>
-                        <span class="sd-balance-label">Current Balance</span>
+                        <span class="sd-balance-label">Wallet Balance</span>
                         <div class="sd-balance-amount">
                             <span id="sdBalance"><?= gjc_gc_amount($balance) ?></span><span class="sd-unit">GC</span>
                         </div>
@@ -81,17 +87,15 @@ $csrfToken = gjc_csrf_token();
                             <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
                         </div>
                         <div class="sd-balance-actions">
-                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/transfer.php"><i class="fa-solid fa-paper-plane"></i>Send</a>
-                            <a class="sd-btn-ghost" href="<?= STUDENT_URL ?>/withdraw.php"><i class="fa-solid fa-money-bill-wave"></i>Withdraw</a>
+                            <a class="sd-btn-ghost" href="<?= PARENT_URL ?>/allowance.php"><i class="fa-solid fa-paper-plane"></i>Send Allowance</a>
                         </div>
                     </div>
                     <div class="sd-balance-holder">
-                        <strong><?= $e($studentName) ?></strong>
-                        <span class="sd-holder-id"><?= $e($studentID) ?></span>
-                        <span class="sd-role-badge">STUDENT</span>
+                        <strong><?= $e($parentName) ?></strong>
+                        <span class="sd-holder-id"><?= $linkedCount ?> linked student<?= $linkedCount === 1 ? '' : 's' ?></span>
+                        <span class="sd-role-badge">PARENT</span>
                     </div>
                 </section>
-
                 <!-- Scanner + cart -->
                 <section class="sp-grid">
 
@@ -218,9 +222,6 @@ $csrfToken = gjc_csrf_token();
         </main>
 
     </div>
-
-    <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
-
     <!-- Payment confirmation -->
     <div class="modal fade sp-modal" id="cartPayConfirmModal" tabindex="-1" aria-labelledby="cartPayConfirmModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
@@ -261,9 +262,13 @@ $csrfToken = gjc_csrf_token();
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 
     <script>
+    function toggleParentSidebar() {
+        document.getElementById('parentSidebar').classList.toggle('collapsed');
+    }
+
     const CSRF = <?= json_encode($csrfToken, JSON_UNESCAPED_SLASHES) ?>;
-    const CART_API = "<?= STUDENT_URL ?>/api/cart.php";
-    const CHECKOUT_API = "<?= STUDENT_URL ?>/api/checkout.php";
+    const CART_API = "<?= PARENT_URL ?>/api/cart.php";
+    const CHECKOUT_API = "<?= PARENT_URL ?>/api/checkout.php";
     const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
 
     // Smart GC formatting: whole numbers stay whole ("2"), otherwise up to 2 decimals ("14.59").
@@ -745,5 +750,3 @@ $csrfToken = gjc_csrf_token();
     </script>
 
 </body>
-
-</html>

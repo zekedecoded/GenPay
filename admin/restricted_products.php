@@ -50,12 +50,12 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restricted Products | GenPay Admin</title>
+    <title>Restricted Products | GenPay</title>
     <meta name="description" content="Nutritional compliance product blacklist management for GenPay.">
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="gp-theme">
@@ -64,7 +64,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
+            <button class="menu-btn" aria-label="Toggle navigation" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Restricted Products</h1>
                 <p>Nutritional compliance blacklist â€” prevents merchants from encoding prohibited items.</p>

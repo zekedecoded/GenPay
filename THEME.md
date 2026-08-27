@@ -24,17 +24,120 @@ parent (`parent_shell.css`, `--emerald-*`/`--gp-*` alias pattern) stylesheets.
 | `--gp-card` | `#ffffff` | Content cards |
 | `--gp-line` | `#e2eae3` | Hairline borders |
 | `--gp-ink` / `--gp-muted` | `#14251b` / `#6b7a70` | Body text / secondary text |
+| `--gp-subtle` | `#98a79d` | Tertiary text: placeholders, input adornments, "(optional)", empty states, disabled |
 | `--gp-success` on `--gp-success-bg` | `#15803d` / `#dcf3e4` | Completed, approved, active |
 | `--gp-warning` on `--gp-warning-bg` | `#b45309` / `#fdf1d8` | Pending, processing |
 | `--gp-danger` on `--gp-danger-bg` | `#b42318` / `#fde2e2` | Failed, rejected, frozen, blocked |
 | `--gp-info` on `--gp-info-bg` | `#2563eb` / `#e3edfd` | Neutral-informational |
 | `--gp-green` / `--gp-red` | `#16a34a` / `#dc2626` | Money-in amounts / money-out & destructive |
-| `--gp-radius` / `--gp-radius-sm` | `16px` / `14px` | Cards / stat tiles |
+| `--gp-radius` | `4px` | Containers: cards, panels, inputs, tables |
+| `--gp-radius-tag` | `2px` | Inline tags and badges — tighter than containers |
+| `--gp-radius-pill` | `999px` | **Buttons only.** Shape alone says "pressable" |
 | `--gp-mono` | IBM Plex Mono | References, amounts, IDs (all numbers) |
-| `--gp-grad-hero` | composite | Dark hero cards (gold + green glows over forest) |
-| `--gp-grad-shell` | composite | Sidebar (950 → 900, vertical) |
-| `--gp-grad-forest-btn` | composite | Primary commit buttons (700 → 900) |
-| `--gp-shadow-hero` / `--gp-shadow-card` | composite | Dark card lift / subtle card edge |
+| `--gp-grad-hero` | flat `#0d2418` | Dark hero cards. Name kept, value is flat — a gold keyline, not a gradient, makes a hero a hero |
+| `--gp-grad-shell` | flat `#0d2418` | Sidebar |
+| `--gp-grad-forest-btn` | flat `#1e5c3a` | Primary commit buttons |
+| `--gp-keyline` | `2px solid` gold | The system signature, on heroes and balance cards |
+| `--gp-shadow-card` | `0 1px 2px` | Resting surfaces |
+| `--gp-shadow-raised` | `0 1px 3px` | Heroes, sticky bars (`--gp-shadow-hero` is an alias) |
+| `--gp-shadow-overlay` | `0 10px 22px` | Modals, dropdowns, notification panel |
+| `--gp-focus-ring` | `0 0 0 3px` gold-line | **The** focus treatment, for every interactive element |
+
+### The neutral ramp
+
+Dark to light, by perceptual lightness (L\*):
+
+`--gp-ink` 12.9 → `--gjc-slate` 30.7 → `--gp-muted` 49.8 → **`--gp-subtle` 67.1** →
+`--gp-line` 91.9 → `--gp-line-soft` 95.4 → `--gp-cream` 95.6 → `--gp-row-hover` 97.9 →
+`--gp-card` 100.
+
+`--gp-subtle` was added on 2026-08-27 to close a 42-point hole between "secondary
+text" and "border". That hole is why Tailwind greys (`#9ca3af`, `#94a3b8`) kept
+appearing across seventeen sites — someone needed a tertiary tone the palette did
+not offer, repeatedly. Its value is derived rather than picked: it lands mid-gap and
+uses `--gp-muted`'s exact channel shape (`g = r+15`, `b = r+5`), so it reads as that
+colour lightened, not as an import.
+
+**These neutrals are warm and green-tinted** (channel spread 4–17). Cool blue-greys
+— anything from a Tailwind/slate ramp — look visibly wrong beside them. If you need
+a neutral, it is one of the nine above. There is no tenth.
+
+## Space — 4pt scale
+
+`--gp-space-1` `4px` · `-2` `8px` · `-3` `12px` · `-4` `16px` · `-5` `20px` ·
+`-6` `24px` · `-7` `32px` · `-8` `40px` · `-9` `48px` · `-10` `64px`
+
+Every margin, padding and gap comes from this scale. 8pt was rejected deliberately:
+this is a data-dense wallet UI, and on 8pt the gap between a label and its input
+collapses into the gap between two table rows.
+
+`--gp-space-nudge` (`2px`) is the **only** exception and has exactly one job: the
+optical lift on a subtitle sitting under a heading (`margin: 2px 0 0`). That is
+typographic correction, not layout rhythm. Naming it is what stops `2px` reopening
+as a general half-step — don't use it for anything else.
+
+## Type ramp
+
+| Token | Size | Use for |
+|---|---|---|
+| `--gp-text-2xs` | `11px` | Uppercase micro-labels, table headers, badges |
+| `--gp-text-xs` | `12px` | Captions, helper text, timestamps, meta |
+| `--gp-text-sm` | `13px` | Dense UI: table cells, nav items, form labels |
+| `--gp-text-base` | `14px` | Body default, buttons, inputs |
+| `--gp-text-md` | `16px` | Card titles, emphasised body |
+| `--gp-text-lg` | `18px` | Page title (`h1`), panel headings |
+| `--gp-text-xl` | `22px` | Section headings, secondary figures |
+| `--gp-text-2xl` | `28px` | Hero sub-figures |
+| `--gp-text-3xl` | `34px` | Hero balance |
+| `--gp-text-4xl` | `40px` | Dashboard headline figures |
+| `--gp-text-5xl` | `56px` | Public marketing only (`index.php`) |
+
+The four steps between 11px and 14px are 1px apart **on purpose**: 76% of this app's
+type lives in that band, and a table header, a table cell and a caption genuinely need
+to differ. Each step has a distinct job. What is not allowed is a size with no job —
+**there are no half-pixel sizes.** If a size is not in this table, it is not a size.
+
+**Line height:** `--gp-leading-none` `1` (figures, single-line chrome) ·
+`-tight` `1.2` (display 28px+, h1/h2) · `-snug` `1.35` (16–22px headings, card titles,
+table cells) · `-normal` `1.5` (body paragraphs) · `-relaxed` `1.65` (long-form).
+
+**Font weight — only `400` `500` `600` `700` `800`.** Plus Jakarta Sans and Manrope
+ship nothing else. A weight outside that set silently snaps to a neighbour, so `850`
+and `800` render *identically* while reading as a deliberate distinction in source.
+71 such declarations were found and corrected; don't reintroduce them.
+
+## Motion
+
+`--gp-transition` `150ms ease` · `--gp-transition-slow` `250ms ease` (width/margin,
+sidebar collapse only).
+
+**Name the properties you animate — never `transition: all`.** It animates layout
+properties you did not intend and costs a frame. theme.css carries one global
+`prefers-reduced-motion` guard covering the whole app; do not add scoped copies of it.
+
+No sparkles, gradients, novelty animation or decorative motion. Hover may change
+colour, background, border-colour, shadow or `transform` — **never** padding, border-
+width, font-size or dimensions, because those shift layout under the cursor.
+
+## Layering
+
+`--gp-z-raised` `1` · `-sticky` `20` · `-sidebar` `40` · `-dropdown` `60` ·
+`-modal` `1055` · `-toast` `1090`
+
+Aligned to Bootstrap 5 so the two systems stop colliding — Bootstrap owns 1000
+(dropdown), 1045 (offcanvas), 1050 (backdrop), 1055 (modal), 1070/1080
+(popover/tooltip), 1090 (toast). App chrome stays below all of it; only the two
+values that must match Bootstrap reach into its range. Nothing needs `9999`.
+
+## Viewport
+
+**Breakpoints — these four, and no fifth:** `576px` phone · `768px` tablet / nav
+switch · `992px` sidebar · `1200px` wide. (CSS cannot use custom properties in a media
+query, so this is a convention, not a token.)
+
+**Containers:** `--gp-container-narrow` `420px` (auth) · `--gp-container-form` `720px`
+(long forms) · `--gp-container-detail` `960px` (detail views). Dashboards are
+full-bleed inside `--main-pad`.
 
 ## Reusable classes
 
@@ -97,8 +200,8 @@ The parent portal (`parent/dashboard.php`, `controls.php`, `profile.php`,
 `student.php`) was rebuilt from the ground up onto its own `.parent-*` class
 namespace in `assets/css/parent_shell.css` — a full shell rebuild, not a color
 swap, since it previously ran on the pre-redesign `.student-layout`/
-`.student-sidebar` classes (defined in the now-orphaned `assets/css/student.css`,
-which nothing else in the app loads anymore). `includes/partials/sidebar_parent.php`
+`.student-sidebar` classes (defined in `assets/css/student.css`, since deleted —
+nothing referenced it). `includes/partials/sidebar_parent.php`
 and the new `includes/partials/topbar_parent.php` mirror the exact partial
 pattern used by the other three sides — 250px dark sidebar, full-bleed dark
 topbar, gold active-nav state, `gp-grad-hero` cards, mono numbers.
@@ -134,9 +237,22 @@ pages); student pages use their own sd-* components and don't need it.
   `--gp-gold-deep`.
 - **Numbers are mono** (`--gp-mono` / `gp-mono` / tabular-nums) — amounts, refs, IDs.
 - **Cache-busting:** every stylesheet link carries `?v=N`; bump it whenever the file
-  changes (current: theme v2, gjc-clear v11, admin v17, student_dashboard v12,
-  student_topup v3, merchant v32, pos v4, parent_shell v2, login v11, apply v5,
-  stalls v6).
+  changes. A file `@import`ed by others (theme.css, gjc-clear.css) needs *both* the
+  `@import` URL bumped **and** every stylesheet that imports it bumped — otherwise the
+  browser never re-requests the importer and never sees the new import URL.
+
+  **The invariant, not a snapshot:** each stylesheet must resolve to exactly one
+  version across every page that links it. A version list in this document goes stale
+  within a week, so verify it instead — this prints any sheet linked at two versions,
+  and should output nothing:
+
+  ```bash
+  grep -rhoE '[a-z_-]+\.css\?v=[0-9]+' --include=*.php . | sed -E 's|\.css\?v=| v|' \
+    | sort -u | awk '{a[$1]=a[$1]" "$2} END{for(k in a) if(split(a[k],x," ")>1) print k":"a[k]}'
+  ```
+
+  Drift here is not cosmetic: it previously caused two roles to load different token
+  values from the same file.
 - **`gjc-clear.css` is now a pure alias layer**, not an independent palette: its
   `--gjc-green-*`/`--gjc-gold-*`/`--gjc-danger/-success/-warning/-info/-alert`/
   `--gjc-ink/-muted/-line/-page/-panel/-soft/-sidebar` tokens all resolve to the
@@ -171,7 +287,14 @@ pages); student pages use their own sd-* components and don't need it.
 
 ## Adding a new page
 
-1. Link `theme.css` (directly, or via a role stylesheet that `@import`s it).
-2. Add `gp-theme` to `<body>` if the page uses Bootstrap controls.
-3. Build with `gp-*` classes; reach for tokens (`var(--gp-*)`) in any custom CSS.
-4. Bump `?v=` on anything you edit.
+1. Give it a `<title>` — `Page Name | GenPay`. One suffix, no role variants.
+2. Link `theme.css` (directly, or via a role stylesheet that `@import`s it).
+3. Add `gp-theme` to `<body>` if the page uses Bootstrap controls.
+4. Build with `gp-*` classes; reach for tokens (`var(--gp-*)`) in any custom CSS.
+5. Every size, space, radius, shadow, duration and z-index comes from a token.
+   If the value you want isn't in a scale above, use the nearest step — don't add
+   a new value. Adding a step is a change to the system, not to your page.
+6. Any async action that moves money disables its trigger and swaps the label
+   (`Sending…`) for the whole round-trip, restoring it on **both** the error and
+   network-error paths. `student/transfer.php` is the reference implementation.
+7. Bump `?v=` on anything you edit, and re-run the drift check above.

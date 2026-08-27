@@ -115,10 +115,10 @@ function gjc_lease_qs(array $overrides = []): string
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leases &amp; Rent | GenPay Admin</title>
+    <title>Leases &amp; Rent | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -132,7 +132,7 @@ function gjc_lease_qs(array $overrides = []): string
     <main class="admin-main">
 
         <header class="topbar">
-            <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Leases &amp; Rent</h1>
                 <p>Manage merchant stall contracts and rental payment tracking.</p>

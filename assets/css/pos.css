@@ -22,7 +22,7 @@
 .cart-item-name { flex:1; font-size:13px; font-weight:600; color:var(--gp-ink); }
 .cart-item-qty { display:flex; align-items:center; gap:4px; }
 .cart-item-qty button { width:24px;height:24px;border-radius:6px;border:1px solid var(--gp-line);
-    background:#f9fafb;font-weight:700;font-size:13px;cursor:pointer;line-height:1; }
+    background:var(--gp-row-hover);font-weight:700;font-size:13px;cursor:pointer;line-height:1; }
 .cart-item-qty span { min-width:24px;text-align:center;font-weight:700; }
 .cart-item-price { font-family:var(--gp-mono); font-weight:700; font-size:13px; color:var(--gp-green-850); min-width:70px; text-align:right; }
 .cart-total-row { display:flex; justify-content:space-between; align-items:center;
@@ -129,7 +129,7 @@
     .pos-product-toolbar { flex-wrap:wrap; }
     .pos-product-toolbar .merchant-loadwallet-label { display:none; }
 }
-.pos-search-input:focus { border-color:var(--gp-gold); box-shadow:0 0 0 3px var(--gp-gold-soft); }
+.pos-search-input:focus { border-color:var(--gp-gold); box-shadow: var(--gp-focus-ring); }
 .pos-empty-filter { display:none; text-align:center; padding:36px 20px; color:var(--gp-muted); font-size:13px; }
 
 @media (max-width: 768px) {

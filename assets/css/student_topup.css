@@ -24,7 +24,7 @@
 
 .tu-money-input:focus-within {
   border-color: var(--sd-gold);
-  box-shadow: 0 0 0 3px var(--sd-gold-soft);
+  box-shadow: var(--gp-focus-ring);
 }
 
 .tu-money-input span {
@@ -181,7 +181,7 @@
   font-weight: 800;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: #8a6100;
+  color: var(--gp-gold-deep);
 }
 
 .tu-limit strong {

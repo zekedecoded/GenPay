@@ -1,4 +1,4 @@
-@import url("theme.css?v=4");
+@import url("theme.css?v=8");
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -164,8 +164,8 @@ body {
 .field-input::placeholder { color: var(--gray-5); font-weight: 400; }
 .field-input:focus,
 .field-select:focus {
-    border-color: var(--green-7);
-    box-shadow: 0 0 0 3px rgba(21,128,61,.1);
+    border-color: var(--gp-gold);
+    box-shadow: var(--gp-focus-ring);
 }
 .field-input.err,
 .field-select.err {
@@ -174,7 +174,7 @@ body {
 }
 .field-input.err:focus,
 .field-select.err:focus {
-    box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    box-shadow: var(--gp-focus-ring);
 }
 
 /* Custom select arrow */

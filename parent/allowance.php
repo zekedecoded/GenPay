@@ -61,13 +61,13 @@ $currentPage = 'allowance';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=6">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=18">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=2">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=7">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=3">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=1">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=2">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=5">
 </head>
 
 <body class="gp-theme">
@@ -97,7 +97,7 @@ $currentPage = 'allowance';
                         <span class="sd-gc-rate">&#8369;10 = 1 GC</span>
                     </div>
                     <div class="sd-balance-actions">
-                        <a class="sd-btn-ghost" href="<?= PARENT_URL ?>/wallet.php"><i class="fa-solid fa-circle-plus"></i>Top-Up</a>
+                        <a class="sd-btn-ghost" href="<?= PARENT_URL ?>/cart.php"><i class="fa-solid fa-cart-shopping"></i>Shop Cart</a>
                     </div>
                 </div>
                 <div class="sd-balance-holder">

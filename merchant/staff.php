@@ -39,11 +39,11 @@ $currentPage = "staff";
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Staff Management | GenPay Merchant</title>
+    <title>Staff Management | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=42">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=18">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -223,7 +223,7 @@ $currentPage = "staff";
                             <div class="staff-password-row">
                                 <div class="staff-password-wrap">
                                     <input type="password" class="form-control" name="password" id="staffPasswordInput" required minlength="6">
-                                    <button type="button" class="staff-pw-toggle" id="staffPwToggle" title="Show password"><i class="fa-solid fa-eye"></i></button>
+                                    <button type="button" class="staff-pw-toggle" id="staffPwToggle" aria-label="Show password" title="Show password"><i class="fa-solid fa-eye"></i></button>
                                 </div>
                                 <button type="button" class="btn btn-outline-secondary staff-pw-generate" id="staffPwGenerate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
                             </div>

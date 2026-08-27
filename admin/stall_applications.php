@@ -148,18 +148,18 @@ function sa_meeting_label(?string $dt): string
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stall Applications | GenPay Admin</title>
+    <title>Stall Applications | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/stall_applications.css?v=7">
     <style>
     /* KPI cards — thin large numbers, left-aligned flex row */
     .sa-kpi { border:1px solid #dddfd8; border-radius:12px; padding:16px 20px; background:#fff; display:flex; flex-direction:column; gap:8px; min-width:200px; }
-    .sa-kpi .l { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }
+    .sa-kpi .l { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--gp-muted); }
     .sa-kpi .n { font-size:36px; font-weight:300; line-height:1; color:#1a1a1a; }
 
     /* Card shell for schedule + table */
@@ -172,7 +172,7 @@ function sa_meeting_label(?string $dt): string
     .today-time { font-weight:700; font-size:13px; color:#1e5c3a; }
     .today-who { min-width:0; }
     .today-who .b { font-weight:600; font-size:14px; color:#1a1a1a; }
-    .today-who .p { font-size:12px; color:#9ca3af; margin-top:2px; }
+    .today-who .p { font-size:12px; color:var(--gp-subtle); margin-top:2px; }
     .sa-sched-right { display:flex; align-items:center; gap:12px; }
 
     /* "New" pill — newly submitted, not yet opened; cleared on first open */
@@ -184,25 +184,25 @@ function sa_meeting_label(?string $dt): string
 
     /* Toolbar: pill search + filter pills */
     .sa-search { display:flex; align-items:center; gap:8px; background:#f5f5f0; border:1px solid #e0e2db; border-radius:8px; padding:7px 12px; flex:1; max-width:300px; }
-    .sa-search input { border:none; background:transparent; font-size:13px; color:#374151; outline:none; width:100%; font-family:inherit; }
-    .sa-search input::placeholder { color:#9ca3af; }
-    .sa-search .fa-magnifying-glass { color:#9ca3af; font-size:13px; }
+    .sa-search input { border:none; background:transparent; font-size:13px; color:var(--gjc-slate); outline:none; width:100%; font-family:inherit; }
+    .sa-search input::placeholder { color:var(--gp-subtle); }
+    .sa-search .fa-magnifying-glass { color:var(--gp-subtle); font-size:13px; }
     .sa-filters { display:flex; gap:4px; flex-wrap:wrap; }
-    .filter-btn { padding:7px 14px; border-radius:8px; border:1px solid #e0e2db; background:#fff; color:#374151; font-size:12px; font-weight:500; cursor:pointer; line-height:1.2; }
+    .filter-btn { padding:7px 14px; border-radius:8px; border:1px solid #e0e2db; background:#fff; color:var(--gjc-slate); font-size:12px; font-weight:500; cursor:pointer; line-height:1.2; }
     .filter-btn:hover { border-color:#1e5c3a; color:#1e5c3a; }
     .filter-btn.active { background:#1e5c3a; color:#fff; border-color:#1e5c3a; }
 
     /* Applications table */
     /* .sa-table base styling now comes from the canonical table system in theme.css. */
     .sa-table .biz { font-size:13.5px; font-weight:600; color:#1a1a1a; }
-    .sa-table .prop { font-size:13px; color:#374151; }
+    .sa-table .prop { font-size:13px; color:var(--gjc-slate); }
     .sa-table .phone { font-size:12.5px; color:#555; }
-    .sa-table .email { font-size:11px; color:#9ca3af; margin-top:3px; }
+    .sa-table .email { font-size:11px; color:var(--gp-subtle); margin-top:3px; }
     .sa-table .submitted { font-size:12.5px; color:#777; }
 
     /* DataTables footer (info + pagination) */
     .sa-dt-foot { font-size:12.5px; }
-    .sa-dt-foot .dataTables_info { color:#6b7280; padding:0; }
+    .sa-dt-foot .dataTables_info { color:var(--gp-muted); padding:0; }
     .sa-dt-foot .dataTables_paginate { margin:0; }
     .sa-dt-foot .pagination { margin:0; }
     .sa-dt-foot .page-link { color:#1e5c3a; font-size:12.5px; }
@@ -210,9 +210,9 @@ function sa_meeting_label(?string $dt): string
     .sa-dt-foot .page-item.disabled .page-link { color:#c0c4bd; }
 
     .sa-doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
-    .sa-doc { position:relative; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+    .sa-doc { position:relative; border:1px solid var(--gp-line); border-radius:8px; overflow:hidden; background:#fff; cursor:pointer; transition:border-color .12s, box-shadow .12s; }
     .sa-doc:hover { border-color:#27764b; box-shadow:0 2px 10px rgba(14, 99, 50,.14); }
-    .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:5px 8px; font-size:10.5px; font-weight:700; border-bottom:1px solid #f1f5f9; }
+    .sa-doc .cap { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:5px 8px; font-size:10.5px; font-weight:700; border-bottom:1px solid var(--gjc-soft-2); }
     .sa-doc .cap span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .sa-doc .cap .sa-doc-pop { color:inherit; }
     .sa-doc .sa-doc-thumb { width:100%; height:110px; border:0; display:block; background:#1e1e1e; pointer-events:none; }
@@ -227,9 +227,9 @@ function sa_meeting_label(?string $dt): string
     .doc-viewer-cap { position:absolute; top:22px; left:28px; color:#fff; font-weight:700; font-size:14px; }
     .doc-viewer-close { position:absolute; top:15px; right:22px; width:42px; height:42px; border-radius:50%; border:0; background:rgba(255,255,255,.16); color:#fff; font-size:24px; line-height:1; cursor:pointer; }
     .doc-viewer-close:hover { background:rgba(255,255,255,.3); }
-    .sa-section { border:1px solid #e5e7eb; border-radius:14px; padding:16px; }
+    .sa-section { border:1px solid var(--gp-line); border-radius:14px; padding:16px; }
     .sa-section h6 { font-weight:800; margin-bottom:12px; }
-    .sa-done-pill { font-size:11px; font-weight:800; color:#166534; background:#dcfce9; border-radius:999px; padding:3px 10px; }
+    .sa-done-pill { font-size:11px; font-weight:800; color:#166534; background:var(--gp-success-bg); border-radius:999px; padding:3px 10px; }
     .filter-btn.active { background:#1e5c3a; color:#fff; border-color:#1e5c3a; }
 
     /* Inline accordion (replaces the old workspace modal) */
@@ -249,7 +249,7 @@ function sa_meeting_label(?string $dt): string
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
+            <button class="menu-btn" aria-label="Toggle navigation" onclick="document.getElementById('sidebar').classList.toggle('collapsed')"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Stall Applications</h1>
                 <p>One-stop verification: documents, contract, and payment in a single meeting.</p>

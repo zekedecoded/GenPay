@@ -162,10 +162,6 @@
 .uv-hero, .uv-card, .uv-raw { animation: uv-rise .5s cubic-bezier(.2,.7,.2,1) both; }
 .uv-card { animation-delay: .06s; }
 .uv-raw  { animation-delay: .12s; }
-@media (prefers-reduced-motion: reduce) {
-    .uv-hero, .uv-card, .uv-raw { animation: none; }
-    .uv-raw-chev { transition: none; }
-}
 
 @media (max-width: 560px) {
     .uv-hero { flex-direction: column; align-items: flex-start; gap: 18px; padding: 24px 22px; }

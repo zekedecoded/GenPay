@@ -31,31 +31,6 @@ $topupHistory = $db->query(
       LIMIT 20"
 )->fetchAll(PDO::FETCH_ASSOC);
 
-// Parent wallet top-ups — merged in from the former admin/parent_topups.php
-// (that URL now redirects here with ?tab=parent).
-$parentPendingCount = (int) $db->query("SELECT COUNT(*) FROM parent_topup_requests WHERE status = 'pending'")->fetchColumn();
-$parentLoadedToday  = (float) $db->query("SELECT COALESCE(SUM(credited_amount), 0) FROM parent_topup_requests WHERE status = 'approved' AND DATE(processed_at) = CURDATE()")->fetchColumn();
-
-$parentPending = $db->query(
-    "SELECT ptr.*, u.first_name, u.last_name
-       FROM parent_topup_requests ptr
-       JOIN parents p ON p.id = ptr.parent_id
-       JOIN users u ON u.userID = p.user_id
-      WHERE ptr.status = 'pending'
-      ORDER BY ptr.requested_at ASC
-      LIMIT 20"
-)->fetchAll(PDO::FETCH_ASSOC);
-
-$parentHistory = $db->query(
-    "SELECT ptr.*, u.first_name, u.last_name
-       FROM parent_topup_requests ptr
-       JOIN parents p ON p.id = ptr.parent_id
-       JOIN users u ON u.userID = p.user_id
-      ORDER BY ptr.requested_at DESC
-      LIMIT 20"
-)->fetchAll(PDO::FETCH_ASSOC);
-
-$activeTab   = (($_GET['tab'] ?? '') === 'parent') ? 'parent' : 'student';
 $currentPage = 'topups';
 ?>
 
@@ -71,31 +46,16 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=9">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=19">
     <style>
         .sgc-parent-choice--active { border-color: var(--gp-success) !important; background: var(--gp-success-bg); }
-        .topup-tabs { border-bottom: 1.5px solid var(--gp-line); gap: 4px; }
-        .topup-tabs .nav-link {
-            border: none; border-bottom: 2.5px solid transparent; border-radius: 0;
-            color: var(--gp-ink-soft, #6b7280); font-weight: 700; font-size: 14px;
-            padding: 10px 18px; background: transparent;
-        }
-        .topup-tabs .nav-link.active {
-            color: var(--gp-green-850); border-bottom-color: var(--gp-green-850); background: transparent;
-        }
-        .topup-tabs .tab-count {
-            display: inline-block; min-width: 20px; padding: 1px 7px; margin-left: 6px;
-            border-radius: 999px; font-size: 11px; font-weight: 800;
-            background: var(--gp-cream); color: var(--gp-green-850);
-        }
-        .topup-tabs .nav-link.active .tab-count { background: var(--gp-warning-bg); color: var(--gp-warning); }
     </style>
 </head>
 
@@ -108,11 +68,11 @@ $currentPage = 'topups';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Top-ups</h1>
-                    <p>Review pending student and parent wallet load requests, and monitor recent top-up activity.</p>
+                    <p>Review pending student wallet load requests, and monitor recent top-up activity.</p>
                 </div>
 
                 <div class="admin-user">
@@ -123,23 +83,6 @@ $currentPage = 'topups';
                 </div>
             </header>
 
-            <ul class="nav topup-tabs mb-4" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link<?= $activeTab === 'student' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-student" type="button" role="tab">
-                        <i class="fa-solid fa-user-graduate me-1"></i>Student
-                        <?php if ($pendingRequests > 0): ?><span class="tab-count"><?= $pendingRequests ?></span><?php endif; ?>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link<?= $activeTab === 'parent' ? ' active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-parent" type="button" role="tab">
-                        <i class="fa-solid fa-people-roof me-1"></i>Parent
-                        <?php if ($parentPendingCount > 0): ?><span class="tab-count"><?= $parentPendingCount ?></span><?php endif; ?>
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content">
-            <div class="tab-pane fade<?= $activeTab === 'student' ? ' show active' : '' ?>" id="tab-student" role="tabpanel">
 
             <section class="topup-stats-grid mb-4">
 
@@ -277,128 +220,7 @@ $currentPage = 'topups';
 
             </section>
 
-            </div><!-- /#tab-student -->
 
-            <div class="tab-pane fade<?= $activeTab === 'parent' ? ' show active' : '' ?>" id="tab-parent" role="tabpanel">
-
-            <section class="topup-stats-grid mb-4">
-
-                <div class="topup-stat-card">
-                    <div class="stat-icon-wrap">
-                        <i class="fa-solid fa-hourglass-half"></i>
-                    </div>
-                    <span>Pending Requests</span>
-                    <h2><?= $parentPendingCount ?></h2>
-                    <p>Awaiting finance approval</p>
-                </div>
-
-                <div class="topup-stat-card">
-                    <div class="stat-icon-wrap">
-                        <i class="fa-solid fa-wallet"></i>
-                    </div>
-                    <span>Loaded Today</span>
-                    <h2><?= gjc_money($parentLoadedToday) ?></h2>
-                    <p>Total parent wallet load volume</p>
-                </div>
-
-            </section>
-
-            <section class="topup-panel mb-4" id="pending-parent-topups">
-
-                <div class="topup-panel-header">
-                    <div>
-                        <h3>Pending Requests</h3>
-                        <p>Approve or reject incoming parent wallet top-up requests.</p>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table topup-table align-middle js-datatable" id="pendingParentTopupsTable" data-page-length="10">
-                        <thead>
-                            <tr>
-                                <th>Reference</th>
-                                <th>Parent</th>
-                                <th>Amount</th>
-                                <th>Source</th>
-                                <th>Time</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <?php foreach ($parentPending as $topup):
-                                $parentName = trim($topup['first_name'] . ' ' . $topup['last_name']);
-                            ?>
-                            <tr>
-                                <td><?= gjc_e($topup['reference_no']) ?></td>
-                                <td>
-                                    <div class="topup-user-cell">
-                                        <div class="topup-avatar"><?= gjc_e(strtoupper(substr($parentName, 0, 1))) ?></div>
-                                        <strong><?= gjc_e($parentName) ?></strong>
-                                    </div>
-                                </td>
-                                <td class="amount-text"><?= gjc_money((float) $topup['amount']) ?></td>
-                                <td><span class="method-pill"><?= gjc_e(ucfirst($topup['source'])) ?></span></td>
-                                <td><?= gjc_e(date('M d, h:i A', strtotime($topup['requested_at']))) ?></td>
-                                <td>
-                                    <div class="topup-actions">
-                                        <button type="button" class="approve-btn" onclick="approveParentTopup(<?= (int) $topup['id'] ?>)">Approve</button>
-                                        <button type="button" class="reject-btn" onclick="rejectParentTopup(<?= (int) $topup['id'] ?>)">Reject</button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-
-                    </table>
-                </div>
-
-            </section>
-
-            <section class="topup-panel">
-
-                <div class="topup-panel-header">
-                    <div>
-                        <h3>Recent History</h3>
-                        <p>Latest approved, rejected, and cancelled parent top-up records.</p>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table topup-table align-middle js-datatable" id="parentTopupHistoryTable" data-page-length="10">
-                        <thead>
-                            <tr>
-                                <th>Reference</th>
-                                <th>Parent</th>
-                                <th>Amount</th>
-                                <th>Source</th>
-                                <th>Status</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <?php foreach ($parentHistory as $history):
-                                $parentName = trim($history['first_name'] . ' ' . $history['last_name']);
-                            ?>
-                            <tr>
-                                <td><?= gjc_e($history['reference_no']) ?></td>
-                                <td><?= gjc_e($parentName) ?></td>
-                                <td class="amount-text"><?= gjc_money((float) $history['amount']) ?></td>
-                                <td><span class="method-pill"><?= gjc_e(ucfirst($history['source'])) ?></span></td>
-                                <td><span class="topup-status <?= strtolower($history['status']) ?>"><?= gjc_e(ucfirst($history['status'])) ?></span></td>
-                                <td><?= gjc_e(date('M d, h:i A', strtotime($history['requested_at']))) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-
-                    </table>
-                </div>
-
-            </section>
-
-            </div><!-- /#tab-parent -->
-            </div><!-- /.tab-content -->
 
         </main>
 
@@ -410,7 +232,7 @@ $currentPage = 'topups';
             <div class="modal-content" style="border-radius:20px;overflow:hidden;border:none;">
 
                 <!-- Header -->
-                <div class="modal-header border-0 pb-0" style="background:#f0fdf6;padding:20px 24px 12px">
+                <div class="modal-header border-0 pb-0" style="background:var(--gjc-soft-2);padding:20px 24px 12px">
                     <div style="flex:1">
                         <h5 class="modal-title fw-bold" id="sendGenCoinModalLabel" style="color:#27764b;font-size:18px">
                             <i class="fa-solid fa-coins me-2"></i>Send GenCoin
@@ -422,13 +244,13 @@ $currentPage = 'topups';
                             <div class="sgc-step-dot" data-step="2"></div>
                             <div class="sgc-step-line"></div>
                             <div class="sgc-step-dot" data-step="3"></div>
-                            <span id="sgc-step-label" style="margin-left:8px;font-size:12px;color:#6b7280;font-weight:600">Step 1 of 3</span>
+                            <span id="sgc-step-label" style="margin-left:8px;font-size:12px;color:var(--gp-muted);font-weight:600">Step 1 of 3</span>
                         </div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="margin-top:-16px"></button>
                 </div>
 
-                <div class="modal-body" style="padding:20px 24px 24px;background:#f0fdf6">
+                <div class="modal-body" style="padding:20px 24px 24px;background:var(--gjc-soft-2)">
 
                     <!-- STEP 1: Recipient type + Student ID -->
                     <div id="sgc-step-1">
@@ -439,17 +261,17 @@ $currentPage = 'topups';
                                 <i class="fa-solid fa-user-graduate me-1"></i>Student
                             </button>
                             <button type="button" id="sgc-toggle-parent"
-                                    style="flex:1;border:1.5px solid #d1fae5;border-radius:12px;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#111"
+                                    style="flex:1;border:1.5px solid var(--gp-success-bg);border-radius:12px;padding:9px;font-size:13px;font-weight:700;background:#fff;color:#111"
                                     onclick="sgcSetMode('parent')">
                                 <i class="fa-solid fa-people-roof me-1"></i>Parent
                             </button>
                         </div>
-                        <p id="sgc-step1-hint" style="font-size:13px;color:#374151;margin-bottom:16px">Enter the Student ID of the recipient.</p>
+                        <p id="sgc-step1-hint" style="font-size:13px;color:var(--gjc-slate);margin-bottom:16px">Enter the Student ID of the recipient.</p>
                         <div style="position:relative">
                             <input type="text" id="sgc-school-id" class="form-control"
                                    placeholder="e.g. 2024-00123" autocomplete="off"
-                                   style="border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;border:1.5px solid #d1fae5">
-                            <i class="fa-solid fa-magnifying-glass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none"></i>
+                                   style="border-radius:12px;padding:12px 44px 12px 14px;font-size:14px;border:1.5px solid var(--gp-success-bg)">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gp-subtle);pointer-events:none"></i>
                         </div>
                         <div id="sgc-lookup-result" style="margin-top:10px;min-height:36px"></div>
                         <div style="display:flex;justify-content:flex-end;margin-top:16px">
@@ -468,38 +290,38 @@ $currentPage = 'topups';
                             <div style="width:36px;height:36px;border-radius:50%;background:#bbf7d4;display:flex;align-items:center;justify-content:center;font-weight:700;color:#27764b;font-size:15px" id="sgc-recipient-avatar"></div>
                             <div>
                                 <div style="font-weight:700;font-size:14px;color:#111" id="sgc-recipient-name-2"></div>
-                                <div style="font-size:11px;color:#6b7280" id="sgc-recipient-id-2"></div>
+                                <div style="font-size:11px;color:var(--gp-muted)" id="sgc-recipient-id-2"></div>
                             </div>
                         </div>
 
-                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Amount (₱)</label>
+                        <label style="font-size:12px;font-weight:600;color:var(--gjc-slate);margin-bottom:4px;display:block">Amount (₱)</label>
                         <div style="position:relative;margin-bottom:6px">
                             <input type="number" id="sgc-gencoins" class="form-control" min="1" step="0.01"
                                    placeholder="e.g. 50"
-                                   style="border-radius:12px;padding:12px 70px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid #d1fae5">
-                            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:#9ca3af">₱</span>
+                                   style="border-radius:12px;padding:12px 70px 12px 14px;font-size:20px;font-weight:700;border:1.5px solid var(--gp-success-bg)">
+                            <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--gp-subtle)">₱</span>
                         </div>
                         <div id="sgc-peso-equiv" style="font-size:12px;color:#27764b;font-weight:600;margin-bottom:12px;padding-left:4px;min-height:18px"></div>
                         <!-- Fee breakdown preview (step 2) -->
-                        <div id="sgc-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid #d1fae5;margin-bottom:14px">
+                        <div id="sgc-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid var(--gp-success-bg);margin-bottom:14px">
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                <span style="color:#6b7280">Cash value</span>
+                                <span style="color:var(--gp-muted)">Cash value</span>
                                 <span id="sgc-fp-cash" style="font-weight:600;color:#111"></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
                                 <span style="color:var(--gp-red)">Service fee (2%)</span>
                                 <span id="sgc-fp-fee" style="font-weight:600;color:var(--gp-red)"></span>
                             </div>
-                            <div style="display:flex;justify-content:space-between;border-top:1px solid #d1fae5;padding-top:6px;margin-top:2px">
+                            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--gp-success-bg);padding-top:6px;margin-top:2px">
                                 <span style="color:#27764b;font-weight:700">Credited to wallet</span>
                                 <span id="sgc-fp-credited" style="font-weight:800;color:#27764b"></span>
                             </div>
                         </div>
 
-                        <label style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;display:block">Message <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+                        <label style="font-size:12px;font-weight:600;color:var(--gjc-slate);margin-bottom:4px;display:block">Message <span style="font-weight:400;color:var(--gp-subtle)">(optional)</span></label>
                         <textarea id="sgc-message" class="form-control" rows="2" maxlength="120"
                                   placeholder="e.g. For school supplies"
-                                  style="border-radius:12px;font-size:13px;border:1.5px solid #d1fae5;resize:none"></textarea>
+                                  style="border-radius:12px;font-size:13px;border:1.5px solid var(--gp-success-bg);resize:none"></textarea>
 
                         <div style="display:flex;justify-content:space-between;margin-top:20px">
                             <button type="button" class="btn btn-outline-secondary" style="border-radius:12px;padding:10px 20px"
@@ -516,33 +338,33 @@ $currentPage = 'topups';
 
                     <!-- STEP 3: Preview + Confirm -->
                     <div id="sgc-step-3" style="display:none">
-                        <p style="font-size:13px;color:#374151;margin-bottom:14px;font-weight:600">Review the details before sending.</p>
+                        <p style="font-size:13px;color:var(--gjc-slate);margin-bottom:14px;font-weight:600">Review the details before sending.</p>
 
                         <!-- Preview card -->
                         <div style="background:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:18px">
                             <div style="text-align:center;margin-bottom:16px">
                                 <div style="font-size:32px;font-weight:800;color:#27764b" id="sgc-prev-coins"></div>
-                                <div style="font-size:13px;color:#6b7280" id="sgc-prev-peso"></div>
+                                <div style="font-size:13px;color:var(--gp-muted)" id="sgc-prev-peso"></div>
                             </div>
-                            <hr style="margin:12px 0;border-color:#f0fdf6">
+                            <hr style="margin:12px 0;border-color:var(--gjc-soft-2)">
                             <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
                                 <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#6b7280">To</span>
+                                    <span style="color:var(--gp-muted)">To</span>
                                     <strong id="sgc-prev-name"></strong>
                                 </div>
                                 <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#6b7280">Student ID</span>
+                                    <span style="color:var(--gp-muted)">Student ID</span>
                                     <span id="sgc-prev-id" style="font-family:monospace"></span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between" id="sgc-prev-msg-row">
-                                    <span style="color:#6b7280">Message</span>
-                                    <span id="sgc-prev-msg" style="max-width:180px;text-align:right;color:#374151"></span>
+                                    <span style="color:var(--gp-muted)">Message</span>
+                                    <span id="sgc-prev-msg" style="max-width:180px;text-align:right;color:var(--gjc-slate)"></span>
                                 </div>
                             </div>
                             <!-- Fee breakdown in preview -->
-                            <div style="border-top:1px dashed #d1fae5;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
+                            <div style="border-top:1px dashed var(--gp-success-bg);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
                                 <div style="display:flex;justify-content:space-between">
-                                    <span style="color:#6b7280">Cash value</span>
+                                    <span style="color:var(--gp-muted)">Cash value</span>
                                     <span id="sgc-prev-cash" style="font-weight:600"></span>
                                 </div>
                                 <div style="display:flex;justify-content:space-between">
@@ -557,9 +379,9 @@ $currentPage = 'topups';
                         </div>
 
                         <!-- Confirmation checkbox -->
-                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid #d1fae5">
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;background:#fff;border-radius:12px;padding:12px 14px;border:1.5px solid var(--gp-success-bg)">
                             <input type="checkbox" id="sgc-confirm-check" style="width:18px;height:18px;margin-top:1px;accent-color:var(--gp-success);cursor:pointer">
-                            <span style="font-size:13px;color:#374151;line-height:1.5">
+                            <span style="font-size:13px;color:var(--gjc-slate);line-height:1.5">
                                 I confirm that I want to send <strong id="sgc-confirm-coins"></strong> to <strong id="sgc-confirm-name"></strong>. This action cannot be undone.
                             </span>
                         </label>
@@ -585,9 +407,9 @@ $currentPage = 'topups';
                             <i class="fa-solid fa-circle-check" style="font-size:32px;color:var(--gp-success)"></i>
                         </div>
                         <div style="font-size:18px;font-weight:700;color:#27764b;margin-bottom:4px">Sent!</div>
-                        <div style="font-size:13px;color:#6b7280" id="sgc-success-msg"></div>
-                        <div style="margin-top:10px;display:inline-block;background:#f0fdf6;border:1px solid #bbf7d4;border-radius:8px;padding:6px 14px">
-                            <span style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
+                        <div style="font-size:13px;color:var(--gp-muted)" id="sgc-success-msg"></div>
+                        <div style="margin-top:10px;display:inline-block;background:var(--gjc-soft-2);border:1px solid #bbf7d4;border-radius:8px;padding:6px 14px">
+                            <span style="font-size:11px;color:var(--gp-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reference No.</span><br>
                             <span id="sgc-success-ref" style="font-size:13px;font-weight:700;color:#27764b;font-family:monospace;letter-spacing:.5px"></span>
                         </div>
                         <button type="button" class="btn btn-success mt-4 d-block mx-auto" style="border-radius:12px;padding:10px 32px;font-weight:600"
@@ -753,7 +575,7 @@ $currentPage = 'topups';
         const nextBtn  = document.getElementById('sgc-next-1');
         if (!schoolId) return;
 
-        resultEl.innerHTML = '<span style="font-size:12px;color:#6b7280">Looking up…</span>';
+        resultEl.innerHTML = '<span style="font-size:12px;color:var(--gp-muted)">Looking up…</span>';
         nextBtn.disabled = true;
         sgcWalletId = null;
         sgcParentId = null;
@@ -774,7 +596,7 @@ $currentPage = 'topups';
                             <i class="fa-solid fa-circle-check" style="color:var(--gp-success)"></i>
                             <div>
                                 <strong style="font-size:13px;color:#27764b">${data.name}</strong>
-                                <div style="font-size:11px;color:#6b7280">${schoolId}</div>
+                                <div style="font-size:11px;color:var(--gp-muted)">${schoolId}</div>
                             </div>
                         </div>`;
                     nextBtn.disabled = false;
@@ -807,15 +629,15 @@ $currentPage = 'topups';
                             <i class="fa-solid fa-circle-check" style="color:var(--gp-success)"></i>
                             <div>
                                 <strong style="font-size:13px;color:#27764b">${p.name}</strong>
-                                <div style="font-size:11px;color:#6b7280">Parent of ${schoolId}</div>
+                                <div style="font-size:11px;color:var(--gp-muted)">Parent of ${schoolId}</div>
                             </div>
                         </div>`;
                     sgcSelectParent(p.parent_id, p.name);
                 } else {
-                    resultEl.innerHTML = '<div style="font-size:12px;color:#374151;margin-bottom:6px">Multiple parents linked — choose one:</div>' +
+                    resultEl.innerHTML = '<div style="font-size:12px;color:var(--gjc-slate);margin-bottom:6px">Multiple parents linked — choose one:</div>' +
                         data.parents.map(p => `
                             <div class="sgc-parent-choice" data-parent-id="${p.parent_id}" onclick="sgcSelectParent(${p.parent_id}, '${p.name.replace(/'/g, "\\'")}')"
-                                 style="cursor:pointer;padding:8px 12px;border-radius:10px;border:1.5px solid #d1fae5;margin-bottom:6px;font-size:13px;font-weight:600;color:#111">
+                                 style="cursor:pointer;padding:8px 12px;border-radius:10px;border:1.5px solid var(--gp-success-bg);margin-bottom:6px;font-size:13px;font-weight:600;color:#111">
                                 ${p.name}
                             </div>`).join('');
                 }
@@ -920,51 +742,6 @@ $currentPage = 'topups';
             window.location.reload();
         }
     }
-
-    // ── Parent top-ups (merged from the former parent_topups.php page) ──────
-    const PARENT_TOPUPS_API = '<?= ADMIN_URL ?>/api/parent_topups.php';
-
-    async function approveParentTopup(id) {
-        if (!confirm('Approve this parent top-up request?')) return;
-        try {
-            const res = await fetch(PARENT_TOPUPS_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'approve', id: id }),
-            });
-            const data = await res.json();
-            alert(data.message || (data.success ? 'Approved.' : (data.error || 'Failed.')));
-            if (data.success) window.location.href = '<?= ADMIN_URL ?>/topups.php?tab=parent';
-        } catch (err) {
-            alert('Network error. Please try again.');
-        }
-    }
-
-    async function rejectParentTopup(id) {
-        if (!confirm('Reject this parent top-up request?')) return;
-        try {
-            const res = await fetch(PARENT_TOPUPS_API, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'reject', id: id }),
-            });
-            const data = await res.json();
-            alert(data.message || (data.success ? 'Rejected.' : (data.error || 'Failed.')));
-            if (data.success) window.location.href = '<?= ADMIN_URL ?>/topups.php?tab=parent';
-        } catch (err) {
-            alert('Network error. Please try again.');
-        }
-    }
-
-    // DataTables initialized inside the hidden tab compute zero column widths;
-    // re-adjust whenever a tab is revealed.
-    document.querySelectorAll('.topup-tabs button[data-bs-toggle="tab"]').forEach(btn => {
-        btn.addEventListener('shown.bs.tab', () => {
-            if (window.jQuery && $.fn.dataTable) {
-                $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
-            }
-        });
-    });
     </script>
 
 </body>

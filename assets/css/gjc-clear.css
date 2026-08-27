@@ -1,6 +1,6 @@
 /* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
-@import url("theme.css?v=4");
+@import url("theme.css?v=8");
 
 :root {
   /* Primary green scale — aliases of the shared gp-* theme
@@ -46,15 +46,6 @@
   --gjc-alert: var(--gp-red);
   --gjc-slate: #3f4b45;
 
-  /* Spacing scale (4px base) */
-  --gjc-space-1: 4px;
-  --gjc-space-2: 8px;
-  --gjc-space-3: 12px;
-  --gjc-space-4: 16px;
-  --gjc-space-5: 20px;
-  --gjc-space-6: 24px;
-  --gjc-space-7: 28px;
-  --gjc-space-8: 32px;
 
   /* Radius scale — aliases of theme.css, which is the single source of
      truth for shape. The old 8/12/16/20/24 ramp is collapsed: containers,
@@ -334,13 +325,6 @@ img {
   box-shadow: var(--gjc-shadow-md) !important;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mini-metric-card,
-  .mini-metric-card:hover {
-    transform: none !important;
-    transition: none !important;
-  }
-}
 
 /* Hero hierarchy: gold-muted label, white tabular figure */
 .student-wallet-card span,
@@ -420,6 +404,8 @@ img {
 }
 
 .premium-field:focus-within,
+.qr-money-input:focus-within,
+.encash-money-input:focus-within,
 .profile-field input:focus,
 .qr-field > input:focus,
 .add-user-input:focus,
@@ -427,8 +413,8 @@ img {
 .ce-input:focus,
 .input-modern input:focus,
 .input-group-box input:focus {
-  border-color: var(--gjc-green-700) !important;
-  box-shadow: 0 0 0 3px rgba(17, 106, 56, 0.14) !important;
+  border-color: var(--gp-gold) !important;
+  box-shadow: var(--gp-focus-ring)!important;
 }
 
 .premium-field label,
@@ -761,7 +747,7 @@ img {
 }
 
 .badge-secondary {
-  background: #eef1ef !important;
+  background: var(--gp-line-soft) !important;
   color: var(--gjc-muted) !important;
 }
 
@@ -1054,7 +1040,7 @@ footer {
   border: 1px solid var(--gjc-line);
   color: var(--gjc-ink);
 }
-.logout-modal-cancel:hover { background: #f4f7f1; }
+.logout-modal-cancel:hover { background: var(--gp-cream); }
 
 .logout-modal-confirm {
   background: var(--gjc-danger);
@@ -1063,11 +1049,3 @@ footer {
 }
 .logout-modal-confirm:hover { background: #8f1c14; }
 
-@media (prefers-reduced-motion: reduce) {
-  .logout-modal-overlay,
-  .logout-modal,
-  .logout-btn, .logout-btn i,
-  .student-logout, .student-logout i {
-    transition: none !important;
-  }
-}

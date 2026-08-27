@@ -146,8 +146,8 @@ $currentPage = 'users';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=6">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/users.css?v=9">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -164,7 +164,7 @@ $currentPage = 'users';
         <main class="admin-main">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>Users Management</h1>

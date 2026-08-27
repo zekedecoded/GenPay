@@ -48,35 +48,35 @@ $currentPage = 'school_years';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=19">
     <style>
         .sy-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .sy-stat-card { background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: var(--gjc-shadow-sm, 0 1px 4px rgba(0,0,0,.06)); }
-        .sy-stat-card span { font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+        .sy-stat-card span { font-size: 12px; color: var(--gp-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
         .sy-stat-card h2 { font-size: 26px; font-weight: 800; color: #111; margin: 6px 0 0; }
         .sy-panel { background: #fff; border-radius: 16px; padding: 22px 24px; box-shadow: var(--gjc-shadow-sm, 0 1px 4px rgba(0,0,0,.06)); margin-bottom: 20px; }
         .sy-panel h3 { font-size: 16px; font-weight: 700; color: #111; margin: 0 0 4px; }
-        .sy-panel p.sy-sub { font-size: 13px; color: #6b7280; margin: 0 0 16px; }
+        .sy-panel p.sy-sub { font-size: 13px; color: var(--gp-muted); margin: 0 0 16px; }
         .sy-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 50px; }
         .sy-badge.active { background: var(--gp-success-bg, #ecfdf3); color: var(--gp-success, #16a34a); }
-        .sy-badge.inactive { background: #f3f4f6; color: #6b7280; }
+        .sy-badge.inactive { background: var(--gjc-soft-2); color: var(--gp-muted); }
         .sy-form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
         .sy-field { display: flex; flex-direction: column; gap: 4px; }
-        .sy-field label { font-size: 12px; font-weight: 600; color: #374151; }
-        .sy-field input, .sy-field select { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 180px; }
+        .sy-field label { font-size: 12px; font-weight: 600; color: var(--gjc-slate); }
+        .sy-field input, .sy-field select { border: 1.5px solid var(--gp-line); border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 180px; }
         .sy-btn { border: none; border-radius: 10px; padding: 10px 20px; font-weight: 600; font-size: 14px; cursor: pointer; }
         .sy-btn.primary { background: var(--gp-success, #16a34a); color: #fff; }
-        .sy-btn.ghost { background: #f3f4f6; color: #374151; }
+        .sy-btn.ghost { background: var(--gjc-soft-2); color: var(--gjc-slate); }
         .sy-btn:disabled { opacity: .6; cursor: not-allowed; }
         .sy-msg { font-size: 13px; margin-top: 10px; min-height: 18px; }
         .sy-msg.ok { color: var(--gp-success, #16a34a); }
         .sy-msg.err { color: var(--gp-danger, #dc2626); }
         .sy-result-list { margin-top: 12px; font-size: 13px; }
-        .sy-result-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; }
-        .sy-lookup-card { background: #f9fafb; border-radius: 12px; padding: 12px 16px; margin-top: 10px; font-size: 13px; display: none; }
+        .sy-result-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--gjc-soft-2); }
+        .sy-lookup-card { background: var(--gp-row-hover); border-radius: 12px; padding: 12px 16px; margin-top: 10px; font-size: 13px; display: none; }
         .sy-lookup-card strong { font-size: 14px; }
     </style>
 </head>
@@ -86,7 +86,7 @@ $currentPage = 'school_years';
 
         <main class="admin-main">
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
                 <div>
                     <h1>School Years</h1>
                     <p>Manage school year cycles, roll over balances, and lock graduate accounts.</p>
@@ -146,7 +146,7 @@ $currentPage = 'school_years';
                                         Roll Over Into This Year
                                     </button>
                                     <?php else: ?>
-                                    <span style="font-size:12px;color:#9ca3af">Currently active</span>
+                                    <span style="font-size:12px;color:var(--gp-subtle)">Currently active</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -308,7 +308,7 @@ $currentPage = 'school_years';
                 <li>${data.non_graduate_count} student(s) will start the new year with their current balance.</li>
                 <li>${data.graduate_count} graduated student(s) are excluded from the new year.</li>
             </ul>
-            <p style="color:#6b7280;font-size:13px;">No money moves. Wallet balances stay exactly as they are — this only records the snapshot.</p>
+            <p style="color:var(--gp-muted);font-size:13px;">No money moves. Wallet balances stay exactly as they are — this only records the snapshot.</p>
         `;
         document.getElementById("syRolloverConfirmBtn").disabled = false;
     }

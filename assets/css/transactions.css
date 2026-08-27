@@ -71,7 +71,7 @@
   margin: 0;
   color: var(--gp-ink);
   font-size: 22px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .transactions-panel-header p,
@@ -103,7 +103,7 @@
   margin-bottom: 6px;
   color: var(--gp-green-850);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -113,7 +113,7 @@
   border: none;
   outline: none;
   background: transparent;
-  color: #102018;
+  color: var(--gp-ink);
   font-weight: 700;
   font-size: 14px;
 }
@@ -125,7 +125,7 @@
   border-radius: 18px;
   background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
   color: white;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 /* TABLE — .transactions-table styling now comes from the canonical
@@ -134,7 +134,7 @@
 .reference-text,
 .transaction-amount {
   color: var(--gp-green-850) !important;
-  font-weight: 900 !important;
+  font-weight: 800 !important;
 }
 
 .party-cell {
@@ -151,7 +151,7 @@
   color: white;
   display: grid;
   place-items: center;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .type-pill,
@@ -164,7 +164,7 @@
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .type-pill {
@@ -184,8 +184,8 @@
 }
 
 .transaction-status.rejected {
-  background: #eef2ee;
-  color: #4b5b52;
+  background: var(--gp-line-soft);
+  color: var(--gjc-slate);
 }
 
 .details-btn {
@@ -196,7 +196,7 @@
   color: var(--gp-green-850);
   text-decoration: none;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
   display: inline-flex;
   align-items: center;
 }

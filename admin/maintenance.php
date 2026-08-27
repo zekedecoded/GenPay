@@ -560,18 +560,18 @@ function maintenance_send_guardian_credentials(string $email, string $name, stri
     $safePass  = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
 
     $body = '
-            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f0fdf6;padding:28px;border-radius:14px">
+            <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:var(--gjc-soft-2);padding:28px;border-radius:14px">
                 <h2 style="color:var(--gp-green-850);margin-top:0">Your GenPay Parent Account</h2>
-                <p style="color:#374151;line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
-                <p style="color:#374151;line-height:1.7">A GenPay parent account has been created so you can monitor and manage your child\'s wallet.</p>
-                <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:#dcfce9">
+                <p style="color:var(--gjc-slate);line-height:1.7">Dear <strong>' . $safeName . '</strong>,</p>
+                <p style="color:var(--gjc-slate);line-height:1.7">A GenPay parent account has been created so you can monitor and manage your child\'s wallet.</p>
+                <div style="background:#052e16;border-radius:10px;padding:16px;margin:16px 0;color:var(--gp-success-bg)">
                     <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#86efb2;text-transform:uppercase">Login Credentials</p>
                     <p style="margin:0"><strong>Email:</strong> ' . $safeEmail . '</p>
                     <p style="margin:6px 0 0"><strong>Temporary Password:</strong> ' . $safePass . '</p>
                 </div>
-                <p style="color:#b91c1c;font-weight:700">You must change this password on first login before accessing your dashboard.</p>
-                <p style="color:#374151">Login page: <a href="' . $loginUrl . '" style="color:#16a34a">' . $loginUrl . '</a></p>
-                <p style="font-size:12px;color:#6b7280">GenPay Team</p>
+                <p style="color:var(--gp-danger);font-weight:700">You must change this password on first login before accessing your dashboard.</p>
+                <p style="color:var(--gjc-slate)">Login page: <a href="' . $loginUrl . '" style="color:#16a34a">' . $loginUrl . '</a></p>
+                <p style="font-size:12px;color:var(--gp-muted)">GenPay Team</p>
             </div>';
     $altBody = "Dear {$name},\n\nA GenPay parent account has been created so you can monitor and manage your child's wallet.\n\nEmail: {$email}\nTemporary Password: {$tempPassword}\n\nLog in at {$loginUrl}. You must change your password on first login.\n\nGenPay Team";
 
@@ -1012,14 +1012,14 @@ $vacantStalls = $db->query(
     <link rel="apple-touch-icon" sizes="180x180" href="<?= ICONS_URL ?>/gp_logo.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance | GenPay Admin</title>
+    <title>Maintenance | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/maintenance.css?v=15">
 </head>
 <body class="gp-theme">
 <div class="admin-layout">
@@ -1027,7 +1027,7 @@ $vacantStalls = $db->query(
 
     <main class="admin-main">
         <header class="topbar">
-            <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Maintenance</h1>
                 <p>Administrative maintenance workspace.</p>
@@ -1452,7 +1452,7 @@ $vacantStalls = $db->query(
                             <h5 class="modal-title fw-bold" style="color:var(--gp-red)">
                                 <i class="fa-solid fa-ban me-2"></i>Flag Prohibited Product
                             </h5>
-                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">Flagged products will be blocked from being sold on the platform.</p>
+                            <p style="font-size:12px;color:var(--gp-muted);margin:4px 0 0">Flagged products will be blocked from being sold on the platform.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -1586,7 +1586,7 @@ $vacantStalls = $db->query(
                             <h5 class="modal-title fw-bold" style="color:var(--gp-success)">
                                 <i class="fa-solid fa-hand-holding-dollar me-2"></i>Fee Waiver Credit Amount
                             </h5>
-                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">
+                            <p style="font-size:12px;color:var(--gp-muted);margin:4px 0 0">
                                 Enter the approved waiver amount. The credit moves to Pending until the signed waiver is uploaded.
                             </p>
                         </div>
@@ -1617,7 +1617,7 @@ $vacantStalls = $db->query(
                             <h5 class="modal-title fw-bold" style="color:var(--gp-success)">
                                 <i class="fa-solid fa-upload me-2"></i>Upload Signed Waiver
                             </h5>
-                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0">JPG, PNG, or PDF, up to 5&nbsp;MB.</p>
+                            <p style="font-size:12px;color:var(--gp-muted);margin:4px 0 0">JPG, PNG, or PDF, up to 5&nbsp;MB.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -1822,7 +1822,7 @@ function rpInjectCard(rp) {
     $row.append($('<td>').html(matchTag));
     $row.append($('<td style="max-width:260px;font-size:13px">').text(rp.reason));
     $row.append($('<td>').html('<span class="rp-status-badge rp-status--banned">BANNED</span>'));
-    $row.append($('<td>').html('<span style="font-size:11px;color:#94a3b8;font-style:italic">Reload to manage</span>'));
+    $row.append($('<td>').html('<span style="font-size:11px;color:var(--gp-subtle);font-style:italic">Reload to manage</span>'));
 
     $('#rp-datatable').DataTable().row.add($row[0]).draw();
 }

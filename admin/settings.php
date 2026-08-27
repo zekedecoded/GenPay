@@ -22,13 +22,13 @@ $currentPage = 'settings';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=20">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/settings.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/settings.css?v=6">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=15">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-clear.css?v=19">
 </head>
 
 <body class="gp-theme">
@@ -40,7 +40,7 @@ $currentPage = 'settings';
         <main class="admin-main settings-page">
 
             <header class="topbar">
-                <button class="menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
 
                 <div>
                     <h1>System Settings</h1>

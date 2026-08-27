@@ -36,6 +36,19 @@
   /* ---- Text */
   --gp-ink: #14251b;
   --gp-muted: #6b7a70;
+  /* Tertiary text: placeholders, input adornments, "(optional)" labels, empty
+     states, disabled/inactive. Added 2026-08-27 to close a real hole in the
+     neutral ramp — the steps ran 12.9 / 30.7 / 49.8 L* and then jumped 42
+     points to --gp-line at 91.9, so there was no tone between "secondary
+     text" and "border". Seventeen sites had been reaching for Tailwind greys
+     (Tailwind gray-400 and slate-400) to fill it, which is why cool blue-greys
+     kept appearing next to the warm green-greys of this palette.
+
+     The value is derived, not picked: L* 67.1 lands mid-gap, and the channel
+     shape (g = r+15, b = r+5) is --gp-muted's exactly — this is the colour
+     --gp-muted becomes when you lighten it, so it sits on the ramp as a
+     sibling rather than an import. */
+  --gp-subtle: #98a79d;
 
   /* ---- Status tints (badge bg + text pairs) */
   --gp-success: #15803d;
@@ -56,7 +69,6 @@
      Buttons keep --gp-radius-pill, so shape alone still says "pressable".
      Circles (border-radius: 50%) are deliberately left round system-wide. */
   --gp-radius: 4px;
-  --gp-radius-sm: 4px;
   --gp-radius-tag: 2px;
   --gp-radius-pill: 999px;
   --gp-mono: "IBM Plex Mono", Consolas, monospace;
@@ -70,8 +82,102 @@
   --gp-grad-shell: var(--gp-green-950);
   --gp-grad-forest-btn: var(--gp-green-700);
   --gp-keyline: 2px solid var(--gp-gold);
-  --gp-shadow-hero: 0 1px 3px rgba(13, 36, 24, 0.14);
   --gp-shadow-card: 0 1px 2px rgba(16, 32, 24, 0.04);
+
+  /* ---- Elevation
+     Three steps and one focus ring — every value below already existed in
+     the codebase; these are the ones promoted to canonical. Retired in their
+     favour: 0 15px 50px rgba(0,0,0,.4), 0 18px 34px rgba(14,99,50,.24) and
+     four other one-off modal shadows. --gp-shadow-hero is kept as an alias
+     because ~10 files reference it by name. */
+  --gp-shadow-raised: 0 1px 3px rgba(13, 36, 24, 0.14);
+  --gp-shadow-hero: var(--gp-shadow-raised);
+  --gp-shadow-overlay: 0 10px 22px rgba(13, 36, 24, 0.18);
+
+  /* The one focus treatment, for every interactive element. Uses
+     --gp-gold-line (45% alpha) rather than --gp-gold-soft (14%): a 14% tint
+     cannot reach 3:1 against white and is not a usable focus indicator. */
+  --gp-focus-ring: 0 0 0 3px var(--gp-gold-line);
+
+  /* ---- Space — 4pt scale
+     One scale for every margin, padding and gap. 8pt was rejected: this is a
+     data-dense wallet UI, and on 8pt the gap between a label and its input
+     collapses into the gap between two table rows.
+
+     --gp-space-nudge is the single documented exception. It has exactly one
+     job: the optical lift on a subtitle sitting under a heading
+     (margin: 2px 0 0). That is typographic correction, not layout rhythm —
+     naming it is what stops 2px reopening as a general half-step. */
+  --gp-space-nudge: 2px;
+  --gp-space-1: 4px;
+  --gp-space-2: 8px;
+  --gp-space-3: 12px;
+  --gp-space-4: 16px;
+  --gp-space-5: 20px;
+  --gp-space-6: 24px;
+  --gp-space-7: 32px;
+  --gp-space-8: 40px;
+  --gp-space-9: 48px;
+  --gp-space-10: 64px;
+
+  /* ---- Type ramp
+     Dense at the bottom on purpose: 76% of this app's type sits between 11px
+     and 14px (table cells, labels, captions, meta), so those four steps are
+     1px apart and each carries a distinct job. Above 14px the ramp opens up.
+     There are no half-pixel sizes — if a size is not listed here, it is not
+     a size. */
+  --gp-text-2xs: 11px;   /* uppercase micro-labels, table headers, badges */
+  --gp-text-xs: 12px;    /* captions, helper text, timestamps, meta */
+  --gp-text-sm: 13px;    /* dense UI: table cells, nav items, form labels */
+  --gp-text-base: 14px;  /* body default, buttons, inputs */
+  --gp-text-md: 16px;    /* card titles, emphasised body */
+  --gp-text-lg: 18px;    /* page title (h1), panel headings */
+  --gp-text-xl: 22px;    /* section headings, secondary figures */
+  --gp-text-2xl: 28px;   /* hero sub-figures */
+  --gp-text-3xl: 34px;   /* hero balance */
+  --gp-text-4xl: 40px;   /* dashboard headline figures */
+  --gp-text-5xl: 56px;   /* public marketing only (index.php) */
+
+  /* ---- Line height */
+  --gp-leading-none: 1;       /* figures, icon boxes, single-line chrome */
+  --gp-leading-tight: 1.2;    /* display 28px+, h1/h2 */
+  --gp-leading-snug: 1.35;    /* 16-22px headings, card titles, table cells */
+  --gp-leading-normal: 1.5;   /* body paragraphs */
+  --gp-leading-relaxed: 1.65; /* long-form: apply.php, index.php */
+
+  /* ---- Font weight — not tokenised on purpose, but the valid set is fixed.
+     Plus Jakarta Sans and Manrope ship 400 500 600 700 800 and nothing else.
+     A weight outside that set silently snaps to a neighbour, so 850 and 800
+     render identically while reading as a deliberate distinction in source.
+     Only ever write 400, 500, 600, 700 or 800. */
+
+  /* ---- Motion
+     Name the properties you are animating. Never `transition: all` — it
+     animates layout properties you did not intend and costs a frame. */
+  --gp-transition: 150ms ease;
+  --gp-transition-slow: 250ms ease; /* width/margin: sidebar collapse only */
+
+  /* ---- Layering
+     Aligned to Bootstrap 5 so the two systems stop colliding. Bootstrap owns
+     1000 dropdown · 1045 offcanvas · 1050 backdrop · 1055 modal ·
+     1070/1080 popover/tooltip · 1090 toast. App chrome stays below all of it;
+     only the two values that must match Bootstrap reach into its range. */
+  --gp-z-raised: 1;
+  --gp-z-sticky: 20;
+  --gp-z-sidebar: 40;
+  --gp-z-dropdown: 60; /* notif panel — deliberately below the modal */
+  --gp-z-modal: 1055;
+  --gp-z-toast: 1090;
+
+  /* ---- Containers */
+  --gp-container-narrow: 420px; /* auth: login, change_password */
+  --gp-container-form: 720px;   /* long forms: apply.php */
+  --gp-container-detail: 960px; /* detail views */
+
+  /* ---- Breakpoints, for reference — CSS cannot use custom properties in a
+     media query, so these are a convention, not a token:
+       576px phone · 768px tablet / nav switch · 992px sidebar · 1200px wide
+     Those four are the whole set. Do not add a fifth. */
 }
 
 /* ============================================================
@@ -155,7 +261,7 @@
 .gp-stat {
   background: var(--gp-card);
   border: 1px solid var(--gp-line);
-  border-radius: var(--gp-radius-sm);
+  border-radius: var(--gp-radius);
   padding: 18px 20px;
 }
 
@@ -271,9 +377,9 @@
 
 .gp-badge {
   display: inline-block;
-  background: #eef1ef;
+  background: var(--gp-line-soft);
   border-radius: var(--gp-radius);
-  color: #5b6b61;
+  color: var(--gp-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -416,7 +522,7 @@ body.gp-theme .table-bordered tbody td {
   border-radius: var(--gp-radius);
   padding: 8px 14px;
   font-size: 13px;
-  background: #fbfdfb;
+  background: var(--gp-card);
   color: var(--gp-ink);
   box-shadow: none !important;
 }
@@ -424,8 +530,8 @@ body.gp-theme .table-bordered tbody td {
 .dataTables_wrapper .dataTables_filter input:focus,
 .dataTables_wrapper .dataTables_length select:focus {
   outline: none;
-  border-color: #9fc9ae;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12) !important;
+  border-color: var(--gp-gold);
+  box-shadow: var(--gp-focus-ring)!important;
 }
 
 .dataTables_wrapper .dataTables_filter label,
@@ -480,7 +586,7 @@ body.gp-theme .table-bordered tbody td {
 }
 
 .dataTables_wrapper .pagination .page-item.disabled .page-link {
-  background: #fbfdfb;
+  background: var(--gp-card);
   color: #b3c0b7;
 }
 
@@ -512,7 +618,7 @@ body.gp-theme .form-select {
 body.gp-theme .form-control:focus,
 body.gp-theme .form-select:focus {
   border-color: var(--gp-gold);
-  box-shadow: 0 0 0 3px var(--gp-gold-soft);
+  box-shadow: var(--gp-focus-ring);
 }
 
 body.gp-theme .form-label {
@@ -568,4 +674,25 @@ body.gp-theme .badge.bg-warning   { background: var(--gp-warning-bg) !important;
 body.gp-theme .badge.bg-danger    { background: var(--gp-danger-bg)  !important; color: var(--gp-danger)  !important; }
 body.gp-theme .badge.bg-primary,
 body.gp-theme .badge.bg-info      { background: var(--gp-info-bg)    !important; color: var(--gp-info)    !important; }
-body.gp-theme .badge.bg-secondary { background: #eef1ef              !important; color: #5b6b61           !important; }
+body.gp-theme .badge.bg-secondary { background: var(--gp-line-soft)              !important; color: var(--gp-muted)           !important; }
+
+/* ============================================================
+   MOTION — global reduced-motion guard
+
+   Replaces four narrowly-scoped copies of this rule that each covered
+   one component (admin.css .ce-*, gjc-clear.css .mini-metric-card and
+   .logout-modal, detail_view.css .uv-*). Nothing in the app declares a
+   transition or animation with !important outside a reduced-motion
+   block, so this wins everywhere without needing a scoped twin.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

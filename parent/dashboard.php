@@ -23,6 +23,10 @@ if (!$parentRow) {
 $parentId         = (int) $parentRow['id'];
 $alertThreshold   = (float) $parentRow['low_balance_threshold'];
 
+gjc_ensure_parent_wallet_schema($db);
+$myWallet  = gjc_parent_wallet($db, $parentId);
+$myBalance = (float) $myWallet['balance'];
+
 // Fetch linked students
 $linkedStmt = $db->prepare(
     "SELECT u.userID, u.first_name, u.last_name,
@@ -55,9 +59,9 @@ $currentPage = 'dashboard';
     <title>Parent Dashboard | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=6">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=3">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_dashboard.css?v=5">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -79,6 +83,20 @@ $currentPage = 'dashboard';
             <?php elseif ($linkError): ?>
             <div class="flash-msg error"><i class="fa-solid fa-circle-xmark me-1"></i> <?= htmlspecialchars($linkError) ?></div>
             <?php endif; ?>
+
+            <!-- My Wallet -->
+            <div class="parent-card pd-wallet-card">
+                <div class="parent-card-head">
+                    <h5><i class="fa-solid fa-wallet me-2" style="color:var(--gp-green-700)"></i>My Wallet</h5>
+                </div>
+                <div class="pd-wallet-row">
+                    <div>
+                        <div class="pd-wallet-amount"><?= gjc_gc_amount($myBalance) ?><span>GC</span></div>
+                        <div class="pd-wallet-php">&#8776; &#8369;<?= number_format($myBalance, 2) ?> &middot; &#8369;10 = 1 GC</div>
+                    </div>
+                    <a class="btn-link pd-wallet-cta" href="<?= PARENT_URL ?>/cart.php"><i class="fa-solid fa-cart-shopping me-1"></i>Shop Cart</a>
+                </div>
+            </div>
 
             <!-- Link a Student -->
             <div class="parent-card">

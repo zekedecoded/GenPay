@@ -1,5 +1,5 @@
-@import url("gjc-clear.css?v=15");
-@import url("theme.css?v=4");
+@import url("gjc-clear.css?v=18");
+@import url("theme.css?v=8");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -244,7 +244,7 @@ html {
   background: var(--emerald-soft);
   color: var(--emerald-800);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -360,29 +360,29 @@ html {
   margin-bottom: 8px;
   color: var(--text-main);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .qr-field > input {
   width: 100%;
   height: 54px;
-  border: 1px solid #dce6df;
+  border: 1px solid var(--gp-line);
   border-radius: var(--gp-radius);
   padding: 0 16px;
-  color: #111827;
+  color: var(--gp-ink);
   font-size: 15px;
   font-weight: 700;
   outline: none;
 }
 
 .qr-field > input:focus {
-  border-color: var(--emerald-800);
-  box-shadow: 0 0 0 4px rgba(14, 99, 50, 0.08);
+  border-color: var(--gp-gold);
+  box-shadow: var(--gp-focus-ring);
 }
 
 .qr-money-input {
   height: 54px;
-  border: 1px solid #dce6df;
+  border: 1px solid var(--gp-line);
   border-radius: var(--gp-radius);
   display: flex;
   overflow: hidden;
@@ -396,7 +396,7 @@ html {
   place-items: center;
   background: var(--emerald-800);
   color: white;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .qr-money-input input {
@@ -406,7 +406,7 @@ html {
   padding: 0 16px;
   font-size: 15px;
   font-weight: 700;
-  color: #111827;
+  color: var(--gp-ink);
 }
 
 .qr-generate-btn {
@@ -416,7 +416,7 @@ html {
   background: var(--emerald-800);
   color: white;
   font-size: 15px;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow: var(--gjc-shadow-lg);
   transition: 0.25s ease;
 }
@@ -454,7 +454,7 @@ html {
   margin: 0;
   color: var(--text-main);
   font-size: 23px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .qr-preview-empty p {
@@ -462,7 +462,7 @@ html {
   color: var(--text-muted);
   font-size: 14px;
   line-height: 1.5;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .qr-bottom-grid {
@@ -498,13 +498,13 @@ html {
   display: grid;
   place-items: center;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .qr-instruction-list span {
   color: var(--text-main);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 800;
   line-height: 1.35;
 }
 
@@ -520,7 +520,7 @@ html {
   display: block;
   color: rgba(255, 255, 255, 0.78);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
@@ -529,7 +529,7 @@ html {
   display: block;
   margin-top: 8px;
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .qr-setting-box p {
@@ -581,7 +581,7 @@ html {
   margin-bottom: 8px;
   color: var(--text-main);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .encash-field small {
@@ -589,12 +589,12 @@ html {
   margin-top: 8px;
   color: var(--text-muted);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .encash-money-input {
   height: 54px;
-  border: 1px solid #dce6df;
+  border: 1px solid var(--gp-line);
   border-radius: var(--gp-radius);
   display: flex;
   overflow: hidden;
@@ -608,7 +608,7 @@ html {
   place-items: center;
   background: var(--emerald-800);
   color: white;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .encash-money-input input {
@@ -616,7 +616,7 @@ html {
   border: none;
   outline: none;
   padding: 0 16px;
-  color: #111827;
+  color: var(--gp-ink);
   font-size: 15px;
   font-weight: 700;
 }
@@ -626,7 +626,7 @@ html {
   height: 52px;
   border-radius: var(--gp-radius-pill);
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
   transition: 0.25s ease;
 }
 
@@ -674,13 +674,13 @@ html {
   display: grid;
   place-items: center;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .encash-guidelines span {
   color: var(--text-main);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 800;
   line-height: 1.4;
 }
 
@@ -770,7 +770,7 @@ html {
   margin: 0;
   color: var(--text-muted);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .history-balance-pill {
@@ -782,7 +782,7 @@ html {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .history-status-pill {
@@ -1026,7 +1026,7 @@ html {
   background: var(--gold);
   color: var(--emerald-950);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -1225,7 +1225,7 @@ html {
   box-shadow: none;
   color: var(--text-main);
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .me-pill-icon,
@@ -1350,7 +1350,7 @@ html {
 .gc-price-sub {
   font-size: 11px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--gp-subtle);
   white-space: nowrap;
 }
 
