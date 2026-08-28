@@ -447,13 +447,6 @@
     display: none;
   }
 
-  /* The takeover above reserves 58px at the bottom for the student/merchant
-     mobile bottom-nav. The parent shell has no bottom nav (it uses a fixed
-     sidebar behind a hamburger), so on parent/cart.php the scanner runs all
-     the way to the bottom edge. */
-  body.sp-page .parent-layout .sp-scanner {
-    bottom: 0;
-  }
 
   .sp-mobile-only {
     display: flex !important;

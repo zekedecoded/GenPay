@@ -31,3 +31,14 @@ input:checked + .toggle-slider:before { transform: translateX(22px); }
 .flash-msg { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
 .flash-msg.success { background: var(--gp-success-bg); color: var(--gp-success); border: 1px solid #a8dcbe; }
 .flash-msg.error   { background: var(--gp-danger-bg); color: var(--gp-danger); border: 1px solid #f0b8b2; }
+
+/* Phone reflow — see parent_dashboard.css for the rationale. */
+@media (max-width: 576px) {
+  .control-card { padding: var(--gp-space-4); }
+  .control-row { align-items: flex-start; gap: var(--gp-space-3); }
+  .limit-form input { width: 100%; flex: 1 1 100%; }
+  .limit-form .btn-save { flex: 1 1 100%; }
+  .status-bar { gap: var(--gp-space-2); }
+  .stat-pill { flex: 1 1 calc(50% - var(--gp-space-2)); }
+  .unlink-btn { width: 100%; }
+}

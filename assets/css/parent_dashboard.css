@@ -119,3 +119,115 @@
 }
 
 .pd-wallet-cta:hover { filter: brightness(1.12); color: #fff; }
+
+/* Phone reflow. The rows below already wrap, so this only handles the two
+   cases wrapping cannot fix: fixed-width inputs that overflow a ~310px
+   content column, and the student row's action buttons which are
+   flex-shrink:0 and would squeeze the name to nothing. */
+@media (max-width: 576px) {
+  .student-row {
+    flex-wrap: wrap;
+    gap: var(--gp-space-3);
+  }
+
+  .student-info { flex: 1 1 100%; order: 2; }
+  .student-actions { flex: 1 1 100%; order: 3; }
+  .student-actions .btn-view,
+  .student-actions .btn-controls { flex: 1; text-align: center; }
+
+  .link-form input,
+  .link-form .btn-link,
+  .threshold-form input,
+  .threshold-form .btn-save {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pd-wallet-row { gap: var(--gp-space-3); }
+  .pd-wallet-amount { font-size: var(--gp-text-2xl); }
+  .pd-wallet-cta { flex: 1 1 100%; justify-content: center; }
+}
+
+/* Inside a .parent-grid column (>=1200px, parent_shell.css) the student row
+   has roughly a phone's width to work with — 44px avatar, a balance chip and
+   two pill buttons leave the name almost nothing — so it takes the same
+   wrapped shape as the <=576px reflow above. */
+@media (min-width: 1200px) {
+  .parent-grid-col .student-row {
+    flex-wrap: wrap;
+    gap: var(--gp-space-3);
+  }
+
+  .parent-grid-col .student-info { flex: 1 1 100%; order: 2; }
+  .parent-grid-col .student-actions { flex: 1 1 100%; order: 3; }
+  .parent-grid-col .student-actions .btn-view,
+  .parent-grid-col .student-actions .btn-controls { flex: 1; text-align: center; }
+}
+
+/* ===== MY PURCHASES (the parent's own wallet) =====
+   Kept deliberately apart from Linked Students: this panel is only ever the
+   parent's own spending, and their children's only ever appears in the
+   student rows and on activity.php. Same row idiom as .alert-row above so
+   the panels read as one family. */
+.pd-viewall {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gp-green-700);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pd-viewall:hover { text-decoration: underline; }
+
+.pd-txn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gp-line);
+}
+
+.pd-txn:last-child { border-bottom: none; }
+
+.pd-txn-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--gp-line);
+  background: var(--gp-cream);
+  color: var(--gp-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.pd-txn-icon.is-in {
+  background: var(--gp-success-bg);
+  border-color: #a8dcbe;
+  color: var(--gp-success);
+}
+
+.pd-txn-info { flex: 1; min-width: 0; }
+.pd-txn-info strong { display: block; font-size: 13.5px; font-weight: 700; color: var(--gp-ink); }
+.pd-txn-info small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--gp-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-txn-amount {
+  flex-shrink: 0;
+  font-family: var(--gp-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gp-ink);
+  white-space: nowrap;
+}
+
+.pd-txn-amount.is-in { color: var(--gp-success); }

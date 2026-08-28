@@ -46,7 +46,7 @@
 .pfield input:disabled { background: var(--gp-cream); color: var(--gp-muted); cursor: not-allowed; }
 .pfield small { font-size: 11px; color: var(--gp-muted); display: block; margin-top: 4px; }
 .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-@media(max-width:540px) { .pgrid { grid-template-columns: 1fr; } }
+@media (max-width: 576px) { .pgrid { grid-template-columns: 1fr; } }
 .btn-primary-save { background: var(--gp-grad-forest-btn); color: #fff; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
 .btn-primary-save:hover { filter: brightness(1.1); }
 .flash { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }

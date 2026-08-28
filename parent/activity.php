@@ -36,12 +36,19 @@ foreach ($linkedStudents as $s) {
     }
 }
 
-// Filters — student selector re-verified against the linked-wallet set below,
-// never trusted as-is (a parent could otherwise probe any wallet id).
-$selectedStudent = (int) ($_GET['student'] ?? 0);
+// Filters — the wallet selector is re-verified against the linked-wallet set
+// below, never trusted as-is (a parent could otherwise probe any wallet id).
+// 'me' is the parent's own wallet: now that parents shop from their own
+// balance, their purchases have to be readable on their own instead of only
+// ever being mixed in with the students' rows.
+$walletFilter    = trim((string) ($_GET['student'] ?? '0'));
+$showOwnOnly     = ($walletFilter === 'me' && $parentWalletId > 0);
+$selectedStudent = $showOwnOnly ? 0 : (int) $walletFilter;
 if ($selectedStudent > 0 && !in_array($selectedStudent, $walletIds, true)) {
     $selectedStudent = 0;
 }
+// Normalised back so the <select> below can mark the right option.
+$walletFilter = $showOwnOnly ? 'me' : (string) $selectedStudent;
 $filterType = trim((string) ($_GET['type'] ?? ''));
 if (!array_key_exists($filterType, gjc_transaction_type_options())) {
     $filterType = '';
@@ -51,11 +58,16 @@ $dateTo   = trim((string) ($_GET['to'] ?? ''));
 
 $rows = [];
 if (($walletIds || $parentWalletId) && gjc_table_exists($db, 'transactions')) {
-    // Scope: the linked students' wallets, plus — unless a single student is
+    // Scope: the linked students' wallets, plus — unless one wallet is
     // selected — the parent's own wallet purchases (Scan & Pay).
     $scopeClauses = [];
     $params = [];
-    if ($selectedStudent > 0) {
+    if ($showOwnOnly) {
+        // Purchases only: an allowance row carries both wallet ids, and it
+        // belongs to the child it landed on, not to this filter.
+        $scopeClauses[] = "(t.parent_wallet_id = ? AND COALESCE(t.student_wallet_id, 0) = 0)";
+        $params[] = $parentWalletId;
+    } elseif ($selectedStudent > 0) {
         $scopeClauses[] = "t.student_wallet_id = ?";
         $params[] = $selectedStudent;
     } else {
@@ -112,9 +124,19 @@ foreach ($rows as &$r) {
     $meta = gjc_student_txn_meta($type);
     $r['label'] = $meta['label'];
     $r['incoming'] = $meta['incoming'];
-    $r['student_name'] = ((int) $r['parent_wallet_id'] > 0 && (int) $r['parent_wallet_id'] === $parentWalletId)
+    // Whose wallet the money moved on — the parent's own, or a linked child's.
+    // An allowance row carries BOTH wallet ids (see allowanceTransfer), so the
+    // student_wallet_id guard is what keeps it attributed to the child who
+    // received it rather than reading as one of the parent's own purchases.
+    // The "Sent By" counterparty below already names the parent on those rows.
+    $r['is_own'] = ((int) $r['parent_wallet_id'] > 0
+        && (int) $r['parent_wallet_id'] === $parentWalletId
+        && (int) $r['student_wallet_id'] === 0);
+    // Anything not the parent's own now always has a student wallet, so an
+    // unknown id means a student who has since been unlinked — not "no wallet".
+    $r['student_name'] = $r['is_own']
         ? 'You (Parent)'
-        : ($studentByWallet[(int) $r['student_wallet_id']] ?? '—');
+        : ($studentByWallet[(int) $r['student_wallet_id']] ?? 'Unlinked student');
 
     $counterparty = '—';
     if (in_array($type, ['payment', 'voucher_payment'], true) && (int) $r['merchant_wallet_id'] > 0) {
@@ -149,6 +171,11 @@ foreach ($rows as &$r) {
 }
 unset($r);
 
+// Split shown in the panel head, so the mix of the two is visible at a glance
+// before anyone reaches for the wallet filter.
+$ownCount     = count(array_filter($rows, static fn(array $r): bool => $r['is_own']));
+$studentCount = count($rows) - $ownCount;
+
 $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $currentPage = 'activity';
 ?>
@@ -162,9 +189,9 @@ $currentPage = 'activity';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=6">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -175,11 +202,11 @@ $currentPage = 'activity';
 
         <?php
         $topbarTitle = 'Activity Trail';
-        $topbarSubtitle = 'Every wallet transaction across all of your linked students.';
+        $topbarSubtitle = 'Your own purchases and every wallet transaction across your linked students.';
         require __DIR__ . '/../includes/partials/topbar_parent.php';
         ?>
 
-        <div class="parent-content" style="max-width:1100px;">
+        <div class="parent-content parent-content--wide">
 
             <?php if (empty($linkedStudents) && empty($rows)): ?>
             <div class="parent-card">
@@ -193,9 +220,12 @@ $currentPage = 'activity';
             <div class="parent-card">
                 <form method="GET" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
                     <div style="min-width:180px;">
-                        <label style="display:block;font-size:12px;font-weight:700;color:var(--gp-muted);margin-bottom:6px;">Student</label>
+                        <label style="display:block;font-size:12px;font-weight:700;color:var(--gp-muted);margin-bottom:6px;">Wallet</label>
                         <select name="student" style="width:100%;height:42px;border:1.5px solid var(--ad-line);border-radius:10px;padding:0 12px;font-size:13.5px;">
-                            <option value="0">All Students</option>
+                            <option value="0" <?= $walletFilter === '0' ? 'selected' : '' ?>>All Wallets</option>
+                            <?php if ($parentWalletId > 0): ?>
+                            <option value="me" <?= $showOwnOnly ? 'selected' : '' ?>>My Purchases (Parent)</option>
+                            <?php endif; ?>
                             <?php foreach ($linkedStudents as $s): ?>
                             <option value="<?= (int) $s['wallet_id'] ?>" <?= $selectedStudent === (int) $s['wallet_id'] ? 'selected' : '' ?>>
                                 <?= $e(trim($s['first_name'] . ' ' . $s['last_name'])) ?>
@@ -226,7 +256,10 @@ $currentPage = 'activity';
             <div class="parent-card">
                 <div class="parent-card-head">
                     <h5><i class="fa-solid fa-list-check me-2" style="color:var(--gp-green-700)"></i>Transactions</h5>
-                    <span style="font-size:12px;color:var(--gp-muted);"><?= count($rows) ?> records (max 300)</span>
+                    <span style="font-size:12px;color:var(--gp-muted);">
+                        <?= count($rows) ?> records (max 300)<?php if ($ownCount && $studentCount): ?>
+                        &middot; <?= $ownCount ?> yours, <?= $studentCount ?> your students'<?php endif; ?>
+                    </span>
                 </div>
                 <?php if (empty($rows)): ?>
                 <div class="parent-empty">
@@ -240,7 +273,7 @@ $currentPage = 'activity';
                             <tr>
                                 <th>Date &amp; Time</th>
                                 <th>Reference</th>
-                                <th>Student</th>
+                                <th>Wallet</th>
                                 <th>Type</th>
                                 <th>Counterparty</th>
                                 <th>Items</th>
@@ -251,10 +284,16 @@ $currentPage = 'activity';
                         </thead>
                         <tbody>
                             <?php foreach ($rows as $r): ?>
-                            <tr>
+                            <tr class="<?= $r['is_own'] ? 'pa-own-row' : '' ?>">
                                 <td><?= $e(date('M j, Y g:i A', strtotime($r['created_at']))) ?></td>
                                 <td><?= $e($r['reference_no']) ?></td>
-                                <td><?= $e($r['student_name']) ?></td>
+                                <td class="pa-wallet-cell">
+                                    <?php if ($r['is_own']): ?>
+                                    <span class="pa-you-badge">You</span> Parent
+                                    <?php else: ?>
+                                    <?= $e($r['student_name']) ?>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= $e($r['label']) ?></td>
                                 <td><?= $e($r['counterparty']) ?></td>
                                 <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--gp-muted);" title="<?= $e($r['items_summary']) ?>">
@@ -294,5 +333,7 @@ function toggleParentSidebar() {
     document.getElementById('parentSidebar').classList.toggle('collapsed');
 }
 </script>
+
+<?php require __DIR__ . '/../includes/partials/bottom_nav_parent.php'; ?>
 </body>
 </html>

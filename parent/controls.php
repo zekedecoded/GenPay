@@ -60,9 +60,9 @@ $currentPage = '';
     <title>Wallet Controls — <?= htmlspecialchars($studentName) ?> | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_controls.css?v=6">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -77,7 +77,7 @@ $currentPage = '';
         require __DIR__ . '/../includes/partials/topbar_parent.php';
         ?>
 
-        <div class="parent-content" style="max-width: 680px;">
+        <div class="parent-content parent-content--wide">
 
             <a href="<?= PARENT_URL ?>/dashboard.php" class="back-link">
                 <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
@@ -101,57 +101,65 @@ $currentPage = '';
                 </div>
             </div>
 
-            <!-- Freeze toggle -->
-            <div class="control-card">
-                <h5><i class="fa-solid fa-lock me-2" style="color:var(--gp-danger)"></i>Freeze Wallet</h5>
-                <p>When frozen, the student cannot make any POS purchases or token transfers. Cash top-ups by Finance are still allowed.</p>
-                <div class="control-row">
-                    <div class="toggle-wrap">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="freezeToggle" <?= $student['is_frozen'] ? 'checked' : '' ?>>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <div>
-                            <span class="toggle-label" id="freezeLabel"><?= $student['is_frozen'] ? 'Wallet is Frozen' : 'Wallet is Active' ?></span>
-                            <span class="toggle-sublabel" id="freezeSub"><?= $student['is_frozen'] ? 'Toggle off to unfreeze.' : 'Toggle on to freeze immediately.' ?></span>
+            <div class="parent-grid parent-grid--even">
+
+                <div class="parent-grid-col">
+                    <!-- Freeze toggle -->
+                    <div class="control-card">
+                        <h5><i class="fa-solid fa-lock me-2" style="color:var(--gp-danger)"></i>Freeze Wallet</h5>
+                        <p>When frozen, the student cannot make any POS purchases or token transfers. Cash top-ups by Finance are still allowed.</p>
+                        <div class="control-row">
+                            <div class="toggle-wrap">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="freezeToggle" <?= $student['is_frozen'] ? 'checked' : '' ?>>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <div>
+                                    <span class="toggle-label" id="freezeLabel"><?= $student['is_frozen'] ? 'Wallet is Frozen' : 'Wallet is Active' ?></span>
+                                    <span class="toggle-sublabel" id="freezeSub"><?= $student['is_frozen'] ? 'Toggle off to unfreeze.' : 'Toggle on to freeze immediately.' ?></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Daily spending limit -->
-            <div class="control-card">
-                <h5><i class="fa-solid fa-gauge me-2" style="color:var(--gp-green-700)"></i>Daily Spending Limit</h5>
-                <p>Limits how much the student can spend in a single day across POS purchases and token transfers. Set to ₱0.00 to disable the limit.</p>
-                <form class="limit-form" id="limitForm">
-                    <div>
-                        <label for="limitInput">Daily limit (₱)</label>
-                        <input type="number" id="limitInput" min="0" step="1" placeholder="0.00"
-                               value="<?= number_format((float)$student['daily_spend_limit'], 2, '.', '') ?>">
+                    <!-- Daily spending limit -->
+                    <div class="control-card">
+                        <h5><i class="fa-solid fa-gauge me-2" style="color:var(--gp-green-700)"></i>Daily Spending Limit</h5>
+                        <p>Limits how much the student can spend in a single day across POS purchases and token transfers. Set to ₱0.00 to disable the limit.</p>
+                        <form class="limit-form" id="limitForm">
+                            <div>
+                                <label for="limitInput">Daily limit (₱)</label>
+                                <input type="number" id="limitInput" min="0" step="1" placeholder="0.00"
+                                       value="<?= number_format((float)$student['daily_spend_limit'], 2, '.', '') ?>">
+                            </div>
+                            <button type="submit" class="btn-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save Limit</button>
+                        </form>
+                        <p style="margin-top:10px;margin-bottom:0;font-size:12px;color:var(--gp-muted);">
+                            Today's spending is tracked in real time. The limit resets at midnight.
+                        </p>
                     </div>
-                    <button type="submit" class="btn-save"><i class="fa-solid fa-floppy-disk me-1"></i>Save Limit</button>
-                </form>
-                <p style="margin-top:10px;margin-bottom:0;font-size:12px;color:var(--gp-muted);">
-                    Today's spending is tracked in real time. The limit resets at midnight.
-                </p>
-            </div>
-
-            <!-- View ledger link -->
-            <div class="control-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-                <div>
-                    <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:var(--gp-green-700)"></i>Transaction Ledger</h5>
-                    <p style="margin:0;">View the full read-only transaction history for this wallet.</p>
                 </div>
-                <a href="<?= PARENT_URL ?>/student.php?uid=<?= $targetUid ?>" class="btn-save" style="text-decoration:none;padding:9px 18px;font-size:13px;display:inline-block;">
-                    <i class="fa-solid fa-eye me-1"></i>View Ledger
-                </a>
-            </div>
 
-            <!-- Unlink student -->
-            <div class="control-card" style="border-color:#f0b8b2;">
-                <h5 style="color:var(--gp-danger);"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
-                <p>Remove your link to this student. You will no longer be able to view their wallet or apply controls. <strong>Existing controls (freeze, daily limit) will remain set</strong> on the wallet until a Finance administrator changes them.</p>
-                <button class="unlink-btn" onclick="unlinkStudent()"><i class="fa-solid fa-trash me-1"></i>Unlink <?= htmlspecialchars($student['first_name']) ?></button>
+                <div class="parent-grid-col">
+                    <!-- View ledger link -->
+                    <div class="control-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <h5 style="margin-bottom:4px;"><i class="fa-solid fa-receipt me-2" style="color:var(--gp-green-700)"></i>Transaction Ledger</h5>
+                            <p style="margin:0;">View the full read-only transaction history for this wallet.</p>
+                        </div>
+                        <a href="<?= PARENT_URL ?>/student.php?uid=<?= $targetUid ?>" class="btn-save" style="text-decoration:none;padding:9px 18px;font-size:13px;display:inline-block;">
+                            <i class="fa-solid fa-eye me-1"></i>View Ledger
+                        </a>
+                    </div>
+
+                    <!-- Unlink student -->
+                    <div class="control-card" style="border-color:#f0b8b2;">
+                        <h5 style="color:var(--gp-danger);"><i class="fa-solid fa-user-minus me-2"></i>Unlink Student</h5>
+                        <p>Remove your link to this student. You will no longer be able to view their wallet or apply controls. <strong>Existing controls (freeze, daily limit) will remain set</strong> on the wallet until a Finance administrator changes them.</p>
+                        <button class="unlink-btn" onclick="unlinkStudent()"><i class="fa-solid fa-trash me-1"></i>Unlink <?= htmlspecialchars($student['first_name']) ?></button>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -231,5 +239,7 @@ async function unlinkStudent() {
     }
 }
 </script>
+
+<?php require __DIR__ . '/../includes/partials/bottom_nav_parent.php'; ?>
 </body>
 </html>

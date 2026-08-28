@@ -61,9 +61,9 @@ $currentPage = 'allowance';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_scan.css?v=7">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=5">
@@ -386,5 +386,7 @@ sgConfirmSend.addEventListener('click', async () => {
 <?php endif; ?>
 </script>
 
+
+<?php require __DIR__ . '/../includes/partials/bottom_nav_parent.php'; ?>
 </body>
 </html>

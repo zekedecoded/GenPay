@@ -125,9 +125,9 @@ $currentPage = '';
     <title><?= htmlspecialchars($studentName) ?> — Ledger | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=12">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=4">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=5">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -142,7 +142,7 @@ $currentPage = '';
         require __DIR__ . '/../includes/partials/topbar_parent.php';
         ?>
 
-        <div class="parent-content">
+        <div class="parent-content parent-content--wide">
 
             <a href="<?= PARENT_URL ?>/dashboard.php" class="back-link">
                 <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
@@ -167,84 +167,88 @@ $currentPage = '';
                 </div>
             </div>
 
-            <!-- Fee Waiver Credit — school-managed, not GenCoin. GenPay doesn't
-                 track tuition fee itself; this credit is applied against it
-                 by the finance office. -->
-            <div class="parent-card" style="margin-bottom:22px;">
-                <div class="parent-card-head">
-                    <h5><i class="fa-solid fa-hand-holding-dollar me-2" style="color:var(--gp-green-700)"></i>Fee Waiver Credit</h5>
+            <div class="parent-grid">
+
+                <!-- Fee Waiver Credit — school-managed, not GenCoin. GenPay doesn't
+                     track tuition fee itself; this credit is applied against it
+                     by the finance office. -->
+                <div class="parent-card<?= $syBalances ? '' : ' parent-grid-full' ?>">
+                    <div class="parent-card-head">
+                        <h5><i class="fa-solid fa-hand-holding-dollar me-2" style="color:var(--gp-green-700)"></i>Fee Waiver Credit</h5>
+                        <?php if ($credit['status'] === 'pending'): ?>
+                            <span class="parent-badge parent-badge--warning">Pending</span>
+                        <?php elseif ($credit['status'] === 'posted'): ?>
+                            <span class="parent-badge parent-badge--success">Posted</span>
+                        <?php endif; ?>
+                    </div>
+
                     <?php if ($credit['status'] === 'pending'): ?>
-                        <span class="parent-badge parent-badge--warning">Pending</span>
+                    <p style="font-size:13px;color:var(--gp-muted);margin-bottom:14px;">
+                        A Fee Waiver Credit of &#8369;<?= number_format((float) $credit['amount'], 2) ?> is awaiting
+                        the signed waiver. Download the blank form, have it signed, and return it to finance to post the credit.
+                    </p>
+                    <p style="margin-bottom:14px;">
+                        <a href="<?= ADMIN_URL ?>/print_fee_waiver.php?student_user_id=<?= $targetUid ?>" target="_blank"
+                           style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-print"></i>Download Blank Waiver
+                        </a>
+                    </p>
                     <?php elseif ($credit['status'] === 'posted'): ?>
-                        <span class="parent-badge parent-badge--success">Posted</span>
+                    <div style="margin-bottom:14px;">
+                        <small style="display:block;color:var(--gp-muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Amount</small>
+                        <strong style="font-size:18px;color:var(--gp-success);">&#8369;<?= number_format((float) $credit['amount'], 2) ?></strong>
+                    </div>
+                    <?php else: ?>
+                    <p style="font-size:13px;color:var(--gp-muted);margin:0;">
+                        No Fee Waiver Credit has been requested for this student yet.
+                    </p>
+                    <?php endif; ?>
+
+                    <?php if ($credit['status'] === 'posted' && $credit['waiver_file']): ?>
+                    <p style="margin:0;">
+                        <a href="<?= ADMIN_URL ?>/doc.php?f=<?= urlencode($credit['waiver_file']) ?>"
+                           onclick="return gjcViewWaiver(this.href);"
+                           style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-file-lines"></i>View Signed Waiver
+                        </a>
+                    </p>
                     <?php endif; ?>
                 </div>
 
-                <?php if ($credit['status'] === 'pending'): ?>
-                <p style="font-size:13px;color:var(--gp-muted);margin-bottom:14px;">
-                    A Fee Waiver Credit of &#8369;<?= number_format((float) $credit['amount'], 2) ?> is awaiting
-                    the signed waiver. Download the blank form, have it signed, and return it to finance to post the credit.
-                </p>
-                <p style="margin-bottom:14px;">
-                    <a href="<?= ADMIN_URL ?>/print_fee_waiver.php?student_user_id=<?= $targetUid ?>" target="_blank"
-                       style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                        <i class="fa-solid fa-print"></i>Download Blank Waiver
-                    </a>
-                </p>
-                <?php elseif ($credit['status'] === 'posted'): ?>
-                <div style="margin-bottom:14px;">
-                    <small style="display:block;color:var(--gp-muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;">Amount</small>
-                    <strong style="font-size:18px;color:var(--gp-success);">&#8369;<?= number_format((float) $credit['amount'], 2) ?></strong>
+                <!-- School Year Snapshots — read-only, finance's rollover is the only writer -->
+                <?php if ($syBalances): ?>
+                <div class="parent-card">
+                    <div class="parent-card-head">
+                        <h5><i class="fa-solid fa-graduation-cap me-2" style="color:var(--gp-green-700)"></i>School Year Balances</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="txn-table">
+                            <thead>
+                                <tr>
+                                    <th>School Year</th>
+                                    <th>Starting Balance</th>
+                                    <th>Ending Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($syBalances as $syb): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($syb['school_year_name']) ?></td>
+                                    <td>&#8369;<?= number_format((float) $syb['starting_balance'], 2) ?></td>
+                                    <td>
+                                        <?= $syb['final_ending_balance'] !== null
+                                            ? '&#8369;' . number_format((float) $syb['final_ending_balance'], 2)
+                                            : '<span style="color:var(--gp-muted);">Year still open</span>' ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <?php else: ?>
-                <p style="font-size:13px;color:var(--gp-muted);margin:0;">
-                    No Fee Waiver Credit has been requested for this student yet.
-                </p>
                 <?php endif; ?>
 
-                <?php if ($credit['status'] === 'posted' && $credit['waiver_file']): ?>
-                <p style="margin:0;">
-                    <a href="<?= ADMIN_URL ?>/doc.php?f=<?= urlencode($credit['waiver_file']) ?>"
-                       onclick="return gjcViewWaiver(this.href);"
-                       style="color:var(--gp-green-700);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-                        <i class="fa-solid fa-file-lines"></i>View Signed Waiver
-                    </a>
-                </p>
-                <?php endif; ?>
             </div>
-
-            <!-- School Year Snapshots — read-only, finance's rollover is the only writer -->
-            <?php if ($syBalances): ?>
-            <div class="parent-card" style="margin-bottom:22px;">
-                <div class="parent-card-head">
-                    <h5><i class="fa-solid fa-graduation-cap me-2" style="color:var(--gp-green-700)"></i>School Year Balances</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="txn-table">
-                        <thead>
-                            <tr>
-                                <th>School Year</th>
-                                <th>Starting Balance</th>
-                                <th>Ending Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($syBalances as $syb): ?>
-                            <tr>
-                                <td><?= htmlspecialchars($syb['school_year_name']) ?></td>
-                                <td>&#8369;<?= number_format((float) $syb['starting_balance'], 2) ?></td>
-                                <td>
-                                    <?= $syb['final_ending_balance'] !== null
-                                        ? '&#8369;' . number_format((float) $syb['final_ending_balance'], 2)
-                                        : '<span style="color:var(--gp-muted);">Year still open</span>' ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- Filter tabs -->
             <?php
@@ -350,5 +354,7 @@ document.getElementById('gjcWaiverModal').addEventListener('hidden.bs.modal', fu
     document.getElementById('gjcWaiverFrame').src = '';
 });
 </script>
+
+<?php require __DIR__ . '/../includes/partials/bottom_nav_parent.php'; ?>
 </body>
 </html>

@@ -26,3 +26,40 @@
     border-color: var(--sd-gold);
     box-shadow: var(--gp-focus-ring);
 }
+
+
+/* ===== ACTIVITY: whose wallet a row belongs to =====
+   Parents shop from their own wallet now, so the trail mixes their purchases
+   with their children's. The rows stay in one table — a single chronology is
+   easier to read than two — but the parent's own carry a badge, a cream tint
+   and a gold keyline, and the Wallet filter can isolate either side. */
+.pa-wallet-cell {
+    white-space: nowrap;
+}
+
+.pa-you-badge {
+    display: inline-block;
+    background: var(--gp-green-700);
+    color: #fff;
+    border-radius: var(--gp-radius-pill);
+    padding: 1px 8px;
+    margin-right: 5px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* Matched to the specificity of theme.css's own
+   `body.gp-theme .table tbody tr ...` rules, which out-specify a bare class. */
+body.gp-theme .table tbody tr.pa-own-row td {
+    background: var(--gp-cream);
+}
+
+body.gp-theme .table tbody tr.pa-own-row:hover td {
+    background: var(--gp-row-hover);
+}
+
+body.gp-theme .table tbody tr.pa-own-row td:first-child {
+    box-shadow: inset 3px 0 0 var(--gp-gold);
+}

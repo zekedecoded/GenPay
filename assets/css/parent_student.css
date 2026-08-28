@@ -24,3 +24,13 @@
 .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gp-green-700); font-size: 13px; font-weight: 700; text-decoration: none; margin-bottom: 18px; }
 .back-link:hover { text-decoration: underline; }
 .empty-state { text-align: center; padding: 40px 16px; color: var(--gp-muted); }
+
+/* Phone reflow. The ledger hero and its big number dominate a 390px screen
+   otherwise, and .txn-desc's fixed 200px max-width fights the table's own
+   horizontal scroll container. */
+@media (max-width: 576px) {
+  .ledger-header { padding: var(--gp-space-5) var(--gp-space-4); }
+  .ledger-header h2 { font-size: var(--gp-text-lg); }
+  .ledger-header .balance-big { font-size: var(--gp-text-2xl); }
+  .txn-row .txn-desc { max-width: 140px; }
+}
