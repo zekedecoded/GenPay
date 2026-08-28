@@ -136,6 +136,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
 </head>
 
 <body class="sd-body">
@@ -284,8 +285,8 @@ $csrfToken = gjc_csrf_token();
                             <table class="table align-middle">
                                 <thead>
                                     <tr style="font-size:12px;text-transform:uppercase;color:var(--sd-muted)">
-                                        <th>Reference</th>
-                                        <th>Amount</th>
+                                        <th data-card="title">Reference</th>
+                                        <th data-card="amount">Amount</th>
                                         <th>Status</th>
                                         <th>Date</th>
                                     </tr>
@@ -316,6 +317,7 @@ $csrfToken = gjc_csrf_token();
     <?php require __DIR__ . '/../includes/partials/bottom_nav_student.php'; ?>
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+    <script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
     <script src="<?= JS_URL ?>/gp_form_busy.js?v=1"></script>
     <script>
     const wdAmount = document.getElementById('amount');

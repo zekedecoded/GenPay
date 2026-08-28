@@ -90,9 +90,10 @@ $currentPage = 'dashboard';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
@@ -278,10 +279,10 @@ $currentPage = 'dashboard';
                             <table class="table merchant-premium-table align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th>Order</th>
-                                        <th>Source</th>
-                                        <th>Items</th>
-                                        <th>Amount</th>
+                                        <th data-card="title">Order</th>
+                                        <th data-card="hide">Source</th>
+                                        <th data-card="hide">Items</th>
+                                        <th data-card="amount">Amount</th>
                                         <th>Status</th>
                                         <th>Time</th>
                                         <th class="text-end">Action</th>
@@ -503,9 +504,9 @@ $currentPage = 'dashboard';
                     <table class="table merchant-premium-table align-middle js-datatable" id="merchantRecentSalesTable" data-page-length="8">
                         <thead>
                             <tr>
-                                <th>Ref</th>
-                                <th>Description</th>
-                                <th>Amount</th>
+                                <th data-card="title">Ref</th>
+                                <th data-card="hide">Description</th>
+                                <th data-card="amount">Amount</th>
                                 <th>Type</th>
                                 <th>Time</th>
                             </tr>
@@ -546,6 +547,7 @@ $currentPage = 'dashboard';
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+    <script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
     <script src="<?= JS_URL ?>/merchant_chart.js?v=11"></script>
 
     <script>

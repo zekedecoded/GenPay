@@ -42,9 +42,10 @@ $currentPage = "staff";
     <title>Staff Management | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="gp-theme">
@@ -82,11 +83,11 @@ $currentPage = "staff";
                 <table class="table merchant-premium-table align-middle" id="staffTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Contact</th>
+                            <th data-card="title">Name</th>
+                            <th data-card="hide">Email</th>
+                            <th data-card="hide">Contact</th>
                             <th>Position</th>
-                            <th>Date Hired</th>
+                            <th data-card="hide">Date Hired</th>
                             <th style="cursor:pointer" onclick="sortByStatus()" title="Sort by status">
                                 Status <i class="fa-solid fa-sort ms-1" id="statusSortIcon"></i>
                             </th>
@@ -312,6 +313,7 @@ $currentPage = "staff";
 </style>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 <script>
 const STAFF_API = '<?= MERCHANT_URL ?>/api/staff.php';
 

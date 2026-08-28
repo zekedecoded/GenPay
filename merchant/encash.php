@@ -65,9 +65,10 @@ $currentPage = 'encash';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
@@ -190,9 +191,9 @@ $currentPage = 'encash';
                     <table class="table merchant-premium-table align-middle js-datatable" id="merchantEncashHistoryTable" data-page-length="8">
                         <thead>
                             <tr>
-                                <th>Amount</th>
+                                <th data-card="title">Amount</th>
                                 <th>Status</th>
-                                <th>Processed By</th>
+                                <th data-card="hide">Processed By</th>
                                 <th>Date</th>
                             </tr>
                         </thead>
@@ -227,6 +228,7 @@ $currentPage = 'encash';
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <script src="<?= JS_URL ?>/gp_form_busy.js?v=1"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+    <script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 
     <?php require __DIR__ . '/../includes/partials/bottom_nav_merchant.php'; ?>
 </body>

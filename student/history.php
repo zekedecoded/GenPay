@@ -119,6 +119,7 @@ $currentPage = 'history';
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
 </head>
 
 <body class="sd-body">
@@ -200,10 +201,10 @@ $currentPage = 'history';
                         <table class="table sd-table align-middle js-datatable" id="studentHistoryTable" data-page-length="10">
                             <thead>
                                 <tr>
-                                    <th>Reference</th>
-                                    <th>Description</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
+                                    <th data-card="title">Reference</th>
+                                    <th data-card="hide">Description</th>
+                                    <th data-card="hide">Type</th>
+                                    <th data-card="amount">Amount</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                     <th class="text-end">Action</th>
@@ -242,6 +243,7 @@ $currentPage = 'history';
 
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+    <script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
     <script>
     // ── Live wallet stats — balance/received/spent stay current without a
     // manual reload. The transaction table itself is left to a normal reload

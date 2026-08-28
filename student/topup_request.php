@@ -108,6 +108,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
 </head>
 
 <body class="sd-body">
@@ -309,9 +310,9 @@ $csrfToken = gjc_csrf_token();
                         <table class="table align-middle js-datatable" id="studentTopupRequestsTable" data-page-length="8">
                             <thead>
                                 <tr>
-                                    <th>Reference</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
+                                    <th data-card="title">Reference</th>
+                                    <th data-card="amount">Amount</th>
+                                    <th data-card="hide">Method</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                 </tr>
@@ -344,6 +345,7 @@ $csrfToken = gjc_csrf_token();
     <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
     <script src="<?= JS_URL ?>/gp_form_busy.js?v=1"></script>
     <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+    <script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 
     <script>
     const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;

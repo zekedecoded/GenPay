@@ -37,9 +37,10 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=47">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="gp-theme">
@@ -88,12 +89,12 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
                 <table class="table merchant-premium-table align-middle js-datatable" id="inventoryTable" data-page-length="10" data-empty-message="No products found.">
                     <thead>
                         <tr>
-                            <th>SKU</th>
-                            <th>Product</th>
-                            <th>Category</th>
-                            <th>Unit</th>
-                            <th>Price</th>
-                            <th>Stock</th>
+                            <th data-card="hide">SKU</th>
+                            <th data-card="title">Product</th>
+                            <th data-card="hide">Category</th>
+                            <th data-card="hide">Unit</th>
+                            <th data-card="amount">Price</th>
+                            <th data-card="hide">Stock</th>
                             <th>Stock Level</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -385,6 +386,7 @@ $units       = ['piece', 'pack', 'bottle', 'can', 'cup', 'kg', 'gram', 'litre', 
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+<script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 <script>
 const INV_API = '<?= MERCHANT_URL ?>/api/inventory.php';
 

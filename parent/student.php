@@ -128,6 +128,7 @@ $currentPage = '';
     <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/parent_student.css?v=5">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -280,10 +281,10 @@ $currentPage = '';
                     <thead>
                         <tr>
                             <th>Date &amp; Time</th>
-                            <th>Type</th>
-                            <th>Description</th>
-                            <th class="num">Amount</th>
-                            <th class="num">Balance</th>
+                            <th data-card="hide">Type</th>
+                            <th data-card="title">Description</th>
+                            <th class="num" data-card="amount">Amount</th>
+                            <th class="num" data-card="hide">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -339,6 +340,7 @@ $currentPage = '';
 </div>
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
+<script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 <script>
 function toggleParentSidebar() {
     document.getElementById('parentSidebar').classList.toggle('collapsed');

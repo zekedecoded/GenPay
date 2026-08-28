@@ -156,6 +156,52 @@ action) · `gp-hero` dark gradient hero with `gp-hero-label` / `gp-hero-value` /
 **Tables** — `gp-table`: cream uppercase headers, hairline rows, hover tint. Always
 wrap in `.table-responsive`. Use `gp-mono` on references/amounts.
 
+**Tables on a phone** — a listing table wide enough to need `.table-responsive` is
+a listing table nobody can read on a phone: the amount, the status and the View
+button all sit past the right edge. `gjc-table-cards.css` + `gjc_table_cards.js`
+turn each row into a **list row you tap to open** — what the row is on the left of
+the first line, the figure on the right, the supporting detail muted underneath,
+and the whole row opening its full details. Not a small table inside the page: no
+label column, no cell grid.
+
+```
+Banana Cue                     ₱15.00  ›
+Low · Available
+```
+
+Declare what each column does on its `<th>`:
+
+| `data-card` | Where it lands |
+|---|---|
+| `title` | First line, left — the row's identity. Also what opts the table into this layout. |
+| `amount` | First line, right — the figure. |
+| `hide` | Detail-only: off the row, reachable on the detail view (or by expanding). |
+| *(absent)* | The muted second line, dot-separated. |
+
+Column order in the markup stops mattering — the row is a wrapping flex line and
+each cell is ordered into place, so `title` reads first even when it is the second
+column. **A table that declares no title keeps the labelled layout** (a `LABEL` /
+value line per field). That is right when the values don't describe themselves —
+the parent's school-year balances are three money columns, unreadable stripped of
+their headings — and it is also how detail-only fields render once a row expands.
+For the same reason, prefer `hide` over the muted run for a bare number: a stock
+count reading `6` next to a price says nothing, while a `Low` pill says it itself.
+
+A tap resolves in order: a link in the row (the View button's `href`), then a
+"View" button (the merchant order queue opens a modal), then — for tables with no
+detail page of their own, like top-ups and encashments — expanding the row in
+place, so nothing is unreachable. Taps landing on a control inside the row belong
+to that control, so the staff roster's Active switch and inventory's Edit/QR/Void
+buttons still work. When View is a row's *only* control the tap replaces it and it
+comes off the card; a row with other actions keeps all of them. A cell holding a
+control never joins the muted run — it gets a labelled line, since a lone switch
+in a run of dot-separated text means nothing.
+
+It is progressive enhancement — with JS off the table keeps scrolling as before.
+Tables of 7+ columns stack at the `992px` breakpoint, the rest at `768px`; opt one
+out entirely with `data-cards="false"`. Live on the student, merchant and parent
+listing pages; admin still scrolls.
+
 **Misc** — `gp-empty` empty state (icon + caption).
 
 ## Merchant-specific patterns (POS / Scan & Pay generation)

@@ -1174,7 +1174,10 @@ html {
     touch-action: manipulation;
   }
 
-  .merchant-premium-table {
+  /* Below 768px .gjc-cards--on stacks this table into cards, and a card
+     column must not be held open at 680px. Tables the card system skips
+     (JS off, data-cards="false") keep the scroll port. */
+  .merchant-premium-table:not(.gjc-cards--on) {
     min-width: 680px;
   }
 

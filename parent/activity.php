@@ -192,6 +192,7 @@ $currentPage = 'activity';
     <link rel="stylesheet" href="<?= CSS_URL ?>/parent_shell.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/parent_wallet.css?v=6">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
 </head>
 <body class="gp-theme">
 <div class="parent-layout">
@@ -272,12 +273,12 @@ $currentPage = 'activity';
                         <thead>
                             <tr>
                                 <th>Date &amp; Time</th>
-                                <th>Reference</th>
+                                <th data-card="title">Reference</th>
                                 <th>Wallet</th>
-                                <th>Type</th>
-                                <th>Counterparty</th>
-                                <th>Items</th>
-                                <th>Amount</th>
+                                <th data-card="hide">Type</th>
+                                <th data-card="hide">Counterparty</th>
+                                <th data-card="hide">Items</th>
+                                <th data-card="amount">Amount</th>
                                 <th>Status</th>
                                 <th class="text-end">Action</th>
                             </tr>
@@ -328,6 +329,7 @@ $currentPage = 'activity';
 
 <script src="<?= JS_URL ?>/bootstrap.bundle.min.js"></script>
 <?php require __DIR__ . '/../includes/partials/datatables_assets.php'; ?>
+<script src="<?= JS_URL ?>/gjc_table_cards.js?v=1"></script>
 <script>
 function toggleParentSidebar() {
     document.getElementById('parentSidebar').classList.toggle('collapsed');
