@@ -6,6 +6,10 @@ header('Content-Type: application/json');
 session_start();
 require_once __DIR__ . '/../../connection/config.php';
 require_once __DIR__ . '/../../connection/pdo.php';
+// Required: CirculationEngine::logTransaction() calls gjc_active_school_year_id()
+// unguarded, so without app.php every mint dies with "undefined function" and
+// surfaces as a bare 500. (audit_logger.php arrives via CirculationEngine itself.)
+require_once __DIR__ . '/../../connection/app.php';
 require_once __DIR__ . '/../../connection/MintingGuard.php';
 
 if (!isset($_SESSION['userID']) || ($_SESSION['sub_role'] ?? '') !== 'super_admin') {

@@ -1,5 +1,5 @@
 @import url("gjc-clear.css?v=18");
-@import url("theme.css?v=8");
+@import url("theme.css?v=9");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -56,6 +56,25 @@ body {
 
 .admin-sidebar.collapsed {
   width: 58px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* The 42px mark is wider than the collapsed rail's content box, so centre
+   the brand row and scale the mark down — the same treatment the <=992px
+   patch already applies. Without it the logo sat left-aligned and the
+   sidebar's overflow:hidden sliced it in half. */
+.admin-sidebar.collapsed .brand-box {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.admin-sidebar.collapsed .brand-logo {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
 }
 
 .brand-box {
@@ -1630,6 +1649,333 @@ a.mini-metric-card:focus-visible {
 .badge-danger    { background: var(--gp-danger-bg); color: var(--gp-danger); }
 .badge-secondary { background: #e2e8f0; color: #475569; padding: 7px 11px; border-radius: var(--gp-radius); font-size: 12px; font-weight: 800; }
 
+/* ============================================================
+   Leases & Rent
+   ============================================================ */
+
+/* -- "How this works" explainer -- */
+.gp-howto {
+  background: #fff;
+  border: 1px solid var(--ad-line);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--gp-radius);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.gp-howto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+}
+.gp-howto-toggle > i:first-child { color: var(--gold); }
+.gp-howto-caret {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform .18s ease;
+}
+.gp-howto-toggle.is-collapsed .gp-howto-caret { transform: rotate(180deg); }
+.gp-howto-body {
+  padding: 0 18px 6px;
+  /* Generous cap so the steps never clip on a narrow screen; max-height needs a
+     concrete value for the collapse to animate at all. */
+  max-height: 1400px;
+  transition: max-height .28s ease, opacity .18s ease;
+}
+.gp-howto-body.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+.gp-howto-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+}
+.gp-howto-steps li {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.gp-howto-steps strong { color: var(--text-main); }
+.gp-howto-steps .gp-rent-badge { vertical-align: baseline; }
+
+/* Sitting under the rent roll it is reference material, not a lead banner:
+   quieter ground, and margin above instead of below. */
+.gp-howto.is-footnote {
+  margin: 24px 0 0;
+  background: var(--gjc-soft-2);
+}
+.gp-howto.is-footnote .gp-howto-toggle { color: var(--text-muted); }
+.gp-howto.is-footnote .gp-howto-toggle span { color: var(--text-main); }
+
+/* -- Callout strip (e.g. stalls with no lease on file) -- */
+.gp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--gp-radius);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.gp-notice > i { margin-top: 3px; font-size: 16px; }
+.gp-notice.is-warning {
+  background: var(--gp-warning-bg);
+  color: var(--gp-warning);
+  border: 1px solid rgba(180, 83, 9, 0.22);
+}
+.gp-notice.is-warning strong { color: var(--gp-warning); }
+.gp-notice.is-info {
+  background: var(--gp-info-bg);
+  color: var(--gp-info);
+  border: 1px solid rgba(29, 78, 216, 0.18);
+}
+.gp-notice.is-info strong { color: var(--gp-info); }
+
+/* -- Label/value field grid, for detail pages that live inside the admin
+   shell (admin/merchant_details.php). Same shape as detail_view.css's
+   .uv-field, restated here so those pages need only admin.css. -- */
+.gp-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px 26px;
+}
+.gp-field { display: flex; align-items: flex-start; gap: 13px; min-width: 0; }
+.gp-field-ic {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--gp-radius);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: var(--emerald-soft-2);
+  color: var(--gp-green-700);
+}
+.gp-field-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gp-field-value {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 3px;
+  word-break: break-word;
+}
+.gp-field-value.is-mono { font-family: var(--gp-mono); font-weight: 600; font-size: 13.5px; }
+
+/* A stat tile whose figure is a badge, not a number — the mono/tabular
+   treatment .detail-stat strong applies would fight the pill. */
+.detail-stat strong.gp-stat-plain { font-family: inherit; font-size: inherit; }
+
+/* -- Uploaded documents, opened through the admin/doc.php proxy -- */
+.gp-doc-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.gp-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--gp-radius);
+  background: var(--gjc-soft-2);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.gp-doc-link:hover {
+  background: #fff;
+  border-color: rgba(240, 165, 0, 0.55);
+  color: var(--emerald-800);
+}
+.gp-doc-link > i:first-child { color: var(--gp-green-700); }
+.gp-doc-link-out { font-size: 11px; color: var(--text-muted); }
+
+/* -- Rent standing badges -- */
+.gp-rent-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--gp-radius);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  background: #e2e8f0;
+  color: #475569;
+}
+.gp-rent-badge.is-late    { background: var(--gp-danger-bg);  color: var(--gp-danger); }
+.gp-rent-badge.is-ok      { background: var(--gp-success-bg); color: var(--gp-success); }
+.gp-rent-badge.is-ahead   { background: #dbeafe;              color: #1d4ed8; }
+.gp-rent-badge.is-partial { background: var(--gp-warning-bg); color: var(--gp-warning); }
+.gp-rent-badge.is-pending { background: var(--gold-soft);     color: var(--gp-warning); }
+.gp-rent-badge.is-closed,
+.gp-rent-badge.is-muted   { background: #e2e8f0;              color: #64748b; }
+
+/* -- Rent roll table -- */
+.gp-rent-table .gp-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gp-rent-table tr.is-late-row td { background: rgba(180, 35, 24, 0.035); }
+.gp-cell-note {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.gp-cell-note.is-late { color: var(--gp-danger); font-weight: 700; }
+.gp-cell-note.is-soon { color: var(--gp-warning); font-weight: 700; }
+.gp-amount-due    { color: var(--gp-danger); font-variant-numeric: tabular-nums; }
+.gp-amount-credit { color: #1d4ed8;          font-variant-numeric: tabular-nums; }
+.gp-row-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.gp-empty {
+  text-align: center;
+  padding: 44px 24px;
+  color: var(--text-muted);
+}
+.gp-empty > i {
+  display: block;
+  font-size: 26px;
+  margin-bottom: 12px;
+  color: var(--ad-line);
+}
+.gp-empty strong { display: block; color: var(--text-main); font-size: 15px; }
+.gp-empty p { margin: 6px auto 0; max-width: 460px; font-size: 13px; }
+
+/* Highlight the summary card the roll is currently filtered by. */
+.metric-card.is-filtering { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* -- Lease ledger (admin/lease_details.php) -- */
+/* Back link for admin pages that drill into one record. The topbar already
+   carries the record's name, so this only has to point the way out. */
+.gp-detail-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.gp-detail-back a:hover { color: var(--emerald-800); }
+
+.gp-ledger-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--gp-radius);
+  background: var(--gjc-soft-2);
+  border-left: 4px solid #cbd5e1;
+}
+.gp-ledger-summary p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.gp-ledger-summary.is-late  { background: var(--gp-danger-bg);  border-left-color: var(--gp-danger); }
+.gp-ledger-summary.is-ok    { background: var(--gp-success-bg); border-left-color: var(--gp-success); }
+.gp-ledger-summary.is-ahead { background: #dbeafe;              border-left-color: #1d4ed8; }
+.gp-ledger-summary.is-pending { background: var(--gold-soft);   border-left-color: var(--gold); }
+
+.detail-stat small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gjc-muted);
+}
+.gp-pane-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+.gp-subhead {
+  margin: 26px 0 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gp-collect-form {
+  padding: 16px;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--gp-radius);
+  background: var(--gjc-soft-2);
+  margin: 0 0 4px;
+}
+.gp-readonly-field {
+  padding: 8px 12px;
+  border: 1px dashed var(--ad-line);
+  border-radius: var(--gp-radius);
+  background: var(--gjc-soft-2);
+  font-weight: 700;
+  color: var(--text-main);
+}
+.gp-schedule-table tbody tr { cursor: pointer; }
+.gp-schedule-table tbody tr:hover { background: var(--gjc-soft-2); }
+.gp-schedule-table tbody tr:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+.gp-schedule-table tbody tr.is-late-row { background: rgba(180, 35, 24, 0.04); }
+.gp-schedule-table td { font-variant-numeric: tabular-nums; }
+
+/* The theme only restyles .btn-outline-secondary, so the void button would
+   otherwise render as bare red text. Match the same pill treatment. */
+.js-void-payment.btn-outline-danger {
+  background: #fff;
+  border: 1px solid var(--gp-danger);
+  border-radius: var(--gp-radius-pill);
+  color: var(--gp-danger);
+  font-weight: 700;
+}
+.js-void-payment.btn-outline-danger:hover:not(:disabled) {
+  background: var(--gp-danger-bg);
+  color: var(--gp-danger);
+}
+.js-void-payment.btn-outline-danger:disabled { opacity: .5; }
+
+.gp-inline-preview {
+  display: none;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--gp-radius);
+  background: var(--gp-success-bg);
+  color: var(--gp-success);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.gp-inline-preview.is-visible { display: flex; }
+.gp-inline-preview i { margin-top: 2px; }
+
+@media (max-width: 768px) {
+  .gp-row-actions { justify-content: flex-start; }
+  .gp-howto-steps li { font-size: 13px; }
+}
+
 /* ── Leases & Rent filter bar ── */
 .lease-filter-bar {
   display: flex;
@@ -1667,8 +2013,11 @@ a.mini-metric-card:focus-visible {
 .mt-2  { margin-top: 10px !important; }
 .mt-1  { margin-top: 6px !important; }
 
+/* An <a> to the stall's own page (admin/merchant_details.php), so the card
+   opens in a new tab, gets a real URL, and needs the link chrome reset. */
 .tenant-card {
   position: relative;
+  display: block;
   width: 100%;
   min-height: 150px;
   border: 1px solid var(--ad-line);
@@ -1676,6 +2025,8 @@ a.mini-metric-card:focus-visible {
   background: #fff;
   padding: 18px;
   text-align: left;
+  text-decoration: none;
+  color: var(--text-main);
   box-shadow: 0 1px 2px rgba(16, 32, 24, 0.04);
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }

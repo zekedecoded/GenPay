@@ -1,6 +1,6 @@
 /* GenPay Clear UI Theme
    Shared override for admin, student, merchant, login, and public pages. */
-@import url("theme.css?v=8");
+@import url("theme.css?v=9");
 
 :root {
   /* Primary green scale — aliases of the shared gp-* theme
@@ -450,7 +450,6 @@ img {
 .ce-mint-btn,
 .btn-primary-custom,
 .create-topup-btn,
-.create-encash-btn,
 .export-btn,
 .load-cash-btn,
 .save-settings-btn {
@@ -474,7 +473,6 @@ img {
 .profile-save-btn:hover,
 .ce-mint-btn:hover,
 .create-topup-btn:hover,
-.create-encash-btn:hover,
 .export-btn:hover,
 .load-cash-btn:hover,
 .save-settings-btn:hover {

@@ -31,10 +31,14 @@ function gjc_money_plain($amount): string
 // GenCoin conversion rate: ₱10 = 1 GC (same rate the POS wallet-load flow uses).
 define('GJC_PESOS_PER_GC', 10);
 
-// Restricted-product strike policy: warn the merchant at 3 blocked attempts;
-// hitting 5 auto-suspends the whole stall (owner + staff logins, student
-// purchases) for 3 days and restarts the count. Finance can lift a suspension
-// early from admin/restricted_products.php.
+// Restricted-product strike policy DEFAULTS: warn the merchant at 3 blocked
+// attempts; hitting 5 auto-suspends the whole stall (owner + staff logins,
+// student purchases) for 3 days and restarts the count. Finance can lift a
+// suspension early from admin/restricted_products.php.
+//
+// These are the fallbacks only — the live values are the 'violation_*' keys in
+// app_settings, editable from admin/settings.php. Read them at runtime with
+// gjc_setting_int(), not these constants.
 define('GJC_VIOLATION_WARN_AT', 3);
 define('GJC_VIOLATION_RISK_AT', 5);
 define('GJC_VIOLATION_SUSPEND_DAYS', 3);
@@ -492,10 +496,10 @@ function gjc_merchant_suspended_until(PDO $db, int $userId): ?string
 
 /**
  * Records one blocked-restricted-product attempt (add or edit — both call
- * this) against the merchant admin who tried it. At GJC_VIOLATION_WARN_AT
- * strikes the merchant gets an "approaching suspension" warning; hitting
- * GJC_VIOLATION_RISK_AT auto-suspends the whole stall for
- * GJC_VIOLATION_SUSPEND_DAYS days (owner + staff logins, student purchases —
+ * this) against the merchant admin who tried it. At the 'violation_warn_at'
+ * threshold the merchant gets an "approaching suspension" warning; hitting
+ * 'violation_risk_at' auto-suspends the whole stall for
+ * 'violation_suspend_days' days (owner + staff logins, student purchases —
  * enforced via gjc_merchant_suspended_until), notifies the merchant plus
  * every finance/admin user, and spends the strikes: the counter restarts at
  * 0 so reinstatement gets a clean slate. The full history stays in the
@@ -518,23 +522,33 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
     $stmt->execute([$merchantUserId]);
     $count = (int) $stmt->fetchColumn();
 
-    if ($count === GJC_VIOLATION_WARN_AT) {
-        $strikesLeft = GJC_VIOLATION_RISK_AT - GJC_VIOLATION_WARN_AT;
+    // Finance-tunable policy (admin/settings.php); the GJC_VIOLATION_* constants
+    // remain the fallback when no override is stored.
+    $warnAt      = gjc_setting_int($db, 'violation_warn_at');
+    $riskAt      = gjc_setting_int($db, 'violation_risk_at');
+    $suspendDays = gjc_setting_int($db, 'violation_suspend_days');
+
+    // >= not ===: if finance lowers the threshold below a merchant's current
+    // tally, the warning still fires on the next strike instead of being
+    // skipped forever. Bounded above by $riskAt so it can't fire post-suspension.
+    if ($count >= $warnAt && $count < $riskAt) {
+        $strikesLeft = $riskAt - $count;
         gjc_notify(
             $db,
             $merchantUserId,
             'compliance',
             'Warning: restricted product attempts',
-            "You've now had " . GJC_VIOLATION_WARN_AT . " blocked attempts to list restricted products ({$reason}). "
-                . "{$strikesLeft} more and your merchant account will be suspended for " . GJC_VIOLATION_SUSPEND_DAYS . " days — please check the Restricted Products list before adding new items.",
+            "You've now had {$count} blocked attempts to list restricted products ({$reason}). "
+                . "{$strikesLeft} more and your merchant account will be suspended for {$suspendDays} days — please check the Restricted Products list before adding new items.",
             'triangle-exclamation'
         );
     }
 
-    if ($count >= GJC_VIOLATION_RISK_AT) {
+    if ($count >= $riskAt) {
+        // $suspendDays is an int cast, so interpolating it here is injection-safe.
         $db->prepare(
             "UPDATE users
-                SET restricted_suspended_until = DATE_ADD(NOW(), INTERVAL " . GJC_VIOLATION_SUSPEND_DAYS . " DAY),
+                SET restricted_suspended_until = DATE_ADD(NOW(), INTERVAL {$suspendDays} DAY),
                     restricted_violation_count = 0
               WHERE userID = ?"
         )->execute([$merchantUserId]);
@@ -553,7 +567,7 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
                     'event' => 'auto_suspended',
                     'merchant_user_id' => $merchantUserId,
                     'strikes' => $count,
-                    'suspended_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'suspended_days' => $suspendDays,
                     'suspended_until' => $untilLabel,
                 ]
             );
@@ -564,7 +578,7 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
             $merchantUserId,
             'compliance',
             'Your account has been suspended',
-            "You reached " . GJC_VIOLATION_RISK_AT . " blocked attempts to list restricted products ({$reason}). Your merchant account — including staff logins and stall sales — is suspended for " . GJC_VIOLATION_SUSPEND_DAYS . " days, until {$untilLabel}. The GenPay finance team can lift it earlier.",
+            "You reached {$count} blocked attempts to list restricted products ({$reason}). Your merchant account — including staff logins and stall sales — is suspended for {$suspendDays} days, until {$untilLabel}. The GenPay finance team can lift it earlier.",
             'triangle-exclamation'
         );
 
@@ -575,7 +589,7 @@ function gjc_record_product_violation(PDO $db, int $merchantUserId, string $reas
                 (int) $financeId,
                 'compliance',
                 'Merchant account suspended',
-                "{$merchantName} hit " . GJC_VIOLATION_RISK_AT . " blocked attempts to list restricted products and has been auto-suspended until {$untilLabel}. You can lift the suspension early from the Restricted Products page.",
+                "{$merchantName} hit {$count} blocked attempts to list restricted products and has been auto-suspended until {$untilLabel}. You can lift the suspension early from the Restricted Products page.",
                 'triangle-exclamation',
                 ADMIN_URL . '/restricted_products.php'
             );
@@ -1685,6 +1699,109 @@ function gjc_user_label(PDO $db, int $userId): string
     return $name;
 }
 
+// ── App settings: finance-editable policy knobs ────────────────────────────
+// Deliberately NOT the `system_settings` table — that one is the economy
+// singleton (circulation cap + cashier vault), guarded by CHECK constraints and
+// DB triggers, and writable only by CirculationEngine. These are plain policy
+// numbers finance can retune without a deploy.
+
+/**
+ * Canonical keys + fallbacks. A key absent from the DB reads as its default.
+ * The GJC_VIOLATION_* constants stay the single source of truth for their own
+ * defaults — the settings row only overrides them at runtime.
+ */
+function gjc_app_setting_defaults(): array
+{
+    return [
+        // Transaction limits (panel 2)
+        'transfer_daily_limit'     => 5000.00,
+        'transfer_min_amount'      => 1.00,
+        'withdraw_min_amount'      => 1.00,
+        'topup_max_per_request'    => 5000.00,
+        'wallet_default_spend_cap' => 0.00, // 0 = no default cap on new wallets
+
+        // Merchant restricted-product policy (panel 3) — whole numbers
+        'violation_warn_at'      => (float) GJC_VIOLATION_WARN_AT,
+        'violation_risk_at'      => (float) GJC_VIOLATION_RISK_AT,
+        'violation_suspend_days' => (float) GJC_VIOLATION_SUSPEND_DAYS,
+
+        // Fee waiver credits (panel 4)
+        'fee_waiver_max_amount' => 50000.00,
+    ];
+}
+
+function gjc_ensure_app_settings_schema(PDO $db): void
+{
+    $db->exec(
+        "CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key   VARCHAR(64)   NOT NULL,
+            setting_value DECIMAL(15,2) NOT NULL,
+            updated_by    INT           NULL,
+            updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                        ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (setting_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+    );
+}
+
+/**
+ * All settings, defaults merged under whatever the DB overrides. Cached per
+ * request. If the table is unreachable the defaults still come back, so a
+ * schema problem loosens nothing — enforcement keeps running on the built-ins.
+ */
+function gjc_settings_all(PDO $db, bool $refresh = false): array
+{
+    static $cache = null;
+    if ($cache !== null && !$refresh) {
+        return $cache;
+    }
+
+    $cache = gjc_app_setting_defaults();
+    try {
+        gjc_ensure_app_settings_schema($db);
+        $rows = $db->query("SELECT setting_key, setting_value FROM app_settings")
+                   ->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $key = (string) $row['setting_key'];
+            if (array_key_exists($key, $cache)) {
+                $cache[$key] = (float) $row['setting_value'];
+            }
+        }
+    } catch (Throwable) {
+        // Defaults already loaded above.
+    }
+
+    return $cache;
+}
+
+function gjc_setting(PDO $db, string $key): float
+{
+    return (float) (gjc_settings_all($db)[$key] ?? gjc_app_setting_defaults()[$key] ?? 0.0);
+}
+
+/** Whole-number settings (strike counts, day spans) stored in the same column. */
+function gjc_setting_int(PDO $db, string $key): int
+{
+    return (int) round(gjc_setting($db, $key));
+}
+
+function gjc_setting_set(PDO $db, string $key, float $value, int $userId): void
+{
+    if (!array_key_exists($key, gjc_app_setting_defaults())) {
+        throw new RuntimeException("Unknown setting key: {$key}");
+    }
+    gjc_ensure_app_settings_schema($db);
+    $db->prepare(
+        "INSERT INTO app_settings (setting_key, setting_value, updated_by)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+            setting_value = VALUES(setting_value),
+            updated_by    = VALUES(updated_by)"
+    )->execute([$key, $value, $userId]);
+
+    gjc_settings_all($db, true); // bust the per-request cache
+}
+
 // ── Remember me: persistent login via single-use rotating tokens ───────────
 // Cookie 'gjc_remember' = "<selector>:<validator>"; only a SHA-256 hash of the
 // validator is stored, so a leaked table can't forge cookies. Tokens rotate on
@@ -2699,9 +2816,20 @@ function gjc_student_wallet(PDO $db, int $userId): array
         $stmt->execute([$userId]);
         $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$wallet) {
-            $db->prepare(
-                "INSERT IGNORE INTO student_wallets (user_id, balance) VALUES (?, 0)",
-            )->execute([$userId]);
+            // New wallets inherit the configured default spend cap (0 = none).
+            // Parents can still override it per student afterwards.
+            $defaultCap = gjc_setting($db, 'wallet_default_spend_cap');
+            try {
+                $db->prepare(
+                    "INSERT IGNORE INTO student_wallets (user_id, balance, daily_spend_limit)
+                     VALUES (?, 0, ?)",
+                )->execute([$userId, $defaultCap]);
+            } catch (Throwable) {
+                // Older schema without daily_spend_limit — fall back.
+                $db->prepare(
+                    "INSERT IGNORE INTO student_wallets (user_id, balance) VALUES (?, 0)",
+                )->execute([$userId]);
+            }
             $stmt->execute([$userId]);
             $wallet = $stmt->fetch(PDO::FETCH_ASSOC);
         }
@@ -2914,12 +3042,6 @@ function gjc_meeting_default_location(PDO $db): string
 {
     $location = $db->query("SELECT default_location FROM meeting_settings WHERE id = 1")->fetchColumn();
     return $location !== false && $location !== '' ? $location : 'GJC Finance Office';
-}
-
-function gjc_down_payment_default_amount(PDO $db): float
-{
-    $amount = $db->query("SELECT down_payment_default_amount FROM meeting_settings WHERE id = 1")->fetchColumn();
-    return $amount !== false ? (float) $amount : 0.0;
 }
 
 function gjc_wallet_user_stats(PDO $db): array
@@ -4195,6 +4317,157 @@ function gjc_notify_wallet(PDO $db, int $studentWalletId, string $type, string $
     if ($userId > 0) {
         gjc_notify($db, $userId, $type, $title, $message, $icon, $link);
     }
+}
+
+/**
+ * Tell a stall tenant that rent they handed over has been logged, with the
+ * reference number they can quote back.
+ *
+ * Collecting the money is the operation that matters here: the caller has
+ * already committed the payment by the time this runs, so a notification that
+ * cannot be written must never bubble up and make a successful collection look
+ * like it failed. Everything below is best-effort.
+ */
+function gjc_notify_rent_payment(
+    PDO $db,
+    int $merchantUserId,
+    float $amount,
+    string $period,
+    string $referenceNo,
+    float $stillOwedThisMonth = 0.0,
+    ?string $nextDueDate = null
+): void {
+    if ($merchantUserId <= 0) {
+        return;
+    }
+
+    $month = gjc_rent_period_label($period);
+    $message = gjc_money_plain($amount) . ' was recorded against your ' . $month .
+               ' rent. Reference ' . $referenceNo . '.';
+
+    if ($stillOwedThisMonth > 0.005) {
+        $message .= ' That month is still ' . gjc_money_plain($stillOwedThisMonth) . ' short.';
+    } elseif ($nextDueDate !== null && strtotime($nextDueDate)) {
+        $message .= ' Your next rent is due ' . date('M j, Y', strtotime($nextDueDate)) . '.';
+    } else {
+        $message .= ' Your rent is fully settled.';
+    }
+
+    try {
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'rent',
+            'Rent payment recorded',
+            $message,
+            'receipt',
+            MERCHANT_URL . '/dashboard.php'
+        );
+    } catch (\Throwable $e) {
+        // The tenant loses a notification, not their payment.
+        error_log('gjc_notify_rent_payment failed for user ' . $merchantUserId . ': ' . $e->getMessage());
+    }
+}
+
+/**
+ * Counterpart to gjc_notify_rent_payment(): a receipt that was keyed by mistake
+ * has been removed, so a month the tenant was told was settled is open again.
+ */
+function gjc_notify_rent_payment_voided(
+    PDO $db,
+    int $merchantUserId,
+    float $amount,
+    string $period,
+    string $referenceNo
+): void {
+    if ($merchantUserId <= 0) {
+        return;
+    }
+
+    try {
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'rent',
+            'Rent payment removed',
+            'The finance office removed a ' . gjc_money_plain($amount) . ' payment (' . $referenceNo .
+            ') that had been recorded for your ' . gjc_rent_period_label($period) .
+            ' rent. Please check with them if this was not expected.',
+            'receipt',
+            MERCHANT_URL . '/dashboard.php'
+        );
+    } catch (\Throwable $e) {
+        error_log('gjc_notify_rent_payment_voided failed for user ' . $merchantUserId . ': ' . $e->getMessage());
+    }
+}
+
+/**
+ * Marks which billing period a lease has already been reminded about, so the
+ * "rent due soon" notice fires once per month instead of on every page load
+ * that happens to fall inside the reminder window.
+ */
+function gjc_ensure_rent_reminder_schema(PDO $db): void
+{
+    if (!gjc_table_exists($db, 'merchant_leases')) {
+        return;
+    }
+
+    if (in_array('rent_reminder_period', gjc_table_columns($db, 'merchant_leases'), true)) {
+        return;
+    }
+
+    try {
+        $db->exec("ALTER TABLE merchant_leases ADD COLUMN rent_reminder_period VARCHAR(7) NULL");
+        gjc_table_columns($db, 'merchant_leases', true);
+    } catch (\Throwable $ignored) {}
+}
+
+/**
+ * Heads-up that the next month's rent is coming due. Sent once per billing
+ * period; see MerchantTenantDirectory::dispatchRentReminders() for when.
+ */
+function gjc_notify_rent_due_soon(
+    PDO $db,
+    int $merchantUserId,
+    float $amount,
+    string $period,
+    string $dueDate,
+    int $daysUntil,
+    float $alsoOverdue = 0.0
+): void {
+    if ($merchantUserId <= 0) {
+        return;
+    }
+
+    $when = $daysUntil === 1 ? 'tomorrow' : 'in ' . $daysUntil . ' days';
+    $message = 'Your ' . gjc_money_plain($amount) . ' rent for ' . gjc_rent_period_label($period) .
+               ' is due on ' . date('M j, Y', strtotime($dueDate)) . ' — ' . $when . '.';
+
+    if ($alsoOverdue > 0.005) {
+        $message .= ' You also have ' . gjc_money_plain($alsoOverdue) . ' still unpaid from earlier months.';
+    }
+
+    try {
+        gjc_notify(
+            $db,
+            $merchantUserId,
+            'rent',
+            'Rent due ' . $when,
+            $message,
+            'calendar-day',
+            MERCHANT_URL . '/dashboard.php'
+        );
+    } catch (\Throwable $e) {
+        error_log('gjc_notify_rent_due_soon failed for user ' . $merchantUserId . ': ' . $e->getMessage());
+    }
+}
+
+/** "2026-08" -> "August 2026", falling back to the raw label if it is malformed. */
+function gjc_rent_period_label(string $period): string
+{
+    $ts = strtotime($period . '-01');
+
+    return $ts ? date('F Y', $ts) : $period;
 }
 
 /** Fires once ever, the moment a user's very first notification would be created. */

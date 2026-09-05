@@ -231,3 +231,41 @@
 }
 
 .pd-txn-amount.is-in { color: var(--gp-success); }
+
+/* ===== MOBILE (<768px) ===== */
+@media (max-width: 767.98px) {
+  /* The meta line — "TXN-2026-000481 · Aug 27, 2026" — shares the row with
+     the amount on a phone, so it ran out of width and truncated the
+     reference to "TXN-2026-000481 · Aug 27, …". Giving it its own full-width
+     line under the label fixes that without dropping anything:
+
+         [icon]  Payment                     -P85.00
+                 TXN-2026-000481 · Aug 27, 2026
+
+     display:contents on .pd-txn-info lets its <strong> and <small> sit on
+     this grid directly; the markup is shared with the desktop layout. */
+  .pd-txn {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon label amount"
+      "icon meta  meta";
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 2px;
+  }
+
+  .pd-txn-icon { grid-area: icon; }
+  .pd-txn-info { display: contents; }
+  .pd-txn-info strong { grid-area: label; }
+
+  .pd-txn-info small {
+    grid-area: meta;
+    /* It has the whole width now, so it no longer has to cut itself short. */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .pd-txn-amount { grid-area: amount; }
+}

@@ -1,5 +1,5 @@
 @import url("gjc-clear.css?v=18");
-@import url("theme.css?v=8");
+@import url("theme.css?v=9");
 
 :root {
   /* Alias layer — pure aliases of the shared gp-* theme
@@ -1422,4 +1422,276 @@ html {
 /* Narrow screens: let the pair stack rather than force the column wider. */
 @media (max-width: 720px) {
   .merchant-row-actions { flex-wrap: wrap; gap: 6px; }
+}
+
+/* ============================================================
+   Rent & Lease (merchant/rent.php)
+   The tenant's read-only mirror of the finance rent roll.
+   ============================================================ */
+
+.gp-rent-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 22px 24px;
+  border-radius: var(--gp-radius);
+  background: var(--gp-grad-hero);
+  color: #fff;
+  box-shadow: var(--gp-shadow-hero);
+}
+.gp-rent-hero-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+.gp-rent-hero-amount {
+  margin: 8px 0 6px;
+  font-family: var(--gp-mono);
+  font-size: 34px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.05;
+}
+.gp-rent-hero-note {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.82);
+}
+.gp-rent-hero-badge {
+  padding: 6px 13px;
+  border-radius: var(--gp-radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+/* Owing money is the one state that should not read as calm. */
+.gp-rent-hero.is-late {
+  background: linear-gradient(135deg, #7f1d1d 0%, #b42318 100%);
+}
+.gp-rent-hero.is-late .gp-rent-hero-badge {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.gp-rent-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--gp-radius);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: #e2e8f0;
+  color: #475569;
+}
+.gp-rent-chip.is-ok      { background: var(--gp-success-bg); color: var(--gp-success); }
+.gp-rent-chip.is-late    { background: var(--gp-danger-bg);  color: var(--gp-danger); }
+.gp-rent-chip.is-ahead   { background: #dbeafe;              color: #1d4ed8; }
+.gp-rent-chip.is-partial { background: var(--gp-warning-bg); color: var(--gp-warning); }
+.gp-rent-chip.is-muted   { background: #e2e8f0;              color: #64748b; }
+
+.gp-rent-owed   { color: var(--gp-danger); font-weight: 700; }
+.gp-rent-credit { color: #1d4ed8; }
+.gp-rent-schedule td { font-variant-numeric: tabular-nums; }
+.gp-rent-schedule tr.is-late-row td { background: rgba(180, 35, 24, 0.04); }
+
+.gp-rent-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--gp-muted);
+}
+.gp-rent-empty > i {
+  display: block;
+  font-size: 28px;
+  margin-bottom: 14px;
+  color: var(--gp-line);
+}
+.gp-rent-empty strong {
+  display: block;
+  font-size: 16px;
+  color: var(--gp-ink);
+}
+.gp-rent-empty p {
+  margin: 8px auto 0;
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .gp-rent-hero-amount { font-size: 28px; }
+}
+
+/* ── Panel headers on a phone ─────────────────────────────────────────
+   Six merchant pages put action buttons in .merchant-panel-header with
+   Bootstrap's `d-flex justify-content-between` and no wrap. Below ~420px the
+   title and the buttons fight over one row: "+ Add Product" was rendering
+   125px wide and 110px TALL, its label broken across three lines, and "Print
+   Full Menu" was worse at 69px wide.
+
+   Stack them instead. align-self on the children rather than align-items on
+   the parent, because Bootstrap's .align-items-center utility is !important
+   and would otherwise win.
+   ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .merchant-panel-header.d-flex {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .merchant-panel-header.d-flex > * {
+    align-self: stretch;
+  }
+
+  /* An action cluster shares the width evenly, one line per label. */
+  .merchant-panel-header.d-flex > .d-flex {
+    width: 100%;
+  }
+
+  .merchant-panel-header.d-flex > .d-flex > .btn,
+  .merchant-panel-header.d-flex > .d-flex > .merchant-view-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+    font-size: 13px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  /* A single button in the header spans the width — the standard mobile
+     treatment for a panel's one primary action. */
+  .merchant-panel-header.d-flex > .btn,
+  .merchant-panel-header.d-flex > .merchant-view-btn {
+    text-align: center;
+  }
+}
+
+/* ============================================================
+   Business Profile detail (merchant/settings.php)
+   Read-only reference blocks: the finance office is the source
+   of truth, so every value is displayed, never edited here.
+   ============================================================ */
+
+.gp-bp-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2px;
+  margin: 0;
+  border-top: 1px solid var(--ad-line);
+}
+.gp-bp-list > div {
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--ad-line);
+}
+.gp-bp-list .gp-bp-wide {
+  grid-column: 1 / -1;
+}
+.gp-bp-list dt {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.gp-bp-list dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.gp-bp-value {
+  color: var(--text-main);
+  font-weight: 600;
+}
+/* A gap in the record should read as a gap, not as an empty cell. */
+.gp-bp-missing {
+  color: var(--text-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.gp-bp-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--gp-radius);
+  font-size: 11.5px;
+  font-weight: 800;
+  background: #e2e8f0;
+  color: #475569;
+}
+.gp-bp-chip.is-ok   { background: var(--gp-success-bg); color: var(--gp-success); }
+.gp-bp-chip.is-late { background: var(--gp-warning-bg); color: var(--gp-warning); }
+.gp-bp-chip .gp-bp-value,
+.gp-bp-chip .gp-bp-missing { color: inherit; font-weight: inherit; font-style: normal; }
+
+.gp-bp-docs {
+  display: grid;
+  gap: 10px;
+}
+.gp-bp-doc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--gp-radius);
+  background: #fff;
+}
+.gp-bp-doc.is-missing {
+  background: var(--gjc-soft-2);
+  border-style: dashed;
+}
+.gp-bp-doc-body strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-main);
+}
+.gp-bp-doc-body span {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.gp-bp-doc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gp-bp-empty {
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--text-muted);
+}
+.gp-bp-empty > i {
+  display: block;
+  font-size: 26px;
+  margin-bottom: 12px;
+  color: var(--ad-line);
+}
+.gp-bp-empty strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text-main);
+}
+.gp-bp-empty p {
+  margin: 8px auto 0;
+  max-width: 52ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+@media (max-width: 767.98px) {
+  .gp-bp-list { grid-template-columns: 1fr; }
+  .gp-bp-doc { align-items: flex-start; }
+  .gp-bp-doc-actions { width: 100%; }
+  .gp-bp-doc-actions > .merchant-view-btn { flex: 1 1 0; text-align: center; }
 }

@@ -6,7 +6,7 @@
 // Requires: $currentPage string (e.g. 'dashboard', 'inventory', 'staff', etc.)
 $currentPage = $currentPage ?? '';
 ?>
-<aside class="sd-sidebar">
+<aside class="sd-sidebar" id="sdSidebar">
     <div class="sd-brand">
         <div class="sd-brand-logo"><img src="<?= ICONS_URL ?>/gp_logo.png" alt="GenPay"></div>
         <div class="sd-brand-text">
@@ -36,6 +36,10 @@ $currentPage = $currentPage ?? '';
             <i class="fa-solid fa-money-check-dollar"></i>
             <span>Encash</span>
         </a>
+        <a href="<?= MERCHANT_URL ?>/rent.php" class="<?= $currentPage === 'rent' ? 'active' : '' ?>">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+            <span>Rent &amp; Lease</span>
+        </a>
         <a href="<?= MERCHANT_URL ?>/history.php" class="<?= $currentPage === 'history' ? 'active' : '' ?>">
             <i class="fa-solid fa-receipt"></i>
             <span>Sales History</span>
@@ -51,6 +55,31 @@ $currentPage = $currentPage ?? '';
         <span>Logout</span>
     </a>
 </aside>
+<script>
+/* Rail collapse. The state has to survive navigation — every item in the rail
+   is a link, so without persisting it the sidebar sprang back open on the next
+   page load. The class is restored inline right after the <aside> (before
+   first paint, so there is no flash of the wide rail and no width transition),
+   and re-saved by watching the element itself. One key across the student,
+   merchant-admin and merchant-staff shells: it is the same component. */
+function toggleSdSidebar() {
+    var el = document.getElementById('sdSidebar');
+    if (el) el.classList.toggle('collapsed');
+}
+(function () {
+    var el = document.getElementById('sdSidebar');
+    if (!el) return;
+    var KEY = 'gjc.sdSidebarCollapsed';
+    try {
+        if (localStorage.getItem(KEY) === '1') el.classList.add('collapsed');
+    } catch (e) {}
+    new MutationObserver(function () {
+        try {
+            localStorage.setItem(KEY, el.classList.contains('collapsed') ? '1' : '0');
+        } catch (e) {}
+    }).observe(el, { attributes: true, attributeFilter: ['class'] });
+})();
+</script>
 <?php require __DIR__ . '/logout_modal.php'; ?>
 <script>
 // Instant gold highlight on click (the logout_modal.php handler only covers

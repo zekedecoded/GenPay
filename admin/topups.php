@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 gjc_require_role(['finance']);
 gjc_ensure_operational_tables($db);
@@ -46,7 +47,7 @@ $currentPage = 'topups';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=26">
     <link rel="stylesheet" href="<?= CSS_URL ?>/topups.css?v=9">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
@@ -305,16 +306,16 @@ $currentPage = 'topups';
                         <!-- Fee breakdown preview (step 2) -->
                         <div id="sgc-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:10px 14px;font-size:12px;border:1px solid var(--gp-success-bg);margin-bottom:14px">
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                <span style="color:var(--gp-muted)">Cash value</span>
-                                <span id="sgc-fp-cash" style="font-weight:600;color:#111"></span>
+                                <span style="color:#27764b;font-weight:700">Credited to wallet</span>
+                                <span id="sgc-fp-credited" style="font-weight:800;color:#27764b"></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                                <span style="color:var(--gp-red)">Service fee (2%)</span>
+                                <span style="color:var(--gp-red)">Service fee (<?= CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE) ?>)</span>
                                 <span id="sgc-fp-fee" style="font-weight:600;color:var(--gp-red)"></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;border-top:1px solid var(--gp-success-bg);padding-top:6px;margin-top:2px">
-                                <span style="color:#27764b;font-weight:700">Credited to wallet</span>
-                                <span id="sgc-fp-credited" style="font-weight:800;color:#27764b"></span>
+                                <span style="color:#111;font-weight:700">Collect from student</span>
+                                <span id="sgc-fp-cash" style="font-weight:800;color:#111"></span>
                             </div>
                         </div>
 
@@ -363,17 +364,17 @@ $currentPage = 'topups';
                             </div>
                             <!-- Fee breakdown in preview -->
                             <div style="border-top:1px dashed var(--gp-success-bg);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
-                                <div style="display:flex;justify-content:space-between">
-                                    <span style="color:var(--gp-muted)">Cash value</span>
-                                    <span id="sgc-prev-cash" style="font-weight:600"></span>
-                                </div>
-                                <div style="display:flex;justify-content:space-between">
-                                    <span style="color:var(--gp-red)">Service fee (2%)</span>
-                                    <span id="sgc-prev-fee" style="font-weight:600;color:var(--gp-red)"></span>
-                                </div>
                                 <div style="display:flex;justify-content:space-between;font-size:13px">
                                     <span style="color:#27764b;font-weight:700">Credited to wallet</span>
                                     <span id="sgc-prev-credited" style="font-weight:800;color:#27764b"></span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between">
+                                    <span style="color:var(--gp-red)">Service fee (<?= CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE) ?>)</span>
+                                    <span id="sgc-prev-fee" style="font-weight:600;color:var(--gp-red)"></span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px">
+                                    <span style="color:#111;font-weight:700">Collect from student</span>
+                                    <span id="sgc-prev-cash" style="font-weight:800"></span>
                                 </div>
                             </div>
                         </div>
@@ -430,9 +431,8 @@ $currentPage = 'topups';
     }
 
     async function approveTopup(topupId, studentWalletId, amount) {
-        const fee      = Math.round(amount * 0.02 * 100) / 100;
-        const credited = Math.round((amount - fee) * 100) / 100;
-        const msg      = `Approve this top-up?\n\nCash received:    ₱${amount.toFixed(2)}\nService fee (2%): ₱${fee.toFixed(2)}\nCredited to wallet: ₱${credited.toFixed(2)}`;
+        const { fee, credited, total } = sgcCalcFee(amount);
+        const msg      = `Approve this top-up?\n\nCredited to wallet: ₱${credited.toFixed(2)}\nService fee (${FEE_SYSTEM_PCT}): ₱${fee.toFixed(2)}\nCollect from student: ₱${total.toFixed(2)}`;
         if (!confirm(msg)) return;
 
         const form = new FormData();
@@ -453,6 +453,10 @@ $currentPage = 'topups';
 
     // ── Send GenCoin ────────────────────────────────────────────────────────
     const SGC_API = '<?= ADMIN_URL ?>/api/economy.php';
+    // Fees ride ON TOP of the entered amount. Rates come from CirculationEngine
+    // so this preview can never drift from what the engine actually charges.
+    const FEE_SYSTEM_RATE = <?= json_encode(CirculationEngine::FEE_SYSTEM_RATE) ?>;
+    const FEE_SYSTEM_PCT  = <?= json_encode(CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE)) ?>;
     let sgcWalletId = null, sgcParentId = null, sgcStudentName = '', sgcSchoolId = '';
     let sgcMode = 'student'; // 'student' | 'parent'
 
@@ -533,10 +537,12 @@ $currentPage = 'topups';
         if (step === 3) sgcBuildPreview();
     }
 
+    // peso = the amount CREDITED to the wallet; the fee is added on top.
     function sgcCalcFee(peso) {
-        const fee      = Math.round(peso * 0.02 * 100) / 100;
-        const credited = Math.round((peso - fee) * 100) / 100;
-        return { fee, credited };
+        const fee      = Math.round(peso * FEE_SYSTEM_RATE * 100) / 100;
+        const credited = Math.round(peso * 100) / 100;
+        const total    = Math.round((credited + fee) * 100) / 100;
+        return { fee, credited, total };
     }
 
     function sgcFmt(n) {
@@ -550,7 +556,7 @@ $currentPage = 'topups';
 
     function sgcBuildPreview() {
         const peso    = parseFloat(document.getElementById('sgc-gencoins').value) || 0;
-        const { fee, credited } = sgcCalcFee(peso);
+        const { fee, credited, total } = sgcCalcFee(peso);
         const msg     = document.getElementById('sgc-message').value.trim();
 
         document.getElementById('sgc-prev-coins').textContent   = sgcFmt(peso);
@@ -558,9 +564,9 @@ $currentPage = 'topups';
         document.getElementById('sgc-prev-name').textContent    = sgcStudentName;
         document.getElementById('sgc-prev-id').textContent      = sgcSchoolId;
         document.getElementById('sgc-prev-msg').textContent     = msg || '—';
-        document.getElementById('sgc-prev-cash').textContent    = sgcFmt(peso);
-        document.getElementById('sgc-prev-fee').textContent     = '− ' + sgcFmt(fee);
         document.getElementById('sgc-prev-credited').textContent= sgcFmt(credited);
+        document.getElementById('sgc-prev-fee').textContent     = '+ ' + sgcFmt(fee);
+        document.getElementById('sgc-prev-cash').textContent    = sgcFmt(total);
         document.getElementById('sgc-confirm-coins').textContent= sgcFmt(credited) + ' (₱' + credited.toFixed(2) + ')';
         document.getElementById('sgc-confirm-name').textContent = sgcStudentName;
 
@@ -659,11 +665,11 @@ $currentPage = 'topups';
             const next    = document.getElementById('sgc-next-2');
             const preview = document.getElementById('sgc-fee-preview');
             if (peso > 0) {
-                const { fee, credited} = sgcCalcFee(peso);
+                const { fee, credited, total } = sgcCalcFee(peso);
                 document.getElementById('sgc-peso-equiv').textContent  = '≈ ' + sgcGc(peso) + ' GenCoins (₱10 = 1 GC)';
-                document.getElementById('sgc-fp-cash').textContent    = sgcFmt(peso);
-                document.getElementById('sgc-fp-fee').textContent     = '− ' + sgcFmt(fee);
                 document.getElementById('sgc-fp-credited').textContent= sgcFmt(credited);
+                document.getElementById('sgc-fp-fee').textContent     = '+ ' + sgcFmt(fee);
+                document.getElementById('sgc-fp-cash').textContent    = sgcFmt(total);
                 preview.style.display = '';
                 next.disabled = false;
             } else {
@@ -704,12 +710,13 @@ $currentPage = 'topups';
             if (data.success) {
                 const actualCredited = data.credited_amount ?? credited;
                 const actualFee      = data.fee_amount      ?? fee;
+                const actualTotal    = data.total_collected ?? (actualCredited + actualFee);
                 document.getElementById('sgc-step-3').style.display = 'none';
                 document.getElementById('sgc-success').style.display = '';
                 document.getElementById('sgc-step-label').textContent = 'Complete';
                 document.getElementById('sgc-success-msg').textContent =
                     sgcFmt(actualCredited) + ' credited to ' + sgcStudentName +
-                    ' (' + sgcFmt(amount) + ' cash − ' + sgcFmt(actualFee) + ' service fee).';
+                    ' — collect ' + sgcFmt(actualTotal) + ' (' + sgcFmt(actualFee) + ' service fee on top).';
                 document.getElementById('sgc-success-ref').textContent = data.reference || '—';
             } else {
                 errorEl.textContent = data.error || 'Failed to send. Please try again.';

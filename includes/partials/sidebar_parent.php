@@ -39,5 +39,26 @@ $currentPage = $currentPage ?? '';
         <span>Logout</span>
     </a>
 </aside>
+<script>
+/* The collapsed rail has to survive navigation: every item in it is a link,
+   so without this the sidebar sprang back open on the next page load. The
+   class is restored inline right after the <aside> (before first paint, so
+   there is no flash of the wide rail and no width transition), and re-saved
+   by watching the element itself — that catches toggleParentSidebar() as well as the
+   pages that flip the class straight from an onclick attribute. */
+(function () {
+    var el = document.getElementById('parentSidebar');
+    if (!el) return;
+    var KEY = 'gjc.parentSidebarCollapsed';
+    try {
+        if (localStorage.getItem(KEY) === '1') el.classList.add('collapsed');
+    } catch (e) {}
+    new MutationObserver(function () {
+        try {
+            localStorage.setItem(KEY, el.classList.contains('collapsed') ? '1' : '0');
+        } catch (e) {}
+    }).observe(el, { attributes: true, attributeFilter: ['class'] });
+})();
+</script>
 <?php require __DIR__ . '/logout_modal.php'; ?>
 <?php require __DIR__ . '/back_to_dashboard.php'; ?>

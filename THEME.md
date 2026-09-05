@@ -139,6 +139,19 @@ query, so this is a convention, not a token.)
 (long forms) · `--gp-container-detail` `960px` (detail views). Dashboards are
 full-bleed inside `--main-pad`.
 
+**The topbar subtitle is desktop-only.** All three shared topbars
+(`topbar_parent` / `topbar_student` / `topbar_merchant`) hide their `<p>` below
+`768px`: on nearly every page the sentence restates the title — "Activity Trail"
+over "Your own purchases and every wallet transaction across your linked
+students" — and it was spending one to two lines above the fold to do it. Set
+`$topbarSubtitleMobile = true` before requiring the partial **only** where the
+subtitle earns its lines. Two pages do today: `parent/controls.php`, because
+nothing else on it names whose wallet is being edited, and `student/dashboard.php`,
+where the bar is greeting the student rather than labelling itself. Before adding
+a third, check the page body first — `merchant/settings.php` looked like a
+candidate until its form turned out to repeat the warning, and `student/cart.php`
+until `student_scan.css` turned out to hide the whole bar on `body.sp-page`.
+
 ## Reusable classes
 
 **Cards** — `gp-card` white content card · `gp-card-head` (h3 + p, optional right-side

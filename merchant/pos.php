@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . "/../connection/config.php";
 require_once __DIR__ . "/../connection/pdo.php";
 require_once __DIR__ . "/../connection/app.php";
+require_once __DIR__ . "/../connection/CirculationEngine.php";
 
 gjc_require_role(["merchant"]);
 $currentUser = gjc_current_user($db);
@@ -38,11 +39,11 @@ $wallet = gjc_merchant_wallet($db, $ownerMerchId);
     <title>POS Terminal | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=51">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=7">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/pos.css?v=8">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         .lw-parent-choice--active { border-color: var(--gp-success) !important; background: var(--gp-success-bg); }
@@ -514,24 +515,28 @@ async function generatePaymentQr() {
                     <!-- Fee breakdown -->
                     <div id="lw-fee-preview" style="display:none;background:#fff;border-radius:10px;padding:12px 14px;font-size:12px;border:1px solid #a8dcbe;margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                            <span style="color:var(--gp-muted)">Cash value (GC × ₱10)</span>
-                            <span id="lw-fp-cash" style="font-weight:600;color:var(--gp-ink)"></span>
+                            <span style="color:var(--gp-green-700);font-weight:700">Credited to <span id="lw-fp-recipient-label">student</span></span>
+                            <span id="lw-fp-credited" style="font-weight:800;color:var(--gp-green-700)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                            <span style="color:var(--gp-red)">Service fee (3%)</span>
+                            <span style="color:var(--gp-red)">Service fee (<?= CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE + CirculationEngine::FEE_MERCHANT_RATE) ?>)</span>
                             <span id="lw-fp-fee" style="font-weight:600;color:var(--gp-red)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px;padding-left:12px">
-                            <span style="color:var(--gp-muted);font-size:11px">↳ Your cut (1%)</span>
+                            <span style="color:var(--gp-muted);font-size:11px">↳ Your cut (<?= CirculationEngine::ratePct(CirculationEngine::FEE_MERCHANT_RATE) ?>, returned)</span>
                             <span id="lw-fp-mcut" style="font-size:11px;font-weight:600;color:var(--gp-success)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:5px;padding-left:12px">
-                            <span style="color:var(--gp-muted);font-size:11px">↳ System (2%)</span>
+                            <span style="color:var(--gp-muted);font-size:11px">↳ System (<?= CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE) ?>)</span>
                             <span id="lw-fp-sfee" style="font-size:11px;font-weight:600;color:var(--gp-muted)"></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;border-top:1px solid #a8dcbe;padding-top:8px;margin-top:4px">
-                            <span style="color:var(--gp-green-700);font-weight:700">Credited to <span id="lw-fp-recipient-label">student</span></span>
-                            <span id="lw-fp-credited" style="font-weight:800;color:var(--gp-green-700)"></span>
+                            <span style="color:var(--gp-ink);font-weight:700">Charged to your wallet</span>
+                            <span id="lw-fp-cash" style="font-weight:800;color:var(--gp-ink)"></span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:4px">
+                            <span style="color:var(--gp-muted);font-size:11px">Net cost after your cut</span>
+                            <span id="lw-fp-net" style="font-size:11px;font-weight:700;color:var(--gp-muted)"></span>
                         </div>
                     </div>
 
@@ -557,12 +562,12 @@ async function generatePaymentQr() {
                         </div>
                         <div style="border-top:1px dashed #a8dcbe;margin:12px 0;padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px">
                             <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">GenCoins</span><span id="lw-prev-gc-count" style="font-weight:600;color:var(--gp-green-700)"></span></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-muted)">Cash value</span><span id="lw-prev-cash" style="font-weight:600"></span></div>
-                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-red)">Service fee (3%)</span><span id="lw-prev-fee" style="font-weight:600;color:var(--gp-red)"></span></div>
-                            <div style="display:flex;justify-content:space-between;padding-left:10px"><span style="color:var(--gp-muted);font-size:11px">↳ Your cut (1%)</span><span id="lw-prev-mcut" style="font-size:11px;font-weight:600;color:var(--gp-success)"></span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gp-green-700);font-weight:700">Credited to <span id="lw-prev-recipient-label">student</span></span><span id="lw-prev-credited" style="font-weight:800;color:var(--gp-green-700)"></span></div>
+                            <div style="display:flex;justify-content:space-between"><span style="color:var(--gp-red)">Service fee (<?= CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE + CirculationEngine::FEE_MERCHANT_RATE) ?>)</span><span id="lw-prev-fee" style="font-weight:600;color:var(--gp-red)"></span></div>
+                            <div style="display:flex;justify-content:space-between;padding-left:10px"><span style="color:var(--gp-muted);font-size:11px">↳ Your cut (<?= CirculationEngine::ratePct(CirculationEngine::FEE_MERCHANT_RATE) ?>, returned)</span><span id="lw-prev-mcut" style="font-size:11px;font-weight:600;color:var(--gp-success)"></span></div>
                             <div style="display:flex;justify-content:space-between;font-size:13px;border-top:1px solid #a8dcbe;padding-top:8px;margin-top:2px">
-                                <span style="color:var(--gp-green-700);font-weight:700">Credited to <span id="lw-prev-recipient-label">student</span></span>
-                                <span id="lw-prev-credited" style="font-weight:800;color:var(--gp-green-700)"></span>
+                                <span style="color:var(--gp-ink);font-weight:700">Charged to your wallet</span>
+                                <span id="lw-prev-cash" style="font-weight:800"></span>
                             </div>
                         </div>
                     </div>
@@ -621,11 +626,20 @@ function lwGc(cash) {
     return (cash / 10).toLocaleString('en-PH', {maximumFractionDigits:2});
 }
 
+// `cash` is what the RECIPIENT RECEIVES; both fees are added on top. The
+// merchant is debited base + both fees and gets their own cut straight back,
+// so their real cost is base + systemFee. Rates come from CirculationEngine.
+const LW_SYSTEM_RATE   = <?= json_encode(CirculationEngine::FEE_SYSTEM_RATE) ?>;
+const LW_MERCHANT_RATE = <?= json_encode(CirculationEngine::FEE_MERCHANT_RATE) ?>;
+
 function lwCalcFee(cash) {
-    const systemFee   = Math.round(cash * 0.02 * 100) / 100;
-    const merchantFee = Math.round(cash * 0.01 * 100) / 100;
-    const credited    = Math.round((cash - systemFee - merchantFee) * 100) / 100;
-    return { systemFee, merchantFee, totalFee: systemFee + merchantFee, credited };
+    const systemFee   = Math.round(cash * LW_SYSTEM_RATE * 100) / 100;
+    const merchantFee = Math.round(cash * LW_MERCHANT_RATE * 100) / 100;
+    const credited    = Math.round(cash * 100) / 100;
+    const totalFee    = Math.round((systemFee + merchantFee) * 100) / 100;
+    const charged     = Math.round((credited + totalFee) * 100) / 100;
+    const netCost     = Math.round((credited + systemFee) * 100) / 100;
+    return { systemFee, merchantFee, totalFee, credited, charged, netCost };
 }
 
 function lwOpen() {
@@ -708,13 +722,13 @@ function lwGoStep(step) {
 
 function lwBuildPreview() {
     const cash = parseFloat(document.getElementById('lw-gc').value) || 0;
-    const { systemFee, merchantFee, totalFee, credited } = lwCalcFee(cash);
+    const { systemFee, merchantFee, totalFee, credited, charged } = lwCalcFee(cash);
 
     document.getElementById('lw-prev-name').textContent       = lwStudentName;
     document.getElementById('lw-prev-id').textContent         = lwSchoolId;
     document.getElementById('lw-prev-gc-count').textContent   = lwGc(cash) + ' GC';
-    document.getElementById('lw-prev-cash').textContent       = lwFmt(cash);
-    document.getElementById('lw-prev-fee').textContent        = '− ' + lwFmt(totalFee);
+    document.getElementById('lw-prev-cash').textContent       = lwFmt(charged);
+    document.getElementById('lw-prev-fee').textContent        = '+ ' + lwFmt(totalFee);
     document.getElementById('lw-prev-mcut').textContent       = '+ ' + lwFmt(merchantFee);
     document.getElementById('lw-prev-credited').textContent   = lwFmt(credited);
     document.getElementById('lw-confirm-credited').textContent = lwFmt(credited);
@@ -828,12 +842,14 @@ async function lwLoad() {
             const actualCredited = data.credited_amount ?? credited;
             const actualFee      = data.fee_amount      ?? totalFee;
             const actualMFee     = data.merchant_fee    ?? merchantFee;
+            const actualCharged  = data.total_collected ?? (actualCredited + actualFee);
             document.getElementById('lw-step-3').style.display  = 'none';
             document.getElementById('lw-success').style.display = '';
             document.getElementById('lw-step-label').textContent = 'Complete';
             document.getElementById('lw-success-msg').textContent =
                 lwFmt(actualCredited) + ' credited to ' + lwStudentName + ` (${recipientNoun})` +
-                '. Your cut: ' + lwFmt(actualMFee) + ' (1%).';
+                '. Charged to your wallet: ' + lwFmt(actualCharged) +
+                ', your cut returned: ' + lwFmt(actualMFee) + '.';
             document.getElementById('lw-success-ref').textContent = data.reference || '—';
         } else {
             errorEl.textContent = data.error || 'Failed. Please try again.';
@@ -859,13 +875,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const next = document.getElementById('lw-next-2');
         const prev = document.getElementById('lw-fee-preview');
         if (cash > 0) {
-            const { systemFee, merchantFee, totalFee, credited } = lwCalcFee(cash);
+            const { systemFee, merchantFee, totalFee, credited, charged, netCost } = lwCalcFee(cash);
             document.getElementById('lw-gc-equiv').textContent   = '≈ ' + lwGc(cash) + ' GenCoins (₱10 = 1 GC)';
-            document.getElementById('lw-fp-cash').textContent    = lwFmt(cash);
-            document.getElementById('lw-fp-fee').textContent     = '− ' + lwFmt(totalFee);
+            document.getElementById('lw-fp-credited').textContent= lwFmt(credited);
+            document.getElementById('lw-fp-fee').textContent     = '+ ' + lwFmt(totalFee);
             document.getElementById('lw-fp-mcut').textContent    = lwFmt(merchantFee);
             document.getElementById('lw-fp-sfee').textContent    = lwFmt(systemFee);
-            document.getElementById('lw-fp-credited').textContent= lwFmt(credited);
+            document.getElementById('lw-fp-cash').textContent    = lwFmt(charged);
+            document.getElementById('lw-fp-net').textContent     = lwFmt(netCost);
             prev.style.display = '';
             next.disabled = false;
         } else {

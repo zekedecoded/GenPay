@@ -125,6 +125,31 @@ function gjc_ensure_audit_table(PDO $pdo): void
             ));
             $pdo->exec("ALTER TABLE systemic_audit_trail MODIFY action_type ENUM({$enumSql}) NOT NULL");
         }
+        // System settings + mint PIN: same live-enum widen, not a hardcoded list.
+        $actionColumn = $pdo->query("SHOW COLUMNS FROM systemic_audit_trail LIKE 'action_type'")->fetch(PDO::FETCH_ASSOC);
+        $liveActionType = (string) ($actionColumn['Type'] ?? '');
+        $settingsActions = ['SYSTEM_SETTINGS_CHANGE', 'MINT_PIN_SET'];
+        $missingSettingsAction = false;
+        foreach ($settingsActions as $required) {
+            if (strpos($liveActionType, "'{$required}'") === false) {
+                $missingSettingsAction = true;
+                break;
+            }
+        }
+        if ($actionColumn && $missingSettingsAction) {
+            preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", $liveActionType, $labelMatches);
+            $labels = $labelMatches[1] ?? [];
+            foreach ($settingsActions as $required) {
+                if (!in_array($required, $labels, true)) {
+                    $labels[] = $required;
+                }
+            }
+            $enumSql = implode(', ', array_map(
+                static fn(string $label): string => "'" . str_replace("'", "\\'", $label) . "'",
+                $labels
+            ));
+            $pdo->exec("ALTER TABLE systemic_audit_trail MODIFY action_type ENUM({$enumSql}) NOT NULL");
+        }
     } catch (Throwable) {
     }
 }
@@ -221,7 +246,7 @@ function logAudit(
             return;
         }
 
-        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED', 'FEE_WAIVER_STATUS_CHANGE', 'SCHOOL_YEAR_CREATED', 'SCHOOL_YEAR_ROLLOVER', 'STUDENT_GRADUATED', 'SY_TXN_BACKFILL'];
+        $allowedActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TRANSACTION', 'MENU_MUTATION', 'STALL_UPDATE', 'USER_IMPORT', 'MERCHANT_CREATE', 'USER_ACCOUNT', 'MERCHANT_ONBOARDING', 'PRODUCT_RESTRICTION', 'LOGIN_FAILED', 'FEE_WAIVER_STATUS_CHANGE', 'SCHOOL_YEAR_CREATED', 'SCHOOL_YEAR_ROLLOVER', 'STUDENT_GRADUATED', 'SY_TXN_BACKFILL', 'SYSTEM_SETTINGS_CHANGE', 'MINT_PIN_SET'];
         $action_type = strtoupper(trim($action_type));
         if (!in_array($action_type, $allowedActions, true)) {
             return;

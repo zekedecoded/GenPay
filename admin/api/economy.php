@@ -19,7 +19,7 @@ if (!isset($_SESSION['userID'], $_SESSION['roleID'])) {
 
 $userId = (int)$_SESSION['userID'];
 $role = gjc_current_role();
-$adminEconomyRoles = ['admin', 'cashier', 'sub-admin', 'super-admin', 'finance'];
+$adminEconomyRoles = ['finance']; // gjc_current_role() only ever returns finance for staff
 
 gjc_ensure_parent_wallet_schema($db);
 

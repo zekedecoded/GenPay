@@ -6,7 +6,14 @@
 //   $topbarSubtitle (string) - final <p> HTML
 // Optional:
 //   $profilePhotoUrl (string) - profile photo URL; falls back to the initial avatar
+//   $topbarSubtitleMobile (bool) - keep the subtitle on a phone. It is hidden
+//       there by default: on every page but one it restates what the title and
+//       the page itself already say, and it cost two lines above the fold.
+//       Set it only where the subtitle is the sole on-screen home of something
+//       — controls.php names which student's wallet is being edited, and
+//       nothing else on that page does.
 $profilePhotoUrl = $profilePhotoUrl ?? '';
+$topbarSubtitleMobile = $topbarSubtitleMobile ?? false;
 $topbarInitial = strtoupper(substr((string) $currentUser['name'], 0, 1));
 $__topbar_e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
@@ -14,7 +21,7 @@ $__topbar_e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES,
      a div: parent_shell.css lays the bar out as a named grid, and on a phone
      the subtitle drops onto its own full-width row under the title/avatar
      row. A wrapper would trap it in the title column. -->
-<header class="parent-topbar">
+<header class="parent-topbar<?= $topbarSubtitleMobile ? ' is-subtitle-mobile' : '' ?>">
     <button class="parent-menu-btn" aria-label="Toggle navigation" onclick="toggleParentSidebar()">
         <i class="fa-solid fa-bars"></i>
     </button>

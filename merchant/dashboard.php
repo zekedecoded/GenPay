@@ -3,6 +3,7 @@ require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
 require_once __DIR__ . '/../connection/CirculationEngine.php';
+require_once __DIR__ . '/../connection/MerchantTenantDirectory.php';
 
 gjc_require_role(['merchant']);
 
@@ -11,6 +12,12 @@ $ownerMerchId = gjc_merchant_owner_id($db, (int) $currentUser['id']);
 $wallet = gjc_merchant_wallet($db, $ownerMerchId);
 $currentBalance = $wallet['balance'];
 $canEncash = !gjc_is_merchant_staff();
+
+// The most reliable trigger for the rent reminder: owners open this page daily
+// to run the POS, so their own visit is what fires it. Once per billing period.
+if ($canEncash) {
+    (new MerchantTenantDirectory($db))->dispatchRentReminders($ownerMerchId);
+}
 
 $stallStmt = $db->prepare("SELECT stall_name, stall_id FROM merchant WHERE userID = ? LIMIT 1");
 $stallStmt->execute([$ownerMerchId]);
@@ -90,8 +97,8 @@ $currentPage = 'dashboard';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=51">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
@@ -154,6 +161,12 @@ $currentPage = 'dashboard';
                     <span class="sd-quick-icon is-history"><i class="fa-solid fa-receipt"></i></span>
                     <span>History</span>
                 </a>
+                <?php if ($canEncash): ?>
+                <a href="<?= MERCHANT_URL ?>/rent.php">
+                    <span class="sd-quick-icon is-rent"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                    <span>Rent</span>
+                </a>
+                <?php endif; ?>
                 <a href="<?= $canEncash ? MERCHANT_URL . '/settings.php' : MERCHANT_URL . '/dashboard.php' ?>">
                     <span class="sd-quick-icon is-profile"><i class="fa-solid fa-store"></i></span>
                     <span>Business Profile</span>
@@ -205,16 +218,20 @@ $currentPage = 'dashboard';
                                 </h3>
                                 <p>Your stall tenancy terms and the copy of the contract finance signed on award.</p>
                             </div>
-                            <?php if ($hasContract): ?>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="<?= MERCHANT_URL ?>/rent.php" class="merchant-view-btn">
+                                    <i class="fa-solid fa-calendar-days me-1"></i> Rent schedule
+                                </a>
+                                <?php if ($hasContract): ?>
                                 <a href="<?= MERCHANT_URL ?>/contract.php" target="_blank" rel="noopener" class="merchant-view-btn">
                                     <i class="fa-solid fa-eye me-1"></i> View
                                 </a>
                                 <a href="<?= MERCHANT_URL ?>/contract.php?dl=1" class="merchant-view-btn">
                                     <i class="fa-solid fa-download me-1"></i> Download
                                 </a>
+                                <?php endif; ?>
                             </div>
-                            <?php else: ?>
+                            <?php if (!$hasContract): ?>
                             <span class="badge bg-secondary-subtle text-secondary-emphasis align-self-center">
                                 Contract not yet uploaded
                             </span>

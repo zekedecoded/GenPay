@@ -41,6 +41,7 @@ if ($wallet['id'] > 0) {
     $pendingTotal = (float) $pStmt->fetchColumn();
 }
 $withdrawable = max(0, $balance - $pendingTotal);
+$minWithdraw = gjc_setting($db, 'withdraw_min_amount');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $amount = filter_var($_POST['amount'] ?? '', FILTER_VALIDATE_FLOAT);
@@ -51,8 +52,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $error = 'Your wallet is frozen by a parent or guardian. Withdrawals are disabled.';
     } elseif (!$amount || $amount <= 0) {
         $error = 'Enter a valid withdrawal amount.';
-    } elseif ($amount < 1.00) {
-        $error = 'Minimum withdrawal amount is ₱1.00.';
+    } elseif ($amount < $minWithdraw) {
+        $error = 'Minimum withdrawal amount is ' . gjc_money($minWithdraw) . '.';
     } elseif ($wallet['id'] <= 0) {
         $error = 'Your student wallet is not ready. Contact the finance office.';
     } elseif ($amount > $balance) {
@@ -132,7 +133,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_send.css?v=5">
@@ -323,6 +324,7 @@ $csrfToken = gjc_csrf_token();
     const wdAmount = document.getElementById('amount');
     const wdEquiv  = document.getElementById('wdEquiv');
     const WD_MAX   = <?= json_encode((float) $withdrawable) ?>;
+    const WD_MIN   = <?= json_encode((float) $minWithdraw) ?>;
     const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
 
     function wdRender() {
@@ -343,9 +345,10 @@ $csrfToken = gjc_csrf_token();
         });
         document.getElementById('withdrawForm').addEventListener('submit', e => {
             const php = parseFloat(wdAmount.value) || 0;
-            if (php < 1 || php > WD_MAX) {
+            if (php < WD_MIN || php > WD_MAX) {
                 e.preventDefault();
-                wdEquiv.textContent = 'Enter an amount between ₱1.00 and ₱' + WD_MAX.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '.';
+                wdEquiv.textContent = 'Enter an amount between ₱' + WD_MIN.toLocaleString('en-PH', { minimumFractionDigits: 2 })
+                    + ' and ₱' + WD_MAX.toLocaleString('en-PH', { minimumFractionDigits: 2 }) + '.';
                 wdEquiv.style.color = 'var(--sd-red)';
             }
         });

@@ -6,8 +6,8 @@
 //     merchant page already sets $currentUser = gjc_current_user($db)).
 //   - NOTIF_API points at MERCHANT_URL instead of STUDENT_URL.
 //   - The ICONS map is keyed to the notification types merchants actually
-//     receive (sale/topup/encashment) instead of student's (welcome/
-//     transfer_in/transfer_out/withdraw/payment/fee_waiver).
+//     receive (sale/topup/encashment/compliance/rent) instead of student's
+//     (welcome/transfer_in/transfer_out/withdraw/payment/fee_waiver).
 // Including pages must set, before requiring this file:
 //   $currentUser    (array)  - ['name'] used for the greeting/avatar initial
 //   $topbarTitle    (string) - final <h1> HTML (pre-escaped by the caller)
@@ -15,7 +15,12 @@
 // Optional:
 //   $topbarShowBell        (bool)   - show the notification bell (defaults to true — every merchant page)
 //   $topbarAvatarPhotoUrl  (string) - profile photo URL; falls back to the initial avatar
+//   $topbarSubtitleMobile  (bool)   - keep the subtitle on a phone. It is hidden
+//       there by default: it restates what the title and the page itself
+//       already say, and it cost a line above the fold. Set it only where the
+//       subtitle is the sole on-screen home of something.
 $topbarShowBell = $topbarShowBell ?? true;
+$topbarSubtitleMobile = $topbarSubtitleMobile ?? false;
 $topbarAvatarPhotoUrl = $topbarAvatarPhotoUrl ?? '';
 $topbarAvatarInitial = strtoupper(substr((string) ($currentUser['name'] ?? ''), 0, 1));
 $__topbar_e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -24,7 +29,13 @@ $__topbar_schoolYear = (isset($db) && $db instanceof PDO && function_exists('gjc
     ? gjc_active_school_year_name($db)
     : null;
 ?>
-<header class="sd-topbar">
+<header class="sd-topbar<?= $topbarSubtitleMobile ? ' is-subtitle-mobile' : '' ?>">
+    <!-- Collapses the desktop rail (toggleSdSidebar() lives in the sidebar
+         partial, next to the element it owns). Hidden under 768px, where the
+         rail is display:none and the bottom nav takes over. -->
+    <button type="button" class="sd-menu-btn" aria-label="Toggle navigation" onclick="toggleSdSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
     <div class="sd-topbar-greet">
         <h1><?= $topbarTitle ?>
             <?php if ($__topbar_schoolYear): ?>
@@ -68,7 +79,7 @@ $__topbar_schoolYear = (isset($db) && $db instanceof PDO && function_exists('gjc
     const CSRF = <?= json_encode($__topbar_csrf) ?>;
     const ICONS = {
         sale: 'fa-cart-shopping', topup: 'fa-circle-plus', encashment: 'fa-money-bill-wave',
-        compliance: 'fa-triangle-exclamation', general: 'fa-bell',
+        compliance: 'fa-triangle-exclamation', rent: 'fa-receipt', general: 'fa-bell',
     };
 
     const btn   = document.getElementById('sdNotifBtn');

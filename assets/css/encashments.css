@@ -86,7 +86,6 @@
   font-size: 14px;
 }
 
-.create-encash-btn,
 .history-link {
   min-height: 48px;
   padding: 0 20px;
@@ -97,32 +96,6 @@
   align-items: center;
   gap: 9px;
   transition: 0.25s ease;
-}
-
-.create-encash-btn {
-  background: linear-gradient(135deg, var(--gp-green-850), var(--gp-green-700));
-  color: white;
-  box-shadow: var(--gjc-shadow-lg);
-}
-
-.create-encash-btn span {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.create-encash-btn:hover {
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 18px 34px rgba(14, 99, 50, 0.24);
-}
-
-.history-link {
   background: var(--gp-cream);
   color: var(--gp-green-850);
 }
@@ -249,7 +222,6 @@
     align-items: flex-start;
   }
 
-  .create-encash-btn,
   .history-link {
     width: 100%;
     justify-content: center;

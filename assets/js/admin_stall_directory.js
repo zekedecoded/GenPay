@@ -114,7 +114,9 @@
         document.getElementById('leaseDeposit').value = lease.deposit_amount;
         document.getElementById('leaseStart').value = lease.lease_start;
         document.getElementById('leaseEnd').value = lease.lease_end;
-        document.getElementById('leaseNextDue').value = lease.next_due_date;
+        // Read-only: the API recomputes this from the payment schedule on save,
+        // so an edit here would be silently discarded.
+        document.getElementById('leaseNextDue').textContent = lease.next_due_date || '—';
         document.getElementById('leaseStatus').value = lease.status;
         document.getElementById('leaseNotes').value = lease.contract_notes || '';
     };

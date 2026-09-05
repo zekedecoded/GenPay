@@ -68,9 +68,9 @@ try {
                     'attempted_name' => $productName,
                     'reason' => $restrictionReason,
                     'violation_count' => $violationCount,
-                    'warn_at' => GJC_VIOLATION_WARN_AT,
-                    'risk_at' => GJC_VIOLATION_RISK_AT,
-                    'suspend_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'warn_at' => gjc_setting_int($db, 'violation_warn_at'),
+                    'risk_at' => gjc_setting_int($db, 'violation_risk_at'),
+                    'suspend_days' => gjc_setting_int($db, 'violation_suspend_days'),
                     'suspended_until' => gjc_merchant_suspended_until($db, $merchantUserId),
                 ]);
                 exit;
@@ -193,9 +193,9 @@ try {
                     'attempted_name' => $productName,
                     'reason' => $restrictionReason,
                     'violation_count' => $violationCount,
-                    'warn_at' => GJC_VIOLATION_WARN_AT,
-                    'risk_at' => GJC_VIOLATION_RISK_AT,
-                    'suspend_days' => GJC_VIOLATION_SUSPEND_DAYS,
+                    'warn_at' => gjc_setting_int($db, 'violation_warn_at'),
+                    'risk_at' => gjc_setting_int($db, 'violation_risk_at'),
+                    'suspend_days' => gjc_setting_int($db, 'violation_suspend_days'),
                     'suspended_until' => gjc_merchant_suspended_until($db, $merchantUserId),
                 ]);
                 exit;

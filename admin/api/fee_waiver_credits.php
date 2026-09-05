@@ -24,7 +24,9 @@ gjc_require_role(['finance']);
 gjc_ensure_audit_table($db);
 gjc_ensure_fee_waiver_credits_schema($db);
 
-const FEE_WAIVER_MAX_AMOUNT   = 50000.00;
+// Finance-tunable from admin/settings.php; falls back to 50,000.00.
+$feeWaiverMaxAmount = gjc_setting($db, 'fee_waiver_max_amount');
+
 const FEE_WAIVER_MAX_BYTES    = 5 * 1024 * 1024;
 const FEE_WAIVER_ALLOWED_EXT  = ['jpg', 'jpeg', 'png', 'pdf'];
 const FEE_WAIVER_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -89,8 +91,8 @@ try {
             if ($studentUserId <= 0) {
                 fwc_json(['success' => false, 'message' => 'Student not found.']);
             }
-            if ($amount <= 0 || $amount > FEE_WAIVER_MAX_AMOUNT) {
-                fwc_json(['success' => false, 'message' => 'Enter a valid amount between ₱0.01 and ₱' . number_format(FEE_WAIVER_MAX_AMOUNT, 2) . '.']);
+            if ($amount <= 0 || $amount > $feeWaiverMaxAmount) {
+                fwc_json(['success' => false, 'message' => 'Enter a valid amount between ₱0.01 and ₱' . number_format($feeWaiverMaxAmount, 2) . '.']);
             }
 
             $before = fwc_fetch($db, $studentUserId);

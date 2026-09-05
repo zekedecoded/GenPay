@@ -24,6 +24,7 @@ $body = str_contains($contentType, 'application/json')
     : array_merge($_GET, $_POST);
 
 $action = strtolower(trim($body['action'] ?? ''));
+$maxTopup = gjc_setting($db, 'topup_max_per_request');
 
 try {
     switch ($action) {
@@ -61,6 +62,9 @@ try {
 
             if ($studentWalletId <= 0) throw new \InvalidArgumentException('Invalid student wallet.');
             if ($cashAmount <= 0)      throw new \InvalidArgumentException('Cash amount must be greater than zero.');
+            if ($cashAmount > $maxTopup) {
+                throw new \InvalidArgumentException('Maximum top-up per request is ' . gjc_money_plain($maxTopup) . '.');
+            }
 
             $engine = new CirculationEngine($db);
             $result = $engine->merchantSendToStudent(
@@ -105,7 +109,7 @@ try {
                     $ownerMerchId,
                     'topup',
                     'Wallet Credited',
-                    'Your 1% cut of ' . gjc_money_plain($result['merchant_fee']) . ' was credited for loading a student wallet.',
+                    'Your ' . CirculationEngine::ratePct(CirculationEngine::FEE_MERCHANT_RATE) . ' cut of ' . gjc_money_plain($result['merchant_fee']) . ' was credited for loading a student wallet.',
                     'circle-plus',
                     MERCHANT_URL . '/history.php'
                 );
@@ -150,6 +154,9 @@ try {
 
             if ($parentId <= 0) throw new \InvalidArgumentException('Invalid parent.');
             if ($cashAmount <= 0) throw new \InvalidArgumentException('Cash amount must be greater than zero.');
+            if ($cashAmount > $maxTopup) {
+                throw new \InvalidArgumentException('Maximum top-up per request is ' . gjc_money_plain($maxTopup) . '.');
+            }
 
             $parentWallet = gjc_parent_wallet($db, $parentId);
 
@@ -201,7 +208,7 @@ try {
                     $ownerMerchId,
                     'topup',
                     'Wallet Credited',
-                    'Your 1% cut of ' . gjc_money_plain($result['merchant_fee']) . ' was credited for loading a parent wallet.',
+                    'Your ' . CirculationEngine::ratePct(CirculationEngine::FEE_MERCHANT_RATE) . ' cut of ' . gjc_money_plain($result['merchant_fee']) . ' was credited for loading a parent wallet.',
                     'circle-plus',
                     MERCHANT_URL . '/history.php'
                 );

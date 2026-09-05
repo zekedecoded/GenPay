@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/CirculationEngine.php';
 
 gjc_require_role(['student']);
 gjc_enforce_graduate_lock($db);
@@ -13,6 +14,8 @@ $studentName = $currentUser['name'];
 $currentBalance = (float) $wallet['balance'];
 $notice = '';
 $error = '';
+
+$maxTopup = gjc_setting($db, 'topup_max_per_request');
 
 $isGraduated = gjc_student_graduated($db, (int) $currentUser['id']);
 $isFrozen = false;
@@ -34,6 +37,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $error = 'Your wallet is frozen by a parent or guardian. Top-up requests are disabled.';
     } elseif (!$amount || $amount <= 0) {
         $error = 'Enter a valid top-up amount.';
+    } elseif ($amount > $maxTopup) {
+        $error = 'Maximum top-up per request is ' . gjc_money($maxTopup) . '.';
     } elseif ($wallet['id'] <= 0) {
         $error = 'Your student wallet is not ready. Contact the finance office.';
     } else {
@@ -105,7 +110,7 @@ $csrfToken = gjc_csrf_token();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_profile.css?v=11">
     <link rel="stylesheet" href="<?= CSS_URL ?>/student_topup.css?v=5">
     <link rel="stylesheet" href="<?= CSS_URL ?>/gjc-table-cards.css?v=1">
@@ -349,15 +354,24 @@ $csrfToken = gjc_csrf_token();
 
     <script>
     const PESOS_PER_GC = <?= GJC_PESOS_PER_GC ?>;
+    // Service fee is added ON TOP of the requested amount — the student is
+    // credited what they type and pays that plus the fee at the cashier.
+    const TU_FEE_RATE = <?= json_encode(CirculationEngine::FEE_SYSTEM_RATE) ?>;
+    const TU_FEE_PCT  = <?= json_encode(CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE)) ?>;
     const topupAmountEl = document.getElementById("topupAmount");
     const tuEquiv = document.getElementById("tuEquiv");
 
-    // Live "you will receive X GC" line under the ₱ input.
+    const tuPeso = n => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Live "you receive X GC — pay ₱Y at the cashier" line under the ₱ input.
     function tuRenderEquiv() {
         const php = parseFloat(topupAmountEl.value) || 0;
-        tuEquiv.textContent = php > 0
-            ? "You will receive ≈ " + (+((php / PESOS_PER_GC).toFixed(2))).toLocaleString("en-PH", { maximumFractionDigits: 2 }) + " GC"
-            : "";
+        if (php <= 0) { tuEquiv.textContent = ""; return; }
+        const fee   = Math.round(php * TU_FEE_RATE * 100) / 100;
+        const total = Math.round((php + fee) * 100) / 100;
+        tuEquiv.textContent =
+            "You receive ≈ " + (+((php / PESOS_PER_GC).toFixed(2))).toLocaleString("en-PH", { maximumFractionDigits: 2 }) + " GC"
+            + " — pay " + tuPeso(total) + " at the cashier (" + tuPeso(fee) + " service fee, " + TU_FEE_PCT + ").";
     }
     topupAmountEl.addEventListener("input", tuRenderEquiv);
 

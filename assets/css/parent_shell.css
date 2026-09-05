@@ -4,7 +4,7 @@
    Replaces the legacy .student-layout shell, which was deleted with
    assets/css/student.css once nothing referenced it. */
 @import url("gjc-clear.css?v=18");
-@import url("theme.css?v=8");
+@import url("theme.css?v=9");
 
 :root {
   --emerald-950: var(--gp-green-950);
@@ -48,6 +48,25 @@ body {
 
 .parent-sidebar.collapsed {
   width: 58px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* The 42px mark is wider than the collapsed rail's content box, so centre
+   the brand row and scale the mark down — the same treatment the tablet
+   media query already applies. Without it the logo sat left-aligned and the
+   sidebar's overflow:hidden sliced it in half. */
+.parent-sidebar.collapsed .parent-brand {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.parent-sidebar.collapsed .parent-brand-logo {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
 }
 
 .parent-brand {
@@ -518,13 +537,13 @@ body {
     padding: 0;
   }
 
-  /* Two rows instead of one crowded line. The desktop bar puts the title,
-     the subtitle and the user side by side; at 390px that left the title a
-     ~150px column, so a name like "Ma. Cristina Villanueva" wrapped to three
-     lines and shoved the heading into a sliver.
-
-     Here the title keeps the top row with just the avatar beside it, and the
-     subtitle gets the full width of the row below. */
+  /* One row: the title, and the avatar beside it. The desktop bar puts the
+     title, the subtitle and the user side by side; at 390px that left the
+     title a ~150px column, so a name like "Ma. Cristina Villanueva" wrapped
+     to three lines and shoved the heading into a sliver. Dropping the name
+     (below) and the subtitle leaves the bar with one job on a phone: saying
+     where you are. A page that opts its subtitle back in gets a second row
+     for it. */
   .parent-topbar {
     margin: 0 0 16px;
     /* 16px and the 16px h1 below are the student shell's own mobile values
@@ -532,11 +551,9 @@ body {
     padding: 16px;
     border-radius: 0;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "title user"
-      "sub   sub";
+    grid-template-areas: "title user";
     column-gap: 12px;
-    row-gap: 5px;
+    row-gap: 0;
   }
 
   .parent-topbar h1 {
@@ -544,16 +561,31 @@ body {
     line-height: 1.25;
   }
 
-  .parent-topbar p {
+  /* The subtitle goes. Clamping it to two lines still left the bar reading
+     as two stacked blocks of text, and on every page but one the sentence
+     only restates the title: "Activity Trail" over "Your own purchases and
+     every wallet transaction across your linked students." The title and
+     the page below it already say that, and those two lines were spent
+     above the fold. */
+  .parent-topbar > p {
+    display: none;
+  }
+
+  /* Opted in with $topbarSubtitleMobile where the subtitle is the only
+     on-screen home of something — controls.php names whose wallet is being
+     edited, and nothing else on that page does. */
+  .parent-topbar.is-subtitle-mobile {
+    grid-template-areas:
+      "title user"
+      "sub   sub";
+    row-gap: 5px;
+  }
+
+  .parent-topbar.is-subtitle-mobile > p {
+    display: -webkit-box;
     margin: 0;
     font-size: 11.5px;
     line-height: 1.45;
-    /* Two lines of context is plenty. Activity Trail's subtitle is 76
-       characters and Wallet Controls interpolates a full student name, so
-       both ran long enough on a phone to push the page's own content below
-       the fold before it had said anything. (Shop Cart's is longer still,
-       but student_scan.css hides this bar outright on its scanner page.) */
-    display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;

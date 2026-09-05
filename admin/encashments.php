@@ -47,8 +47,8 @@ $currentPage = 'encashments';
 
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/encashments.css?v=7">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=26">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/encashments.css?v=8">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
 
@@ -118,10 +118,6 @@ $currentPage = 'encashments';
                         <h3>Pending Encashment Requests</h3>
                         <p>View, release, or reject merchant encashment requests.</p>
                     </div>
-
-                    <a href="#pending-encashments" class="create-encash-btn">
-                        <i class="fa-solid fa-plus"></i> Create Encashment
-                    </a>
                 </div>
 
                 <div class="table-responsive">

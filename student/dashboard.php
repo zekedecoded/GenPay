@@ -97,7 +97,7 @@ $currentPage = 'dashboard';
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
 </head>
 
 <body class="sd-body">
@@ -111,6 +111,10 @@ $currentPage = 'dashboard';
             <?php
             $topbarTitle = $e($greeting) . ', ' . $e($studentName) . ' &#128075;';
             $topbarSubtitle = "Here's what's happening with your wallet today.";
+            // Kept on phones: this one is the greeting, not a caption
+            // restating the title. It is the only page where the bar is
+            // saying something to the student rather than labelling itself.
+            $topbarSubtitleMobile = true;
             $topbarShowBell = true;
             require __DIR__ . '/../includes/partials/topbar_student.php';
             ?>
@@ -209,7 +213,7 @@ $currentPage = 'dashboard';
                                     <?= $m['incoming'] ? '+' : '&minus;' ?><?= gjc_gc_amount((float) $t['amount']) ?> GC
                                 </div>
                                 <div class="sd-txn-php">&#8776; &#8369;<?= number_format((float) $t['amount'], 2) ?></div>
-                                <div class="sd-txn-date"><?= $e(date('M j, Y', strtotime((string) $t['created_at']))) ?></div>
+                                <div class="sd-txn-date"><?= $e(date('M j', strtotime((string) $t['created_at']))) ?><span class="sd-txn-year"><?= $e(date(', Y', strtotime((string) $t['created_at']))) ?></span></div>
                             </div>
                         </li>
                         <?php endforeach; ?>
@@ -271,6 +275,11 @@ $currentPage = 'dashboard';
         const date = document.createElement("div");
         date.className = "sd-txn-date";
         date.textContent = t.date;
+        // Year in its own span so the phone layout can drop it (see CSS).
+        const year = document.createElement("span");
+        year.className = "sd-txn-year";
+        year.textContent = t.year || "";
+        date.append(year);
         right.append(amount, php, date);
 
         li.append(icon, info, right);

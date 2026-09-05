@@ -24,13 +24,50 @@ class CirculationEngine
     const TXN_VOUCHER_CREATE = "voucher_create";
     const TXN_VOUCHER_EXPIRE = "voucher_expire";
 
-    // Service-fee rates per top-up source
-    const FEE_SYSTEM_RATE = 0.002; // 2 % → stays in vault (both routes)
-    const FEE_MERCHANT_RATE = 0.001; // 1 % → merchant wallet (merchant route only)
+    // ── Service fees ──────────────────────────────────────────────────────
+    // Fees are ADDED ON TOP of the requested amount, never deducted from it.
+    // The amount passed to the fee-charging methods is the amount the RECIPIENT
+    // RECEIVES; the payer hands over that base plus both fees.
+    //
+    //   base ₱1,000  →  finance fee ₱10 (1%) + merchant fee ₱20 (2%)
+    //                →  recipient is credited ₱1,000
+    //                →  payer is charged     ₱1,030
+    const FEE_SYSTEM_RATE = 0.01; // 1 % → school revenue, settles into the vault
+    const FEE_MERCHANT_RATE = 0.02; // 2 % → merchant wallet (merchant route only)
 
     public function __construct(PDO $pdo)
     {
         $this->db = $pdo;
+    }
+
+    /**
+     * "1%" / "2%" straight off the rate constant. Every user-facing fee label
+     * goes through this so a label can never drift from the maths again — the
+     * old hardcoded "2%"/"1%" strings were both wrong by a factor of ten.
+     */
+    public static function ratePct(float $rate): string
+    {
+        return rtrim(rtrim(number_format($rate * 100, 2, ".", ""), "0"), ".") . "%";
+    }
+
+    /**
+     * Fee breakdown for a base amount. `total` is what the payer hands over.
+     * Single source of truth for the arithmetic in all four fee-charging paths.
+     */
+    public static function feeBreakdown(float $baseAmount, bool $withMerchantFee): array
+    {
+        $systemFee = round($baseAmount * self::FEE_SYSTEM_RATE, 2);
+        $merchantFee = $withMerchantFee
+            ? round($baseAmount * self::FEE_MERCHANT_RATE, 2)
+            : 0.0;
+
+        return [
+            "base" => round($baseAmount, 2),
+            "system_fee" => $systemFee,
+            "merchant_fee" => $merchantFee,
+            "fee_total" => round($systemFee + $merchantFee, 2),
+            "total" => round($baseAmount + $systemFee + $merchantFee, 2),
+        ];
     }
 
     public function cashIn(
@@ -120,15 +157,16 @@ class CirculationEngine
             );
         }
 
-        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
-        $merchantFee =
-            $source === "merchant"
-                ? round($cashAmount * self::FEE_MERCHANT_RATE, 2)
-                : 0.0;
-        // Assign any rounding remainder to credited amount
-        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
-        // Vault pays out: student credit + merchant cut
-        $vaultDrain = $credited + $merchantFee;
+        // Fees ride on top: $cashAmount is what the student receives, and the
+        // cashier collects $totalCollected from them.
+        $fees = self::feeBreakdown($cashAmount, $source === "merchant");
+        $systemFee = $fees["system_fee"];
+        $merchantFee = $fees["merchant_fee"];
+        $credited = $fees["base"];
+        $totalCollected = $fees["total"];
+        // Vault pays out: student credit + merchant cut. The system fee is cash
+        // the school keeps — no points move for it.
+        $vaultDrain = round($credited + $merchantFee, 2);
 
         $this->db->beginTransaction();
         try {
@@ -138,11 +176,11 @@ class CirculationEngine
                 throw new \RuntimeException(
                     "VAULT_INSUFFICIENT: Vault has ₱" .
                         number_format($settings["cashier_vault_points"], 2) .
-                        " — cannot load ₱" .
-                        number_format($cashAmount, 2) .
+                        " — cannot credit ₱" .
+                        number_format($credited, 2) .
                         " (needs ₱" .
                         number_format($vaultDrain, 2) .
-                        " after fees).",
+                        " including the merchant cut).",
                 );
             }
 
@@ -176,12 +214,12 @@ class CirculationEngine
             $this->validateCirculation($settings["total_circulation_cap"]);
 
             $feeNote =
-                "Top-up via {$source}. Cash: ₱{$cashAmount}, " .
-                "System fee (2%): ₱{$systemFee}" .
+                "Top-up via {$source}. Credited: ₱{$credited}, " .
+                "System fee (" . self::ratePct(self::FEE_SYSTEM_RATE) . "): ₱{$systemFee}" .
                 ($merchantFee > 0
-                    ? ", Merchant fee (1%): ₱{$merchantFee}"
+                    ? ", Merchant fee (" . self::ratePct(self::FEE_MERCHANT_RATE) . "): ₱{$merchantFee}"
                     : "") .
-                ", Credited: ₱{$credited}." .
+                ", Collected: ₱{$totalCollected}." .
                 ($notes !== "" ? " Note: {$notes}" : "");
 
             $ref = $this->logTransaction(
@@ -194,15 +232,15 @@ class CirculationEngine
                 merchantWalletId: $merchantFee > 0 ? $merchantWalletId : null,
                 notes: $feeNote,
                 topUpSource: $source,
-                baseAmount: $cashAmount,
-                feeAmount: $systemFee + $merchantFee,
+                baseAmount: $credited,
+                feeAmount: $fees["fee_total"],
                 creditedAmount: $credited,
             );
 
             $this->logFeeRevenue(
                 $ref,
                 $source,
-                $cashAmount,
+                $totalCollected,
                 $systemFee,
                 $merchantFee,
                 $merchantFee > 0 ? $merchantWalletId : null,
@@ -214,10 +252,11 @@ class CirculationEngine
                 "success" => true,
                 "reference" => $ref,
                 "vault_after" => $vaultAfter,
-                "cash_amount" => $cashAmount,
+                "cash_amount" => $credited,
+                "total_collected" => $totalCollected,
                 "system_fee" => $systemFee,
                 "merchant_fee" => $merchantFee,
-                "fee_amount" => $systemFee + $merchantFee,
+                "fee_amount" => $fees["fee_total"],
                 "credited_amount" => $credited,
             ];
         } catch (\Throwable $e) {
@@ -248,13 +287,13 @@ class CirculationEngine
             );
         }
 
-        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
-        $merchantFee =
-            $source === "merchant"
-                ? round($cashAmount * self::FEE_MERCHANT_RATE, 2)
-                : 0.0;
-        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
-        $vaultDrain = $credited + $merchantFee;
+        // Fees ride on top — see cashInWithFee().
+        $fees = self::feeBreakdown($cashAmount, $source === "merchant");
+        $systemFee = $fees["system_fee"];
+        $merchantFee = $fees["merchant_fee"];
+        $credited = $fees["base"];
+        $totalCollected = $fees["total"];
+        $vaultDrain = round($credited + $merchantFee, 2);
 
         $this->db->beginTransaction();
         try {
@@ -264,11 +303,11 @@ class CirculationEngine
                 throw new \RuntimeException(
                     "VAULT_INSUFFICIENT: Vault has ₱" .
                         number_format($settings["cashier_vault_points"], 2) .
-                        " — cannot load ₱" .
-                        number_format($cashAmount, 2) .
+                        " — cannot credit ₱" .
+                        number_format($credited, 2) .
                         " (needs ₱" .
                         number_format($vaultDrain, 2) .
-                        " after fees).",
+                        " including the merchant cut).",
                 );
             }
 
@@ -299,12 +338,12 @@ class CirculationEngine
             $this->validateCirculation($settings["total_circulation_cap"]);
 
             $feeNote =
-                "Parent top-up via {$source}. Cash: ₱{$cashAmount}, " .
-                "System fee (2%): ₱{$systemFee}" .
+                "Parent top-up via {$source}. Credited: ₱{$credited}, " .
+                "System fee (" . self::ratePct(self::FEE_SYSTEM_RATE) . "): ₱{$systemFee}" .
                 ($merchantFee > 0
-                    ? ", Merchant fee (1%): ₱{$merchantFee}"
+                    ? ", Merchant fee (" . self::ratePct(self::FEE_MERCHANT_RATE) . "): ₱{$merchantFee}"
                     : "") .
-                ", Credited: ₱{$credited}." .
+                ", Collected: ₱{$totalCollected}." .
                 ($notes !== "" ? " Note: {$notes}" : "");
 
             $ref = $this->logTransaction(
@@ -317,15 +356,15 @@ class CirculationEngine
                 merchantWalletId: $merchantFee > 0 ? $merchantWalletId : null,
                 notes: $feeNote,
                 topUpSource: $source,
-                baseAmount: $cashAmount,
-                feeAmount: $systemFee + $merchantFee,
+                baseAmount: $credited,
+                feeAmount: $fees["fee_total"],
                 creditedAmount: $credited,
             );
 
             $this->logFeeRevenue(
                 $ref,
                 $source,
-                $cashAmount,
+                $totalCollected,
                 $systemFee,
                 $merchantFee,
                 $merchantFee > 0 ? $merchantWalletId : null,
@@ -337,10 +376,11 @@ class CirculationEngine
                 "success" => true,
                 "reference" => $ref,
                 "vault_after" => $vaultAfter,
-                "cash_amount" => $cashAmount,
+                "cash_amount" => $credited,
+                "total_collected" => $totalCollected,
                 "system_fee" => $systemFee,
                 "merchant_fee" => $merchantFee,
-                "fee_amount" => $systemFee + $merchantFee,
+                "fee_amount" => $fees["fee_total"],
                 "credited_amount" => $credited,
             ];
         } catch (\Throwable $e) {
@@ -411,8 +451,10 @@ class CirculationEngine
 
     /**
      * Merchant sends GenCoins from their own wallet to a student.
-     * Deducts cashAmount from merchant, credits credited (97%) to student,
-     * returns merchantFee (1%) to merchant, and adds systemFee (2%) to vault.
+     *
+     * Fees ride on top: $cashAmount is what the STUDENT RECEIVES in full. The
+     * merchant is debited that base plus both fees, then credited their own cut
+     * back, so their net cost is base + systemFee.
      */
     public function merchantSendToStudent(
         int $merchantWalletId,
@@ -423,9 +465,11 @@ class CirculationEngine
     ): array {
         $this->assertPositive($cashAmount);
 
-        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
-        $merchantFee = round($cashAmount * self::FEE_MERCHANT_RATE, 2);
-        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
+        $fees = self::feeBreakdown($cashAmount, true);
+        $systemFee = $fees["system_fee"];
+        $merchantFee = $fees["merchant_fee"];
+        $credited = $fees["base"];
+        $totalDebit = $fees["total"];
 
         $this->db->beginTransaction();
         try {
@@ -438,22 +482,25 @@ class CirculationEngine
             $mStmt->execute([$merchantWalletId]);
             $mRow = $mStmt->fetch();
 
-            if (!$mRow || (float) $mRow["balance"] < $cashAmount) {
+            // Gross, not net: the debit below lands before the cut is returned,
+            // so the wallet must cover the full amount at that moment.
+            if (!$mRow || (float) $mRow["balance"] < $totalDebit) {
                 throw new \RuntimeException(
                     sprintf(
-                        "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — cannot send ₱%s.",
+                        "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — sending ₱%s costs ₱%s with fees.",
                         number_format((float) ($mRow["balance"] ?? 0), 2),
-                        number_format($cashAmount, 2),
+                        number_format($credited, 2),
+                        number_format($totalDebit, 2),
                     ),
                 );
             }
 
-            // 1. Debit merchant wallet by full amount
+            // 1. Debit merchant wallet by base + both fees
             $this->db
                 ->prepare(
                     "UPDATE merchant_wallets SET balance = balance - ? WHERE id = ?",
                 )
-                ->execute([$cashAmount, $merchantWalletId]);
+                ->execute([$totalDebit, $merchantWalletId]);
 
             // 2. Credit student wallet
             $this->db
@@ -462,14 +509,14 @@ class CirculationEngine
                 )
                 ->execute([$credited, $studentWalletId]);
 
-            // 3. Return 1% cut to merchant
+            // 3. Return the merchant's own cut
             $this->db
                 ->prepare(
                     "UPDATE merchant_wallets SET balance = balance + ? WHERE id = ?",
                 )
                 ->execute([$merchantFee, $merchantWalletId]);
 
-            // 4. System fee (2%) goes to vault as revenue
+            // 4. System fee goes to vault as revenue
             $this->db
                 ->prepare(
                     "UPDATE system_settings SET cashier_vault_points = cashier_vault_points + ? WHERE id = 1",
@@ -481,10 +528,10 @@ class CirculationEngine
             $this->validateCirculation($settings["total_circulation_cap"]);
 
             $feeNote =
-                "Merchant send to student. Sent: ₱{$cashAmount}, " .
-                "System fee (2%): ₱{$systemFee}, " .
-                "Merchant cut (1%): ₱{$merchantFee}, " .
-                "Credited: ₱{$credited}." .
+                "Merchant send to student. Credited: ₱{$credited}, " .
+                "System fee (" . self::ratePct(self::FEE_SYSTEM_RATE) . "): ₱{$systemFee}, " .
+                "Merchant cut (" . self::ratePct(self::FEE_MERCHANT_RATE) . "): ₱{$merchantFee}, " .
+                "Charged to merchant: ₱{$totalDebit}." .
                 ($notes !== "" ? " Note: {$notes}" : "");
 
             $ref = $this->logTransaction(
@@ -497,15 +544,15 @@ class CirculationEngine
                 merchantWalletId: $merchantWalletId,
                 notes: $feeNote,
                 topUpSource: "merchant",
-                baseAmount: $cashAmount,
-                feeAmount: $systemFee + $merchantFee,
+                baseAmount: $credited,
+                feeAmount: $fees["fee_total"],
                 creditedAmount: $credited,
             );
 
             $this->logFeeRevenue(
                 $ref,
                 "merchant",
-                $cashAmount,
+                $totalDebit,
                 $systemFee,
                 $merchantFee,
                 $merchantWalletId,
@@ -516,10 +563,11 @@ class CirculationEngine
             return [
                 "success" => true,
                 "reference" => $ref,
-                "cash_amount" => $cashAmount,
+                "cash_amount" => $credited,
+                "total_collected" => $totalDebit,
                 "system_fee" => $systemFee,
                 "merchant_fee" => $merchantFee,
-                "fee_amount" => $systemFee + $merchantFee,
+                "fee_amount" => $fees["fee_total"],
                 "credited_amount" => $credited,
             ];
         } catch (\Throwable $e) {
@@ -538,9 +586,12 @@ class CirculationEngine
     ): array {
         $this->assertPositive($cashAmount);
 
-        $systemFee = round($cashAmount * self::FEE_SYSTEM_RATE, 2);
-        $merchantFee = round($cashAmount * self::FEE_MERCHANT_RATE, 2);
-        $credited = round($cashAmount - $systemFee - $merchantFee, 2);
+        // Fees ride on top — see merchantSendToStudent().
+        $fees = self::feeBreakdown($cashAmount, true);
+        $systemFee = $fees["system_fee"];
+        $merchantFee = $fees["merchant_fee"];
+        $credited = $fees["base"];
+        $totalDebit = $fees["total"];
 
         $this->db->beginTransaction();
         try {
@@ -552,12 +603,13 @@ class CirculationEngine
             $mStmt->execute([$merchantWalletId]);
             $mRow = $mStmt->fetch();
 
-            if (!$mRow || (float) $mRow["balance"] < $cashAmount) {
+            if (!$mRow || (float) $mRow["balance"] < $totalDebit) {
                 throw new \RuntimeException(
                     sprintf(
-                        "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — cannot send ₱%s.",
+                        "MERCHANT_INSUFFICIENT_BALANCE: Wallet has ₱%s — sending ₱%s costs ₱%s with fees.",
                         number_format((float) ($mRow["balance"] ?? 0), 2),
-                        number_format($cashAmount, 2),
+                        number_format($credited, 2),
+                        number_format($totalDebit, 2),
                     ),
                 );
             }
@@ -566,7 +618,7 @@ class CirculationEngine
                 ->prepare(
                     "UPDATE merchant_wallets SET balance = balance - ? WHERE id = ?",
                 )
-                ->execute([$cashAmount, $merchantWalletId]);
+                ->execute([$totalDebit, $merchantWalletId]);
 
             $this->db
                 ->prepare(
@@ -591,10 +643,10 @@ class CirculationEngine
             $this->validateCirculation($settings["total_circulation_cap"]);
 
             $feeNote =
-                "Merchant send to parent. Sent: ₱{$cashAmount}, " .
-                "System fee (2%): ₱{$systemFee}, " .
-                "Merchant cut (1%): ₱{$merchantFee}, " .
-                "Credited: ₱{$credited}." .
+                "Merchant send to parent. Credited: ₱{$credited}, " .
+                "System fee (" . self::ratePct(self::FEE_SYSTEM_RATE) . "): ₱{$systemFee}, " .
+                "Merchant cut (" . self::ratePct(self::FEE_MERCHANT_RATE) . "): ₱{$merchantFee}, " .
+                "Charged to merchant: ₱{$totalDebit}." .
                 ($notes !== "" ? " Note: {$notes}" : "");
 
             $ref = $this->logTransaction(
@@ -607,15 +659,15 @@ class CirculationEngine
                 merchantWalletId: $merchantWalletId,
                 notes: $feeNote,
                 topUpSource: "merchant",
-                baseAmount: $cashAmount,
-                feeAmount: $systemFee + $merchantFee,
+                baseAmount: $credited,
+                feeAmount: $fees["fee_total"],
                 creditedAmount: $credited,
             );
 
             $this->logFeeRevenue(
                 $ref,
                 "merchant",
-                $cashAmount,
+                $totalDebit,
                 $systemFee,
                 $merchantFee,
                 $merchantWalletId,
@@ -626,10 +678,11 @@ class CirculationEngine
             return [
                 "success" => true,
                 "reference" => $ref,
-                "cash_amount" => $cashAmount,
+                "cash_amount" => $credited,
+                "total_collected" => $totalDebit,
                 "system_fee" => $systemFee,
                 "merchant_fee" => $merchantFee,
-                "fee_amount" => $systemFee + $merchantFee,
+                "fee_amount" => $fees["fee_total"],
                 "credited_amount" => $credited,
             ];
         } catch (\Throwable $e) {

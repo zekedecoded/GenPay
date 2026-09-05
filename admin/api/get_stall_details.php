@@ -7,10 +7,13 @@ require_once __DIR__ . '/../../connection/MerchantTenantDirectory.php';
 
 header('Content-Type: application/json');
 
-if (gjc_sub_role() !== 'super_admin') {
+// Finance-wide, matching admin/merchant_details.php and admin/api/leases.php.
+// gjc_require_role() redirects a non-finance session, which an XHR reads as a
+// failed request; the explicit check keeps the JSON contract for that case.
+if (gjc_current_role() !== 'finance') {
     echo json_encode([
         'success' => false,
-        'message' => 'Access denied. Super Admin privileges are required.',
+        'message' => 'Access denied. Finance privileges are required.',
     ]);
     exit;
 }
@@ -182,6 +185,8 @@ try {
             $depositAmount = (float) ($_POST['deposit_amount'] ?? 0);
             $leaseStart = trim((string) ($_POST['lease_start'] ?? ''));
             $leaseEnd = trim((string) ($_POST['lease_end'] ?? ''));
+            // Not an input any more — syncNextDueDate() recomputes it below from
+            // the rent schedule, so whatever is stored now is just a placeholder.
             $nextDueDate = trim((string) ($_POST['next_due_date'] ?? ''));
             $status = trim((string) ($_POST['status'] ?? 'active'));
             $notes = trim((string) ($_POST['contract_notes'] ?? ''));
@@ -191,8 +196,12 @@ try {
                 gjc_json_fail('Invalid lease amounts or ID.');
             }
 
-            if (!gjc_valid_ymd($leaseStart) || !gjc_valid_ymd($leaseEnd) || !gjc_valid_ymd($nextDueDate)) {
+            if (!gjc_valid_ymd($leaseStart) || !gjc_valid_ymd($leaseEnd)) {
                 gjc_json_fail('Lease dates must be valid YYYY-MM-DD values.');
+            }
+
+            if (!gjc_valid_ymd($nextDueDate)) {
+                $nextDueDate = $leaseStart;
             }
 
             if ($leaseEnd <= $leaseStart) {
@@ -213,6 +222,10 @@ try {
                 'status' => $status,
                 'contract_notes' => $notes,
             ]);
+
+            // Recomputed from the rent schedule, so it cannot disagree with the
+            // receipts no matter what date was posted.
+            $directory->syncNextDueDate($leaseId);
 
             echo json_encode(['success' => true, 'message' => 'Lease contract updated.']);
             break;
@@ -248,6 +261,28 @@ try {
             }
 
             $reference = $directory->recordRentPayment($leaseId, $amount, $period, $paymentDate, $method, $notes, $adminId);
+            $directory->syncNextDueDate($leaseId);
+
+            // Same tenant receipt the Leases & Rent page sends, so it does not
+            // matter which of the two screens the payment was keyed on.
+            $paidLease = $directory->leaseById($leaseId);
+            $paidMonth = null;
+            foreach ($paidLease['schedule'] ?? [] as $row) {
+                if ($row['period'] === $period) {
+                    $paidMonth = $row;
+                    break;
+                }
+            }
+
+            gjc_notify_rent_payment(
+                $db,
+                (int) ($paidLease['merchant_user_id'] ?? 0),
+                $amount,
+                $period,
+                $reference,
+                (float) ($paidMonth['shortfall'] ?? 0),
+                $paidLease['account']['next_due_date'] ?? null
+            );
 
             echo json_encode([
                 'success' => true,

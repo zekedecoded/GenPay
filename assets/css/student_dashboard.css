@@ -3,7 +3,7 @@
    apply here. Pages using the shared student sidebar / bottom-nav partials
    must link this file. */
 @import url("gjc-clear.css?v=18");
-@import url("theme.css?v=8");
+@import url("theme.css?v=9");
 
 /* sd-* tokens are aliases of the shared gp-* theme (assets/css/theme.css)
    — theme.css is the single source of truth for the palette. */
@@ -138,6 +138,63 @@ body.sd-body {
   color: #f08373;
 }
 
+/* ===== COLLAPSED RAIL =====
+   Toggled by the topbar's .sd-menu-btn, persisted in localStorage by the
+   sidebar partials so it survives navigation. The shell is a flex row, so
+   narrowing the aside is the whole job — .sd-main reflows on its own, no
+   margin math like the fixed-position admin/parent rails need. Shared with
+   the merchant shell, which loads this file. */
+.sd-sidebar {
+  transition: width 0.25s ease;
+  white-space: nowrap;
+}
+
+/* Labels stay on one line and are clipped per row while the rail animates
+   back open, so they don't spill across the content. The clipping is on the
+   rows rather than the aside: the aside is height:100vh, and hiding its
+   overflow would cut the menu off on a short viewport. */
+.sd-brand,
+.sd-menu a,
+.sd-logout {
+  overflow: hidden;
+}
+
+.sd-sidebar.collapsed {
+  width: 58px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.sd-sidebar.collapsed .sd-brand {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The 42px mark is wider than the collapsed rail's content box — centring it
+   alone would still clip it, so drop it to the icon rhythm. */
+.sd-sidebar.collapsed .sd-brand-logo {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+}
+
+.sd-sidebar.collapsed .sd-brand-text,
+.sd-sidebar.collapsed .sd-menu a span,
+.sd-sidebar.collapsed .sd-logout span {
+  display: none;
+}
+
+.sd-sidebar.collapsed .sd-menu a,
+.sd-sidebar.collapsed .sd-logout {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-left: none;
+}
+
 /* ===== MAIN / TOPBAR ===== */
 .sd-main {
   flex: 1;
@@ -186,6 +243,26 @@ body.sd-body {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.sd-menu-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: var(--gp-radius);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sd-menu-btn:hover {
+  background: var(--sd-gold-soft);
+  color: var(--sd-gold);
 }
 
 .sd-bell {
@@ -555,6 +632,7 @@ body.sd-body {
 .sd-quick-icon.is-cart { background: #e3edfd; color: #2563eb; }
 .sd-quick-icon.is-history { background: #fdf1d8; color: #b45309; }
 .sd-quick-icon.is-profile { background: #efe7fb; color: #7c3aed; }
+.sd-quick-icon.is-rent { background: #fde8e8; color: #b42318; }
 
 /* ===== STAT CARDS ===== */
 .sd-stats {
@@ -937,6 +1015,11 @@ body.sd-body {
     display: none;
   }
 
+  /* No rail to collapse down here — bottom_nav_*.php is the navigation. */
+  .sd-menu-btn {
+    display: none;
+  }
+
   .sd-topbar {
     padding: 16px;
   }
@@ -945,7 +1028,18 @@ body.sd-body {
     font-size: 16px;
   }
 
+  /* The subtitle goes. On every page it only restates the title —
+     "Transaction History" over "Track all your wallet activity and
+     payments." — and it cost a line above the fold on the smallest screens.
+     Shared with the merchant shell, which loads this file. */
   .sd-topbar-greet p {
+    display: none;
+  }
+
+  /* Opted in with $topbarSubtitleMobile where the subtitle is the only
+     on-screen home of something. */
+  .sd-topbar.is-subtitle-mobile .sd-topbar-greet p {
+    display: block;
     font-size: 11.5px;
   }
 
@@ -1016,9 +1110,78 @@ body.sd-body {
     padding: 16px 14px;
   }
 
+  /* Two balanced lines instead of two-against-three.
+
+     The desktop row is icon | ref+type | amount+peso+date, which on a phone
+     put three stacked lines on the right against two on the left: the row
+     ran ~72px tall, the block of right-aligned text crowded the reference,
+     and at 360px the reference was clipped to 160px with an ellipsis.
+
+     Regrouping puts the date on the left, next to the type, so both columns
+     are two lines and the reference gets the room it needs:
+
+         [icon]  TXN-2026-000481          -85.00 GC
+                 PAYMENT · Aug 27, 2026    ~ P85.00
+
+     display:contents on the two wrappers lets their children be placed on
+     this grid directly — the markup is shared with the desktop layout and
+     with the JS that rebuilds these rows after a top-up, so neither can
+     change. */
+  .sd-txn {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon ref  ref  amount"
+      "icon type date php";
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 12px 2px;
+  }
+
+  .sd-txn-icon { grid-area: icon; }
+  .sd-txn-info,
+  .sd-txn-right { display: contents; }
+
   .sd-txn-ref {
+    grid-area: ref;
     font-size: 12px;
-    max-width: 160px;
+  }
+
+  .sd-txn-type {
+    grid-area: type;
+    margin-top: 0;
+  }
+
+  .sd-txn-date {
+    grid-area: date;
+    margin-top: 0;
+    /* text-align:right still inherits through .sd-txn-right's absent box. */
+    text-align: left;
+  }
+
+  .sd-txn-date::before {
+    content: "·";
+    margin-right: 5px;
+    color: var(--gp-subtle);
+  }
+
+  /* The year goes. "TRANSFER OUT · Aug 25, 2026" is 8px too wide for the
+     meta line at 360px — the width every budget Android in this school runs
+     — and wrapped to "Aug 25," / "2026". On a list headed "Recent
+     Transactions" the year was the part carrying no information. */
+  .sd-txn-year {
+    display: none;
+  }
+
+  .sd-txn-amount {
+    grid-area: amount;
+    text-align: right;
+  }
+
+  .sd-txn-php {
+    grid-area: php;
+    text-align: right;
   }
 
   .sd-bottomnav {

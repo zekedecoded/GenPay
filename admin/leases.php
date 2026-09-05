@@ -2,51 +2,70 @@
 require_once __DIR__ . '/../connection/config.php';
 require_once __DIR__ . '/../connection/pdo.php';
 require_once __DIR__ . '/../connection/app.php';
+require_once __DIR__ . '/../connection/MerchantTenantDirectory.php';
 
 gjc_require_role(['finance']);
 $currentUser = gjc_current_user($db);
 $currentPage = 'leases';
+$directory   = new MerchantTenantDirectory($db);
 
-// ── Summary stats ───────────────────────────────────────────────────────
-$totalLeases   = 0;
-$activeLeases  = 0;
-$overdueLeases = 0;
-$monthlyTotal  = 0.0;
-
-if (gjc_table_exists($db, 'merchant_leases')) {
-    $row = $db->query(
-        "SELECT COUNT(*)                                                             AS total,
-                SUM(status = 'active')                                               AS active_count,
-                SUM(status = 'active' AND next_due_date < CURDATE())                 AS overdue_count,
-                COALESCE(SUM(CASE WHEN status = 'active' THEN monthly_rent ELSE 0 END), 0) AS monthly_total
-           FROM merchant_leases"
-    )->fetch(PDO::FETCH_ASSOC);
-
-    $totalLeases   = (int)   ($row['total']         ?? 0);
-    $activeLeases  = (int)   ($row['active_count']  ?? 0);
-    $overdueLeases = (int)   ($row['overdue_count'] ?? 0);
-    $monthlyTotal  = (float) ($row['monthly_total'] ?? 0.0);
+function lease_e($value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
+
+/** "in 6 days" / "today" / "10 days overdue" — the bit people actually read. */
+function lease_when(?string $date, string $today): array
+{
+    if (!$date) {
+        return ['', ''];
+    }
+
+    $days = (int) floor((strtotime($date) - strtotime($today)) / 86400);
+
+    if ($days < 0)  return [abs($days) . ' day' . (abs($days) === 1 ? '' : 's') . ' overdue', 'is-late'];
+    if ($days === 0) return ['due today', 'is-soon'];
+    if ($days <= 7)  return ['in ' . $days . ' day' . ($days === 1 ? '' : 's'), 'is-soon'];
+
+    return ['in ' . $days . ' days', ''];
+}
+
+$today     = date('Y-m-d');
+$thisMonth = date('Y-m');
 
 // ── Filters ──────────────────────────────────────────────────────────────
-$q              = trim((string) ($_GET['q'] ?? ''));
-$statusFilter   = trim((string) ($_GET['status'] ?? ''));
-$overdueOnly    = (int) ($_GET['overdue'] ?? 0) === 1;
-$allowedStatusF = ['pending', 'active', 'expired', 'terminated'];
-if (!in_array($statusFilter, $allowedStatusF, true)) {
-    $statusFilter = '';
+// One "Show" control instead of the old status dropdown + overdue checkbox,
+// which could be combined into states that returned nothing.
+$q    = trim((string) ($_GET['q'] ?? ''));
+$view = (string) ($_GET['view'] ?? 'all');
+$views = [
+    'all'     => 'All leases',
+    'owing'   => 'Owes rent',
+    'ok'      => 'Up to date',
+    'pending' => 'Not started yet',
+    'closed'  => 'Expired or terminated',
+];
+if (!isset($views[$view])) {
+    $view = 'all';
 }
 
-// ── Pagination ───────────────────────────────────────────────────────────
 $page    = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 20;
-$offset  = ($page - 1) * $perPage;
 
-$leases     = [];
-$totalRows  = 0;
-$thisMonth  = date('Y-m');
+// ── Load the rent roll ───────────────────────────────────────────────────
+// Rent standing is computed in PHP from each lease's payment schedule, so the
+// roll is built in full and then filtered/sorted/paged here rather than in SQL.
+$rows            = [];
+$leasesExist     = gjc_table_exists($db, 'merchant_leases');
+$collectedMonth  = 0.0;
+$unleased        = $directory->merchantsWithoutLease();
 
-if (gjc_table_exists($db, 'merchant_leases')) {
+if ($leasesExist) {
+    // No cron in this app, so the "rent due soon" notice rides page loads — see
+    // dispatchRentReminders(). Once per tenant per billing period, whichever of
+    // finance or the tenant themselves opens a page first.
+    $directory->dispatchRentReminders();
+
     $where  = [];
     $params = [];
 
@@ -55,57 +74,143 @@ if (gjc_table_exists($db, 'merchant_leases')) {
         $needle = '%' . $q . '%';
         array_push($params, $needle, $needle, $needle, $needle, $needle);
     }
-    if ($statusFilter !== '') {
-        $where[] = 'ml.status = ?';
-        $params[] = $statusFilter;
-    }
-    if ($overdueOnly) {
-        $where[] = "ml.status = 'active' AND ml.next_due_date < CURDATE()";
-    }
 
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
-
-    $countStmt = $db->prepare(
-        "SELECT COUNT(*)
+    $stmt = $db->prepare(
+        "SELECT ml.*, u.first_name, u.last_name, u.email
            FROM merchant_leases ml
            LEFT JOIN users u ON u.userID = ml.merchant_user_id
           {$whereSql}"
     );
-    $countStmt->execute($params);
-    $totalRows = (int) $countStmt->fetchColumn();
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $db->prepare(
-        "SELECT ml.*, u.first_name, u.last_name, u.email,
-                COALESCE((
-                    SELECT SUM(rp.amount_paid) FROM merchant_rent_payments rp
-                     WHERE rp.lease_id = ml.id AND rp.period_covered = ?
-                ), 0) AS paid_this_month
-           FROM merchant_leases ml
-           LEFT JOIN users u ON u.userID = ml.merchant_user_id
-          {$whereSql}
-          ORDER BY
-            CASE WHEN ml.status = 'active' AND ml.next_due_date < CURDATE() THEN 0 ELSE 1 END,
-            ml.next_due_date ASC
-          LIMIT {$perPage} OFFSET {$offset}"
-    );
-    $stmt->execute(array_merge([$thisMonth], $params));
-    $leases = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // One grouped query for every lease on screen instead of one per row.
+    $directory->primePaymentCache(array_column($rows, 'id'));
+
+    // Rebuild each lease's standing, and repair the stored next_due_date while
+    // we are here — older payments bumped that column by a flat month each time
+    // they were recorded, so it had drifted away from the actual receipts. Other
+    // pages (merchant/dashboard.php) read the column directly.
+    $dueFix = $db->prepare("UPDATE merchant_leases SET next_due_date = ? WHERE id = ?");
+    foreach ($rows as $i => $row) {
+        $account = $directory->leaseAccount($row);
+        $rows[$i]['account'] = $account;
+
+        $derived = $account['next_due_date'] ?? (string) $row['lease_end'];
+        if ($derived && $derived !== (string) $row['next_due_date']) {
+            $dueFix->execute([$derived, (int) $row['id']]);
+        }
+    }
+
+    if (gjc_table_exists($db, 'merchant_rent_payments')) {
+        $collectedStmt = $db->prepare(
+            "SELECT COALESCE(SUM(amount_paid), 0) FROM merchant_rent_payments
+              WHERE DATE_FORMAT(payment_date, '%Y-%m') = ?"
+        );
+        $collectedStmt->execute([$thisMonth]);
+        $collectedMonth = (float) $collectedStmt->fetchColumn();
+    }
 }
 
+// ── Summary (whole roll, not just the current filter) ────────────────────
+// Each count uses the same test as the view filter its card links to, so the
+// number on the card always matches the number of rows you land on.
+$activeCount  = 0;
+$activePaidUp = 0;
+$owingCount   = 0;
+$owingAmount  = 0.0;
+$monthlyRoll  = 0.0;
+
+foreach ($rows as $row) {
+    $acct = $row['account'];
+
+    if ($row['status'] === 'active') {
+        $activeCount++;
+        $monthlyRoll += (float) $row['monthly_rent'];
+        if (!$acct['is_overdue']) {
+            $activePaidUp++;
+        }
+    }
+
+    if ($acct['is_overdue']) {
+        $owingCount++;
+        $owingAmount += $acct['outstanding'];
+    }
+}
+
+// ── Apply the view filter ────────────────────────────────────────────────
+$rows = array_values(array_filter($rows, static function (array $row) use ($view): bool {
+    $state = $row['account']['state'];
+
+    return match ($view) {
+        'owing'   => $row['account']['is_overdue'],
+        'ok'      => in_array($state, ['settled', 'ahead'], true) && $row['status'] === 'active',
+        'pending' => $row['status'] === 'pending',
+        'closed'  => in_array($row['status'], ['expired', 'terminated'], true),
+        default   => true,
+    };
+}));
+
+// Most overdue first, then whatever falls due soonest — the collection order.
+usort($rows, static function (array $a, array $b): int {
+    $ao = $a['account']['is_overdue'] ? 0 : 1;
+    $bo = $b['account']['is_overdue'] ? 0 : 1;
+    if ($ao !== $bo) {
+        return $ao <=> $bo;
+    }
+    if ($ao === 0) {
+        return $b['account']['days_overdue'] <=> $a['account']['days_overdue'];
+    }
+
+    return strcmp((string) ($a['account']['next_due_date'] ?? '9999'), (string) ($b['account']['next_due_date'] ?? '9999'));
+});
+
+$totalRows  = count($rows);
 $totalPages = max(1, (int) ceil($totalRows / $perPage));
-$today      = date('Y-m-d');
+$page       = min($page, $totalPages);
+$leases     = array_slice($rows, ($page - 1) * $perPage, $perPage);
 
 function gjc_lease_qs(array $overrides = []): string
 {
+    return htmlspecialchars(gjc_lease_qs_raw($overrides), ENT_QUOTES);
+}
+
+/** Unescaped twin of gjc_lease_qs() — for values that get URL-encoded instead. */
+function gjc_lease_qs_raw(array $overrides = []): string
+{
     $base = [
-        'q'       => $_GET['q']       ?? '',
-        'status'  => $_GET['status']  ?? '',
-        'overdue' => $_GET['overdue'] ?? '',
-        'page'    => $_GET['page']    ?? '',
+        'q'    => $_GET['q']    ?? '',
+        'view' => $_GET['view'] ?? '',
+        'page' => $_GET['page'] ?? '',
     ];
     $merged = array_filter(array_merge($base, $overrides), static fn ($v) => $v !== '' && $v !== null);
-    return htmlspecialchars(http_build_query($merged), ENT_QUOTES);
+
+    return http_build_query($merged);
 }
+
+/**
+ * Link to one lease's own page. `ret` carries the roll's current filter so the
+ * Back link lands the user exactly where they left off.
+ */
+function gjc_lease_link(int $leaseId, string $fragment = ''): string
+{
+    $url = ADMIN_URL . '/lease_details.php?token=' . rawurlencode(gjc_make_view_token($leaseId, 'lease'));
+    $ret = gjc_lease_qs_raw();
+    if ($ret !== '') {
+        $url .= '&ret=' . rawurlencode($ret);
+    }
+
+    return htmlspecialchars($url . $fragment, ENT_QUOTES);
+}
+
+$stateBadge = [
+    'overdue' => 'gp-rent-badge is-late',
+    'settled' => 'gp-rent-badge is-ok',
+    'ahead'   => 'gp-rent-badge is-ahead',
+    'pending' => 'gp-rent-badge is-pending',
+    'closed'  => 'gp-rent-badge is-closed',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -118,7 +223,7 @@ function gjc_lease_qs(array $overrides = []): string
     <title>Leases &amp; Rent | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=31">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
@@ -135,172 +240,186 @@ function gjc_lease_qs(array $overrides = []): string
             <button class="menu-btn" aria-label="Toggle navigation" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <div>
                 <h1>Leases &amp; Rent</h1>
-                <p>Manage merchant stall contracts and rental payment tracking.</p>
+                <p>Who rents which stall, and whether their rent is paid up.</p>
             </div>
             <div class="admin-user">
-                <span><?= gjc_e($currentUser['name']) ?></span>
+                <span><?= lease_e($currentUser['name']) ?></span>
                 <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
             </div>
         </header>
 
+
         <!-- ── Summary Cards ────────────────────────────────────────────── -->
         <section class="row g-4 mb-4">
             <div class="col-12 col-md-6 col-xl-3">
-                <a href="?<?= gjc_lease_qs(['status' => '', 'overdue' => '', 'page' => '']) ?>" class="text-decoration-none">
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fa-solid fa-file-signature"></i></div>
-                        <span>Total Leases</span>
-                        <h2><?= $totalLeases ?></h2>
-                        <p>All contract records</p>
+                <a href="?<?= gjc_lease_qs(['view' => 'owing', 'page' => '']) ?>" class="text-decoration-none">
+                    <div class="metric-card <?= $view === 'owing' ? 'is-filtering' : '' ?>">
+                        <div class="metric-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        <span>Needs collection</span>
+                        <h2><?= $owingCount ?></h2>
+                        <p><?= $owingCount ? gjc_money($owingAmount) . ' still uncollected' : 'Nobody is behind on rent' ?></p>
                     </div>
                 </a>
             </div>
             <div class="col-12 col-md-6 col-xl-3">
-                <a href="?<?= gjc_lease_qs(['status' => 'active', 'overdue' => '', 'page' => '']) ?>" class="text-decoration-none">
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fa-solid fa-store"></i></div>
-                        <span>Active Leases</span>
-                        <h2><?= $activeLeases ?></h2>
-                        <p>Currently running contracts</p>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <a href="?<?= gjc_lease_qs(['status' => '', 'overdue' => '1', 'page' => '']) ?>" class="text-decoration-none">
-                    <div class="metric-card" style="border-left:4px solid var(--gp-red);">
-                        <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                        <span>Overdue Payments</span>
-                        <h2 style="color:var(--gp-red)"><?= $overdueLeases ?></h2>
-                        <p>Past due date today</p>
+                <a href="?<?= gjc_lease_qs(['view' => 'ok', 'page' => '']) ?>" class="text-decoration-none">
+                    <div class="metric-card <?= $view === 'ok' ? 'is-filtering' : '' ?>">
+                        <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <span>Paid up</span>
+                        <h2><?= $activePaidUp ?></h2>
+                        <p>of <?= $activeCount ?> running lease<?= $activeCount === 1 ? '' : 's' ?></p>
                     </div>
                 </a>
             </div>
             <div class="col-12 col-md-6 col-xl-3">
                 <div class="metric-card">
+                    <div class="metric-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
+                    <span>Collected in <?= date('M') ?></span>
+                    <h2><?= gjc_money($collectedMonth) ?></h2>
+                    <p>Rent payments logged this month</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="metric-card">
                     <div class="metric-icon"><i class="fa-solid fa-sack-dollar"></i></div>
-                    <span>Monthly Revenue</span>
-                    <h2><?= gjc_money($monthlyTotal) ?></h2>
-                    <p>Active lease total</p>
+                    <span>Monthly rent roll</span>
+                    <h2><?= gjc_money($monthlyRoll) ?></h2>
+                    <p>Billed each month across active leases</p>
                 </div>
             </div>
         </section>
 
-        <!-- ── Leases Table ─────────────────────────────────────────────── -->
+        <!-- ── Merchants with no lease on file ──────────────────────────── -->
+        <?php if ($unleased): ?>
+        <section class="gp-notice is-warning mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <strong><?= count($unleased) ?> stall<?= count($unleased) === 1 ? ' has' : 's have' ?> no lease on file.</strong>
+                No rent is being tracked for
+                <?= lease_e(implode(', ', array_map(static fn (array $m): string => $m['stall_name'], array_slice($unleased, 0, 4)))) ?><?= count($unleased) > 4 ? ' and ' . (count($unleased) - 4) . ' more' : '' ?>.
+                Create a lease so they appear on the rent roll.
+                <div class="mt-2 d-flex flex-wrap gap-2">
+                    <?php foreach (array_slice($unleased, 0, 6) as $m): ?>
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-new-lease-for"
+                                data-merchant-id="<?= (int) $m['merchant_user_id'] ?>"
+                                data-stall-name="<?= lease_e($m['stall_name']) ?>">
+                            + Lease for <?= lease_e($m['stall_name']) ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- ── Rent roll ────────────────────────────────────────────────── -->
         <section class="premium-panel">
             <div class="panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h3>Lease Contracts</h3>
-                    <p>All merchant stall lease agreements.</p>
+                    <h3>Rent roll</h3>
+                    <p>Every stall contract, sorted so whoever owes the most-overdue rent is on top.</p>
                 </div>
-                <button class="view-btn" data-bs-toggle="modal" data-bs-target="#leaseModal"
-                        onclick="openNewLeaseModal()">+ New Lease</button>
+                <button class="view-btn" onclick="openNewLeaseModal()">+ New Lease</button>
             </div>
 
             <form method="get" class="lease-filter-bar">
-                <input type="search" name="q" class="form-control" placeholder="Search merchant, stall, email..."
-                       value="<?= gjc_e($q) ?>">
-                <select name="status" class="form-select">
-                    <option value="">All statuses</option>
-                    <option value="pending"     <?= $statusFilter === 'pending'     ? 'selected' : '' ?>>Pending</option>
-                    <option value="active"      <?= $statusFilter === 'active'      ? 'selected' : '' ?>>Active</option>
-                    <option value="expired"     <?= $statusFilter === 'expired'     ? 'selected' : '' ?>>Expired</option>
-                    <option value="terminated"  <?= $statusFilter === 'terminated'  ? 'selected' : '' ?>>Terminated</option>
+                <input type="search" name="q" class="form-control" placeholder="Search stall, stall number, tenant or email…"
+                       value="<?= lease_e($q) ?>">
+                <select name="view" class="form-select" onchange="this.form.submit()">
+                    <?php foreach ($views as $key => $label): ?>
+                        <option value="<?= lease_e($key) ?>" <?= $view === $key ? 'selected' : '' ?>>Show: <?= lease_e($label) ?></option>
+                    <?php endforeach; ?>
                 </select>
-                <label class="lease-filter-check">
-                    <input type="checkbox" name="overdue" value="1" <?= $overdueOnly ? 'checked' : '' ?>>
-                    Overdue only
-                </label>
-                <button type="submit" class="btn btn-outline-secondary">Filter</button>
-                <?php if ($q !== '' || $statusFilter !== '' || $overdueOnly): ?>
-                    <a href="<?= ADMIN_URL ?>/leases.php" class="btn btn-link">Reset</a>
+                <button type="submit" class="btn btn-outline-secondary">Search</button>
+                <?php if ($q !== '' || $view !== 'all'): ?>
+                    <a href="<?= ADMIN_URL ?>/leases.php" class="btn btn-link">Clear</a>
                 <?php endif; ?>
+                <span class="ms-auto text-muted small"><?= $totalRows ?> lease<?= $totalRows === 1 ? '' : 's' ?></span>
             </form>
 
             <div class="table-responsive">
-                <table class="table premium-table align-middle">
+                <table class="table premium-table align-middle gp-rent-table">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>Merchant</th>
-                            <th>Stall</th>
-                            <th>Monthly Rent</th>
-                            <th>Lease Period</th>
-                            <th>Next Due</th>
-                            <th>This Month</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th>Stall &amp; tenant</th>
+                            <th>Monthly rent</th>
+                            <th>Rent standing</th>
+                            <th>Next charge due</th>
+                            <th class="text-end">Unpaid</th>
+                            <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                    <?php if (empty($leases)): ?>
+                    <?php if (!$leases): ?>
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-5">
-                                No lease contracts match your filters.
+                            <td colspan="6" class="gp-empty">
+                                <?php if (!$leasesExist || (!$totalRows && $q === '' && $view === 'all')): ?>
+                                    <i class="fa-solid fa-file-signature"></i>
+                                    <strong>No lease contracts yet.</strong>
+                                    <p>
+                                        Leases normally appear here the moment you award a stall on
+                                        <a href="<?= ADMIN_URL ?>/stall_applications.php">Stall Applications</a>.
+                                        For a tenant who never applied through the system, use <em>+ New Lease</em>.
+                                    </p>
+                                <?php else: ?>
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <strong>Nothing matches that filter.</strong>
+                                    <p><a href="<?= ADMIN_URL ?>/leases.php">Show all leases</a> instead.</p>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endif; ?>
                     <?php foreach ($leases as $l): ?>
                         <?php
-                            $isOverdue = ($l['status'] === 'active') && (($l['next_due_date'] ?? '') < $today);
-                            $statusBadge = match ($l['status'] ?? 'pending') {
-                                'active'     => 'badge-success',
-                                'expired'    => 'badge-danger',
-                                'terminated' => 'badge-secondary',
-                                default      => 'badge-warning',
-                            };
-                            $paidThisMonth = (float) ($l['paid_this_month'] ?? 0);
-                            $rent          = (float) ($l['monthly_rent'] ?? 0);
-                            if ($l['status'] !== 'active') {
-                                $monthBadge = 'badge-secondary';
-                                $monthLabel = 'N/A';
-                            } elseif ($paidThisMonth >= $rent && $rent > 0) {
-                                $monthBadge = 'badge-success';
-                                $monthLabel = 'Paid';
-                            } elseif ($paidThisMonth > 0) {
-                                $monthBadge = 'badge-warning';
-                                $monthLabel = 'Partial';
-                            } else {
-                                $monthBadge = 'badge-danger';
-                                $monthLabel = 'Unpaid';
-                            }
+                            $acct  = $l['account'];
+                            $badge = $stateBadge[$acct['state']] ?? 'gp-rent-badge';
+                            [$whenText, $whenClass] = lease_when($acct['next_due_date'], $today);
+                            $tenant = trim(($l['first_name'] ?? '') . ' ' . ($l['last_name'] ?? '')) ?: ($l['email'] ?? 'Unassigned');
                         ?>
-                        <tr>
-                            <td><?= (int) $l['id'] ?></td>
+                        <tr class="<?= $acct['is_overdue'] ? 'is-late-row' : '' ?>">
                             <td>
-                                <strong><?= gjc_e(trim(($l['first_name'] ?? '') . ' ' . ($l['last_name'] ?? ''))) ?></strong><br>
-                                <small class="text-muted"><?= gjc_e($l['email'] ?? '') ?></small>
-                            </td>
-                            <td>
-                                <?= gjc_e($l['stall_name'] ?? '') ?><br>
-                                <small class="text-muted">#<?= gjc_e($l['stall_number'] ?? '') ?></small>
-                            </td>
-                            <td><?= gjc_money($l['monthly_rent'] ?? 0) ?></td>
-                            <td>
-                                <small>
-                                    <?= gjc_e($l['lease_start'] ?? '') ?>
-                                    &rarr;
-                                    <?= gjc_e($l['lease_end'] ?? '') ?>
+                                <strong><?= lease_e($l['stall_name']) ?></strong><br>
+                                <small class="text-muted">
+                                    Stall <?= lease_e($l['stall_number']) ?> &middot; <?= lease_e($tenant) ?>
                                 </small>
                             </td>
+                            <td class="gp-num"><?= gjc_money($l['monthly_rent']) ?></td>
                             <td>
-                                <?php if ($isOverdue): ?>
-                                    <span style="color:var(--gp-red);font-weight:700;">
-                                        <?= gjc_e($l['next_due_date'] ?? '') ?>
-                                    </span>
-                                <?php else: ?>
-                                    <?= gjc_e($l['next_due_date'] ?? '&mdash;') ?>
+                                <span class="<?= $badge ?>"><?= lease_e($acct['state_label']) ?></span>
+                                <?php if ($acct['months_behind'] > 0): ?>
+                                    <div class="gp-cell-note is-late">
+                                        <?= $acct['months_behind'] ?> month<?= $acct['months_behind'] === 1 ? '' : 's' ?> unpaid
+                                    </div>
+                                <?php elseif ($acct['months_ahead'] > 0): ?>
+                                    <div class="gp-cell-note"><?= $acct['months_ahead'] ?> month<?= $acct['months_ahead'] === 1 ? '' : 's' ?> in advance</div>
                                 <?php endif; ?>
                             </td>
-                            <td><span class="<?= $monthBadge ?>"><?= gjc_e($monthLabel) ?></span></td>
                             <td>
-                                <span class="<?= $statusBadge ?>">
-                                    <?= ucfirst(gjc_e($l['status'] ?? 'pending')) ?>
-                                </span>
+                                <?php if ($acct['next_due_date']): ?>
+                                    <?= lease_e(date('M j, Y', strtotime($acct['next_due_date']))) ?>
+                                    <div class="gp-cell-note <?= $whenClass ?>"><?= lease_e($whenText) ?></div>
+                                <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
+                                    <div class="gp-cell-note">nothing left to bill</div>
+                                <?php endif; ?>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary js-open-ledger" data-lease-id="<?= (int) $l['id'] ?>">
-                                    Manage
-                                </button>
+                            <td class="text-end gp-num">
+                                <?php if ($acct['outstanding'] > 0.005): ?>
+                                    <strong class="gp-amount-due"><?= gjc_money($acct['outstanding']) ?></strong>
+                                <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-end">
+                                <div class="gp-row-actions">
+                                    <?php if ($l['status'] === 'active'): ?>
+                                        <a class="btn btn-sm btn-success" href="<?= gjc_lease_link((int) $l['id'], '#record') ?>">
+                                            Record payment
+                                        </a>
+                                    <?php endif; ?>
+                                    <a class="btn btn-sm btn-outline-secondary" href="<?= gjc_lease_link((int) $l['id']) ?>">
+                                        Details
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -332,15 +451,54 @@ function gjc_lease_qs(array $overrides = []): string
             <?php endif; ?>
         </section>
 
+        <!-- ── Reference: how the rent cycle works ──────────────────────── -->
+        <section class="gp-howto is-footnote" id="leaseHowto">
+            <button type="button" class="gp-howto-toggle" id="leaseHowtoToggle" aria-expanded="true" aria-controls="leaseHowtoBody">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>How rent collection works here</span>
+                <i class="fa-solid fa-chevron-up gp-howto-caret"></i>
+            </button>
+            <div class="gp-howto-body" id="leaseHowtoBody">
+                <ol class="gp-howto-steps">
+                    <li>
+                        <strong>Leases arrive on their own.</strong>
+                        Awarding a stall application on
+                        <a href="<?= ADMIN_URL ?>/stall_applications.php">Stall Applications</a>
+                        creates the lease for you. Use <em>+ New Lease</em> above only for a tenant
+                        who never went through an application.
+                    </li>
+                    <li>
+                        <strong>Each lease bills one month of rent at a time.</strong>
+                        The first charge lands on the lease start date and repeats on that same day
+                        every month — a lease starting the 20th is charged on the 20th.
+                    </li>
+                    <li>
+                        <strong>When a tenant pays, record it against the month it covers.</strong>
+                        Open the lease, hit <em>Record payment</em>, and pick the month in
+                        <em>Period covered</em>. That is what marks a month settled — not the date you
+                        typed it in.
+                    </li>
+                    <li>
+                        <strong>The rent roll above is your collection list.</strong>
+                        <span class="gp-rent-badge is-late">Owes rent</span> means at least one month
+                        that has already been charged is still unpaid. Everything is sorted worst-first.
+                    </li>
+                </ol>
+            </div>
+        </section>
+
     </main>
 </div>
 
 <!-- ── New Lease Modal ──────────────────────────────────────────────────── -->
 <div class="modal fade" id="leaseModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content custom-modal">
             <div class="modal-header">
-                <h5 class="modal-title">New Lease Contract</h5>
+                <div>
+                    <h5 class="modal-title">New lease contract</h5>
+                    <small class="text-muted">For a tenant who did not come through Stall Applications.</small>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -348,200 +506,68 @@ function gjc_lease_qs(array $overrides = []): string
                     <input type="hidden" name="action" value="create_lease">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Merchant <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Tenant <span class="text-danger">*</span></label>
                             <select class="form-select" name="merchant_user_id" id="merchantUserId" required>
                                 <option value="">Loading merchants&hellip;</option>
                             </select>
-                            <small class="text-muted" id="merchantPickerHint"></small>
+                            <small class="form-text" id="merchantPickerHint">The merchant account that will be billed.</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Stall Number <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Stall number <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="stall_number" id="stallNumber"
                                    required placeholder="e.g. A-01">
+                            <small class="form-text">As printed on the stall map.</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Stall Name <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Stall name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="stall_name" id="stallName"
                                    required placeholder="e.g. Green Hill Canteen">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Monthly Rent (&#8369;) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Monthly rent (&#8369;) <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="monthly_rent" id="monthlyRent"
                                    step="0.01" min="0.01" required placeholder="0.00">
+                            <small class="form-text">Charged once per month for the whole term.</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Security Deposit (&#8369;)</label>
+                            <label class="form-label fw-semibold">Lease start <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="lease_start" id="leaseStart" required>
+                            <small class="form-text">Rent is charged on this day of every month.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Lease end <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="lease_end" id="leaseEnd" required>
+                            <small class="form-text">Auto-set to one year after the start — change it if the term differs.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Security deposit (&#8369;)</label>
                             <input type="number" class="form-control" name="deposit_amount" id="depositAmount"
                                    step="0.01" min="0" value="0">
+                            <small class="form-text">Recorded for reference only — it is not billed as rent.</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Status</label>
+                            <label class="form-label fw-semibold">Start billing</label>
                             <select class="form-select" name="status" id="leaseStatus">
-                                <option value="pending">Pending</option>
-                                <option value="active">Active</option>
-                                <option value="expired">Expired</option>
-                                <option value="terminated">Terminated</option>
+                                <option value="active">Yes — the stall is open (Active)</option>
+                                <option value="pending">Not yet — hold it (Pending)</option>
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Lease Start <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="lease_start" id="leaseStart" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Lease End <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="lease_end" id="leaseEnd" required>
+                            <small class="form-text">A Pending lease is charged nothing until you activate it.</small>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Contract Notes</label>
-                            <textarea class="form-control" name="contract_notes" id="contractNotes" rows="3"
-                                      placeholder="Terms, conditions, special arrangements..."></textarea>
+                            <label class="form-label fw-semibold">Contract notes</label>
+                            <textarea class="form-control" name="contract_notes" id="contractNotes" rows="2"
+                                      placeholder="Terms, deposit arrangement, special conditions…"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="gp-inline-preview" id="leasePreview"></div>
                         </div>
                     </div>
                     <div id="leaseFormMsg" class="mt-3"></div>
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="login-btn" style="flex:1" id="leaseSubmitBtn">Save Lease</button>
+                        <button type="submit" class="login-btn" style="flex:1" id="leaseSubmitBtn">Create lease</button>
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                     </div>
                 </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ── Lease Ledger Modal (manage existing lease) ───────────────────────── -->
-<div class="modal fade" id="ledgerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content custom-modal">
-            <div class="modal-header">
-                <div>
-                    <h5 class="modal-title" id="ledgerTitle">Lease Ledger</h5>
-                    <small class="text-muted" id="ledgerSubtitle"></small>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="ledgerAlert"></div>
-                <div id="ledgerLoading" class="text-center text-muted py-5">Loading lease ledger&hellip;</div>
-                <div id="ledgerContent" class="d-none">
-
-                    <div id="ledgerStats" class="row g-3 mb-3"></div>
-
-                    <ul class="nav nav-tabs" id="ledgerTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ledgerPaymentsPane" type="button">Payment History</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ledgerEditPane" type="button">Edit Contract</button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content pt-3">
-                        <div class="tab-pane fade show active" id="ledgerPaymentsPane">
-                            <form class="row g-3" id="ledgerPaymentForm">
-                                <input type="hidden" name="action" value="record_payment">
-                                <input type="hidden" name="lease_id" id="ledgerPayLeaseId">
-                                <div class="col-md-3">
-                                    <label class="form-label">Amount Paid (&#8369;)</label>
-                                    <input type="number" step="0.01" min="0.01" class="form-control" name="amount_paid" id="ledgerPayAmount" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Period Covered</label>
-                                    <input type="month" class="form-control" name="period_covered" id="ledgerPayPeriod" required value="<?= date('Y-m') ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Payment Date</label>
-                                    <input type="date" class="form-control" name="payment_date" required value="<?= date('Y-m-d') ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Method</label>
-                                    <select class="form-select" name="payment_method">
-                                        <option value="cash">Cash</option>
-                                        <option value="bank_transfer">Bank Transfer</option>
-                                        <option value="check">Check</option>
-                                        <option value="other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-9">
-                                    <label class="form-label">Notes (optional)</label>
-                                    <input type="text" class="form-control" name="notes" placeholder="Receipt no., remarks...">
-                                </div>
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button class="btn btn-success w-100" type="submit">Record Payment</button>
-                                </div>
-                            </form>
-
-                            <hr>
-
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Reference</th>
-                                            <th>Period</th>
-                                            <th>Payment Date</th>
-                                            <th>Amount</th>
-                                            <th>Method</th>
-                                            <th>Notes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ledgerPaymentsBody"></tbody>
-                                </table>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center" id="ledgerPaymentPager"></div>
-                        </div>
-
-                        <div class="tab-pane fade" id="ledgerEditPane">
-                            <form class="row g-3" id="ledgerEditForm">
-                                <input type="hidden" name="action" value="update_lease">
-                                <input type="hidden" name="lease_id" id="ledgerEditLeaseId">
-                                <div class="col-md-4">
-                                    <label class="form-label">Stall Number</label>
-                                    <input type="text" class="form-control" name="stall_number" id="ledgerStallNumber">
-                                </div>
-                                <div class="col-md-8">
-                                    <label class="form-label">Stall Name</label>
-                                    <input type="text" class="form-control" name="stall_name" id="ledgerStallName">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Monthly Rent (&#8369;)</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="monthly_rent" id="ledgerMonthlyRent">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Deposit (&#8369;)</label>
-                                    <input type="number" step="0.01" min="0" class="form-control" name="deposit_amount" id="ledgerDeposit">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Lease Start</label>
-                                    <input type="date" class="form-control" name="lease_start" id="ledgerLeaseStart">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Lease End</label>
-                                    <input type="date" class="form-control" name="lease_end" id="ledgerLeaseEnd">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Next Due Date</label>
-                                    <input type="date" class="form-control" name="next_due_date" id="ledgerNextDue">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Status</label>
-                                    <select class="form-select" name="status" id="ledgerStatus">
-                                        <option value="pending">Pending</option>
-                                        <option value="active">Active</option>
-                                        <option value="expired">Expired</option>
-                                        <option value="terminated">Terminated</option>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Contract Notes</label>
-                                    <textarea class="form-control" rows="2" name="contract_notes" id="ledgerNotes"></textarea>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary" type="submit">Save Changes</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -554,6 +580,6 @@ function toggleSidebar() {
 }
 window.leaseApiConfig = { endpoint: '<?= ADMIN_URL ?>/api/leases.php' };
 </script>
-<script src="<?= JS_URL ?>/admin_leases.js"></script>
+<script src="<?= JS_URL ?>/admin_leases.js?v=4"></script>
 </body>
 </html>

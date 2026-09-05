@@ -56,7 +56,13 @@ try {
                 'label' => $meta['label'],
                 'incoming' => $meta['incoming'],
                 'amount' => (float) $row['amount'],
-                'date' => date('M j, Y', strtotime((string) $row['created_at'])),
+                // Split so the phone layout can drop the year: on a
+                // "recent activity" list it is noise, and it was the last
+                // 34px standing between "TRANSFER OUT · Aug 25, 2026" and
+                // fitting on one line at 360px. dashboard.php is this
+                // endpoint's only consumer.
+                'date' => date('M j', strtotime((string) $row['created_at'])),
+                'year' => date(', Y', strtotime((string) $row['created_at'])),
             ];
         }
     }

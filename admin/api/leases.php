@@ -62,6 +62,14 @@ function gjc_lease_json_fail(string $message): void
     exit;
 }
 
+/** The payload every write action returns, so the screen can re-render without a reload. */
+function gjc_lease_state(MerchantTenantDirectory $directory, int $leaseId): array
+{
+    $lease = $directory->leaseById($leaseId);
+
+    return $lease ? ['lease' => $lease, 'account' => $lease['account']] : [];
+}
+
 try {
     switch ($action) {
 
@@ -114,12 +122,13 @@ try {
             $depositAmount  = (float)  ($_POST['deposit_amount']  ?? 0);
             $leaseStart     = trim((string) ($_POST['lease_start']     ?? ''));
             $leaseEnd       = trim((string) ($_POST['lease_end']       ?? ''));
-            $status         = trim((string) ($_POST['status']          ?? 'pending'));
+            $status         = trim((string) ($_POST['status']          ?? 'active'));
             $notes          = trim((string) ($_POST['contract_notes']  ?? ''));
 
-            $allowedStatuses = ['pending', 'active', 'expired', 'terminated'];
-            if (!in_array($status, $allowedStatuses, true)) {
-                $status = 'pending';
+            // A brand-new contract can only start out running or waiting to run;
+            // expired/terminated are end-states reached later, from the ledger.
+            if (!in_array($status, ['pending', 'active'], true)) {
+                $status = 'active';
             }
 
             if (!$merchantUserId || !$stallNumber || !$stallName || $monthlyRent <= 0 || !$leaseStart || !$leaseEnd) {
@@ -161,6 +170,8 @@ try {
             ]);
 
             $newId = (int) $db->lastInsertId();
+            $directory->syncNextDueDate($newId);
+
             logAudit($db, $adminId, $adminRole, 'STALL_UPDATE', 'merchant_leases', null, [
                 'lease_id' => $newId, 'merchant_user_id' => $merchantUserId, 'stall_name' => $stallName,
                 'monthly_rent' => $monthlyRent, 'status' => $status,
@@ -168,7 +179,7 @@ try {
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Lease contract created successfully.',
+                'message' => 'Lease contract created. First rent charge falls on ' . date('M j, Y', strtotime($leaseStart)) . '.',
                 'id'      => $newId,
             ]);
             break;
@@ -181,7 +192,6 @@ try {
             $depositAmount  = (float)  ($_POST['deposit_amount']  ?? 0);
             $leaseStart     = trim((string) ($_POST['lease_start']     ?? ''));
             $leaseEnd       = trim((string) ($_POST['lease_end']       ?? ''));
-            $nextDueDate    = trim((string) ($_POST['next_due_date']   ?? ''));
             $status         = trim((string) ($_POST['status']          ?? 'active'));
             $notes          = trim((string) ($_POST['contract_notes']  ?? ''));
             $stallNumber    = trim((string) ($_POST['stall_number']    ?? ''));
@@ -211,9 +221,6 @@ try {
                 gjc_lease_json_fail('Lease record not found.');
             }
 
-            if (!$nextDueDate || !strtotime($nextDueDate)) {
-                $nextDueDate = $old['next_due_date'];
-            }
             if (!$stallNumber) {
                 $stallNumber = $old['stall_number'];
             }
@@ -221,6 +228,9 @@ try {
                 $stallName = $old['stall_name'];
             }
 
+            // next_due_date is not an input any more — it is recomputed from the
+            // rent schedule below, so it can never drift out of step with the
+            // payments that have actually been recorded.
             $stmt = $db->prepare(
                 "UPDATE merchant_leases
                     SET stall_number     = ?,
@@ -229,7 +239,6 @@ try {
                         deposit_amount   = ?,
                         lease_start      = ?,
                         lease_end        = ?,
-                        next_due_date    = ?,
                         status           = ?,
                         contract_notes   = ?
                   WHERE id = ?"
@@ -241,18 +250,19 @@ try {
                 $depositAmount,
                 $leaseStart,
                 $leaseEnd,
-                $nextDueDate,
                 $status,
                 $notes ?: null,
                 $leaseId,
             ]);
+
+            $directory->syncNextDueDate($leaseId);
 
             logAudit($db, $adminId, $adminRole, 'STALL_UPDATE', 'merchant_leases', $old, [
                 'lease_id' => $leaseId, 'monthly_rent' => $monthlyRent, 'status' => $status,
                 'lease_start' => $leaseStart, 'lease_end' => $leaseEnd,
             ], $stallNumber);
 
-            echo json_encode(['success' => true, 'message' => 'Lease updated successfully.']);
+            echo json_encode(['success' => true, 'message' => 'Contract updated.'] + gjc_lease_state($directory, $leaseId));
             break;
         }
 
@@ -278,41 +288,117 @@ try {
                 $method = 'other';
             }
 
-            $chk = $db->prepare("SELECT id, status FROM merchant_leases WHERE id = ? LIMIT 1");
-            $chk->execute([$leaseId]);
-            $lease = $chk->fetch(PDO::FETCH_ASSOC);
+            $lease = $directory->leaseById($leaseId);
             if (!$lease) {
                 gjc_lease_json_fail('Lease not found.');
+            }
+
+            if ($lease['status'] === 'pending') {
+                gjc_lease_json_fail('This contract is still Pending, so no rent is being billed yet. Set it to Active first (Contract tab).');
+            }
+
+            // The period is the whole point of the record — refuse a month the
+            // contract never bills, rather than filing it somewhere invisible.
+            $inTerm  = array_filter($lease['schedule'], static fn (array $r): bool => $r['state'] !== 'off_contract');
+            $termLabels = array_column($inTerm, 'period');
+            if ($termLabels && !in_array($period, $termLabels, true)) {
+                gjc_lease_json_fail(
+                    'This lease only bills rent from ' . $termLabels[0] . ' to ' . end($termLabels) .
+                    '. Change the period covered, or extend the contract dates first.'
+                );
             }
 
             $db->beginTransaction();
             try {
                 $refNo = $directory->recordRentPayment($leaseId, $amountPaid, $period, $payDate, $method, $notes, $adminId);
-
-                if ($lease['status'] === 'active') {
-                    $db->prepare(
-                        "UPDATE merchant_leases
-                            SET next_due_date = DATE_ADD(next_due_date, INTERVAL 1 MONTH)
-                          WHERE id = ?"
-                    )->execute([$leaseId]);
-                }
-
                 $db->commit();
-
-                logAudit($db, $adminId, $adminRole, 'TRANSACTION', 'merchant_rent_payments', null, [
-                    'lease_id' => $leaseId, 'amount_paid' => $amountPaid, 'period_covered' => $period,
-                    'payment_method' => $method, 'reference_no' => $refNo,
-                ], $leaseId);
-
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Payment recorded. Reference: ' . $refNo,
-                    'ref'     => $refNo,
-                ]);
             } catch (\Throwable $e) {
                 $db->rollBack();
-                echo json_encode(['success' => false, 'message' => 'Transaction failed: ' . $e->getMessage()]);
+                echo json_encode(['success' => false, 'message' => 'Could not save the payment: ' . $e->getMessage()]);
+                break;
             }
+
+            // Due date follows the payments, not the other way round.
+            $directory->syncNextDueDate($leaseId);
+
+            logAudit($db, $adminId, $adminRole, 'TRANSACTION', 'merchant_rent_payments', null, [
+                'lease_id' => $leaseId, 'amount_paid' => $amountPaid, 'period_covered' => $period,
+                'payment_method' => $method, 'reference_no' => $refNo,
+            ], $leaseId);
+
+            $state = gjc_lease_state($directory, $leaseId);
+            $monthRow = null;
+            foreach ($state['lease']['schedule'] ?? [] as $row) {
+                if ($row['period'] === $period) {
+                    $monthRow = $row;
+                    break;
+                }
+            }
+
+            // The tenant handed over cash and walked away with nothing; this is
+            // their receipt. Best-effort — gjc_notify_rent_payment() swallows its
+            // own failures so a notification problem cannot undo a collection.
+            gjc_notify_rent_payment(
+                $db,
+                (int) $lease['merchant_user_id'],
+                $amountPaid,
+                $period,
+                $refNo,
+                (float) ($monthRow['shortfall'] ?? 0),
+                $state['account']['next_due_date'] ?? null
+            );
+
+            $message = gjc_money_plain($amountPaid) . ' recorded for ' . date('F Y', strtotime($period . '-01')) . '.';
+            if ($monthRow && $monthRow['shortfall'] > 0.005) {
+                $message .= ' Still ' . gjc_money_plain($monthRow['shortfall']) . ' short for that month.';
+            } elseif ($monthRow && $monthRow['overpaid'] > 0.005) {
+                $message .= ' That is ' . gjc_money_plain($monthRow['overpaid']) . ' more than the month is charged — record advance rent on its own month instead if that was not intended.';
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => $message . ' Reference ' . $refNo . '.',
+                'ref'     => $refNo,
+            ] + $state);
+            break;
+        }
+
+        /* ── VOID PAYMENT (undo a mis-keyed entry) ────────────────────────── */
+        case 'void_payment': {
+            $leaseId   = (int) ($_POST['lease_id']   ?? 0);
+            $paymentId = (int) ($_POST['payment_id'] ?? 0);
+
+            if (!$leaseId || !$paymentId) {
+                gjc_lease_json_fail('Invalid payment reference.');
+            }
+
+            $removed = $directory->voidRentPayment($paymentId, $leaseId);
+            if (!$removed) {
+                gjc_lease_json_fail('That payment no longer exists on this lease.');
+            }
+
+            $directory->syncNextDueDate($leaseId);
+
+            $voidedLease = $directory->leaseById($leaseId);
+            gjc_notify_rent_payment_voided(
+                $db,
+                (int) ($voidedLease['merchant_user_id'] ?? 0),
+                (float) $removed['amount_paid'],
+                (string) $removed['period_covered'],
+                (string) $removed['reference_no']
+            );
+
+            logAudit($db, $adminId, $adminRole, 'TRANSACTION', 'merchant_rent_payments', $removed, [
+                'voided_payment_id' => $paymentId, 'lease_id' => $leaseId,
+                'amount_paid' => $removed['amount_paid'], 'period_covered' => $removed['period_covered'],
+                'reference_no' => $removed['reference_no'],
+            ], $leaseId);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Removed ' . gjc_money_plain((float) $removed['amount_paid']) .
+                             ' (' . $removed['reference_no'] . ') from this lease.',
+            ] + gjc_lease_state($directory, $leaseId));
             break;
         }
 

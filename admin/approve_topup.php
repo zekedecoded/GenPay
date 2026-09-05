@@ -13,7 +13,7 @@ header('Content-Type: application/json');
 
 $sessionUserId = gjc_user_id();
 $sessionRole = gjc_current_role();
-$allowedRoles = ['cashier', 'sub-admin', 'admin', 'super-admin', 'finance'];
+$allowedRoles = ['finance']; // gjc_current_role() only ever returns finance for staff
 if (!$sessionUserId || !in_array($sessionRole, $allowedRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
@@ -96,11 +96,13 @@ try {
     echo json_encode([
         'success'          => true,
         'message'          => "₱" . number_format($result['credited_amount'], 2) .
-                              " credited (₱" . number_format($amount, 2) .
-                              " cash — 2% service fee: ₱" . number_format($result['fee_amount'], 2) . ").",
+                              " credited — collect ₱" . number_format($result['total_collected'], 2) .
+                              " (" . CirculationEngine::ratePct(CirculationEngine::FEE_SYSTEM_RATE) .
+                              " service fee: ₱" . number_format($result['fee_amount'], 2) . " on top).",
         'reference'        => $result['reference'],
         'credited_amount'  => $result['credited_amount'],
         'fee_amount'       => $result['fee_amount'],
+        'total_collected'  => $result['total_collected'],
         'vault_remaining'  => $result['vault_after'],
     ]);
 

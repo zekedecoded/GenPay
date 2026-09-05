@@ -18,7 +18,8 @@ gjc_ensure_parent_schema($db);
 
 $action        = trim((string) ($_POST['action'] ?? ''));
 $currentUserId = gjc_user_id();
-$DAILY_LIMIT   = 5000.00;
+$DAILY_LIMIT   = gjc_setting($db, 'transfer_daily_limit');
+$MIN_TRANSFER  = gjc_setting($db, 'transfer_min_amount');
 
 try {
     // ── LOOKUP: find student by student ID ───────────────────────────────
@@ -69,8 +70,8 @@ try {
             exit;
         }
 
-        if ($amount < 1.00) {
-            echo json_encode(['success' => false, 'message' => 'Minimum transfer amount is ₱1.00.']);
+        if ($amount < $MIN_TRANSFER) {
+            echo json_encode(['success' => false, 'message' => 'Minimum transfer amount is ' . gjc_money($MIN_TRANSFER) . '.']);
             exit;
         }
 

@@ -23,7 +23,10 @@ $userId = (int) $currentUser['id'];
 $wallet = gjc_merchant_wallet($db, $userId);
 
 $stmt = $db->prepare(
-    "SELECT m.merchantID, m.stall_name, m.stall_id, s.label AS stall_label, u.profile_img
+    "SELECT m.merchantID, m.stall_name, m.stall_id, m.operational_status, m.created_at AS tenant_since,
+            s.label AS stall_label, s.row_label, s.col_number, s.area_sqm, s.monthly_rate, s.status AS stall_status,
+            u.profile_img, u.first_name, u.middle_name, u.last_name, u.suffix,
+            u.email, u.contact_number, u.status AS account_status, u.created_at AS account_created
        FROM merchant m
        LEFT JOIN stalls s ON s.stall_id = m.stall_id
        LEFT JOIN users  u ON u.userID = m.userID
@@ -32,6 +35,92 @@ $stmt = $db->prepare(
 );
 $stmt->execute([$userId]);
 $merchant = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// ── The application record, where the richer detail lives ────────────────
+// Merchants onboarded before the application workflow have no row here, so
+// every field below has to tolerate being absent rather than assumed present.
+$application = null;
+if (gjc_table_exists($db, 'stall_applications')) {
+    $appStmt = $db->prepare(
+        "SELECT business_name, proprietor_name, contact_number, email,
+                street, barangay, city, province, sex,
+                business_permit, sanitary_permit, clearance, gjc_requirements,
+                deposit_amount, advance_amount, rental_start_date, payment_schedule_day,
+                contract_file, contract_ref, awarded_at
+           FROM stall_applications
+          WHERE merchant_user_id = ? AND status = 'awarded'
+          ORDER BY awarded_at DESC, id DESC
+          LIMIT 1"
+    );
+    $appStmt->execute([$userId]);
+    $application = $appStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+// ── Business at a glance ─────────────────────────────────────────────────
+$glance = ['products' => 0, 'staff' => 0, 'restricted' => 0];
+
+if (gjc_table_exists($db, 'merchant_inventory')) {
+    $q = $db->prepare("SELECT COUNT(*), COALESCE(SUM(is_restricted), 0) FROM merchant_inventory WHERE merchant_user_id = ?");
+    $q->execute([$userId]);
+    [$glance['products'], $glance['restricted']] = array_map('intval', $q->fetch(PDO::FETCH_NUM));
+}
+
+if (in_array('merchant_owner_id', gjc_table_columns($db, 'users'), true)) {
+    $q = $db->prepare("SELECT COUNT(*) FROM users WHERE merchant_owner_id = ?");
+    $q->execute([$userId]);
+    $glance['staff'] = (int) $q->fetchColumn();
+}
+
+/**
+ * users.contact_number is a BIGINT, so a Philippine mobile stored as
+ * 09614708398 comes back as 9614708398 with the leading zero eaten. Put it
+ * back rather than showing the merchant a number they cannot dial.
+ */
+function profile_phone($value): string
+{
+    $digits = preg_replace('/\D+/', '', (string) $value);
+    if ($digits === '') {
+        return '';
+    }
+    if (strlen($digits) === 10 && $digits[0] === '9') {
+        $digits = '0' . $digits;
+    }
+
+    return $digits;
+}
+
+/** Renders a value, or a muted "not on file" line that says who can add it. */
+function profile_value(?string $value, string $missing = 'Not on file'): string
+{
+    $value = trim((string) $value);
+
+    return $value !== ''
+        ? '<span class="gp-bp-value">' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</span>'
+        : '<span class="gp-bp-missing">' . htmlspecialchars($missing, ENT_QUOTES, 'UTF-8') . '</span>';
+}
+
+$fullName = trim(implode(' ', array_filter([
+    $merchant['first_name'] ?? '',
+    $merchant['middle_name'] ?? '',
+    $merchant['last_name'] ?? '',
+    $merchant['suffix'] ?? '',
+])));
+
+$address = $application
+    ? trim(implode(', ', array_filter([
+        $application['street'] ?? '',
+        $application['barangay'] ?? '',
+        $application['city'] ?? '',
+        $application['province'] ?? '',
+    ])))
+    : '';
+
+$complianceDocs = [
+    'business_permit'  => ['Business permit', 'Mayor or business permit for the stall'],
+    'sanitary_permit'  => ['Sanitary permit', 'Health and sanitation clearance'],
+    'clearance'        => ['Barangay clearance', 'Clearance from your barangay'],
+    'gjc_requirements' => ['GJC requirements', 'School-specific documents'],
+];
 
 $currentPage = 'settings';
 $logoUrl = $merchant && $merchant['profile_img'] ? BASE_URL . '/' . $merchant['profile_img'] : null;
@@ -56,8 +145,8 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ec
     <title>Business Profile | GenPay</title>
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=48">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=23">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/merchant.css?v=51">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/student_dashboard.css?v=28">
     <link rel="stylesheet" href="<?= CSS_URL ?>/responsive.css">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= CSS_URL ?>/merchant_settings.css?v=8">
@@ -110,6 +199,197 @@ $walletQrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&ec
                 </div>
             </form>
         </section>
+        <?php endif; ?>
+
+        <?php if ($merchant): ?>
+
+        <!-- ── Business at a glance ─────────────────────────────────────── -->
+        <section class="merchant-premium-panel mt-4">
+            <div class="merchant-panel-header">
+                <div>
+                    <h3><i class="fa-solid fa-chart-simple" style="margin-right:6px"></i>Business at a glance</h3>
+                    <p>A summary of what is on your stall right now.</p>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="merchant-metric-card h-100">
+                        <span>Products</span>
+                        <h2 style="font-size:1.15rem"><?= (int) $glance['products'] ?></h2>
+                        <p><?= $glance['restricted'] > 0
+                            ? (int) $glance['restricted'] . ' restricted by the school'
+                            : 'None restricted' ?></p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="merchant-metric-card h-100">
+                        <span>Staff accounts</span>
+                        <h2 style="font-size:1.15rem"><?= (int) $glance['staff'] ?></h2>
+                        <p>Can sign in to your POS</p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="merchant-metric-card h-100">
+                        <span>Wallet balance</span>
+                        <h2 style="font-size:1.15rem"><?= gjc_money($wallet['balance']) ?></h2>
+                        <p>Available to encash</p>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="merchant-metric-card h-100">
+                        <span>Monthly rent</span>
+                        <h2 style="font-size:1.15rem">
+                            <?= $merchant['monthly_rate'] !== null ? gjc_money($merchant['monthly_rate']) : '&mdash;' ?>
+                        </h2>
+                        <p><a href="<?= MERCHANT_URL ?>/rent.php">See rent schedule</a></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Proprietor & contact ─────────────────────────────────────── -->
+        <section class="merchant-premium-panel mt-4">
+            <div class="merchant-panel-header">
+                <div>
+                    <h3><i class="fa-solid fa-id-card" style="margin-right:6px"></i>Proprietor &amp; contact</h3>
+                    <p>Held by the finance office. Ask them to update anything that is wrong or missing.</p>
+                </div>
+            </div>
+
+            <dl class="gp-bp-list">
+                <div><dt>Registered name</dt><dd><?= profile_value($fullName) ?></dd></div>
+                <div><dt>Business name</dt><dd><?= profile_value($application['business_name'] ?? $merchant['stall_name']) ?></dd></div>
+                <div><dt>Mobile number</dt><dd><?= profile_value(profile_phone($merchant['contact_number'] ?: ($application['contact_number'] ?? ''))) ?></dd></div>
+                <div><dt>Email</dt><dd><?= profile_value($merchant['email'] ?: ($application['email'] ?? '')) ?></dd></div>
+                <div class="gp-bp-wide"><dt>Home address</dt><dd><?= profile_value($address, 'Not on file — collected with a stall application') ?></dd></div>
+                <div><dt>Account status</dt>
+                    <dd>
+                        <?php $acct = strtolower((string) ($merchant['account_status'] ?? '')); ?>
+                        <span class="gp-bp-chip <?= $acct === 'active' ? 'is-ok' : 'is-late' ?>">
+                            <?= profile_value(ucfirst($acct)) ?>
+                        </span>
+                    </dd>
+                </div>
+                <div><dt>Member since</dt>
+                    <dd><?= profile_value($merchant['account_created'] ? date('M j, Y', strtotime($merchant['account_created'])) : '') ?></dd>
+                </div>
+            </dl>
+        </section>
+
+        <!-- ── Stall & tenancy ──────────────────────────────────────────── -->
+        <section class="merchant-premium-panel mt-4">
+            <div class="merchant-panel-header">
+                <div>
+                    <h3><i class="fa-solid fa-store" style="margin-right:6px"></i>Stall &amp; tenancy</h3>
+                    <p>The unit you lease and how it is recorded in the stall map.</p>
+                </div>
+            </div>
+
+            <dl class="gp-bp-list">
+                <div><dt>Stall number</dt><dd><?= profile_value($merchant['stall_id'], 'Not yet assigned') ?></dd></div>
+                <div><dt>Stall label</dt><dd><?= profile_value($merchant['stall_label']) ?></dd></div>
+                <div><dt>Position on the map</dt>
+                    <dd><?= profile_value($merchant['row_label'] ? 'Row ' . $merchant['row_label'] . ', unit ' . (int) $merchant['col_number'] : '') ?></dd>
+                </div>
+                <div><dt>Floor area</dt>
+                    <dd><?= profile_value($merchant['area_sqm'] !== null ? rtrim(rtrim(number_format((float) $merchant['area_sqm'], 2), '0'), '.') . ' sqm' : '') ?></dd>
+                </div>
+                <div><dt>Operational status</dt>
+                    <dd>
+                        <?php $op = (string) ($merchant['operational_status'] ?? 'active'); ?>
+                        <span class="gp-bp-chip <?= $op === 'active' ? 'is-ok' : 'is-late' ?>">
+                            <?= profile_value(ucwords(str_replace('_', ' ', $op))) ?>
+                        </span>
+                    </dd>
+                </div>
+                <div><dt>Tenant since</dt>
+                    <dd><?= profile_value(
+                        !empty($application['rental_start_date'])
+                            ? date('M j, Y', strtotime($application['rental_start_date']))
+                            : ($merchant['tenant_since'] ? date('M j, Y', strtotime($merchant['tenant_since'])) : '')
+                    ) ?></dd>
+                </div>
+                <div><dt>Deposit collected</dt>
+                    <dd><?= isset($application['deposit_amount'])
+                        ? '<span class="gp-bp-value">' . gjc_money($application['deposit_amount']) . '</span>'
+                        : profile_value('', 'Not on file — collected on award') ?></dd>
+                </div>
+                <div><dt>Advance collected</dt>
+                    <dd><?= isset($application['advance_amount'])
+                        ? '<span class="gp-bp-value">' . gjc_money($application['advance_amount']) . '</span>'
+                        : profile_value('', 'Not on file — collected on award') ?></dd>
+                </div>
+            </dl>
+        </section>
+
+        <!-- ── Compliance documents ─────────────────────────────────────── -->
+        <section class="merchant-premium-panel mt-4">
+            <div class="merchant-panel-header">
+                <div>
+                    <h3><i class="fa-solid fa-folder-open" style="margin-right:6px"></i>Compliance documents</h3>
+                    <p>The permits and clearances the finance office holds for your stall.</p>
+                </div>
+            </div>
+
+            <?php if (!$application): ?>
+                <div class="gp-bp-empty">
+                    <i class="fa-solid fa-folder-open"></i>
+                    <strong>No documents on file.</strong>
+                    <p>
+                        Your stall was set up directly by the finance office rather than through a
+                        stall application, so no permits were captured. Bring your business permit,
+                        sanitary permit and barangay clearance to the finance office to have them
+                        added to your record.
+                    </p>
+                </div>
+            <?php else: ?>
+                <div class="gp-bp-docs">
+                    <?php foreach ($complianceDocs as $key => [$label, $hint]): ?>
+                        <?php $onFile = !empty($application[$key]); ?>
+                        <div class="gp-bp-doc <?= $onFile ? '' : 'is-missing' ?>">
+                            <div class="gp-bp-doc-body">
+                                <strong><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></strong>
+                                <span><?= htmlspecialchars($hint, ENT_QUOTES, 'UTF-8') ?></span>
+                            </div>
+                            <?php if ($onFile): ?>
+                                <div class="gp-bp-doc-actions">
+                                    <a class="merchant-view-btn" target="_blank" rel="noopener"
+                                       href="<?= MERCHANT_URL ?>/doc.php?t=<?= urlencode($key) ?>">
+                                        <i class="fa-solid fa-eye me-1"></i> View
+                                    </a>
+                                    <a class="merchant-view-btn" href="<?= MERCHANT_URL ?>/doc.php?t=<?= urlencode($key) ?>&amp;dl=1">
+                                        <i class="fa-solid fa-download me-1"></i> Save
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <span class="gp-bp-chip is-late">Not submitted</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+
+                    <?php if (!empty($application['contract_file'])): ?>
+                        <div class="gp-bp-doc">
+                            <div class="gp-bp-doc-body">
+                                <strong>Signed lease contract</strong>
+                                <span><?= $application['contract_ref']
+                                    ? 'Reference ' . htmlspecialchars($application['contract_ref'], ENT_QUOTES, 'UTF-8')
+                                    : 'Countersigned by the finance office' ?></span>
+                            </div>
+                            <div class="gp-bp-doc-actions">
+                                <a class="merchant-view-btn" target="_blank" rel="noopener" href="<?= MERCHANT_URL ?>/contract.php">
+                                    <i class="fa-solid fa-eye me-1"></i> View
+                                </a>
+                                <a class="merchant-view-btn" href="<?= MERCHANT_URL ?>/contract.php?dl=1">
+                                    <i class="fa-solid fa-download me-1"></i> Save
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
         <?php endif; ?>
 
         <section class="merchant-premium-panel mt-4" id="walletQrPanel">

@@ -55,7 +55,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
     <link rel="stylesheet" href="<?= CSS_URL ?>/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=25">
+    <link rel="stylesheet" href="<?= CSS_URL ?>/admin.css?v=26">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body class="gp-theme">
@@ -128,7 +128,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
             <div class="panel-header d-flex justify-content-between align-items-center">
                 <div>
                     <h3>Merchants at Risk</h3>
-                    <p>Blocked attempts to add or rename a product into a restricted one, per merchant admin. Hitting <?= GJC_VIOLATION_RISK_AT ?> strikes auto-suspends the whole stall for <?= GJC_VIOLATION_SUSPEND_DAYS ?> days and restarts the count; the full history stays in the audit log.</p>
+                    <p>Blocked attempts to add or rename a product into a restricted one, per merchant admin. Hitting <?= gjc_setting_int($db, 'violation_risk_at') ?> strikes auto-suspends the whole stall for <?= gjc_setting_int($db, 'violation_suspend_days') ?> days and restarts the count; the full history stays in the audit log.</p>
                 </div>
             </div>
             <div class="table-responsive">
@@ -155,7 +155,7 @@ if (gjc_table_exists($db, 'restricted_products')) {
                                 <?php if (!empty($v['restricted_suspended_until'])): ?>
                                     <span class="badge-danger">Suspended</span>
                                     <div class="text-muted" style="font-size:12px">until <?= date('M d, g:i A', strtotime($v['restricted_suspended_until'])) ?></div>
-                                <?php elseif ((int) $v['restricted_violation_count'] >= GJC_VIOLATION_WARN_AT): ?>
+                                <?php elseif ((int) $v['restricted_violation_count'] >= gjc_setting_int($db, 'violation_warn_at')): ?>
                                     <span class="badge-danger">At Risk</span>
                                 <?php else: ?>
                                     <span class="badge-warning">Watch</span>

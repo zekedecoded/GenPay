@@ -285,6 +285,143 @@
   font-size: 12px !important;
 }
 
+/* ── Flash banner (redirect-with-message from save_settings.php) ────────── */
+.settings-flash {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 18px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.settings-flash i {
+  margin-top: 2px;
+  font-size: 15px;
+}
+
+.settings-flash.is-success {
+  background: var(--gp-success-bg);
+  border-color: rgba(21, 128, 61, 0.18);
+  color: var(--gp-success);
+}
+
+.settings-flash.is-error {
+  background: var(--gp-danger-bg);
+  border-color: rgba(185, 28, 28, 0.18);
+  color: var(--gp-danger);
+}
+
+.settings-flash.is-info {
+  background: var(--gp-warning-bg);
+  border-color: rgba(180, 83, 9, 0.18);
+  color: var(--gp-warning);
+}
+
+/* ── Mint PIN status pill ───────────────────────────────────────────────── */
+.settings-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.settings-status.is-set {
+  background: var(--gp-success-bg);
+  color: var(--gp-success);
+}
+
+.settings-status.is-unset {
+  background: var(--gp-danger-bg);
+  color: var(--gp-danger);
+}
+
+.settings-status.is-readonly {
+  background: #eef2f0;
+  color: var(--gp-muted);
+}
+
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* ── Monthly minting meter (read-only economy panel) ────────────────────── */
+.mint-meter-bar {
+  height: 12px;
+  border-radius: 50px;
+  background: #eef2f0;
+  overflow: hidden;
+}
+
+.mint-meter-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 50px;
+  transition: width 0.3s ease;
+}
+
+.mint-meter.is-ok .mint-meter-bar span {
+  background: var(--gp-success);
+}
+
+.mint-meter.is-near .mint-meter-bar span {
+  background: var(--gp-warning);
+}
+
+.mint-meter.is-over .mint-meter-bar span {
+  background: var(--gp-danger);
+}
+
+.mint-meter-labels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.mint-meter-labels strong {
+  color: var(--gp-ink);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.mint-meter-labels span {
+  color: var(--gp-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Advisory note that needs a human decision, not just context. */
+.settings-note-warn {
+  background: var(--gp-warning-bg) !important;
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  color: var(--gp-warning) !important;
+}
+
+.settings-note-warn code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(180, 83, 9, 0.12);
+  color: inherit;
+  font-size: 12px;
+}
+
 @media (max-width: 992px) {
   .settings-panel {
     max-width: 100%;
@@ -298,5 +435,91 @@
   .system-info-row {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+}
+
+/* ── Section tabs ────────────────────────────────────────────────────────
+   The seven panels used to sit open in one ~3,300px stack. Four of them are
+   independent forms with their own Save button, so having them all on screen
+   let an edit in one section be thrown away by a save in another. The bar
+   shows one panel at a time; tab labels are short because the panel header
+   underneath already carries the full section name. */
+.settings-tabs {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e3ece6;
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(5, 41, 22, 0.08);
+  /* Five tabs sit on one row at any desktop width; wrapping is the phone-width
+     fallback so the bar never clips. */
+  flex-wrap: wrap;
+}
+
+.settings-tab {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--gp-muted);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.settings-tab:hover {
+  background: var(--gp-row-hover);
+  color: var(--gp-ink);
+}
+
+/* Gold is the app's active-nav accent, but the sidebar's gold-on-dark text
+   fails on a white surface — --gp-gold-deep is the token theme.css provides
+   for gold text on light. */
+.settings-tab.is-active {
+  background: var(--gp-gold-soft);
+  color: var(--gp-gold-deep);
+  font-weight: 800;
+}
+
+.settings-tab:focus-visible {
+  outline: 2px solid var(--gp-gold);
+  outline-offset: -2px;
+}
+
+/* Separates the four editable sections from the read-only Info pane. */
+.settings-tabs-split {
+  flex: 0 0 1px;
+  margin: 6px 8px;
+  background: var(--gp-line);
+}
+
+/* Hiding is gated on .js-tabs, which only the script adds — without it the
+   page degrades to the plain stack of open panels it was before. */
+.settings-page.js-tabs .settings-pane {
+  display: none;
+}
+
+.settings-page.js-tabs .settings-pane.is-active {
+  display: block;
+}
+
+/* The Info pane stacks three read-only panels; the last one should not
+   leave a trailing gap under the pane. */
+.settings-pane > .settings-panel:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 992px) {
+  .settings-tabs {
+    border-radius: 14px;
   }
 }
